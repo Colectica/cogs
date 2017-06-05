@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Cogs.Console": {
+      "commandName": "Project",
+      "commandLineArgs": "publish-xsd -o \"E:\\svn\\ddicogs\""
+    }
+  }
+}

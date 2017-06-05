@@ -1,0 +1,129 @@
+﻿// Copyright (c) 2017 Colectica. All rights reserved
+// See the LICENSE file in the project root for more information.
+using Cogs.Dto;
+using Cogs.Model;
+using Cogs.Publishers;
+using Microsoft.Extensions.CommandLineUtils;
+using System;
+using System.IO;
+
+namespace Cogs.Console
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            System.Console.WriteLine(cogsLogo);
+
+            var app = new CommandLineApplication
+            {
+                Name = "Cogs"
+            };
+            app.HelpOption("-?|-h|--help");
+
+            
+            app.Command("publish-xsd", (command) =>
+            {
+
+                command.Description = "Publish an XML schema from a COGS data model";
+                command.HelpOption("-?|-h|--help");
+
+                var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
+                var targetArgument = command.Argument("[targetLocation]", "Directory where the xsd schema is generated.");
+
+                var overwriteOption = command.Option("-o|--overwrite",
+                                           "If the target directory exists, delete and overwrite the location",
+                                           CommandOptionType.NoValue);
+
+                
+
+                command.OnExecute(() =>
+                {
+                    var location = locationArgument.Value ?? Environment.CurrentDirectory;
+                    var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
+                    bool overwrite = overwriteOption.HasValue();
+
+
+                    var directoryReader = new CogsDirectoryReader();
+                    var cogsDtoModel = directoryReader.Load(location);
+
+                    var modelBuilder = new CogsModelBuilder();
+                    var cogsModel = modelBuilder.Build(cogsDtoModel);
+
+                    XmlSchemaPublisher publisher = new XmlSchemaPublisher();
+                    publisher.CogsLocation = location;
+                    publisher.TargetDirectory = target;
+                    publisher.Overwrite = overwrite;
+
+                    publisher.Publish(cogsModel);
+
+
+                    return 0;
+                });
+
+            });
+
+
+            app.Command("publish-sphinx", (command) =>
+            {
+
+                command.Description = "Publish a Sphinx documentation website from a COGS data model";
+                command.HelpOption("-?|-h|--help");
+
+                var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
+                var targetArgument = command.Argument("[targetLocation]", "Directory where the sphinx documentation is generated.");
+
+                var overwriteOption = command.Option("-o|--overwrite",
+                                           "If the target directory exists, delete and overwrite the location",
+                                           CommandOptionType.NoValue);
+
+
+
+                command.OnExecute(() =>
+                {
+                    var location = locationArgument.Value ?? Environment.CurrentDirectory;
+                    var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
+                    bool overwrite = overwriteOption.HasValue();
+
+                    var directoryReader = new CogsDirectoryReader();
+                    var cogsDtoModel = directoryReader.Load(location);
+
+                    var modelBuilder = new CogsModelBuilder();
+                    var cogsModel = modelBuilder.Build(cogsDtoModel);
+
+                    SphinxPublisher publisher = new SphinxPublisher();
+                    publisher.CogsLocation = location;
+                    publisher.TargetDirectory = target;
+                    publisher.Overwrite = overwrite;
+
+                    publisher.Publish(cogsModel);
+
+
+
+                    return 0;
+                });
+
+            });
+
+
+            app.OnExecute(() =>
+            {
+                System.Console.WriteLine("Cogs");
+                return 0;
+            });
+
+            var result = app.Execute(args);
+            Environment.Exit(result);
+        }
+
+
+
+        private static string cogsLogo = 
+@"  ______   ______     _______      _______.
+ /      | /  __  \   /  _____|    /       |
+|  ,----'|  |  |  | |  |  __     |   (----`
+|  |     |  |  |  | |  | |_ |     \   \    
+|  `----.|  `--'  | |  |__| | .----)   |   
+ \______| \______/   \______| |_______/";
+    }
+}

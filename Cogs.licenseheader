@@ -1,0 +1,9 @@
+﻿extensions: designer.cs generated.cs
+extensions: .cs .cpp .h
+// Copyright (c) %CreationYear% Colectica. All rights reserved
+// See the LICENSE file in the project root for more information.
+extensions:  .xml .config .xsd
+<!--
+Copyright (c) %CreationYear% Colectica. All rights reserved
+See the LICENSE file in the project root for more information.
+-->

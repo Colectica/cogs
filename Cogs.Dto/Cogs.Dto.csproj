@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>Cogs.Dto</AssemblyName>
+    <RootNamespace>Cogs.Dto</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\Cogs.licenseheader" Link="Cogs.licenseheader" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CsvHelper" Version="2.16.3" />
+  </ItemGroup>
+
+</Project>
