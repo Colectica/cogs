@@ -25,11 +25,11 @@ namespace Cogs.Console
             app.Command("publish-xsd", (command) =>
             {
 
-                command.Description = "Publish an XML schema from a COGS data model";
+                command.Description = "Publish an UML schema from a COGS data model";
                 command.HelpOption("-?|-h|--help");
 
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
-                var targetArgument = command.Argument("[targetLocation]", "Directory where the xsd schema is generated.");
+                var targetArgument = command.Argument("[targetLocation]", "Directory where the UML schema is generated.");
 
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
@@ -57,7 +57,7 @@ namespace Cogs.Console
                     var modelBuilder = new CogsModelBuilder();
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
 
-                    XmlSchemaPublisher publisher = new XmlSchemaPublisher();
+                    UmlSchemaPublisher publisher = new UmlSchemaPublisher();
                     publisher.CogsLocation = location;
                     publisher.TargetDirectory = target;
                     publisher.Overwrite = overwrite;
