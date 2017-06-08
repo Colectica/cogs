@@ -269,11 +269,11 @@ namespace Cogs.Publishers
         static void ValidationCallback(object sender, ValidationEventArgs args)
         {
             if (args.Severity == XmlSeverityType.Warning)
-                Console.Write("WARNING: ");
+                System.Console.Write("WARNING: ");
             else if (args.Severity == XmlSeverityType.Error)
-                Console.Write("ERROR: ");
+                System.Console.Write("ERROR: ");
 
-            Console.WriteLine(args.Message);
+            System.Console.WriteLine(args.Message);
         }
 
         public static XmlNode[] TextToNodeArray(string text)

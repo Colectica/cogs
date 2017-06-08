@@ -12,13 +12,13 @@ namespace Cogs.Console
     /// <summary>
     /// Generate an uml schema using the Garden of Eden approach, all elements and type definitions are declared globally
     /// </summary>
-    internal class UmlSchemaPublisher
+    public class UmlSchemaPublisher
     {
-        public string CogsLocation { get; internal set; }
-        public string TargetDirectory { get; internal set; }
-        public bool Overwrite { get; internal set; }
+        public string CogsLocation { get; set; }
+        public string TargetDirectory { get; set; }
+        public bool Overwrite { get; set; }
 
-        internal void Publish(CogsModel model)
+        public void Publish(CogsModel model)
         {
             if (CogsLocation == null)
             {
