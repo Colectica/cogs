@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace Cogs.Console
+namespace Cogs.Publishers
 {
     /// <summary>
     /// Generate an uml schema using the Garden of Eden approach, all elements and type definitions are declared globally
@@ -17,6 +17,10 @@ namespace Cogs.Console
         public string CogsLocation { get; set; }
         public string TargetDirectory { get; set; }
         public bool Overwrite { get; set; }
+
+        public string TargetNamespace { get; set; } = "ddi:3_4";
+
+        Dictionary<string, string> createdElements = new Dictionary<string, string>();
 
         public void Publish(CogsModel model)
         {
@@ -32,14 +36,31 @@ namespace Cogs.Console
             {
                 Directory.Delete(TargetDirectory, true);
             }
-
             Directory.CreateDirectory(TargetDirectory);
 
-           // var builder = 
+
+            //create UML header
+           
+
+            // create built in types
+            
+
+
+
+            // initialize data structure to hold all initialized objects
             foreach (var item in model.ItemTypes)
             {
-                break;
+                //create new variable
+
+
+                //add to collection
+
             }
+
+            //write collection to file
+
+
+
         }
     }
 }
