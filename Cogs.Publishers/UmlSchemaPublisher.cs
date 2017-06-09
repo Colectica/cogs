@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Xml.Linq;
+using System.Xml;
 
 namespace Cogs.Publishers
 {
@@ -170,9 +171,14 @@ namespace Cogs.Publishers
             //write collection to file
             using (StreamWriter outputFile = new StreamWriter(Path.Combine(TargetDirectory + "\\" + TargetNamespace + ".xmi.xml")))
             {
-                foreach (string line in xDoc.Elements())
-                    Console.WriteLine(line);
+               // XmlTextWriter writer = new XmlTextWriter(Console.Out);
+                XmlTextWriter writer = new XmlTextWriter(outputFile);
+                writer.Formatting = Formatting.Indented;
+                xDoc.WriteTo(writer);
+                writer.Flush();
+                Console.WriteLine();
             }
+            tester(Path.Combine(TargetDirectory + "\\" + TargetNamespace + ".xmi.xml"));
         }
 
         //takes an object and sets its id field to something relevant/informative
@@ -184,6 +190,36 @@ namespace Cogs.Publishers
         private String createId(String name, String type)
         {
             return name + type;
+        }
+
+        private bool tester(String file)
+        {
+            StreamReader output = new StreamReader(file);
+            StreamReader answer = new StreamReader("C:\\Users\\kevin\\Documents\\GitHub\\cogs\\Cogs.Console\\out\\restaurant.xmi.xml");
+            String outLine;
+            String answerLine;
+            while((outLine = output.ReadLine()) != null && (answerLine = answer.ReadLine()) != null)
+            {
+                if (!outLine.Equals(answerLine))
+                {
+                    Console.WriteLine("Saw: " + outLine);
+                    Console.WriteLine("Expected: " + answerLine);
+                    return false;
+                }
+            }
+            if((outLine =  output.ReadLine()) != null)
+            {
+                Console.WriteLine("Saw: " + outLine);
+                Console.WriteLine("Expected nothing");
+                return false;
+            }
+            else if((answerLine = answer.ReadLine()) != null)
+            {
+                Console.WriteLine("Saw nothing");
+                Console.WriteLine("Expected: " + answerLine);
+                return false;
+            }
+            return true;
         }
     }
 }
