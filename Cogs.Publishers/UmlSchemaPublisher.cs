@@ -69,7 +69,8 @@ namespace Cogs.Publishers
                     new XAttribute("name", item.Name)));
 
                     // open folder and loop through files in it
-                    foreach (var file in item)
+                    string[] files = Directory.GetFiles(item.ToString(), "*ProfileHandler.cs", SearchOption.AllDirectories);
+                    foreach (var file in files)
                     {
                         if (Path.GetExtension(file).Equals(".csv"))
                         {
@@ -158,7 +159,7 @@ namespace Cogs.Publishers
                                 return;
                             }
 
-                            file.Close();
+                            open.Close();
                         }
                     }
                 }
