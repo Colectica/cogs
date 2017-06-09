@@ -13,5 +13,8 @@ namespace Cogs.Model
         public List<ItemType> ItemTypes { get; } = new List<ItemType>();
         public List<DataType> ReusableDataTypes { get; } = new List<DataType>();
         public List<TopicIndex> TopicIndices { get; } = new List<TopicIndex>();
+
+
+        public List<Property> Identification { get; } = new List<Property>();
     }
 }

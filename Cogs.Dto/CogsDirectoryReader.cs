@@ -14,9 +14,29 @@ namespace Cogs.Dto
 {
     public class CogsDirectoryReader
     {
+        public string SettingsDirectoryName { get; set; }
+
         public CogsDtoModel Load(string directory)
         {
             var model = new CogsDtoModel();
+
+            // create built in identification and reference types
+            SettingsDirectoryName = Path.Combine(directory, "Settings");
+            string identificationFile = Path.Combine(SettingsDirectoryName, "Identification.csv");
+
+
+            if (!File.Exists(identificationFile))
+            {
+                //TODO exit codes
+                throw new InvalidOperationException("identification information is not present in the Settings directory.");
+            }
+            string csvStr = File.ReadAllText(identificationFile, Encoding.UTF8);
+            using (var textReader = new StringReader(csvStr))
+            {
+                var csvReader = new CsvReader(textReader);
+                var records = csvReader.GetRecords<Property>();
+                model.Identification.AddRange(records);
+            }
 
             // Load all item types from the ItemTypes directory.
             LoadDataTypes(directory, "ItemTypes", model, model.ItemTypes);
@@ -69,17 +89,25 @@ namespace Cogs.Dto
                 itemType.Name = itemTypeName;
                 itemType.Description = GetDescription(readmePath);
                 itemType.Extends = GetExtendsClass(typeDir);
-
-                // TODO IsAbstract
+                
+                string abstractFileName = Path.Combine(typeDir, "Abstract");
+                if (File.Exists(abstractFileName))
+                {
+                    itemType.IsAbstract = true;
+                }
 
                 // Read the properties
-                string csvStr = File.ReadAllText(propertiesFileName);
-                using (var textReader = new StringReader(csvStr))
+                if (File.Exists(propertiesFileName))
                 {
-                    var csvReader = new CsvReader(textReader);
-                    var records = csvReader.GetRecords<Property>().ToList();
-                    itemType.Properties = records;
+                    string csvStr = File.ReadAllText(propertiesFileName, Encoding.UTF8);
+                    using (var textReader = new StringReader(csvStr))
+                    {
+                        var csvReader = new CsvReader(textReader);
+                        var records = csvReader.GetRecords<Property>().ToList();
+                        itemType.Properties = records;
+                    }
                 }
+
 
                 // TODO DeprecatedNamespace
                 // TODO IsDeprecated

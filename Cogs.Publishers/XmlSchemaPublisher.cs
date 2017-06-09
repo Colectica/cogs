@@ -8,6 +8,7 @@ using System.IO;
 using System.Text;
 using System.Xml;
 using System.Xml.Schema;
+using System.Threading;
 
 namespace Cogs.Publishers
 {
@@ -20,11 +21,15 @@ namespace Cogs.Publishers
         public string TargetDirectory { get; set; }
         public bool Overwrite { get; set; }
 
-        public string TargetNamespace { get; set; } = "ddi:3_4";
+        public string TargetNamespace { get; set; }
+        public string TargetNamespacePrefix { get; set; }
 
         Dictionary<string, string> createdElements = new Dictionary<string, string>();
 
-        public void Publish(CogsModel model)
+        private CogsModel CogsModel { get; set; }
+        private XmlSchema CogsSchema { get; set; }
+
+        public void Publish(CogsModel model2)
         {
             if (CogsLocation == null)
             {
@@ -38,20 +43,23 @@ namespace Cogs.Publishers
             if (Overwrite && Directory.Exists(TargetDirectory))
             {
                 Directory.Delete(TargetDirectory, true);
+                Thread.Sleep(50);
             }
 
             Directory.CreateDirectory(TargetDirectory);
 
-            
-            XmlSchema cogsSchema = new XmlSchema();
-            cogsSchema.TargetNamespace = TargetNamespace;
-            cogsSchema.Namespaces.Add("ddi", TargetNamespace);
-            cogsSchema.ElementFormDefault = XmlSchemaForm.Qualified;
-            cogsSchema.AttributeFormDefault = XmlSchemaForm.Unqualified;
+
+            CogsModel = model2;
+            CogsSchema = new XmlSchema();
+
+            CogsSchema.TargetNamespace = TargetNamespace;
+            CogsSchema.Namespaces.Add(TargetNamespacePrefix, TargetNamespace);
+            CogsSchema.ElementFormDefault = XmlSchemaForm.Qualified;
+            CogsSchema.AttributeFormDefault = XmlSchemaForm.Unqualified;
 
             // create built in types
             XmlSchemaComplexType referenceType = CreateReferenceType();
-            cogsSchema.Items.Add(referenceType);
+            
 
             // Create the container
             /*
@@ -65,25 +73,25 @@ namespace Cogs.Publishers
             */
 
             XmlSchemaChoice itemChoices = null;
-            XmlSchemaComplexType containerType = CreateItemContainerType(cogsSchema, out itemChoices);
-            cogsSchema.Items.Add(containerType);
+            XmlSchemaComplexType containerType = CreateItemContainerType(out itemChoices);
+            CogsSchema.Items.Add(containerType);
 
             XmlSchemaElement container = new XmlSchemaElement();
             container.Name = "ItemContainer";
             container.AddSchemaDocumentation("A Item Container is used to transfer items plus any associated notes and other material. TopLevelReference provides a record of the main item of the Item Container.");
             container.SchemaTypeName = new XmlQualifiedName("ItemContainerType", TargetNamespace);
-            cogsSchema.Items.Add(container);
+            CogsSchema.Items.Add(container);
 
-            foreach (var item in model.ItemTypes)
+            foreach (var item in CogsModel.ItemTypes)
             {
 
-                CreateDataType(cogsSchema, model, item);
+                CreateDataType(item);
 
                 // create a usage for the container
                 XmlSchemaElement element = new XmlSchemaElement();
                 element.Name = item.Name;
                 element.SchemaTypeName = new XmlQualifiedName(item.Name, TargetNamespace);
-                cogsSchema.Items.Add(element);
+                CogsSchema.Items.Add(element);
 
                 // include item in container via element reference
                 XmlSchemaElement elementRef = new XmlSchemaElement();
@@ -92,19 +100,19 @@ namespace Cogs.Publishers
             }
 
 
-            foreach (var dataType in model.ReusableDataTypes)
+            foreach (var dataType in CogsModel.ReusableDataTypes)
             {
-                CreateDataType(cogsSchema, model, dataType);
+                CreateDataType(dataType);
             }
 
             XmlSchemaSet schemaSet = new XmlSchemaSet();
             schemaSet.ValidationEventHandler += new ValidationEventHandler(ValidationCallback);
-            schemaSet.Add(cogsSchema);
+            schemaSet.Add(CogsSchema);
             schemaSet.Compile();
 
             foreach (XmlSchema schema in schemaSet.Schemas())
             {
-                cogsSchema = schema;
+                CogsSchema = schema;
             }
 
             // Write the complete schema
@@ -115,7 +123,7 @@ namespace Cogs.Publishers
             using (XmlWriter writer = XmlWriter.Create(Path.Combine(TargetDirectory, "schema.xsd"), settings))
             {
 
-                cogsSchema.Write(writer);
+                CogsSchema.Write(writer);
             }
                 
 
@@ -124,16 +132,14 @@ namespace Cogs.Publishers
         }
 
 
-        public void CreateDataType(XmlSchema cogsSchema, CogsModel model, DataType dataType)
+        public XmlSchemaComplexType CreateDataType(DataType dataType)
         {
-
-
             // create types
 
             XmlSchemaComplexType complexType = new XmlSchemaComplexType();
             complexType.Name = dataType.Name;
             complexType.AddSchemaDocumentation(dataType.Description);
-            cogsSchema.Items.Add(complexType);
+            CogsSchema.Items.Add(complexType);
 
             XmlSchemaSequence itemElements = new XmlSchemaSequence();
 
@@ -165,57 +171,46 @@ namespace Cogs.Publishers
                     continue;//TODO
                 }
 
-                // TODO refactor the model so base classes are used here
-                var dataTypes = property.DataTypeName.Split(' ');
 
-                if (model.ItemTypes.Exists(x => dataTypes.Contains( x.Name)))
+                CreateElementReference(itemElements, property);
+            }
+
+            return complexType;
+        }
+
+        private void CreateElementReference(XmlSchemaSequence itemElements, Property property)
+        {
+            // TODO refactor the model so base classes are used here
+            var dataTypes = property.DataTypeName.Split(' ');
+
+            if (!createdElements.ContainsKey(property.Name))
+            {
+                XmlSchemaElement element = new XmlSchemaElement();
+                element.Name = property.Name;
+
+                // if a reference to an item
+                if (CogsModel.ItemTypes.Exists(x => dataTypes.Contains(x.Name)))
                 {
-                    if (!createdElements.ContainsKey(property.Name))
-                    {
-                        // create and add reference
-                        XmlSchemaElement propertyReference = new XmlSchemaElement();
-                        propertyReference.Name = property.Name;
-                        propertyReference.SchemaTypeName = new XmlQualifiedName("ReferenceType", TargetNamespace);
-                        cogsSchema.Items.Add(propertyReference);
-
-                        createdElements[property.Name] = property.DataTypeName;
-                    }
-
-
-                    // include reference
-                    XmlSchemaElement propertyReferenceRef = new XmlSchemaElement();
-                    propertyReferenceRef.RefName = new XmlQualifiedName(property.Name, TargetNamespace);
-                    propertyReferenceRef.MinOccursString = property.MinCardinality == "" ? "0" : property.MinCardinality ?? "0";
-                    propertyReferenceRef.MaxOccursString = property.MaxCardinality == "n" ? "unbounded" : property.MaxCardinality ?? "unbounded";
-                    propertyReferenceRef.AddSchemaDocumentation(property.Description);
-                    itemElements.Items.Add(propertyReferenceRef);
-
+                    element.SchemaTypeName = new XmlQualifiedName("ReferenceType", TargetNamespace);
                 }
                 else
                 {
-                    if (!createdElements.ContainsKey(property.Name))
-                    {
-                        XmlSchemaElement datatype = new XmlSchemaElement();
-                        datatype.Name = property.Name;
-                        datatype.SchemaTypeName = new XmlQualifiedName(property.DataTypeName, TargetNamespace);
-                        cogsSchema.Items.Add(datatype);
-
-                        createdElements[property.Name] = property.DataTypeName;
-                    }
-
-
-                    // include reference to datatype property
-                    XmlSchemaElement datatypeRef = new XmlSchemaElement();
-                    datatypeRef.RefName = new XmlQualifiedName(property.Name, TargetNamespace);
-                    datatypeRef.MinOccursString = property.MinCardinality == "" ? "0" : property.MinCardinality ?? "0";
-                    datatypeRef.MaxOccursString = property.MaxCardinality == "n" ? "unbounded" : property.MaxCardinality ?? "unbounded";
-                    datatypeRef.AddSchemaDocumentation(property.Description);
-                    itemElements.Items.Add(datatypeRef);
+                    element.SchemaTypeName = new XmlQualifiedName(property.DataTypeName, TargetNamespace);
                 }
+                CogsSchema.Items.Add(element);
+                createdElements[property.Name] = property.DataTypeName;
             }
+
+            // include reference to datatype property
+            XmlSchemaElement datatypeRef = new XmlSchemaElement();
+            datatypeRef.RefName = new XmlQualifiedName(property.Name, TargetNamespace);
+            datatypeRef.MinOccursString = property.MinCardinality == "" ? "0" : property.MinCardinality ?? "0";
+            datatypeRef.MaxOccursString = property.MaxCardinality == "n" ? "unbounded" : property.MaxCardinality ?? "unbounded";
+            datatypeRef.AddSchemaDocumentation(property.Description);
+            itemElements.Items.Add(datatypeRef);
         }
 
-        XmlSchemaComplexType CreateItemContainerType(XmlSchema cogsSchema, out XmlSchemaChoice itemChoices)
+        XmlSchemaComplexType CreateItemContainerType(out XmlSchemaChoice itemChoices)
         {
             // Item Container type
             XmlSchemaComplexType containerType = new XmlSchemaComplexType();
@@ -230,7 +225,7 @@ namespace Cogs.Publishers
             element.Name = "TopLevelReference";
             element.SchemaTypeName = new XmlQualifiedName("ReferenceType", TargetNamespace);
             element.AddSchemaDocumentation("Denote which items in the Fragment Instance are the main items of interest.");
-            cogsSchema.Items.Add(element);
+            CogsSchema.Items.Add(element);
 
             // include top level reference
             XmlSchemaElement elementRef = new XmlSchemaElement();
@@ -251,46 +246,24 @@ namespace Cogs.Publishers
 
         XmlSchemaComplexType CreateReferenceType()
         {
-            XmlSchemaComplexType referenceType = new XmlSchemaComplexType();
-            referenceType.Name = "ReferenceType";
-            referenceType.AddSchemaDocumentation("Used for referencing an identified item, by lookup of the URN and/or an IRDI identification sequence.");
 
-            var sequence = new XmlSchemaSequence();
-            referenceType.Particle = sequence;
+            DataType reference = new DataType();
+            reference.Name = "ReferenceType";
+            reference.Description = "Used for referencing an identified item, by lookup of the URN and/or an IRDI identification sequence.";
 
+            reference.Properties.AddRange(CogsModel.Identification);
 
-            XmlSchemaElement elementRef = new XmlSchemaElement();
-            elementRef.RefName = new XmlQualifiedName("URN", TargetNamespace);
-            elementRef.MinOccurs = 1;
-            elementRef.MaxOccurs = 1;
-            sequence.Items.Add(elementRef);
+            Property p = new Property()
+            {
+                DataType = reference,
+                DataTypeName = reference.Name,
+                Description = "Strongly typed name of the item which is being referenced.",
+                MinCardinality = "1",
+                MaxCardinality = "1",
+                Name = "TypeOfObject"
+            };
 
-            elementRef = new XmlSchemaElement();
-            elementRef.RefName = new XmlQualifiedName("Agency", TargetNamespace);
-            elementRef.MinOccurs = 1;
-            elementRef.MaxOccurs = 1;
-            sequence.Items.Add(elementRef);
-
-            elementRef = new XmlSchemaElement();
-            elementRef.RefName = new XmlQualifiedName("ID", TargetNamespace);
-            elementRef.MinOccurs = 1;
-            elementRef.MaxOccurs = 1;
-            sequence.Items.Add(elementRef);
-
-            elementRef = new XmlSchemaElement();
-            elementRef.RefName = new XmlQualifiedName("Version", TargetNamespace);
-            elementRef.MinOccurs = 1;
-            elementRef.MaxOccurs = 1;
-            sequence.Items.Add(elementRef);
-
-            elementRef = new XmlSchemaElement();
-            elementRef.RefName = new XmlQualifiedName("TypeOfObject", TargetNamespace);
-            elementRef.MinOccurs = 1;
-            elementRef.MaxOccurs = 1;
-            sequence.Items.Add(elementRef);
-
-
-            return referenceType;
+            return CreateDataType(reference);
         }
 
         static void ValidationCallback(object sender, ValidationEventArgs args)

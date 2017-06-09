@@ -20,11 +20,34 @@ namespace Cogs.Model
             this.model = new CogsModel();
 
             // First pass: create object stubs.
+            foreach (var id in dto.Identification)
+            {
+                var property = new Property();
+                MapProperty(id, property);
+                model.Identification.Add(property);
+            }
+
+            string[] itemNames = dto.ItemTypes.Select(x => x.Name).ToArray();
+
             foreach (var itemTypeDto in dto.ItemTypes)
             {
                 var itemType = new ItemType();
                 MapDataType(itemTypeDto, itemType, true);
                 model.ItemTypes.Add(itemType);
+                
+                // add identification to all base types in itemtypes
+                if (string.IsNullOrEmpty(itemType.ExtendsTypeName))
+                {
+                    itemType.Properties.InsertRange(0, model.Identification);
+                }
+                else
+                {
+                    if (!itemNames.Contains(itemType.ExtendsTypeName))
+                    {
+                        string errorMessage = $"Item {itemType.Name} can not extend {itemType.ExtendsTypeName} because it is not an item type.";
+                        throw new InvalidOperationException(errorMessage);
+                    }
+                }
             }
 
             foreach (var reusableTypeDto in dto.ReusableDataTypes)
@@ -40,6 +63,7 @@ namespace Cogs.Model
                 MapTopicIndex(topicIndexDto, index);
                 model.TopicIndices.Add(index);
             }
+            
 
             // Second pass: add references between items.
             foreach (var itemType in model.ItemTypes)
