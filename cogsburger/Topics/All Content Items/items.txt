@@ -1,0 +1,8 @@
+Animal
+Bread
+Cheese
+Condiment
+Hamburger
+MeatPatty
+Roll
+VeggiePatty

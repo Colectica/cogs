@@ -1,0 +1,4 @@
+Name,DataType,MinCardinality,MaxCardinality,Description,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
+Name,String,0,1,A name for the breading,,,
+Description,String,0,1,A description of the breading,,,
+Grain,String,0,n,Grain used to create the breading,,,

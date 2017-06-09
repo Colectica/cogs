@@ -1,0 +1,1 @@
+The type of sliced bread used for a sandwich

@@ -1,0 +1,1 @@
+Size of an object in mm.

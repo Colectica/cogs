@@ -1,0 +1,1 @@
+The patty made from an animal
