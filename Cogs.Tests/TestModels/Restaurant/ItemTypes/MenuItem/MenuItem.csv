@@ -1,0 +1,4 @@
+Name,DataType,MinCardinality,MaxCardinality,Description,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
+Name,string,0,1,The name of the menu item,,,
+Price,double,0,1,The price of the menu item,,,
+Description,string,0,1,A description for the menu item,,,
