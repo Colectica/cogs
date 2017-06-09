@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "Cogs.Console": {
-      "commandName": "Project",
-      "commandLineArgs": "publish-xsd -o \"..\\cogsburger\""
-    }
-  }
-}
