@@ -69,6 +69,7 @@ namespace Cogs.Publishers
                     new XAttribute("name", item.Name)));
 
                     // open folder and loop through files in it
+                    // referenced https://stackoverflow.com/questions/4254339/how-to-loop-through-all-the-files-in-a-directory-in-c-net
                     string[] files = Directory.GetFiles(item.ToString(), "*ProfileHandler.cs", SearchOption.AllDirectories);
                     foreach (var file in files)
                     {
@@ -153,13 +154,15 @@ namespace Cogs.Publishers
 
 
                             }
-                            else
-                            {
-                                //Error checking here
-                                return;
-                            }
-
                             open.Close();
+                        }
+                        else if (Path.GetFileName(file).Contains("Extends"))
+                        {
+                            String name = Path.GetFileName(file).Split('.')[2];
+                            xDoc.Add(new XElement("generalization",
+                                new XAttribute("xmi:type", "uml:Generalization"),
+                                new XAttribute("xmi:id", createId(name, "Generalization")),
+                                new XAttribute("general", createId(name))));
                         }
                     }
                 }
@@ -170,7 +173,7 @@ namespace Cogs.Publishers
             }
 
             //write collection to file
-            using (StreamWriter outputFile = new StreamWriter(TargetDirectory + @"\output.xmi.xml"))
+            using (StreamWriter outputFile = new StreamWriter(TargetDirectory + TargetNamespace + ".xmi.xml"))
             {
                 foreach (string line in xDoc.Elements())
                     outputFile.WriteLine(line);
