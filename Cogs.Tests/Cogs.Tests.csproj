@@ -12,4 +12,9 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.2.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Cogs.Dto\Cogs.Dto.csproj" />
+    <ProjectReference Include="..\Cogs.Model\Cogs.Model.csproj" />
+  </ItemGroup>
+
 </Project>
