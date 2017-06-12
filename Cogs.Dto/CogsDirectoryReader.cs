@@ -129,7 +129,7 @@ namespace Cogs.Dto
             string[] allFiles = Directory.GetFiles(typeDir);
             string extendsFileName = allFiles
                 .Select(x => Path.GetFileName(x))
-                .FirstOrDefault(x => x.StartsWith("Extends."));
+                .FirstOrDefault(x => x.ToLower().StartsWith("extends."));
             if (!string.IsNullOrWhiteSpace(extendsFileName))
             {
                 return extendsFileName.Substring(8);

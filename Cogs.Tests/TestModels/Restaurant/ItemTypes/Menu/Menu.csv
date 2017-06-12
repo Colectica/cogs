@@ -1,0 +1,3 @@
+Name,DataType,MinCardinality,MaxCardinality,Description,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
+Name,string,0,1,The name of the restaurant,,,
+MenuItems,MenuItem,1,n,The list of menu items,,,
