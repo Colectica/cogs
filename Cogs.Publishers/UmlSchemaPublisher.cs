@@ -1,4 +1,6 @@
-﻿// Copyright (c) 2017 Colectica. All rights reserved
+﻿// Kevin Christianson
+// Last Modified 6/12/2017
+// Copyright (c) 2017 Colectica. All rights reserved
 // See the LICENSE file in the project root for more information.
 using Cogs.Model;
 using System;
@@ -126,10 +128,10 @@ namespace Cogs.Publishers
                 xDoc.WriteTo(writer);
                 writer.Flush();
             }
-            tester(Path.Combine(TargetDirectory + "\\" + TargetNamespace + ".xmi.xml"));
         }
 
-        //takes a string and checks that the ID has not been created before, then returns it if valid, otherwise throws exception
+        // helper method that takes a string and checks that the ID has not been previously created
+        // returns the string if valid, otherwise throws ArgumentException
         private String createId(String name)
         {
             if (idList.Contains(name))
@@ -139,37 +141,6 @@ namespace Cogs.Publishers
             }
             idList.Add(name);
             return name;
-        }
-
-
-        private bool tester(String file)
-        {
-            StreamReader output = new StreamReader(file);
-            StreamReader answer = new StreamReader("C:\\Users\\kevin\\Documents\\restaurant.xmi.xml");
-            String outLine;
-            String answerLine;
-            while((outLine = output.ReadLine().Trim()) != null && (answerLine = answer.ReadLine().Trim()) != null)
-            {
-                if (!outLine.Equals(answerLine))
-                {
-                    Console.WriteLine("Saw: " + outLine);
-                    Console.WriteLine("Expected: " + answerLine);
-                    return false;
-                }
-            }
-            if((outLine =  output.ReadLine()) != null)
-            {
-                Console.WriteLine("Saw: " + outLine);
-                Console.WriteLine("Expected nothing");
-                return false;
-            }
-            else if((answerLine = answer.ReadLine()) != null)
-            {
-                Console.WriteLine("Saw nothing");
-                Console.WriteLine("Expected: " + answerLine);
-                return false;
-            }
-            return true;
         }
     }
 }
