@@ -28,6 +28,7 @@ namespace Cogs.Publishers
             if (Overwrite && Directory.Exists(TargetDirectory))
             {
                 Directory.Delete(TargetDirectory, true);
+                System.Threading.Thread.Sleep(1000);
             }
 
             Directory.CreateDirectory(TargetDirectory);
