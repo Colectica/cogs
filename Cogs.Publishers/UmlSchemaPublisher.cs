@@ -51,31 +51,61 @@ namespace Cogs.Publishers
             XAttribute first = new XAttribute(XNamespace.Xmlns + "uml", "http://www.omg.org/spec/UML/20110701");
             XAttribute second = new XAttribute(XNamespace.Xmlns + "xmi", "http://www.omg.org/spec/XMI/20110701");
             XElement xmodel = new XElement(umlns + "Model", new XAttribute(xmins + "type", "uml:Model"), new XAttribute("name", "EA_Model"));
-            XDocument xDoc = new XDocument(
-                new XDeclaration("1.0", "utf-8", null),
-                new XElement(xmins + "XMI", first, second,
-                new XElement(xmins + "Documentation", new XAttribute("exporter", "Enterprise Architect"), new XAttribute("exporterVersion","6.5")),
-                xmodel));
-
+            var packageName = "restaurant Menu";
             // loop through data and convert
             foreach (var item in model.ItemTypes)
             {
+                var newItem = new XElement(new XElement("packagedElement", new XAttribute(xmins + "type", umlns + "Class"),
+                           new XAttribute(xmins + "id", createId(item.Name)),
+                           new XAttribute("name", item.Name)));
                 var info = item.Properties;
                 String extends = item.ExtendsTypeName;
                 foreach(var property in info)
                 {
-                  //  xDoc.Add(new XElement("packagedElement", new XAttribute("xmi:type", "uml:Class"),
-                      //     new XAttribute("xmi:id", createId(property.Name, item.Name+".property")),
-                       //    new XAttribute("name", property.Name)));
+                    var newProperty = new XElement("ownedAttribute", new XAttribute(xmins+ "type", umlns+ "Class"),
+                           new XAttribute(xmins + "id", createId(property.Name)),
+                           new XAttribute("name", property.Name));
+                    newProperty.Add(new XElement("type", new XAttribute(xmins + "idref", property.DataType)));
+                    if(property.MinCardinality != null)
+                    {
+                        newProperty.Add(new XElement("lowerValue", new XAttribute(xmins + "type", umlns + "LiteralInteger"),
+                            new XAttribute(xmins + "id", createId(item.Name + "." + property.Name + ".MinCardinality")),
+                            new XAttribute("value", property.MinCardinality)));
+                    }
+                    if (property.MaxCardinality != null)
+                    {
+                        if (property.MaxCardinality.Equals("*"))
+                        {
+                            newProperty.Add(new XElement("lowerValue", new XAttribute(xmins + "type", umlns + "LiteralUnlimitedNatural"),
+                                 new XAttribute(xmins + "id", createId(item.Name + "." + property.Name + ".MaxCardinality")),
+                                 new XAttribute("value", "1")));
+                        }
+                        else
+                        {
+                            newProperty.Add(new XElement("lowerValue", new XAttribute(xmins + "type", umlns + "LiteralInteger"),
+                                 new XAttribute(xmins + "id", createId(item.Name + "." + property.Name + ".MaxCardinality")),
+                                 new XAttribute("value", property.MaxCardinality)));
+                        }
+                    }
+
+                    newItem.Add(newProperty);
                 }
                 if (extends != null)
                 {
-                  //  xDoc.Add(new XElement("generalization",
-                    //    new XAttribute("xmi:type", "uml:Generalization"),
-                    //    new XAttribute("xmi:id", createId(extends, "Generalization")),
-                     //   new XAttribute("general", createId(extends))));
+                    newItem.Add(new XElement("generalization",
+                        new XAttribute(xmins+ "type", umlns + "Generalization"),
+                        new XAttribute(xmins +"id", createId(item.Name + ".Generalization")),
+                        new XAttribute("general", createId(extends))));
                 }
+                xmodel.Add(newItem);
             }
+            //create document header
+            XDocument xDoc = new XDocument(
+               new XDeclaration("1.0", "utf-8", null),
+               new XElement(xmins + "XMI", first, second,
+               new XElement(xmins + "Documentation", new XAttribute("exporter", "Enterprise Architect"), new XAttribute("exporterVersion", "6.5")),
+               xmodel));
+
             //write collection to file
             using (StreamWriter outputFile = new StreamWriter(Path.Combine(TargetDirectory + "\\" + TargetNamespace + ".xmi.xml")))
             {
@@ -137,19 +167,13 @@ namespace Cogs.Publishers
         {
             return name;
         }
-
-        private String createId(String name, String type)
-        {
-            return name + type;
-        }
-
         private bool tester(String file)
         {
             StreamReader output = new StreamReader(file);
             StreamReader answer = new StreamReader("C:\\Users\\kevin\\Documents\\restaurant.xmi.xml");
             String outLine;
             String answerLine;
-            while((outLine = output.ReadLine()) != null && (answerLine = answer.ReadLine()) != null)
+            while((outLine = output.ReadLine().Trim()) != null && (answerLine = answer.ReadLine().Trim()) != null)
             {
                 if (!outLine.Equals(answerLine))
                 {
