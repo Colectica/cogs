@@ -22,13 +22,11 @@ namespace Cogs.Publishers
             this.cogsModel = cogsModel;
             this.outputDirectory = outputDirectory;
 
-            //ClearOutputDirectory();
             CopySphinxStarterFiles();
             BuildTopIndex();
             BuildItemTypePages();
             BuildReusableTypePages();
             BuildTopicPages();
-            //RunSphinx();
         }
 
         private void BuildTopIndex()
@@ -58,16 +56,6 @@ namespace Cogs.Publishers
 
             string mainIndexFileName = Path.Combine(outputDirectory, "source", "index.rst");
             File.WriteAllText(mainIndexFileName, builder.ToString());
-        }
-
-        private void RunSphinx()
-        {
-            Process proc = new Process();
-            proc.StartInfo.UseShellExecute = true;
-            proc.StartInfo.WorkingDirectory = outputDirectory;
-            proc.StartInfo.FileName = @"make.bat";
-            proc.StartInfo.Arguments = $"html";
-            proc.Start();
         }
 
         private void ClearOutputDirectory()
