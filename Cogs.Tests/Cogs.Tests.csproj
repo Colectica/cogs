@@ -15,6 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Cogs.Dto\Cogs.Dto.csproj" />
     <ProjectReference Include="..\Cogs.Model\Cogs.Model.csproj" />
+    <ProjectReference Include="..\Cogs.Publishers\Cogs.Publishers.csproj" />
   </ItemGroup>
 
 </Project>
