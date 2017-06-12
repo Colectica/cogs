@@ -101,7 +101,6 @@ namespace Cogs.Console
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
 
                     SphinxPublisher publisher = new SphinxPublisher();
-                    publisher.CogsLocation = location;
                     publisher.TargetDirectory = target;
                     publisher.Overwrite = overwrite;
 
