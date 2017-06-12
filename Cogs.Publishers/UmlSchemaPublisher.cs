@@ -1,6 +1,4 @@
-﻿// Kevin Christianson
-// Last Modified 6/12/2017
-// Copyright (c) 2017 Colectica. All rights reserved
+﻿// Copyright (c) 2017 Colectica. All rights reserved
 // See the LICENSE file in the project root for more information.
 using Cogs.Model;
 using System;
