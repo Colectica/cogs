@@ -46,14 +46,12 @@ namespace Cogs.Publishers
 
             Directory.CreateDirectory(TargetDirectory);
 
-            //create UML header
-            // referenced http://www.dotnetcurry.com/linq/564/linq-to-xml-tutorials-examples
             XNamespace xmins = "http://www.omg.org/spec/XMI/20110701";
             XNamespace umlns = "http://www.omg.org/spec/UML/20110701";
             XAttribute first = new XAttribute(XNamespace.Xmlns + "uml", "http://www.omg.org/spec/UML/20110701");
             XAttribute second = new XAttribute(XNamespace.Xmlns + "xmi", "http://www.omg.org/spec/XMI/20110701");
-            XElement xmodel = new XElement(umlns + "Model", new XAttribute(xmins + "type", "uml:Model"), new XAttribute("name", "EA_Model"));
-            var packageName = "restaurant Menu";
+            XElement xmodel = new XElement("packagedElement", new XAttribute(xmins + "type", "uml:Package"), 
+                new XAttribute(xmins + "id", "TestProject"), new XAttribute("name", "RestaurantMenu"));
             // loop through classes
             foreach (var item in model.ItemTypes)
             {
@@ -62,7 +60,7 @@ namespace Cogs.Publishers
                            new XAttribute(xmins + "id", createId(item.Name)),
                            new XAttribute("name", item.Name)));
                 String extends = item.ExtendsTypeName;
-                // loop through properties of class
+                // loop through properties of class and add to class
                 foreach(var property in item.Properties)
                 {
                     var newProperty = new XElement("ownedAttribute", new XAttribute(xmins+ "type", "uml:Property"),
@@ -77,14 +75,24 @@ namespace Cogs.Publishers
                     }
                     if (property.MaxCardinality != null)
                     {
-                        newProperty.Add(new XElement("lowerValue", new XAttribute(xmins + "type", "uml:LiteralUnlimitedNatural"),
-                            new XAttribute(xmins + "id", createId(item.Name + "." + property.Name + ".MaxCardinality")),
-                            new XAttribute("value", property.MaxCardinality)));
+                        // if max is "n" change to "*"
+                        if (property.MaxCardinality.Equals("n"))
+                        {
+                            newProperty.Add(new XElement("upperValue", new XAttribute(xmins + "type", "uml:LiteralUnlimitedNatural"),
+                                new XAttribute(xmins + "id", createId(item.Name + "." + property.Name + ".MaxCardinality")),
+                                new XAttribute("value", "*")));
+                        }
+                        else
+                        {
+                            newProperty.Add(new XElement("upperValue", new XAttribute(xmins + "type", "uml:LiteralUnlimitedNatural"),
+                                new XAttribute(xmins + "id", createId(item.Name + "." + property.Name + ".MaxCardinality")),
+                                new XAttribute("value", property.MaxCardinality)));
+                        }
                     }
                     newItem.Add(newProperty);
                 }
-                // adds pointers where applicable
-                if (extends != null)
+                // adds pointers for inheritance where applicable
+                if (!extends.Equals(""))
                 {
                     try
                     {
@@ -99,19 +107,20 @@ namespace Cogs.Publishers
                     }
                    
                 }
+                // add class to model
                 xmodel.Add(newItem);
             }
+
             //create document header
             XDocument xDoc = new XDocument(
                new XDeclaration("1.0", "utf-8", null),
                new XElement(xmins + "XMI", first, second,
                new XElement(xmins + "Documentation", new XAttribute("exporter", "Enterprise Architect"), new XAttribute("exporterVersion", "6.5")),
-               xmodel));
+               new XElement(umlns + "Model", new XAttribute(xmins + "type", "uml:Model"), new XAttribute("name", "EA_Model"), xmodel)));
 
             //write collection to file
             using (StreamWriter outputFile = new StreamWriter(Path.Combine(TargetDirectory + "\\" + TargetNamespace + ".xmi.xml")))
             {
-                //  XmlTextWriter writer = new XmlTextWriter(Console.Out);
                 XmlTextWriter writer = new XmlTextWriter(outputFile);
                 writer.Formatting = Formatting.Indented;
                 xDoc.WriteTo(writer);
@@ -120,7 +129,7 @@ namespace Cogs.Publishers
             tester(Path.Combine(TargetDirectory + "\\" + TargetNamespace + ".xmi.xml"));
         }
 
-        //takes an object and sets its id field to something relevant/informative
+        //takes a string and checks that the ID has not been created before, then returns it if valid, otherwise throws exception
         private String createId(String name)
         {
             if (idList.Contains(name))
@@ -131,6 +140,8 @@ namespace Cogs.Publishers
             idList.Add(name);
             return name;
         }
+
+
         private bool tester(String file)
         {
             StreamReader output = new StreamReader(file);
