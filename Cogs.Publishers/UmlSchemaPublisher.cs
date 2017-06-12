@@ -26,6 +26,8 @@ namespace Cogs.Publishers
 
         public string TargetNamespace { get; set; } = "ddi3_4";
 
+        private List<string> idList = new List<string>();
+
         public void Publish(CogsModel model)
         {
             if (CogsLocation == null)
@@ -52,50 +54,50 @@ namespace Cogs.Publishers
             XAttribute second = new XAttribute(XNamespace.Xmlns + "xmi", "http://www.omg.org/spec/XMI/20110701");
             XElement xmodel = new XElement(umlns + "Model", new XAttribute(xmins + "type", "uml:Model"), new XAttribute("name", "EA_Model"));
             var packageName = "restaurant Menu";
-            // loop through data and convert
+            // loop through classes
             foreach (var item in model.ItemTypes)
             {
-                var newItem = new XElement(new XElement("packagedElement", new XAttribute(xmins + "type", umlns + "Class"),
+                // Create class
+                var newItem = new XElement(new XElement("packagedElement", new XAttribute(xmins + "type", "uml:Class"),
                            new XAttribute(xmins + "id", createId(item.Name)),
                            new XAttribute("name", item.Name)));
-                var info = item.Properties;
                 String extends = item.ExtendsTypeName;
-                foreach(var property in info)
+                // loop through properties of class
+                foreach(var property in item.Properties)
                 {
-                    var newProperty = new XElement("ownedAttribute", new XAttribute(xmins+ "type", umlns+ "Class"),
-                           new XAttribute(xmins + "id", createId(property.Name)),
+                    var newProperty = new XElement("ownedAttribute", new XAttribute(xmins+ "type", "uml:Property"),
+                           new XAttribute(xmins + "id", createId(item.Name + "." + property.Name)),
                            new XAttribute("name", property.Name));
-                    newProperty.Add(new XElement("type", new XAttribute(xmins + "idref", property.DataType)));
+                    newProperty.Add(new XElement("type", new XAttribute(xmins + "idref", property.DataTypeName)));
                     if(property.MinCardinality != null)
                     {
-                        newProperty.Add(new XElement("lowerValue", new XAttribute(xmins + "type", umlns + "LiteralInteger"),
+                        newProperty.Add(new XElement("lowerValue", new XAttribute(xmins + "type", "uml:LiteralInteger"),
                             new XAttribute(xmins + "id", createId(item.Name + "." + property.Name + ".MinCardinality")),
                             new XAttribute("value", property.MinCardinality)));
                     }
                     if (property.MaxCardinality != null)
                     {
-                        if (property.MaxCardinality.Equals("*"))
-                        {
-                            newProperty.Add(new XElement("lowerValue", new XAttribute(xmins + "type", umlns + "LiteralUnlimitedNatural"),
-                                 new XAttribute(xmins + "id", createId(item.Name + "." + property.Name + ".MaxCardinality")),
-                                 new XAttribute("value", "1")));
-                        }
-                        else
-                        {
-                            newProperty.Add(new XElement("lowerValue", new XAttribute(xmins + "type", umlns + "LiteralInteger"),
-                                 new XAttribute(xmins + "id", createId(item.Name + "." + property.Name + ".MaxCardinality")),
-                                 new XAttribute("value", property.MaxCardinality)));
-                        }
+                        newProperty.Add(new XElement("lowerValue", new XAttribute(xmins + "type", "uml:LiteralUnlimitedNatural"),
+                            new XAttribute(xmins + "id", createId(item.Name + "." + property.Name + ".MaxCardinality")),
+                            new XAttribute("value", property.MaxCardinality)));
                     }
-
                     newItem.Add(newProperty);
                 }
+                // adds pointers where applicable
                 if (extends != null)
                 {
-                    newItem.Add(new XElement("generalization",
-                        new XAttribute(xmins+ "type", umlns + "Generalization"),
-                        new XAttribute(xmins +"id", createId(item.Name + ".Generalization")),
-                        new XAttribute("general", createId(extends))));
+                    try
+                    {
+                        newItem.Add(new XElement("generalization",
+                            new XAttribute(xmins + "type", "uml:Generalization"),
+                            new XAttribute(xmins + "id", createId(item.Name + ".Generalization")),
+                            new XAttribute("general", extends)));
+                    }
+                    catch (ArgumentException e)
+                    {
+                        return;
+                    }
+                   
                 }
                 xmodel.Add(newItem);
             }
@@ -118,53 +120,15 @@ namespace Cogs.Publishers
             tester(Path.Combine(TargetDirectory + "\\" + TargetNamespace + ".xmi.xml"));
         }
 
-        /*
-                    // name
-                    String name = values[Array.IndexOf(values, "name")];
-                    xDoc.Add(new XElement("ownedAttribute",
-                        new XAttribute("xmi:type", "uml: Property"),
-                        new XAttribute("xmi:id", createId(name)),
-                        new XAttribute("name", name)));
-
-                    // type
-                    xDoc.Add(new XElement("type", new XAttribute("xmi:idref", values[Array.IndexOf(names, "DataType")])));
-
-                    // description
-                    xDoc.Add(new XElement("description",
-                        new XAttribute("xmi:id", createId(name, "description")),
-                        new XAttribute("value", values[Array.IndexOf(names, "description")])));
-
-                    // MinCardinality (first check if relevent)
-                    if (!values[Array.IndexOf(names, "MinCardinality")].Equals(""))
-                    {
-                        xDoc.Add(new XElement("lowerValue",
-                            new XAttribute("xmi:type", "uml:LiteralInteger"),
-                            new XAttribute("xmi:id", createId(name, "MinCardinality")),
-                            new XAttribute("value", values[Array.IndexOf(names, "MinCardinality")])));
-                    }
-
-                    // MaxCardinality (first check if relevent)
-                    if (!values[Array.IndexOf(names, "MinCardinality")].Equals(""))
-                    {
-                        if (values[Array.IndexOf(names, "MaxCardinality")].Equals("*"))
-                        {
-                            xDoc.Add(new XElement("upperValue",
-                                new XAttribute("xmi:type", "uml:LiteralUnlimitedNatural"),
-                                new XAttribute("xmi:id", createId(name, "MaxCardinality"))));
-                        }
-                        else
-                        {
-                            xDoc.Add(new XElement("upperValue",
-                                new XAttribute("xmi:type", "uml:LiteralInteger"),
-                                new XAttribute("xmi:id", createId(name, "MaxCardinality")),
-                                new XAttribute("value", values[Array.IndexOf(names, "MaxCardinality")])));
-                        }
-                    }
-                }*/
-
         //takes an object and sets its id field to something relevant/informative
         private String createId(String name)
         {
+            if (idList.Contains(name))
+            {
+                Console.WriteLine("ERROR: name '%s' used twice", name);
+                throw new ArgumentException();
+            }
+            idList.Add(name);
             return name;
         }
         private bool tester(String file)
