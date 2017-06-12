@@ -8,6 +8,7 @@ using System.IO;
 using System.Text;
 using System.Xml.Linq;
 using System.Xml;
+using System.Diagnostics;
 
 namespace Cogs.Publishers
 {
@@ -59,137 +60,77 @@ namespace Cogs.Publishers
             // loop through data and convert
             foreach (var item in model.ItemTypes)
             {
-                try
+                var info = item.Properties;
+                String extends = item.ExtendsTypeName;
+                foreach(var property in info)
                 {
-                    var x = File.GetAttributes(Path.GetPathRoot(item.Path));
-                } 
-                catch (FileNotFoundException e)
-                {
-                    //some sort of error catching
-                    return;
+                  //  xDoc.Add(new XElement("packagedElement", new XAttribute("xmi:type", "uml:Class"),
+                      //     new XAttribute("xmi:id", createId(property.Name, item.Name+".property")),
+                       //    new XAttribute("name", property.Name)));
                 }
-                if ((File.GetAttributes(Path.GetPathRoot(item.Path)) & FileAttributes.Directory) == FileAttributes.Directory)
+                if (extends != null)
                 {
-                    // open folder and loop through files in it
-                    // referenced https://stackoverflow.com/questions/4254339/how-to-loop-through-all-the-files-in-a-directory-in-c-net
-                    String[] files = Directory.GetFiles(Path.GetPathRoot(item.Path));
-                    String info = null;
-                    String extends = null;
-                    foreach(var file in files)
-                    {
-                        if (Path.GetExtension(file).Equals(".csv"))
-                        {
-                            info = file;
-                        }
-                        else if( Path.GetFileName(file).Contains("Extends")){
-                                extends = file;
-                        }
-                    }
-                    if(info != null)
-                    {
-                        xDoc.Add(new XElement("packagedElement", new XAttribute("xmi:type", "uml:Class"),
-                                new XAttribute("xmi:id", createId(Path.GetFileName(info))),
-                                new XAttribute("name", Path.GetFileName(info))));
-                        String line1;
-                        String line2;
-                        StreamReader open = new StreamReader(info);
-                        var lineCount = File.ReadLines(info).Count();
-                        if (lineCount == 2)
-                        {
-                            line1 = open.ReadLine();
-                            line2 = open.ReadLine();
-                        }
-                        else
-                        {
-                            //Error checking here
-                            return;
-                        }
-                        if (line1.Length == line2.Length)
-                        {
-                            String[] names = line1.Split(',');
-                            String[] values = line2.Split(',');
-                            // check that 
-                            if (Array.IndexOf(names, "Name") < 0 || Array.IndexOf(names, "DataType") < 0 || Array.IndexOf(names, "MinCardinality") < 0
-                                || Array.IndexOf(names, "MaxCardinality") < 0 || Array.IndexOf(names, "Description") < 0 ||
-                                values[Array.IndexOf(names, "Name")].Equals("") || values[Array.IndexOf(names, "DataType")].Equals(""))
-                            {
-                                // throw exception or some sort of error
-                            }
-                            else
-                            {
-                                // name
-                                String name = values[Array.IndexOf(values, "name")];
-                                xDoc.Add(new XElement("ownedAttribute",
-                                    new XAttribute("xmi:type", "uml: Property"),
-                                    new XAttribute("xmi:id", createId(name)),
-                                    new XAttribute("name", name)));
-
-                                // type
-                                xDoc.Add(new XElement("type", new XAttribute("xmi:idref", values[Array.IndexOf(names, "DataType")])));
-
-                                // description
-                                xDoc.Add(new XElement("description",
-                                    new XAttribute("xmi:id", createId(name, "description")),
-                                    new XAttribute("value", values[Array.IndexOf(names, "description")])));
-
-                                // MinCardinality (first check if relevent)
-                                if (!values[Array.IndexOf(names, "MinCardinality")].Equals(""))
-                                {
-                                    xDoc.Add(new XElement("lowerValue",
-                                        new XAttribute("xmi:type", "uml:LiteralInteger"),
-                                        new XAttribute("xmi:id", createId(name, "MinCardinality")),
-                                        new XAttribute("value", values[Array.IndexOf(names, "MinCardinality")])));
-                                }
-
-                                // MaxCardinality (first check if relevent)
-                                if (!values[Array.IndexOf(names, "MinCardinality")].Equals(""))
-                                {
-                                    if (values[Array.IndexOf(names, "MaxCardinality")].Equals("*"))
-                                    {
-                                        xDoc.Add(new XElement("upperValue",
-                                            new XAttribute("xmi:type", "uml:LiteralUnlimitedNatural"),
-                                            new XAttribute("xmi:id", createId(name, "MaxCardinality"))));
-                                    }
-                                    else
-                                    {
-                                        xDoc.Add(new XElement("upperValue",
-                                            new XAttribute("xmi:type", "uml:LiteralInteger"),
-                                            new XAttribute("xmi:id", createId(name, "MaxCardinality")),
-                                            new XAttribute("value", values[Array.IndexOf(names, "MaxCardinality")])));
-                                    }
-                                }
-                            }
-                        }
-                        open.Close();
-                    }
-                    else
-                    {
-                        // some sory of error checking here
-                        return;
-                    }
-                    if(extends != null)
-                    {
-                        String name = Path.GetFileName(extends).Split('.')[2];
-                        xDoc.Add(new XElement("generalization",
-                            new XAttribute("xmi:type", "uml:Generalization"),
-                            new XAttribute("xmi:id", createId(name, "Generalization")),
-                            new XAttribute("general", createId(name))));
-                    }
+                  //  xDoc.Add(new XElement("generalization",
+                    //    new XAttribute("xmi:type", "uml:Generalization"),
+                    //    new XAttribute("xmi:id", createId(extends, "Generalization")),
+                     //   new XAttribute("general", createId(extends))));
                 }
             }
-
             //write collection to file
             using (StreamWriter outputFile = new StreamWriter(Path.Combine(TargetDirectory + "\\" + TargetNamespace + ".xmi.xml")))
             {
-              //  XmlTextWriter writer = new XmlTextWriter(Console.Out);
+                //  XmlTextWriter writer = new XmlTextWriter(Console.Out);
                 XmlTextWriter writer = new XmlTextWriter(outputFile);
                 writer.Formatting = Formatting.Indented;
                 xDoc.WriteTo(writer);
                 writer.Flush();
-                Console.WriteLine();
             }
             tester(Path.Combine(TargetDirectory + "\\" + TargetNamespace + ".xmi.xml"));
         }
+
+        /*
+                    // name
+                    String name = values[Array.IndexOf(values, "name")];
+                    xDoc.Add(new XElement("ownedAttribute",
+                        new XAttribute("xmi:type", "uml: Property"),
+                        new XAttribute("xmi:id", createId(name)),
+                        new XAttribute("name", name)));
+
+                    // type
+                    xDoc.Add(new XElement("type", new XAttribute("xmi:idref", values[Array.IndexOf(names, "DataType")])));
+
+                    // description
+                    xDoc.Add(new XElement("description",
+                        new XAttribute("xmi:id", createId(name, "description")),
+                        new XAttribute("value", values[Array.IndexOf(names, "description")])));
+
+                    // MinCardinality (first check if relevent)
+                    if (!values[Array.IndexOf(names, "MinCardinality")].Equals(""))
+                    {
+                        xDoc.Add(new XElement("lowerValue",
+                            new XAttribute("xmi:type", "uml:LiteralInteger"),
+                            new XAttribute("xmi:id", createId(name, "MinCardinality")),
+                            new XAttribute("value", values[Array.IndexOf(names, "MinCardinality")])));
+                    }
+
+                    // MaxCardinality (first check if relevent)
+                    if (!values[Array.IndexOf(names, "MinCardinality")].Equals(""))
+                    {
+                        if (values[Array.IndexOf(names, "MaxCardinality")].Equals("*"))
+                        {
+                            xDoc.Add(new XElement("upperValue",
+                                new XAttribute("xmi:type", "uml:LiteralUnlimitedNatural"),
+                                new XAttribute("xmi:id", createId(name, "MaxCardinality"))));
+                        }
+                        else
+                        {
+                            xDoc.Add(new XElement("upperValue",
+                                new XAttribute("xmi:type", "uml:LiteralInteger"),
+                                new XAttribute("xmi:id", createId(name, "MaxCardinality")),
+                                new XAttribute("value", values[Array.IndexOf(names, "MaxCardinality")])));
+                        }
+                    }
+                }*/
 
         //takes an object and sets its id field to something relevant/informative
         private String createId(String name)

@@ -2,7 +2,7 @@
   "profiles": {
     "Cogs.Console": {
       "commandName": "Project",
-      "commandLineArgs": "publish-xml -o \"C:\\Users\\kevin\\Documents\\restaurant-cogs\""
+      "commandLineArgs": "publish-uml -o \"C:\\Users\\kevin\\Documents\\restaurant-cogs\""
     }
   }
 }
