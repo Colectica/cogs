@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -6,8 +7,10 @@ namespace Cogs.Publishers
 {
     class JsonSchema
     {
-        public string name;
+        public string title;
         public string type;
-        public List<JsonSchemaProp> properties = new List<JsonSchemaProp>();
+        [JsonConverter(typeof(JsonScehmaPropConverter))]
+        public List<JsonSchemaProp> properties { get; set; }
+        public Allof allOf;
     }
 }
