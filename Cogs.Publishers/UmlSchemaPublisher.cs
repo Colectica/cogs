@@ -24,8 +24,7 @@ namespace Cogs.Publishers
         // boolean to determine whether to replace existing or not
         public bool Overwrite { get; set; }
 
-        public string TargetNamespace { get; set; } = "ddi3_4";
-
+        // list of all IDs created. Used to ensure no duplicates
         private List<string> idList = new List<string>();
 
         public void Publish(CogsModel model)
@@ -119,7 +118,7 @@ namespace Cogs.Publishers
                new XElement(umlns + "Model", new XAttribute(xmins + "type", "uml:Model"), new XAttribute("name", "EA_Model"), xmodel)));
 
             //write collection to file
-            using (StreamWriter outputFile = new StreamWriter(Path.Combine(TargetDirectory + "\\" + TargetNamespace + ".xmi.xml")))
+            using (StreamWriter outputFile = new StreamWriter(Path.Combine(TargetDirectory + "\\" + "uml" + ".xmi.xml")))
             {
                 XmlTextWriter writer = new XmlTextWriter(outputFile);
                 writer.Formatting = Formatting.Indented;

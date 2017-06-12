@@ -21,15 +21,14 @@ namespace Cogs.Console
             };
             app.HelpOption("-?|-h|--help");
 
-            
-            app.Command("publish-uml", (command) =>
+            app.Command("publish-xsd", (command) =>
             {
 
-                command.Description = "Publish an UML schema from a COGS data model";
+                command.Description = "Publish an XML schema from a COGS data model";
                 command.HelpOption("-?|-h|--help");
 
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
-                var targetArgument = command.Argument("[targetLocation]", "Directory where the UML schema is generated.");
+                var targetArgument = command.Argument("[targetLocation]", "Directory where the xsd schema is generated.");
 
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
@@ -57,12 +56,51 @@ namespace Cogs.Console
                     var modelBuilder = new CogsModelBuilder();
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
 
-                    UmlSchemaPublisher publisher = new UmlSchemaPublisher();
+                    XmlSchemaPublisher publisher = new XmlSchemaPublisher();
                     publisher.CogsLocation = location;
                     publisher.TargetDirectory = target;
                     publisher.Overwrite = overwrite;
                     publisher.TargetNamespace = targetNamespace;
                     publisher.TargetNamespacePrefix = prefix;
+
+                    publisher.Publish(cogsModel);
+
+
+                    return 0;
+                });
+
+            });
+
+
+            app.Command("publish-uml", (command) =>
+            {
+
+                command.Description = "Publish an UML schema from a COGS data model";
+                command.HelpOption("-?|-h|--help");
+
+                var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
+                var targetArgument = command.Argument("[targetLocation]", "Directory where the UML schema is generated.");
+
+                var overwriteOption = command.Option("-o|--overwrite",
+                                           "If the target directory exists, delete and overwrite the location",
+                                           CommandOptionType.NoValue);
+
+                command.OnExecute(() =>
+                {
+                    var location = locationArgument.Value ?? Environment.CurrentDirectory;
+                    var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
+                    bool overwrite = overwriteOption.HasValue();
+
+                    var directoryReader = new CogsDirectoryReader();
+                    var cogsDtoModel = directoryReader.Load(location);
+
+                    var modelBuilder = new CogsModelBuilder();
+                    var cogsModel = modelBuilder.Build(cogsDtoModel);
+
+                    UmlSchemaPublisher publisher = new UmlSchemaPublisher();
+                    publisher.CogsLocation = location;
+                    publisher.TargetDirectory = target;
+                    publisher.Overwrite = overwrite;
 
                     publisher.Publish(cogsModel);
 
