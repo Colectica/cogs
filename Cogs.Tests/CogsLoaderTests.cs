@@ -31,7 +31,7 @@ namespace Cogs.Tests
             // Verify we read Topics correctly.
             Assert.Equal(1, cogsModel.TopicIndices.Count);
 
-            // Verify we read properties correctly.
+            // TODO Verify we read properties correctly.
 
         }
     }
