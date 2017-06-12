@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Cogs.Tests
 {
-    class JsonSchemaTests
+    public class JsonSchemaTests
     {
     }
 }
