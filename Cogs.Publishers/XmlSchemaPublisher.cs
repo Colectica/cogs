@@ -273,7 +273,7 @@ namespace Cogs.Publishers
             else if (args.Severity == XmlSeverityType.Error)
                 Console.Write("ERROR: ");
 
-                Console.WriteLine(args.Message);
+            Console.WriteLine(args.Message);
         }
 
         public static XmlNode[] TextToNodeArray(string text)
