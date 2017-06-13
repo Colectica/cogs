@@ -50,7 +50,7 @@ namespace Cogs.Publishers
                 var newItem = new XElement(new XElement("packagedElement", new XAttribute(xmins + "type", "uml:Class"),
                            new XAttribute(xmins + "id", CreateId(item.Name)),
                            new XAttribute("name", item.Name)));
-                String extends = item.ExtendsTypeName;
+                string extends = item.ExtendsTypeName;
                 // loop through properties of class and add to class
                 foreach(var property in item.Properties)
                 {
