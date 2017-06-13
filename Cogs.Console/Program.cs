@@ -98,7 +98,6 @@ namespace Cogs.Console
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
 
                     UmlSchemaPublisher publisher = new UmlSchemaPublisher();
-                    publisher.CogsLocation = location;
                     publisher.TargetDirectory = target;
                     publisher.Overwrite = overwrite;
 

@@ -27,7 +27,6 @@ namespace Cogs.Tests
 
             var publisher = new UmlSchemaPublisher();
             publisher.TargetDirectory = outputPath;
-            publisher.CogsLocation = path;
             publisher.Publish(cogsModel);
 
 
