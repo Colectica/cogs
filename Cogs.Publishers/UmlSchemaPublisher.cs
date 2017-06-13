@@ -44,7 +44,6 @@ namespace Cogs.Publishers
             XElement xmodel = new XElement("packagedElement", new XAttribute(xmins + "type", "uml:Package"), 
                 new XAttribute(xmins + "id", "TestProject"), new XAttribute("name", "RestaurantMenu"));
             // loop through classes and reusable data types
-            var total = model.ItemTypes.Concat(model.ReusableDataTypes);
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
                 // Create class
