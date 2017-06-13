@@ -9,7 +9,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Cogs.Model\Cogs.Model.csproj" />
+    <PackageReference Include="Newtonsoft.Json" Version="10.0.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Cogs.Model\Cogs.Model.csproj" />
+  </ItemGroup>
+  
 </Project>
