@@ -43,8 +43,9 @@ namespace Cogs.Publishers
             XNamespace umlns = "http://www.omg.org/spec/UML/20110701";
             XElement xmodel = new XElement("packagedElement", new XAttribute(xmins + "type", "uml:Package"), 
                 new XAttribute(xmins + "id", "TestProject"), new XAttribute("name", "RestaurantMenu"));
-            // loop through classes
-            foreach (var item in model.ItemTypes)
+            // loop through classes and reusable data types
+            var total = model.ItemTypes.Concat(model.ReusableDataTypes);
+            foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
                 // Create class
                 var newItem = new XElement(new XElement("packagedElement", new XAttribute(xmins + "type", "uml:Class"),
