@@ -43,6 +43,12 @@ namespace Cogs.Publishers
             XNamespace umlns = "http://www.omg.org/spec/UML/20110701";
             XElement xmodel = new XElement("packagedElement", new XAttribute(xmins + "type", "uml:Package"), 
                 new XAttribute(xmins + "id", "TestProject"), new XAttribute("name", "RestaurantMenu"));
+
+            // create list of all classes so you know if a class is being referenced
+            var classList = new List<string>();
+            foreach(var item in model.ItemTypes.Concat(model.ReusableDataTypes)){
+                classList.Add(item.Name);
+            }
             // loop through classes and reusable data types
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
@@ -77,6 +83,42 @@ namespace Cogs.Publishers
                             attribute));
                     }
                     newItem.Add(newProperty);
+                    // see if property is a type of class
+                    if(classList.Contains(property.DataTypeName)){
+                        // create link association
+                        var classLink = new XElement("packagedElement", new XAttribute(xmins + "type", "uml:Association"),
+                            new XAttribute(xmins + "id", CreateId("Association.from" + property.Name + ".to." + property.DataTypeName)));
+                        classLink.Add(new XElement("memberEnd", new XAttribute(xmins + "idref", item.Name + "." + property.Name + ".association")));
+                        classLink.Add(new XElement("memberEnd", 
+                            new XAttribute(xmins + "idref", "Association.from" + property.Name + ".to." + property.DataTypeName + ".ownedEnd")));
+                        var ownedEnd = new XElement("ownedEnd", new XAttribute(xmins + "type", "uml:Property"),
+                            new XAttribute(xmins + "id", CreateId("Association.from" + property.Name + ".to." + property.DataTypeName + ".ownedEnd")),
+                            new XAttribute("association", "Association.from" + property.Name + ".to." + property.DataTypeName),
+                            new XAttribute("isOrdered", "true"));
+                        ownedEnd.Add(new XElement("type", new XAttribute(xmins + "idref", item.Name)));
+                        ownedEnd.Add(new XElement("lowerValue", new XAttribute(xmins + "type", "uml:LiteralInteger"),
+                            new XAttribute(xmins + "id", CreateId("Association.from" + property.Name + ".to." + property.DataTypeName + ".ownedEnd.MinCardinality")),
+                            new XAttribute("value", "0")));
+                        ownedEnd.Add(new XElement("upperValue", new XAttribute(xmins + "type", "uml:LiteralUnlimitedNatural"),
+                            new XAttribute(xmins + "id", CreateId("Association.from" + property.Name + ".to." + property.DataTypeName + ".ownedEnd.MaxCardinality")),
+                            new XAttribute("value", "*")));
+                        classLink.Add(ownedEnd);
+                        xmodel.Add(classLink);
+                        // reference link from current class as attribute
+                        var link = new XElement("ownedAttribute", new XAttribute(xmins + "type", "uml:Property"),
+                            new XAttribute(xmins + "id", CreateId(item.Name + "." + property.Name+ ".association")),
+                            new XAttribute("name", property.Name), 
+                            new XAttribute("association", "Association.from" + property.Name + ".to." + property.DataTypeName),
+                            new XAttribute("isOrdered", "true"));
+                        link.Add(new XElement("type", new XAttribute(xmins + "idref", property.DataTypeName)));
+                        link.Add(new XElement("lowerValue", new XAttribute(xmins + "type", "uml:LiteralInteger"),
+                            new XAttribute(xmins + "id", CreateId(item.Name + "." + property.Name + ".association.MinCardinality")),
+                            new XAttribute("value", "0")));
+                        link.Add(new XElement("upperValue", new XAttribute(xmins + "type", "uml:LiteralUnlimitedNatural"),
+                            new XAttribute(xmins + "id", CreateId(item.Name + "." + property.Name + ".association.MaxCardinality")),
+                            new XAttribute("value", "*")));
+                        newItem.Add(link);
+                    }
                 }
                 // adds pointers for inheritance where applicable
                 if (!string.IsNullOrWhiteSpace(extends))
