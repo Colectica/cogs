@@ -25,7 +25,7 @@ namespace Cogs.Publishers
         public bool Overwrite { get; set; }
 
         // list of all IDs created. Used to ensure no duplicates
-        private List<string> idList = new List<string>();
+        private List<string> IdList = new List<string>();
 
         public void Publish(CogsModel model)
         {
@@ -47,8 +47,6 @@ namespace Cogs.Publishers
 
             XNamespace xmins = "http://www.omg.org/spec/XMI/20110701";
             XNamespace umlns = "http://www.omg.org/spec/UML/20110701";
-            XAttribute first = new XAttribute(XNamespace.Xmlns + "uml", "http://www.omg.org/spec/UML/20110701");
-            XAttribute second = new XAttribute(XNamespace.Xmlns + "xmi", "http://www.omg.org/spec/XMI/20110701");
             XElement xmodel = new XElement("packagedElement", new XAttribute(xmins + "type", "uml:Package"), 
                 new XAttribute(xmins + "id", "TestProject"), new XAttribute("name", "RestaurantMenu"));
             // loop through classes
@@ -113,7 +111,8 @@ namespace Cogs.Publishers
             //create document header
             XDocument xDoc = new XDocument(
                new XDeclaration("1.0", "utf-8", null),
-               new XElement(xmins + "XMI", first, second,
+               new XElement(xmins + "XMI", new XAttribute(XNamespace.Xmlns + "uml", "http://www.omg.org/spec/UML/20110701"),
+               new XAttribute(XNamespace.Xmlns + "xmi", "http://www.omg.org/spec/XMI/20110701"),
                new XElement(xmins + "Documentation", new XAttribute("exporter", "Enterprise Architect"), new XAttribute("exporterVersion", "6.5")),
                new XElement(umlns + "Model", new XAttribute(xmins + "type", "uml:Model"), new XAttribute("name", "EA_Model"), xmodel)));
 
@@ -131,12 +130,12 @@ namespace Cogs.Publishers
         // returns the string if valid, otherwise throws ArgumentException
         private String createId(String name)
         {
-            if (idList.Contains(name))
+            if (IdList.Contains(name))
             {
                 Console.WriteLine("ERROR: name '%s' used twice", name);
                 throw new ArgumentException();
             }
-            idList.Add(name);
+            IdList.Add(name);
             return name;
         }
     }
