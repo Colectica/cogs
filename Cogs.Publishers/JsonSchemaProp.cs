@@ -2,10 +2,10 @@
 {
     public class JsonSchemaProp
     {
-        public string name; //TODO: implement own serializer
-        public string type;
-        public string MinCardinality;
-        public string MaxCardinality;
-        public string Description;
+        public string Name { get; set; }
+        public string Type { get; set; }
+        public string MinCardinality { get; set; }
+        public string MaxCardinality { get; set; }
+        public string Description { get; set; }
     }
 }

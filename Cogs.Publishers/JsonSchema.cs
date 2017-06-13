@@ -5,12 +5,12 @@ using System.Text;
 
 namespace Cogs.Publishers
 {
-    class JsonSchema
+    public class JsonSchema
     {
-        public string title;
-        public string type;
+        public string Title { get; set; }
+        public string Type { get; set; }
         [JsonConverter(typeof(JsonScehmaPropConverter))]
-        public List<JsonSchemaProp> properties { get; set; }
-        public List<string> required { get; set; }
+        public List<JsonSchemaProp> Properties { get; } = new List<JsonSchemaProp>();
+        public List<string> Required { get; } = new List<string>();
     }
 }

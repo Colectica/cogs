@@ -19,14 +19,13 @@ namespace Cogs.Publishers
 
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
         {
-            if (value.GetType() == typeof(List<JsonSchemaProp>))
+            if (value is List<JsonSchemaProp> prop_list)
             {
-                var prop_list = value as List<JsonSchemaProp>;
                 var obj = new JObject();
                 foreach (var prop in prop_list)
                 {
-                    obj.Add(new JProperty(prop.name,
-                        new JObject(new JProperty("type", prop.type), new JProperty("MinCardinality", prop.MinCardinality), new JProperty("MaxCardinality", prop.MaxCardinality), new JProperty("Description", prop.Description))));
+                    obj.Add(new JProperty(prop.Name,
+                        new JObject(new JProperty("type", prop.Type), new JProperty("minCardinality", prop.MinCardinality), new JProperty("maxCardinality", prop.MaxCardinality), new JProperty("Description", prop.Description))));
                 }
                 obj.WriteTo(writer);
             }

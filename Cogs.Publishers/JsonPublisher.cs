@@ -1,5 +1,6 @@
 ﻿using Cogs.Model;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -40,6 +41,7 @@ namespace Cogs.Publishers
             settings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
             settings.Formatting = Formatting.Indented;
             settings.Converters.Add(new JsonScehmaPropConverter());
+            settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
             settings.DefaultValueHandling = DefaultValueHandling.Ignore;
 
             //create a list to store jsonschema for each itemtype
@@ -52,10 +54,8 @@ namespace Cogs.Publishers
             foreach (ItemType item in model.ItemTypes)
             {
                 JsonSchema temp = new JsonSchema();
-                temp.title = item.Name;                          //get the name of the itemtype
-                temp.type = "object";                           //get the type of the itemtype which is usually Object
-                temp.properties = new List<JsonSchemaProp>();
-                temp.required = new List<string>();
+                temp.Title = item.Name;                          //get the name of the itemtype
+                temp.Type = "object";                           //get the type of the itemtype which is usually Object
                 if (item.ExtendsTypeName != "")             //Check whether there it extends another class
                 {
                     //get the Parent information
@@ -69,17 +69,7 @@ namespace Cogs.Publishers
                                 //traverse the properties and get all the information regarding variable. 
                                 foreach (var inner_prop in properti.Properties)
                                 {
-                                    var parentprop = new JsonSchemaProp();
-                                    parentprop.name = inner_prop.Name;
-                                    parentprop.type = inner_prop.DataType.Name;
-                                    parentprop.MinCardinality = inner_prop.MinCardinality;
-                                    if(inner_prop.MinCardinality == "1")
-                                    {
-                                        temp.required.Add(inner_prop.Name);
-                                    }
-                                    parentprop.MaxCardinality = inner_prop.MaxCardinality;
-                                    parentprop.Description = inner_prop.Description;
-                                    temp.properties.Add(parentprop);
+                                    SetJsonSchemaProp(temp, inner_prop);
                                 }
                             }
                         }
@@ -87,17 +77,7 @@ namespace Cogs.Publishers
                 }
                 foreach (var property in item.Properties)
                 {
-                    var prop = new JsonSchemaProp();
-                    prop.name = property.Name;
-                    prop.type = property.DataType.Name;
-                    prop.MinCardinality = property.MinCardinality;
-                    if (property.MinCardinality == "1")
-                    {
-                        temp.required.Add(property.Name);
-                    }
-                    prop.MaxCardinality = property.MaxCardinality;
-                    prop.Description = property.Description;
-                    temp.properties.Add(prop); 
+                    SetJsonSchemaProp(temp, property);
                 }
                 items.Add(temp);
             }
@@ -106,6 +86,21 @@ namespace Cogs.Publishers
                 Console.WriteLine(JsonConvert.SerializeObject(schema, settings));
             }
             //Console.WriteLine(JsonConvert.SerializeObject(item, settings));
+        }
+
+        public void SetJsonSchemaProp(JsonSchema temp, Property property)
+        {
+            var prop = new JsonSchemaProp();
+            prop.Name = property.Name;
+            prop.Type = property.DataType.Name;
+            prop.MinCardinality = property.MinCardinality;
+            if (property.MinCardinality == "1")
+            {
+                temp.Required.Add(property.Name);
+            }
+            prop.MaxCardinality = property.MaxCardinality;
+            prop.Description = property.Description;
+            temp.Properties.Add(prop);
         }
     }
 }
