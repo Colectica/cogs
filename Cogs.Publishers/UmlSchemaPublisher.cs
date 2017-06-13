@@ -49,6 +49,12 @@ namespace Cogs.Publishers
             foreach(var item in model.ItemTypes.Concat(model.ReusableDataTypes)){
                 classList.Add(item.Name);
             }
+            // create list of all reusable types so you know if a reusable type is being referenced
+            var reusableList = new List<string>();
+            foreach(var item in model.ReusableDataTypes)
+            {
+                reusableList.Add(item.Name);
+            }
             // loop through classes and reusable data types
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
@@ -96,12 +102,20 @@ namespace Cogs.Publishers
                             new XAttribute("association", "Association.from" + property.Name + ".to." + property.DataTypeName),
                             new XAttribute("isOrdered", "true"));
                         ownedEnd.Add(new XElement("type", new XAttribute(xmins + "idref", item.Name)));
+                        var min = "0";
+                        var max = "*";
+                        // check to see if item being referenced is a ReusableDataType
+                        if (reusableList.Contains(property.DataTypeName))
+                        {
+                            min = "1";
+                            max = "1";
+                        }
                         ownedEnd.Add(new XElement("lowerValue", new XAttribute(xmins + "type", "uml:LiteralInteger"),
                             new XAttribute(xmins + "id", CreateId("Association.from" + property.Name + ".to." + property.DataTypeName + ".ownedEnd.MinCardinality")),
-                            new XAttribute("value", "0")));
+                            new XAttribute("value", min)));
                         ownedEnd.Add(new XElement("upperValue", new XAttribute(xmins + "type", "uml:LiteralUnlimitedNatural"),
                             new XAttribute(xmins + "id", CreateId("Association.from" + property.Name + ".to." + property.DataTypeName + ".ownedEnd.MaxCardinality")),
-                            new XAttribute("value", "*")));
+                            new XAttribute("value", max)));
                         classLink.Add(ownedEnd);
                         xmodel.Add(classLink);
                         // reference link from current class as attribute
@@ -113,10 +127,10 @@ namespace Cogs.Publishers
                         link.Add(new XElement("type", new XAttribute(xmins + "idref", property.DataTypeName)));
                         link.Add(new XElement("lowerValue", new XAttribute(xmins + "type", "uml:LiteralInteger"),
                             new XAttribute(xmins + "id", CreateId(item.Name + "." + property.Name + ".association.MinCardinality")),
-                            new XAttribute("value", "0")));
+                            new XAttribute("value", min)));
                         link.Add(new XElement("upperValue", new XAttribute(xmins + "type", "uml:LiteralUnlimitedNatural"),
                             new XAttribute(xmins + "id", CreateId(item.Name + "." + property.Name + ".association.MaxCardinality")),
-                            new XAttribute("value", "*")));
+                            new XAttribute("value", max)));
                         newItem.Add(link);
                     }
                 }
