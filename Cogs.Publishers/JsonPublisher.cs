@@ -56,6 +56,35 @@ namespace Cogs.Publishers
                 temp.type = "object";                           //get the type of the itemtype which is usually Object
                 temp.properties = new List<JsonSchemaProp>();
                 //temp.allOf = new List<Dictionary<string, JsonSchemaProp>>();
+                if (item.ExtendsTypeName != "")             //Check whether there it extends another class
+                {
+                    //add allof in the json schema, to include the method and member of parent class
+                    //temp.allOf = new Allof();
+                    //temp.allOf.Ref = "#" + item.Name;
+                    //temp.allOf.Properties = new List<JsonSchemaProp>();
+                    //get the Parent information
+                    if (item.ParentTypes != null)
+                    {
+                        //traverse parent list, find the properties of the parents
+                        foreach (var properti in item.ParentTypes)
+                        {
+                            if (properti.Properties != null)
+                            {
+                                //traverse the properties and get all the information regarding variable. 
+                                foreach (var inner_prop in properti.Properties)
+                                {
+                                    var parentprop = new JsonSchemaProp();
+                                    parentprop.name = inner_prop.Name;
+                                    parentprop.type = inner_prop.DataType.Name;
+                                    parentprop.MinCardinality = inner_prop.MinCardinality;
+                                    parentprop.MaxCardinality = inner_prop.MaxCardinality;
+                                    parentprop.Description = inner_prop.Description;
+                                    temp.properties.Add(parentprop);
+                                }
+                            }
+                        }
+                    }
+                }
                 foreach (var property in item.Properties)
                 {
                     var prop = new JsonSchemaProp();
@@ -65,35 +94,6 @@ namespace Cogs.Publishers
                     prop.MaxCardinality = property.MaxCardinality;
                     prop.Description = property.Description;
                     temp.properties.Add(prop); 
-                    if (item.ExtendsTypeName != "")             //Check whether there it extends another class
-                    {
-                        //add allof in the json schema, to include the method and member of parent class
-                        temp.allOf = new Allof();               
-                        temp.allOf.Ref = "#" + item.Name;
-                        temp.allOf.Properties = new List<JsonSchemaProp>();
-                        //get the Parent information
-                        if (item.ParentTypes != null)
-                        {
-                            //traverse parent list, find the properties of the parents
-                            foreach (var properti in item.ParentTypes)
-                            {
-                                if (properti.Properties != null)
-                                {
-                                    //traverse the properties and get all the information regarding variable. 
-                                    foreach (var inner_prop in properti.Properties)
-                                    {
-                                        var parentprop = new JsonSchemaProp();
-                                        parentprop.name = inner_prop.Name;
-                                        parentprop.type = inner_prop.DataType.Name;
-                                        parentprop.MinCardinality = inner_prop.MinCardinality;
-                                        parentprop.MaxCardinality = inner_prop.MaxCardinality;
-                                        parentprop.Description = inner_prop.Description;
-                                        temp.allOf.Properties.Add(parentprop);
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
                 items.Add(temp);
             }
