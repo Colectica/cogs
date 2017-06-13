@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "Cogs.Console": {
-      "commandName": "Project",
-      "commandLineArgs": "publish-uml -o \"C:\\Users\\kevin\\Documents\\restaurant-cogs\""
-    }
-  }
-}
