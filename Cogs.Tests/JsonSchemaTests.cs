@@ -6,5 +6,6 @@ namespace Cogs.Tests
 {
     public class JsonSchemaTests
     {
+
     }
 }
