@@ -139,5 +139,40 @@ namespace Cogs.Publishers
             idList.Add(name);
             return name;
         }
+
+        private String createId(String name, String type)
+        {
+            return name + type;
+        }
+
+        private bool tester(String file)
+        {
+            StreamReader output = new StreamReader(file);
+            StreamReader answer = new StreamReader("C:\\Users\\kevin\\Documents\\GitHub\\cogs\\Cogs.Console\\out\\restaurant.xmi.xml");
+            String outLine;
+            String answerLine;
+            while((outLine = output.ReadLine()) != null && (answerLine = answer.ReadLine()) != null)
+            {
+                if (!outLine.Equals(answerLine))
+                {
+                    Console.WriteLine("Saw: " + outLine);
+                    Console.WriteLine("Expected: " + answerLine);
+                    return false;
+                }
+            }
+            if((outLine =  output.ReadLine()) != null)
+            {
+                Console.WriteLine("Saw: " + outLine);
+                Console.WriteLine("Expected nothing");
+                return false;
+            }
+            else if((answerLine = answer.ReadLine()) != null)
+            {
+                Console.WriteLine("Saw nothing");
+                Console.WriteLine("Expected: " + answerLine);
+                return false;
+            }
+            return true;
+        }
     }
 }
