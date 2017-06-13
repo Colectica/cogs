@@ -15,13 +15,14 @@ namespace Cogs.Publishers
     /// </summary>
     public class UmlSchemaPublisher
     {
+        // path to outer file to read into 
         public string CogsLocation { get; set; }
+        // path to write output in
         public string TargetDirectory { get; set; }
+        // boolean to determine whether to replace existing or not
         public bool Overwrite { get; set; }
 
-        public string TargetNamespace { get; set; } = "ddi:3_4";
-
-        Dictionary<string, string> createdElements = new Dictionary<string, string>();
+        public string TargetNamespace { get; set; } = "ddi3_4";
 
         public void Publish(CogsModel model)
         {
@@ -37,40 +38,44 @@ namespace Cogs.Publishers
             {
                 Directory.Delete(TargetDirectory, true);
             }
+            // what about Overwrite being false and Directory.Exists(TargetDirectory))?
+
             Directory.CreateDirectory(TargetDirectory);
 
-            Console.WriteLine(model.ToString());
-
-            // initialize data structure to hold all initialized objects
-            // http://www.dotnetcurry.com/linq/564/linq-to-xml-tutorials-examples
+            //create UML header
+            // referenced http://www.dotnetcurry.com/linq/564/linq-to-xml-tutorials-examples
             XAttribute first = new XAttribute(XNamespace.Xmlns + "uml", "http://www.omg.org/spec/UML/20110701");
             XAttribute second = new XAttribute(XNamespace.Xmlns + "xmi", "http://www.omg.org/spec/XMI/20110701");
             XDocument xDoc = new XDocument(
                 new XDeclaration("1.0", "windows-1252", null),
-                new XElement("xmi:XMI", first, second),
-                new XElement("xmi:Documentation", new XAttribute("exporter", "Enterprise Architect"), new XAttribute("exporterVersion", "6.5")),
-                new XElement("uml:Model", new XAttribute("xmi:type", "uml:Model"), new XAttribute("name", "EA_Model")));
+                new XElement("xmi", "XMI", first, second,
+                new XElement("xmi", new XAttribute("exporter", "Enterprise Architect"), new XAttribute("exporterVersion","6.5"),
+                new XElement("uml" ,new XAttribute("type", "uml:Model"), new XAttribute("name", "EA_Model")))));
 
-            //create UML header
-
-
-
-            // create built in types
-
+            //create outer object
+            /*
+            xDoc.Add(new XElement("packagedElement", new XAttribute("xmi:type", "uml:Package"),
+            new XAttribute("xmi:id", createId(item.Name)),
+            new XAttribute("name", item.Name)));
+            */
 
             // loop through data and convert
             foreach (var item in model.ItemTypes)
             {
-                if ((File.GetAttributes(item.ToString()) & FileAttributes.Directory) == FileAttributes.Directory)
+                try
                 {
-                    //create new object
-                    xDoc.Add(new XElement("packagedElement", new XAttribute("xmi:type", "uml:Package"),
-                    new XAttribute("xmi:id", createId(item.Name)),
-                    new XAttribute("name", item.Name)));
-
+                    var x = File.GetAttributes(Path.GetPathRoot(item.Path));
+                } 
+                catch (FileNotFoundException e)
+                {
+                    //some sort of error catching
+                    return;
+                }
+                if ((File.GetAttributes(Path.GetPathRoot(item.Path)) & FileAttributes.Directory) == FileAttributes.Directory)
+                {
                     // open folder and loop through files in it
                     // referenced https://stackoverflow.com/questions/4254339/how-to-loop-through-all-the-files-in-a-directory-in-c-net
-                    string[] files = Directory.GetFiles(item.ToString(), "*ProfileHandler.cs", SearchOption.AllDirectories);
+                    String[] files = Directory.GetFiles(Path.GetPathRoot(item.Path));
                     foreach (var file in files)
                     {
                         if (Path.GetExtension(file).Equals(".csv"))
@@ -146,13 +151,7 @@ namespace Cogs.Publishers
                                                 new XAttribute("value", values[Array.IndexOf(names, "MaxCardinality")])));
                                         }
                                     }
-
-
-
                                 }
-
-
-
                             }
                             open.Close();
                         }
@@ -166,19 +165,14 @@ namespace Cogs.Publishers
                         }
                     }
                 }
-                
-
-                //add to collection
-
             }
 
             //write collection to file
-            using (StreamWriter outputFile = new StreamWriter(TargetDirectory + TargetNamespace + ".xmi.xml"))
+            using (StreamWriter outputFile = new StreamWriter(Path.Combine(TargetDirectory + "\\" + TargetNamespace + ".xmi.xml")))
             {
                 foreach (string line in xDoc.Elements())
-                    outputFile.WriteLine(line);
+                    Console.WriteLine(line);
             }
-
         }
 
         //takes an object and sets its id field to something relevant/informative

@@ -22,7 +22,7 @@ namespace Cogs.Console
             app.HelpOption("-?|-h|--help");
 
             
-            app.Command("publish-xsd", (command) =>
+            app.Command("publish-xml", (command) =>
             {
 
                 command.Description = "Publish an UML schema from a COGS data model";
