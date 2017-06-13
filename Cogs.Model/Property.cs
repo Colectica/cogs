@@ -26,5 +26,10 @@ namespace Cogs.Model
         {
             return $"{Name} - {DataType} - {MinCardinality}..{MaxCardinality}";
         }
+
+        public string ToJson()
+        {
+            return Name+"\": { type : "+ "\""+DataType.GetType()+"\""+"}";
+        }
     }
 }
