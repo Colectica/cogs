@@ -109,7 +109,7 @@ namespace Cogs.Publishers
         }
 
         // helper method that takes a string and checks that the ID has not been previously created
-        // returns the string if valid, otherwise throws ArgumentException
+        // returns the string if valid, otherwise throws InvalidOperationException
         private string CreateId(string name)
         {
             if (IdList.Contains(name))

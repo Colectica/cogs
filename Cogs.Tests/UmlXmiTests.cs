@@ -1,10 +1,10 @@
-﻿using Cogs.Dto;
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using Cogs.Dto;
 using Cogs.Model;
 using Cogs.Publishers;
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using Xunit;
 
 namespace Cogs.Tests

@@ -21,6 +21,7 @@ namespace Cogs.Console
             };
             app.HelpOption("-?|-h|--help");
 
+
             app.Command("publish-xsd", (command) =>
             {
 
