@@ -11,5 +11,6 @@ namespace Cogs.Publishers
         public string type;
         [JsonConverter(typeof(JsonScehmaPropConverter))]
         public List<JsonSchemaProp> properties { get; set; }
+        public List<string> required { get; set; }
     }
 }

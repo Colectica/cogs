@@ -55,13 +55,9 @@ namespace Cogs.Publishers
                 temp.title = item.Name;                          //get the name of the itemtype
                 temp.type = "object";                           //get the type of the itemtype which is usually Object
                 temp.properties = new List<JsonSchemaProp>();
-                //temp.allOf = new List<Dictionary<string, JsonSchemaProp>>();
+                temp.required = new List<string>();
                 if (item.ExtendsTypeName != "")             //Check whether there it extends another class
                 {
-                    //add allof in the json schema, to include the method and member of parent class
-                    //temp.allOf = new Allof();
-                    //temp.allOf.Ref = "#" + item.Name;
-                    //temp.allOf.Properties = new List<JsonSchemaProp>();
                     //get the Parent information
                     if (item.ParentTypes != null)
                     {
@@ -77,6 +73,10 @@ namespace Cogs.Publishers
                                     parentprop.name = inner_prop.Name;
                                     parentprop.type = inner_prop.DataType.Name;
                                     parentprop.MinCardinality = inner_prop.MinCardinality;
+                                    if(inner_prop.MinCardinality == "1")
+                                    {
+                                        temp.required.Add(inner_prop.Name);
+                                    }
                                     parentprop.MaxCardinality = inner_prop.MaxCardinality;
                                     parentprop.Description = inner_prop.Description;
                                     temp.properties.Add(parentprop);
@@ -91,6 +91,10 @@ namespace Cogs.Publishers
                     prop.name = property.Name;
                     prop.type = property.DataType.Name;
                     prop.MinCardinality = property.MinCardinality;
+                    if (property.MinCardinality == "1")
+                    {
+                        temp.required.Add(property.Name);
+                    }
                     prop.MaxCardinality = property.MaxCardinality;
                     prop.Description = property.Description;
                     temp.properties.Add(prop); 
