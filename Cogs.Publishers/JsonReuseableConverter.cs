@@ -24,24 +24,32 @@ namespace Cogs.Publishers
                 var obj = new JObject();
                 foreach(var reuse in define)
                 {
-                    var obj2 = new JObject();
-                    foreach(var prop in reuse.Properties)
+                    if(reuse.Name == "~~reference~~")
                     {
-                        if (prop.Reference != null)
+                        obj.Add(new JProperty("Reference", new JObject(new JProperty("$type", "ref"), new JProperty("value",new JArray(new JObject(new JProperty("type", "string")), new JObject(new JProperty("ID" , "number")))))));
+                    } 
+                    else
+                    {
+                        var obj2 = new JObject();
+                        foreach (var prop in reuse.Properties)
                         {
-                            obj2.Add(new JProperty(prop.Name,
-                            new JObject(new JProperty("$ref", prop.Reference),
-                                    new JProperty("MultiplicityElement", (new JObject(new JProperty("lower", Convert.ToInt32(prop.MultiplicityElement.MinCardinality)), new JProperty("upper", prop.MultiplicityElement.MaxCardinality)))),
-                                            new JProperty("Description", prop.Description))));
-                        } else
-                        {
-                            obj2.Add(new JProperty(prop.Name,
-                            new JObject(new JProperty("type", prop.Type),
-                                    new JProperty("MultiplicityElement", (new JObject(new JProperty("lower", Convert.ToInt32(prop.MultiplicityElement.MinCardinality)), new JProperty("upper", prop.MultiplicityElement.MaxCardinality)))),
-                                            new JProperty("Description", prop.Description))));
+                            if (prop.Reference != null)
+                            {
+                                obj2.Add(new JProperty(prop.Name,
+                                new JObject(new JProperty("$ref", prop.Reference),
+                                            new JProperty("MultiplicityElement", (new JObject(new JProperty("lower", Convert.ToInt32(prop.MultiplicityElement.MinCardinality)), new JProperty("upper", prop.MultiplicityElement.MaxCardinality)))),
+                                                    new JProperty("Description", prop.Description))));
+                            }
+                            else
+                            {
+                                obj2.Add(new JProperty(prop.Name,
+                                    new JObject(new JProperty("type", prop.Type),
+                                            new JProperty("MultiplicityElement", (new JObject(new JProperty("lower", Convert.ToInt32(prop.MultiplicityElement.MinCardinality)), new JProperty("upper", prop.MultiplicityElement.MaxCardinality)))),
+                                                    new JProperty("Description", prop.Description))));
+                            }
                         }
+                        obj.Add(new JProperty(reuse.Name, obj2));
                     }
-                    obj.Add(new JProperty(reuse.Name, obj2));
                 }
                 obj.WriteTo(writer);
             }

@@ -54,8 +54,14 @@ namespace Cogs.Publishers
 
             root.Schema = "http://json-schema.org/draft-04/schema#";
             root.Properties = items;
+
+            ReusableType reference_node = new ReusableType();
+            reference_node.Name = "~~reference~~";
+            define.Add(reference_node);
+           
             root.definitions = define;
             Console.WriteLine(JsonConvert.SerializeObject(root, settings));
+
         }
 
         public List<ReusableType> Iteratereusable(CogsModel model)
