@@ -73,6 +73,7 @@ namespace Cogs.Publishers
             {
                 reusableList.Add(item.Name);
             }
+            int count = classList.Count;
             // loop through classes and reusable data types
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
@@ -80,6 +81,10 @@ namespace Cogs.Publishers
                 var newItem = new XElement(new XElement("packagedElement", new XAttribute(xmins + "type", "uml:Class"),
                            new XAttribute(xmins + "id", CreateId(item.Name)),
                            new XAttribute("name", item.Name)));
+                // add class to diagram
+                diagramElements.Add(new XElement("element", new XAttribute("geometry", "Left=306;Top=338;Right=455;Bottom=408;"),
+                    new XAttribute("subject", item.Name), new XAttribute("seqno", count.ToString()), new XAttribute("style",
+                    "DUID=" + "item.Name" + ";NSL=0;BCol=-1;BFol=-1;LCol=-1;LWth=-1;fontsz=0;bold=0;black=0;italic=0;ul=0;charset=0;pitch=0;));")));
                 string extends = item.ExtendsTypeName;
                 // loop through properties of class and add to class
                 foreach(var property in item.Properties)
@@ -162,6 +167,7 @@ namespace Cogs.Publishers
                 }
                 // add class to model
                 xmodel.Add(newItem);
+                count -= 1;
             }
             //create document header based on format specified
             XDocument xDoc;
@@ -179,6 +185,7 @@ namespace Cogs.Publishers
                 // get current date and time for when setting created and last modified settings
                 var currentTime = DateTime.Today.Year + "-" + DateTime.Today.Month + "-" + DateTime.Today.Day + " " + DateTime.Now.Hour + ":" + 
                     DateTime.Now.Minute + ":" + DateTime.Now.Second;
+                // create header + structure of xml 2.5.1 (chunky and unpleasing, but works)
                 xDoc = new XDocument(
                    new XDeclaration("1.0", "utf-8", null),
                    new XElement(xmins + "XMI", new XAttribute(XNamespace.Xmlns + "uml", "http://www.omg.org/spec/UML/20131001"),
