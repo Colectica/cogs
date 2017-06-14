@@ -11,14 +11,14 @@ namespace Cogs.Publishers
 {
     public class JsonPublisher
     {
-        private JsonSerializerSettings settings= new JsonSerializerSettings();
+        private JsonSerializerSettings settings = new JsonSerializerSettings();
 
         public string CogsLocation { get; set; }
         public string TargetDirectory { get; set; }
         public bool Overwrite { get; set; }
 
         public string TargetNamespace { get; set; } = "ddi:3_4";
-
+        public List<DataType> ReusableStorage { get; set; }
         //Dictionary<string, string> createdElements = new Dictionary<string, string>();
 
         public void Publish(CogsModel model)
@@ -40,17 +40,55 @@ namespace Cogs.Publishers
             Directory.CreateDirectory(TargetDirectory);
             settings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
             settings.Formatting = Formatting.Indented;
-            settings.Converters.Add(new JsonScehmaPropConverter());
+            settings.Converters.Add(new JsonSchemaConverter());
             settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
             settings.DefaultValueHandling = DefaultValueHandling.Ignore;
 
+            ReusableStorage = model.ReusableDataTypes;
             //create a list to store jsonschema for each itemtype
+            var root = new SchemaList();
             List<JsonSchema> items = new List<JsonSchema>();
+            List<ReusableType> define = Iteratereusable(model);
 
-            //foreach (ItemType item in model.ItemTypes)
-            //{
-            //   Console.WriteLine(JsonConvert.SerializeObject(item, settings));
-            //}
+            Iterate(model, items);
+
+            root.Schema = "http://json-schema.org/draft-04/schema#";
+            root.Properties = items;
+            root.definitions = define;
+            Console.WriteLine(JsonConvert.SerializeObject(root, settings));
+        }
+
+        public List<ReusableType> Iteratereusable(CogsModel model)
+        {
+            List<ReusableType> res = new List<ReusableType>();
+            foreach (var reuseabletype in model.ReusableDataTypes)
+            {
+                ReusableType define = new ReusableType();
+                define.Name = reuseabletype.Name;
+                foreach(var prop in reuseabletype.Properties)
+                {
+                    var temp = new JsonSchemaProp();
+                    temp.Name = prop.Name;
+                    if (IsReusableType(prop.DataType.Name))
+                    {
+                        temp.Reference = "#/definitions/" + prop.DataType.Name;
+                    }
+                    else
+                    {
+                        temp.Type = prop.DataType.Name;
+                    }
+                    temp.MinCardinality = prop.MinCardinality;
+                    temp.MaxCardinality = prop.MaxCardinality;
+                    temp.Description = prop.Description;
+                    define.Properties.Add(temp);
+                }
+                res.Add(define);
+            }
+            return res;
+        }
+
+        public void Iterate(CogsModel model, List<JsonSchema> items)
+        {
             foreach (ItemType item in model.ItemTypes)
             {
                 JsonSchema temp = new JsonSchema();
@@ -81,18 +119,20 @@ namespace Cogs.Publishers
                 }
                 items.Add(temp);
             }
-            foreach (JsonSchema schema in items)
-            {
-                Console.WriteLine(JsonConvert.SerializeObject(schema, settings));
-            }
-            //Console.WriteLine(JsonConvert.SerializeObject(item, settings));
         }
 
         public void SetJsonSchemaProp(JsonSchema temp, Property property)
         {
             var prop = new JsonSchemaProp();
             prop.Name = property.Name;
-            prop.Type = property.DataType.Name;
+            if(IsReusableType(property.DataType.Name))
+            {
+                prop.Reference = "#/definitions/"+ property.DataType.Name;
+            }
+            else
+            {
+                prop.Type = property.DataType.Name;
+            }
             prop.MinCardinality = property.MinCardinality;
             if (property.MinCardinality == "1")
             {
@@ -101,6 +141,18 @@ namespace Cogs.Publishers
             prop.MaxCardinality = property.MaxCardinality;
             prop.Description = property.Description;
             temp.Properties.Add(prop);
+        }
+
+        public Boolean IsReusableType(string type)
+        {
+            foreach(var reusable in ReusableStorage)
+            {
+                if(type == reusable.Name)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }
