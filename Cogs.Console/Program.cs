@@ -85,12 +85,16 @@ namespace Cogs.Console
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
                                            CommandOptionType.NoValue);
+                var normativeOption = command.Option("-n|--normative",
+                                           "Output a normative xmi file (2.4.2) instead of xmi 2.5.1. Note: cannot contain a graph element",
+                                           CommandOptionType.NoValue);
 
                 command.OnExecute(() =>
                 {
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
+                    bool normative = normativeOption.HasValue();
 
                     var directoryReader = new CogsDirectoryReader();
                     var cogsDtoModel = directoryReader.Load(location);
@@ -101,44 +105,7 @@ namespace Cogs.Console
                     UmlSchemaPublisher publisher = new UmlSchemaPublisher();
                     publisher.TargetDirectory = target;
                     publisher.Overwrite = overwrite;
-
-                    publisher.Publish(cogsModel);
-
-
-                    return 0;
-                });
-
-            });
-
-            app.Command("publish-uml-diagram", (command) =>
-            {
-
-                command.Description = "Publish an UML schema from a COGS data model";
-                command.HelpOption("-?|-h|--help");
-
-                var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
-                var targetArgument = command.Argument("[targetLocation]", "Directory where the UML schema is generated.");
-
-                var overwriteOption = command.Option("-o|--overwrite",
-                                           "If the target directory exists, delete and overwrite the location",
-                                           CommandOptionType.NoValue);
-
-                command.OnExecute(() =>
-                {
-                    var location = locationArgument.Value ?? Environment.CurrentDirectory;
-                    var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
-                    bool overwrite = overwriteOption.HasValue();
-
-                    var directoryReader = new CogsDirectoryReader();
-                    var cogsDtoModel = directoryReader.Load(location);
-
-                    var modelBuilder = new CogsModelBuilder();
-                    var cogsModel = modelBuilder.Build(cogsDtoModel);
-
-                    UmlDiagramSchemaPublisher publisher = new UmlDiagramSchemaPublisher();
-                    publisher.TargetDirectory = target;
-                    publisher.Overwrite = overwrite;
-
+                    publisher.Normative = normative;
                     publisher.Publish(cogsModel);
 
 
