@@ -68,6 +68,7 @@ namespace Cogs.Publishers
                 foreach(var prop in reuseabletype.Properties)
                 {
                     var temp = new JsonSchemaProp();
+                    temp.MultiplicityElement = new Cardinality();
                     temp.Name = prop.Name;
                     if (IsReusableType(prop.DataType.Name))
                     {
@@ -77,8 +78,8 @@ namespace Cogs.Publishers
                     {
                         temp.Type = prop.DataType.Name;
                     }
-                    temp.MinCardinality = prop.MinCardinality;
-                    temp.MaxCardinality = prop.MaxCardinality;
+                    temp.MultiplicityElement.MinCardinality = prop.MinCardinality;
+                    temp.MultiplicityElement.MaxCardinality = prop.MaxCardinality;
                     temp.Description = prop.Description;
                     define.Properties.Add(temp);
                 }
@@ -124,6 +125,7 @@ namespace Cogs.Publishers
         public void SetJsonSchemaProp(JsonSchema temp, Property property)
         {
             var prop = new JsonSchemaProp();
+            prop.MultiplicityElement = new Cardinality();
             prop.Name = property.Name;
             if(IsReusableType(property.DataType.Name))
             {
@@ -133,12 +135,12 @@ namespace Cogs.Publishers
             {
                 prop.Type = property.DataType.Name;
             }
-            prop.MinCardinality = property.MinCardinality;
+            prop.MultiplicityElement.MinCardinality = property.MinCardinality;
             if (property.MinCardinality == "1")
             {
                 temp.Required.Add(property.Name);
             }
-            prop.MaxCardinality = property.MaxCardinality;
+            prop.MultiplicityElement.MaxCardinality = property.MaxCardinality;
             prop.Description = property.Description;
             temp.Properties.Add(prop);
         }

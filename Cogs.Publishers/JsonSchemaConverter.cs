@@ -27,8 +27,19 @@ namespace Cogs.Publishers
                     var obj = new JObject();
                     foreach (var inner_prop in prop.Properties)
                     {
-                        obj.Add(new JProperty(inner_prop.Name,
-                            new JObject(new JProperty("type", inner_prop.Type), new JProperty("$ref", inner_prop.Reference), new JProperty("minCardinality", inner_prop.MinCardinality), new JProperty("maxCardinality", inner_prop.MaxCardinality), new JProperty("Description", inner_prop.Description))));
+                        if(inner_prop.Reference != null)
+                        {
+                            obj.Add(new JProperty(inner_prop.Name,
+                            new JObject(new JProperty("$ref", inner_prop.Reference),
+                                   new JProperty("MultiplicityElement", (new JObject(new JProperty("lower", Convert.ToInt32(inner_prop.MultiplicityElement.MinCardinality)), new JProperty("upper", inner_prop.MultiplicityElement.MaxCardinality)))),
+                                            new JProperty("Description", inner_prop.Description))));
+                        } else
+                        {
+                            obj.Add(new JProperty(inner_prop.Name,
+                            new JObject(new JProperty("type", inner_prop.Type),
+                                   new JProperty("MultiplicityElement", (new JObject(new JProperty("lower", Convert.ToInt32(inner_prop.MultiplicityElement.MinCardinality)), new JProperty("upper", inner_prop.MultiplicityElement.MaxCardinality)))),
+                                            new JProperty("Description", inner_prop.Description))));
+                        }
                     }
                     obj2.Add(new JProperty(prop.Title,
                        new JObject(new JProperty("type", prop.Type), new JProperty( "property" ,obj), new JProperty("required", prop.Required))));

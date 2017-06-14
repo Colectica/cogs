@@ -27,8 +27,19 @@ namespace Cogs.Publishers
                     var obj2 = new JObject();
                     foreach(var prop in reuse.Properties)
                     {
-                        obj2.Add(new JProperty(prop.Name,
-                            new JObject(new JProperty("type", prop.Type), new JProperty("$ref", prop.Reference), new JProperty("minCardinality", prop.MinCardinality), new JProperty("maxCardinality", prop.MaxCardinality), new JProperty("Description", prop.Description))));
+                        if (prop.Reference != null)
+                        {
+                            obj2.Add(new JProperty(prop.Name,
+                            new JObject(new JProperty("$ref", prop.Reference),
+                                    new JProperty("MultiplicityElement", (new JObject(new JProperty("lower", Convert.ToInt32(prop.MultiplicityElement.MinCardinality)), new JProperty("upper", prop.MultiplicityElement.MaxCardinality)))),
+                                            new JProperty("Description", prop.Description))));
+                        } else
+                        {
+                            obj2.Add(new JProperty(prop.Name,
+                            new JObject(new JProperty("type", prop.Type),
+                                    new JProperty("MultiplicityElement", (new JObject(new JProperty("lower", Convert.ToInt32(prop.MultiplicityElement.MinCardinality)), new JProperty("upper", prop.MultiplicityElement.MaxCardinality)))),
+                                            new JProperty("Description", prop.Description))));
+                        }
                     }
                     obj.Add(new JProperty(reuse.Name, obj2));
                 }
