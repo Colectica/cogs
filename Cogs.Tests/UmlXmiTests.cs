@@ -25,8 +25,15 @@ namespace Cogs.Tests
             var modelBuilder = new CogsModelBuilder();
             var cogsModel = modelBuilder.Build(cogsDtoModel);
 
+            // test both normative and not normative outputs
             var publisher = new UmlSchemaPublisher();
             publisher.TargetDirectory = outputPath;
+            publisher.Normative = false;
+            publisher.Publish(cogsModel);
+
+            publisher = new UmlSchemaPublisher();
+            publisher.TargetDirectory = outputPath;
+            publisher.Normative = true;
             publisher.Publish(cogsModel);
 
 
