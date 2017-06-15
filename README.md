@@ -1,5 +1,7 @@
 Convention-based Ontology Generation System
 ===
+[![Build status](https://ci.appveyor.com/api/projects/status/5ky4r2jd5un3a0qh/branch/master?svg=true)](https://ci.appveyor.com/project/DanSmith/cogs/branch/master)
+
 
 The Convention-based Ontology Generation System (COGS) gives you a powerful, patterns-based way to build ontologies that enables a clean separation of concerns and gives you full control over markup for enjoyable, agile development. COGS includes many features that enable fast, Test Driven Development for publishing sophisticated models in a variety of formats.
 
@@ -23,3 +25,8 @@ COGS runs on Windows, Linux, and macOS on the .NET Core 2.0 platform.
 ## Legal and Licensing
 COGS is licensed under the MIT license.
 
+
+
+![alt text][logo]
+
+[logo]: https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Vinci%2C_Leonardo_Da_-_Ingranaggio.jpg/538px-Vinci%2C_Leonardo_Da_-_Ingranaggio.jpg "COGS"
