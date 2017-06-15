@@ -22,6 +22,10 @@ namespace Cogs.Publishers
         /// </summary>
         public string TargetDirectory { get; set; }
         /// <summary>
+        /// path to dot.exe file
+        /// </summary>
+        public string DotLocation { get; set; }
+        /// <summary>
         /// boolean to determine whether to replace existing or not
         /// </summary>
         public bool Overwrite { get; set; }
@@ -92,7 +96,20 @@ namespace Cogs.Publishers
             }
             outputText += "}";
 
+            // create text file containing input for graphviz dot
             File.WriteAllText(Path.Combine(TargetDirectory, "input.dot"), outputText);
+
+            // run graphviz dot
+            Process process = new Process();
+            ProcessStartInfo startInfo = new ProcessStartInfo(@Path.Combine(DotLocation, "dot.exe"));
+            startInfo.WindowStyle = ProcessWindowStyle.Hidden;
+            startInfo.Arguments = "/C -T svg -o " + Path.Combine(TargetDirectory, "output.svg") + " " + Path.Combine(TargetDirectory, "input.dot");
+            process.StartInfo = startInfo;
+            process.Start();
+            process.WaitForExit();
+
+            // delete the intermediate file
+            File.Delete(Path.Combine(TargetDirectory, "input.dot"));
         }
     }
 }
