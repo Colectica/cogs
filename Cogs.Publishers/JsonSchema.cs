@@ -9,6 +9,7 @@ namespace Cogs.Publishers
     {
         public string Title { get; set; }
         public string Type { get; set; }
+        public string Id { get; set; }
         public List<JsonSchemaProp> Properties { get; } = new List<JsonSchemaProp>();
         public List<string> Required { get; } = new List<string>();
     }

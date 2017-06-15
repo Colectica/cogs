@@ -19,14 +19,14 @@ namespace Cogs.Publishers
 
         public string TargetNamespace { get; set; } = "ddi:3_4";
         public List<DataType> ReusableStorage { get; set; }
-        //Dictionary<string, string> createdElements = new Dictionary<string, string>();
+        public List<ItemType> ItemTypeStorage { get; set; }
 
         public void Publish(CogsModel model)
         {
-            if (CogsLocation == null)
-            {
-                throw new InvalidOperationException("Cogs location must be specified");
-            }
+            //if (CogsLocation == null)
+            //{
+            //    throw new InvalidOperationException("Cogs location must be specified");
+            //}
             if (TargetDirectory == null)
             {
                 throw new InvalidOperationException("Target directory must be specified");
@@ -45,6 +45,7 @@ namespace Cogs.Publishers
             settings.DefaultValueHandling = DefaultValueHandling.Ignore;
 
             ReusableStorage = model.ReusableDataTypes;
+            ItemTypeStorage = model.ItemTypes;
             //create a list to store jsonschema for each itemtype
             var root = new SchemaList();
             List<JsonSchema> items = new List<JsonSchema>();
@@ -53,6 +54,7 @@ namespace Cogs.Publishers
             Iterate(model, items);
 
             root.Schema = "http://json-schema.org/draft-04/schema#";
+            root.Id = "#root";
             root.Properties = items;
 
             ReusableType reference_node = new ReusableType();
@@ -61,7 +63,8 @@ namespace Cogs.Publishers
            
             root.definitions = define;
             Console.WriteLine(JsonConvert.SerializeObject(root, settings));
-
+            string res = JsonConvert.SerializeObject(root, settings);
+            File.WriteAllText(@"C:\Users\clement\Desktop\res.json", res);
         }
 
         public List<ReusableType> Iteratereusable(CogsModel model)
@@ -101,6 +104,7 @@ namespace Cogs.Publishers
                 JsonSchema temp = new JsonSchema();
                 temp.Title = item.Name;                          //get the name of the itemtype
                 temp.Type = "object";                           //get the type of the itemtype which is usually Object
+                temp.Id = "#" + item.Name;
                 if (item.ExtendsTypeName != "")             //Check whether there it extends another class
                 {
                     //get the Parent information
@@ -133,13 +137,29 @@ namespace Cogs.Publishers
             var prop = new JsonSchemaProp();
             prop.MultiplicityElement = new Cardinality();
             prop.Name = property.Name;
-            if(IsReusableType(property.DataType.Name))
+            if (IsReusableType(property.DataType.Name))
             {
-                prop.Reference = "#/definitions/"+ property.DataType.Name;
+                prop.Reference = "#/definitions/" + property.DataType.Name;
+            }
+            else if (IsItemType(property.DataType.Name))
+            {
+                prop.Type = "#/definitions/Reference";
             }
             else
             {
-                prop.Type = property.DataType.Name;
+
+                if (property.DataType.Name == "int")
+                {
+                    prop.Type = "integer";
+                }
+                else if (property.DataType.Name == "double" || property.DataType.Name == "decimal")
+                {
+                    prop.Type = "number";
+                }
+                else
+                {
+                    prop.Type = property.DataType.Name.ToLower();
+                }
             }
             prop.MultiplicityElement.MinCardinality = property.MinCardinality;
             if (property.MinCardinality == "1")
@@ -156,6 +176,18 @@ namespace Cogs.Publishers
             foreach(var reusable in ReusableStorage)
             {
                 if(type == reusable.Name)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public Boolean IsItemType(string type)
+        {
+            foreach(var item in ItemTypeStorage)
+            {
+                if(type == item.Name)
                 {
                     return true;
                 }

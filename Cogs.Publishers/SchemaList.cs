@@ -8,6 +8,7 @@ namespace Cogs.Publishers
     class SchemaList
     {
         public string Schema { get; set; }
+        public string Id { get; set; }
         [JsonConverter(typeof(JsonReuseableConverter))]
         public List<ReusableType> definitions { get; set; }
         [JsonConverter(typeof(JsonSchemaConverter))]

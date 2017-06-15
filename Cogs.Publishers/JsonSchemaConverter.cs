@@ -42,7 +42,7 @@ namespace Cogs.Publishers
                         }
                     }
                     obj2.Add(new JProperty(prop.Title,
-                       new JObject(new JProperty("type", prop.Type), new JProperty( "property" ,obj), new JProperty("required", prop.Required))));
+                       new JObject(new JProperty("type", prop.Type), new JProperty("id", prop.Id),new JProperty( "properties" ,obj), new JProperty("required", prop.Required))));
                 }
                 obj2.WriteTo(writer);
             }
