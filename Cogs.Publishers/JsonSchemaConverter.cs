@@ -40,14 +40,14 @@ namespace Cogs.Publishers
                             {
                                 if (inner_prop.MultiplicityElement.MaxCardinality == "1")
                                 {
-                                    obj2.Add(new JProperty(inner_prop.Name,
+                                    obj.Add(new JProperty(inner_prop.Name,
                                     new JObject(new JProperty("$ref", inner_prop.Reference),
                                             new JProperty("MultiplicityElement", (new JObject(new JProperty("lower", Convert.ToInt32(inner_prop.MultiplicityElement.MinCardinality)), new JProperty("upper", Convert.ToInt32(inner_prop.MultiplicityElement.MaxCardinality))))),
                                                     new JProperty("Description", inner_prop.Description))));
                                 }
                                 else
                                 {
-                                    obj2.Add(new JProperty(inner_prop.Name,
+                                    obj.Add(new JProperty(inner_prop.Name,
                                     new JObject(new JProperty("type", "array"), new JProperty("items", new JObject(new JProperty("$ref", inner_prop.Reference))),
                                             new JProperty("minItems", Convert.ToInt32(inner_prop.MultiplicityElement.MinCardinality)),
                                                     new JProperty("Description", inner_prop.Description))));
