@@ -49,6 +49,10 @@ namespace Cogs.Publishers
             //create a list to store jsonschema for each itemtype
             var root = new SchemaList();
             List<JsonSchema> items = new List<JsonSchema>();
+
+            JsonSchema reference_node = new JsonSchema();
+            reference_node.Title = "~~reference~~";
+            items.Add(reference_node);
             List<ReusableType> define = Iteratereusable(model);
 
             Iterate(model, items);
@@ -57,10 +61,7 @@ namespace Cogs.Publishers
             root.Id = "#root";
             root.Properties = items;
 
-            ReusableType reference_node = new ReusableType();
-            reference_node.Name = "~~reference~~";
-            define.Add(reference_node);
-           
+
             root.definitions = define;
             Console.WriteLine(JsonConvert.SerializeObject(root, settings));
             string res = JsonConvert.SerializeObject(root, settings);
@@ -85,7 +86,18 @@ namespace Cogs.Publishers
                     }
                     else
                     {
-                        temp.Type = prop.DataType.Name;
+                        if (prop.DataType.Name == "int")
+                        {
+                            temp.Type = "integer";
+                        }
+                        else if (prop.DataType.Name == "double" || prop.DataType.Name == "decimal")
+                        {
+                            temp.Type = "number";
+                        }
+                        else
+                        {
+                            temp.Type = prop.DataType.Name.ToLower();
+                        }
                     }
                     temp.MultiplicityElement.MinCardinality = prop.MinCardinality;
                     temp.MultiplicityElement.MaxCardinality = prop.MaxCardinality;
@@ -143,7 +155,7 @@ namespace Cogs.Publishers
             }
             else if (IsItemType(property.DataType.Name))
             {
-                prop.Type = "#/definitions/Reference";
+                prop.Reference = "#/properties/Reference";
             }
             else
             {

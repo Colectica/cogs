@@ -25,24 +25,54 @@ namespace Cogs.Publishers
                 foreach (var prop in schema)
                 {
                     var obj = new JObject();
-                    foreach (var inner_prop in prop.Properties)
+                    if (prop.Title == "~~reference~~")
                     {
-                        if(inner_prop.Reference != null)
-                        {
-                            obj.Add(new JProperty(inner_prop.Name,
-                            new JObject(new JProperty("$ref", inner_prop.Reference),
-                                   new JProperty("MultiplicityElement", (new JObject(new JProperty("lower", Convert.ToInt32(inner_prop.MultiplicityElement.MinCardinality)), new JProperty("upper", inner_prop.MultiplicityElement.MaxCardinality)))),
-                                            new JProperty("Description", inner_prop.Description))));
-                        } else
-                        {
-                            obj.Add(new JProperty(inner_prop.Name,
-                            new JObject(new JProperty("type", inner_prop.Type),
-                                   new JProperty("MultiplicityElement", (new JObject(new JProperty("lower", Convert.ToInt32(inner_prop.MultiplicityElement.MinCardinality)), new JProperty("upper", inner_prop.MultiplicityElement.MaxCardinality)))),
-                                            new JProperty("Description", inner_prop.Description))));
-                        }
+                        obj2.Add(new JProperty("Reference",
+                            new JObject(new JProperty("type", "array"),
+                            new JProperty("items", new JObject(new JProperty("type", "object"), new JProperty("properties", new JObject(new JProperty("$type", new JObject(new JProperty("type","string"))), new JProperty("value", new JObject(new JProperty("type", "array"), new JProperty("items", new JObject(new JProperty("type", "string"))))))))))));
+
                     }
-                    obj2.Add(new JProperty(prop.Title,
-                       new JObject(new JProperty("type", prop.Type), new JProperty("id", prop.Id),new JProperty( "properties" ,obj), new JProperty("required", prop.Required))));
+                    else
+                    {
+                        foreach (var inner_prop in prop.Properties)
+                        {
+                            if (inner_prop.Reference != null)
+                            {
+                                if (inner_prop.MultiplicityElement.MaxCardinality == "1")
+                                {
+                                    obj2.Add(new JProperty(inner_prop.Name,
+                                    new JObject(new JProperty("$ref", inner_prop.Reference),
+                                            new JProperty("MultiplicityElement", (new JObject(new JProperty("lower", Convert.ToInt32(inner_prop.MultiplicityElement.MinCardinality)), new JProperty("upper", Convert.ToInt32(inner_prop.MultiplicityElement.MaxCardinality))))),
+                                                    new JProperty("Description", inner_prop.Description))));
+                                }
+                                else
+                                {
+                                    obj2.Add(new JProperty(inner_prop.Name,
+                                    new JObject(new JProperty("type", "array"), new JProperty("items", new JObject(new JProperty("$ref", inner_prop.Reference))),
+                                            new JProperty("minItems", Convert.ToInt32(inner_prop.MultiplicityElement.MinCardinality)),
+                                                    new JProperty("Description", inner_prop.Description))));
+                                }
+                            }
+                            else
+                            {
+                                if (inner_prop.MultiplicityElement.MaxCardinality == "1")
+                                {
+                                    obj.Add(new JProperty(inner_prop.Name,
+                                    new JObject(new JProperty("type", inner_prop.Type),
+                                            new JProperty("MultiplicityElement", (new JObject(new JProperty("lower", Convert.ToInt32(inner_prop.MultiplicityElement.MinCardinality)), new JProperty("upper", Convert.ToInt32(inner_prop.MultiplicityElement.MaxCardinality))))),
+                                                    new JProperty("Description", inner_prop.Description))));
+                                }
+                                else
+                                {
+                                    obj.Add(new JProperty(inner_prop.Name,
+                                    new JObject(new JProperty("type", "array"), new JProperty("items", new JObject(new JProperty("type", inner_prop.Type))),
+                                            new JProperty("minItems", Convert.ToInt32(inner_prop.MultiplicityElement.MinCardinality)),
+                                                    new JProperty("Description", inner_prop.Description))));
+                                }
+                            }
+                        }
+                        obj2.Add(new JProperty(prop.Title, new JObject(new JProperty("type", "object"), new JProperty("patternProperties", new JObject(new JProperty(@"^(?!\s*$).+", new JObject(new JProperty("type", prop.Type), new JProperty("id", prop.Id), new JProperty("properties", obj), new JProperty("required", prop.Required))))))));
+                    }
                 }
                 obj2.WriteTo(writer);
             }
