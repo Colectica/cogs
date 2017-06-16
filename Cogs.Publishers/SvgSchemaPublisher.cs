@@ -56,8 +56,8 @@ namespace Cogs.Publishers
             {
                 reusableList.Add(item.Name);
             }
-            var outputText = "digraph G { fontname = \"Bitstream Vera Sans\" fontsize = 8 node [fontname = \"Bitstream Vera Sans\" " +
-                "fontsize = 8 shape = \"record\"] edge [ fontname = \"Bitstream Vera Sans\" fontsize = 8 ] ";
+            var outputText = new StringBuilder("digraph G { fontname = \"Bitstream Vera Sans\" fontsize = 8 node [fontname = \"Bitstream Vera Sans\" " +
+                "fontsize = 8 shape = \"record\"] edge [ fontname = \"Bitstream Vera Sans\" fontsize = 8 ] ");
 
             // loop through classes and reusable data types
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
@@ -79,29 +79,29 @@ namespace Cogs.Publishers
                     {
                         if (reusableList.Contains(property.DataTypeName))
                         {
-                            outputText += "edge[ arrowhead = \"none\" headlabel = \"0..1\" taillabel = \"0..1\"] ";
+                            outputText.Append("edge[ arrowhead = \"none\" headlabel = \"0..1\" taillabel = \"0..1\"] ");
                         }
                         else
                         {
-                            outputText += "edge[ arrowhead = \"none\" headlabel = \"0..*\" taillabel = \"0..*\"] ";
+                            outputText.Append("edge[ arrowhead = \"none\" headlabel = \"0..*\" taillabel = \"0..*\"] ");
                         }
-                        outputText += item.Name + " -> " + property.DataTypeName + "[ label = \"" + property.Name + "\"] ";
+                        outputText.Append(item.Name + " -> " + property.DataTypeName + "[ label = \"" + property.Name + "\"] ");
                     }
                 }
                 if(!string.IsNullOrWhiteSpace(item.ExtendsTypeName)){
-                    outputText += "edge [arrowhead = \"empty\"] ";
-                    outputText += item.Name + "->" + item.ExtendsTypeName + " ";
+                    outputText.Append("edge [arrowhead = \"empty\"] ");
+                    outputText.Append(item.Name + "->" + item.ExtendsTypeName + " ");
                 }
-                outputText += classText + "}\"] ";
+                outputText.Append(classText + "}\"] ");
             }
-            outputText += "}";
+            outputText.Append("}");
 
             // create text file containing input for graphviz dot
-            File.WriteAllText(Path.Combine(TargetDirectory, "input.dot"), outputText);
+            File.WriteAllText(Path.Combine(TargetDirectory, "input.dot"), outputText.ToString());
 
             // run graphviz dot
             Process process = new Process();
-            ProcessStartInfo startInfo = new ProcessStartInfo(@Path.Combine(DotLocation, "dot.exe"));
+            ProcessStartInfo startInfo = new ProcessStartInfo(Path.Combine(DotLocation, "dot.exe"));
             startInfo.WindowStyle = ProcessWindowStyle.Hidden;
             startInfo.Arguments = "/C -T svg -o " + Path.Combine(TargetDirectory, "output.svg") + " " + Path.Combine(TargetDirectory, "input.dot");
             process.StartInfo = startInfo;

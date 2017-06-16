@@ -226,40 +226,42 @@ namespace Cogs.Publishers
                 xDoc = new XDocument(
                    new XDeclaration("1.0", "utf-8", null),
                    new XElement(xmins + "XMI", new XAttribute(XNamespace.Xmlns + "uml", "http://www.omg.org/spec/UML/20110701"),
-                   new XAttribute(XNamespace.Xmlns + "xmi", "http://www.omg.org/spec/XMI/20110701"),
-                   new XElement(xmins + "Documentation", new XAttribute("exporter", "Enterprise Architect"), new XAttribute("exporterVersion", "6.5")),
-                   new XElement(umlns + "Model", new XAttribute(xmins + "type", "uml:Model"), new XAttribute("name", "EA_Model"), xmodel)));
+                        new XAttribute(XNamespace.Xmlns + "xmi", "http://www.omg.org/spec/XMI/20110701"),
+                        new XElement(xmins + "Documentation", new XAttribute("exporter", "Enterprise Architect"), new XAttribute("exporterVersion", "6.5")),
+                        new XElement(umlns + "Model", new XAttribute(xmins + "type", "uml:Model"), new XAttribute("name", "EA_Model"), xmodel)));
             }
             else
             {
                 // get current date and time for when setting created and last modified settings
-                var currentTime = DateTime.Today.Year + "-" + DateTime.Today.Month + "-" + DateTime.Today.Day + " " + DateTime.Now.Hour + ":" + 
-                    DateTime.Now.Minute + ":" + DateTime.Now.Second;
+                var currentTime = DateTime.UtcNow.Year + "-" + DateTime.UtcNow.Month + "-" + DateTime.UtcNow.Day + " " + DateTime.UtcNow.Hour + ":" + 
+                    DateTime.UtcNow.Minute + ":" + DateTime.UtcNow.Second;
                 // create header + structure of xml 2.5.1 (chunky and unpleasing, but works)
                 xDoc = new XDocument(
                    new XDeclaration("1.0", "utf-8", null),
                    new XElement(xmins + "XMI", new XAttribute(XNamespace.Xmlns + "uml", "http://www.omg.org/spec/UML/20131001"),
-                   new XAttribute(XNamespace.Xmlns + "xmi", "http://www.omg.org/spec/XMI/20131001"),
-                   new XElement(xmins + "Documentation", new XAttribute("exporter", "Enterprise Architect"), new XAttribute("exporterVersion", "6.5")),
-                   new XElement(umlns + "Model", new XAttribute(xmins + "type", "uml:Model"), new XAttribute("name", "EA_Model"), xmodel),
-                   new XElement(xmins + "Extension", new XAttribute("extender", "Enterprise Architect"), new XAttribute("extenderID", "6.5"),
-                   new XElement("diagrams", new XElement("diagram", new XAttribute(xmins + "id", CreateId("ModelDiagram")),
-                   new XElement("model", new XAttribute("package", projectName), new XAttribute("localID", "28"), new XAttribute("owner", projectName)),
-                   new XElement("properties", new XAttribute("name", projectName), new XAttribute("type", "Logical")),
-                   new XElement("project", new XAttribute("author", "computer"), new XAttribute("version", "1.0"), new XAttribute("created", currentTime), new XAttribute("modified", currentTime)),
-                   new XElement("style1", new XAttribute("value", "ShowPrivate=1;ShowProtected=1;ShowPublic=1;HideRelationships=0;Locked=0;Border=1;HighlightForeign=1;" +
+                        new XAttribute(XNamespace.Xmlns + "xmi", "http://www.omg.org/spec/XMI/20131001"),
+                        new XElement(xmins + "Documentation", new XAttribute("exporter", "Enterprise Architect"), new XAttribute("exporterVersion", "6.5")),
+                        new XElement(umlns + "Model", new XAttribute(xmins + "type", "uml:Model"), new XAttribute("name", "EA_Model"), xmodel),
+                        new XElement(xmins + "Extension", new XAttribute("extender", "Enterprise Architect"), new XAttribute("extenderID", "6.5"),
+                            new XElement("diagrams", new XElement("diagram", new XAttribute(xmins + "id", CreateId("ModelDiagram")),
+                                new XElement("model", new XAttribute("package", projectName), new XAttribute("localID", "28"), new XAttribute("owner", projectName)),
+                                new XElement("properties", new XAttribute("name", projectName), new XAttribute("type", "Logical")),
+                                new XElement("project", new XAttribute("author", "computer"), new XAttribute("version", "1.0"), new XAttribute("created", currentTime), 
+                                    new XAttribute("modified", currentTime)),
+                                new XElement("style1", new XAttribute("value", "ShowPrivate=1;ShowProtected=1;ShowPublic=1;HideRelationships=0;Locked=0;Border=1;HighlightForeign=1;" +
                    "PackageContents=1;SequenceNotes=0;ScalePrintImage=0;PPgs.cx=1;PPgs.cy=1;DocSize.cx=815;DocSize.cy=1067;ShowDetails=0;Orientation=P;" +
                    "Zoom=100;ShowTags=0;OpParams=1;VisibleAttributeDetail=0;ShowOpRetType=1;ShowIcons=1;CollabNums=0;HideProps=0;ShowReqs=0;ShowCons=0;PaperSize=1;" +
                    "HideParents=0;UseAlias=0;HideAtts=0;HideOps=0;HideStereo=0;HideElemStereo=0;ShowTests=0;ShowMaint=0;ConnectorNotation=UML 2.1;ExplicitNavigability=0;" +
                    "ShowShape=1;AdvancedElementProps=1;AdvancedFeatureProps=1;AdvancedConnectorProps=1;m_bElementClassifier=1;ShowNotes=0;SuppressBrackets=0;SuppConnectorLabels=0;" +
-                   "PrintPageHeadFoot=0;ShowAsList=0;")), new XElement("style2", new XAttribute("value", "ExcludeRTF=0;DocAll=0;HideQuals=0;AttPkg=1;ShowTests=0;ShowMaint=0;" +
+                   "PrintPageHeadFoot=0;ShowAsList=0;")), 
+                                new XElement("style2", new XAttribute("value", "ExcludeRTF=0;DocAll=0;HideQuals=0;AttPkg=1;ShowTests=0;ShowMaint=0;" +
                    "SuppressFOC=1;MatrixActive=0;SwimlanesActive=1;KanbanActive=0;MatrixLineWidth=1;MatrixLineClr=0;MatrixLocked=0;TConnectorNotation=UML 2.1;TExplicitNavigability=0;" +
                    "AdvancedElementProps=1;AdvancedFeatureProps=1;AdvancedConnectorProps=1;m_bElementClassifier=1;ProfileData=;MDGDgm=;STBLDgm=;ShowNotes=0;VisibleAttributeDetail=0;" +
                    "ShowOpRetType=1;SuppressBrackets=0;SuppConnectorLabels=0;PrintPageHeadFoot=0;ShowAsList=0;SuppressedCompartments=;Theme=:119;SaveTag=D7ED2A20;")),
-                   new XElement("swimlanes", new XAttribute("value", "locked=false;orientation=0;width=0;inbar=false;names=false;color=-1;bold=false;fcol=0;tcol=-1;ofCol=-1;ufCol=-1;" +
+                                new XElement("swimlanes", new XAttribute("value", "locked=false;orientation=0;width=0;inbar=false;names=false;color=-1;bold=false;fcol=0;tcol=-1;ofCol=-1;ufCol=-1;" +
                    "hl=0;ufh=0;cls=0;SwimlaneFont=lfh:-10,lfw:0,lfi:0,lfu:0,lfs:0,lfface:Calibri,lfe:0,lfo:0,lfchar:1,lfop:0,lfcp:0,lfq:0,lfpf=0,lfWidth=0;")),
-                   new XElement("matrixitems", new XAttribute("value", "locked=false;matrixactive=false;swimlanesactive=true;kanbanactive=false;width=1;clrLine=0;")),
-                   new XElement("extendedProperties"), diagramElements)))));
+                                new XElement("matrixitems", new XAttribute("value", "locked=false;matrixactive=false;swimlanesactive=true;kanbanactive=false;width=1;clrLine=0;")),
+                                new XElement("extendedProperties"), diagramElements)))));
             }
 
 
