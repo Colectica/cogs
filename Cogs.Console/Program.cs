@@ -79,9 +79,9 @@ namespace Cogs.Console
                 command.Description = "Publish an UML schema from a COGS data model";
                 command.HelpOption("-?|-h|--help");
 
-                var dotArgument = command.Argument("[dotLocation]", "Directory where the dot.exe file is located (only needed if not using normative).");
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
                 var targetArgument = command.Argument("[targetLocation]", "Directory where the UML schema is generated.");
+                var dotArgument = command.Argument("[dotLocation]", "Directory where the dot.exe file is located (only needed if not using normative).");
 
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
