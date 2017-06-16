@@ -24,45 +24,54 @@ namespace Cogs.Publishers
                 var obj = new JObject();
                 foreach(var reuse in define)
                 {
-                    var obj2 = new JObject();
-                    foreach (var prop in reuse.Properties)
+                    if (reuse.Name == "~~reference~~")
                     {
-                        if (prop.Reference != null)
-                        {
-                           if (prop.MultiplicityElement.MaxCardinality == "1")
-                            {
-                                obj2.Add(new JProperty(prop.Name,
-                                new JObject(new JProperty("$ref", prop.Reference),
-                                        new JProperty("MultiplicityElement", (new JObject(new JProperty("lower", Convert.ToInt32(prop.MultiplicityElement.MinCardinality)), new JProperty("upper", Convert.ToInt32(prop.MultiplicityElement.MaxCardinality))))),
-                                                new JProperty("Description", prop.Description))));
-                            }
-                            else
-                            {
-                                obj2.Add(new JProperty(prop.Name,
-                                new JObject(new JProperty("type", "array"), new JProperty("items", new JObject(new JProperty("$ref", prop.Reference))), 
-                                        new JProperty("minItems", Convert.ToInt32(prop.MultiplicityElement.MinCardinality)),
-                                                new JProperty("Description", prop.Description))));
-                            }
-                        }
-                        else
-                        {
-                            if (prop.MultiplicityElement.MaxCardinality == "1")
-                            {
-                                obj2.Add(new JProperty(prop.Name,
-                                new JObject(new JProperty("type", prop.Type),
-                                        new JProperty("MultiplicityElement", (new JObject(new JProperty("lower", Convert.ToInt32(prop.MultiplicityElement.MinCardinality)), new JProperty("upper", Convert.ToInt32(prop.MultiplicityElement.MaxCardinality))))),
-                                                new JProperty("Description", prop.Description))));
-                            }
-                            else
-                            {
-                                obj2.Add(new JProperty(prop.Name,
-                                new JObject(new JProperty("type", "array"), new JProperty("items", new JObject(new JProperty("type", prop.Type))), 
-                                        new JProperty("minItems", Convert.ToInt32(prop.MultiplicityElement.MinCardinality)),
-                                                new JProperty("Description", prop.Description))));
-                            }
-                        }
+                        obj.Add(new JProperty("Reference",
+                           new JObject(new JProperty("type", "object"),
+                           new JProperty("properties", new JObject(new JProperty("$type", new JObject(new JProperty("type", "string"))), new JProperty("value", new JObject(new JProperty("type", "array"), new JProperty("items", new JObject(new JProperty("type", "string"))))))))));
                     }
-                    obj.Add(new JProperty(reuse.Name, new JObject(new JProperty("type", "object"), new JProperty("properties" ,obj2))));
+                    else
+                    {
+                        var obj2 = new JObject();
+                        foreach (var prop in reuse.Properties)
+                        {
+                            if (prop.Reference != null)
+                            {
+                                if (prop.MultiplicityElement.MaxCardinality == "1")
+                                {
+                                    obj2.Add(new JProperty(prop.Name,
+                                    new JObject(new JProperty("$ref", prop.Reference),
+                                            new JProperty("MultiplicityElement", (new JObject(new JProperty("lower", Convert.ToInt32(prop.MultiplicityElement.MinCardinality)), new JProperty("upper", Convert.ToInt32(prop.MultiplicityElement.MaxCardinality))))),
+                                                    new JProperty("Description", prop.Description))));
+                                }
+                                else
+                                {
+                                    obj2.Add(new JProperty(prop.Name,
+                                    new JObject(new JProperty("type", "array"), new JProperty("items", new JObject(new JProperty("$ref", prop.Reference))),
+                                            new JProperty("minItems", Convert.ToInt32(prop.MultiplicityElement.MinCardinality)),
+                                                    new JProperty("Description", prop.Description))));
+                                }
+                            }
+                            else
+                            {
+                                if (prop.MultiplicityElement.MaxCardinality == "1")
+                                {
+                                    obj2.Add(new JProperty(prop.Name,
+                                    new JObject(new JProperty("type", prop.Type),
+                                            new JProperty("MultiplicityElement", (new JObject(new JProperty("lower", Convert.ToInt32(prop.MultiplicityElement.MinCardinality)), new JProperty("upper", Convert.ToInt32(prop.MultiplicityElement.MaxCardinality))))),
+                                                    new JProperty("Description", prop.Description))));
+                                }
+                                else
+                                {
+                                    obj2.Add(new JProperty(prop.Name,
+                                    new JObject(new JProperty("type", "array"), new JProperty("items", new JObject(new JProperty("type", prop.Type))),
+                                            new JProperty("minItems", Convert.ToInt32(prop.MultiplicityElement.MinCardinality)),
+                                                    new JProperty("Description", prop.Description))));
+                                }
+                            }
+                        }
+                        obj.Add(new JProperty(reuse.Name, new JObject(new JProperty("type", "object"), new JProperty("properties", obj2))));
+                    }
                 }
                 obj.WriteTo(writer);
             }

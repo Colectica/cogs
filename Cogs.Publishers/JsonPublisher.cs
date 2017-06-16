@@ -51,9 +51,12 @@ namespace Cogs.Publishers
             List<JsonSchema> items = new List<JsonSchema>();
 
             JsonSchema reference_node = new JsonSchema();
+            ReusableType reference_def = new ReusableType();
+            reference_def.Name = "~~reference~~";
             reference_node.Title = "~~reference~~";
             items.Add(reference_node);
             List<ReusableType> define = Iteratereusable(model);
+            define.Add(reference_def);
 
             Iterate(model, items);
 
@@ -155,7 +158,7 @@ namespace Cogs.Publishers
             }
             else if (IsItemType(property.DataType.Name))
             {
-                prop.Reference = "#/properties/Reference";
+                prop.Reference = "#/definitions/Reference";
             }
             else
             {

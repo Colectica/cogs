@@ -36,7 +36,7 @@ namespace Cogs.Tests
             JSchema schema1 = JSchema.Parse(File.ReadAllText(@"C:\Users\clement\Desktop\res.json"));
             JObject o1 = JObject.Parse(File.ReadAllText(@"C:\Users\clement\Desktop\JsonFolder\testing1_reference_reusable.json"));
             JObject o2 = JObject.Parse(File.ReadAllText(@"C:\Users\clement\Desktop\JsonFolder\testing2_reference_Object.json"));
-            // read JSON directly from a file
+            //read JSON directly from a file
             bool valid1 = o1.IsValid(schema1);
             Assert.True(valid1);
             bool valid2 = o2.IsValid(schema1);

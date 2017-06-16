@@ -27,9 +27,9 @@ namespace Cogs.Publishers
                     var obj = new JObject();
                     if (prop.Title == "~~reference~~")
                     {
-                        obj2.Add(new JProperty("Reference",
+                        obj2.Add(new JProperty("TopLevelReference",
                             new JObject(new JProperty("type", "array"),
-                            new JProperty("items", new JObject(new JProperty("type", "object"), new JProperty("properties", new JObject(new JProperty("$type", new JObject(new JProperty("type","string"))), new JProperty("value", new JObject(new JProperty("type", "array"), new JProperty("items", new JObject(new JProperty("type", "string"))))))))))));
+                            new JProperty("items", new JObject(new JProperty("$ref", "#/definitions/Reference"), new JProperty("minItems", 0))))));
 
                     }
                     else
