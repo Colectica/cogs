@@ -9,7 +9,7 @@ using Xunit;
 
 namespace Cogs.Tests
 {
-    public class UmlXmiTests
+    public class SvgSchemaTests
     {
         [Fact]
         public void UmlForHamburgersTest()
@@ -25,20 +25,12 @@ namespace Cogs.Tests
             var modelBuilder = new CogsModelBuilder();
             var cogsModel = modelBuilder.Build(cogsDtoModel);
 
-            // test both normative and not normative outputs
-            var publisher = new UmlSchemaPublisher();
+            var publisher = new SvgSchemaPublisher();
             publisher.TargetDirectory = outputPath;
-            publisher.Normative = false;
             publisher.DotLocation = "C:\\Users\\kevin\\Downloads\\graphviz-2.38\\release\\bin";
             publisher.Publish(cogsModel);
 
-            publisher = new UmlSchemaPublisher();
-            publisher.TargetDirectory = outputPath;
-            publisher.Normative = true;
-            publisher.Publish(cogsModel);
-
-
-            // TODO use xml importer to check that xml is properly formed.
+            // TODO use xml importer to check that svg is properly formed.
             // For now we are just making sure there are no errors while running.
 
 
