@@ -79,6 +79,7 @@ namespace Cogs.Console
                 command.Description = "Publish an UML schema from a COGS data model";
                 command.HelpOption("-?|-h|--help");
 
+                var dotArgument = command.Argument("[dotLocation]", "Directory where the dot.exe file is located (only needed if not using normative).");
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
                 var targetArgument = command.Argument("[targetLocation]", "Directory where the UML schema is generated.");
 
@@ -91,6 +92,7 @@ namespace Cogs.Console
 
                 command.OnExecute(() =>
                 {
+                    var dot = dotArgument.Value ?? Environment.CurrentDirectory;
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
@@ -103,6 +105,7 @@ namespace Cogs.Console
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
 
                     UmlSchemaPublisher publisher = new UmlSchemaPublisher();
+                    publisher.DotLocation = dot;
                     publisher.TargetDirectory = target;
                     publisher.Overwrite = overwrite;
                     publisher.Normative = normative;

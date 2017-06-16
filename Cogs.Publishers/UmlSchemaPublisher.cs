@@ -29,6 +29,10 @@ namespace Cogs.Publishers
         /// boolean to determine whether to output normative xmi. If false, outputs xmi 2.5.1
         /// </summary>
         public bool Normative { get; set; }
+        /// <summary>
+        /// path to dot.exe file
+        /// </summary>
+        public string DotLocation { get; set; }
 
         // list of all IDs created. Used to ensure no duplicates
         private List<string> IdList = new List<string>();
@@ -73,6 +77,38 @@ namespace Cogs.Publishers
             {
                 reusableList.Add(item.Name);
             }
+            // run svg publisher to create svg file to use for positioning 
+            SvgSchemaPublisher publisher = new SvgSchemaPublisher();
+            publisher.DotLocation = DotLocation;
+            publisher.TargetDirectory = TargetDirectory;
+            publisher.Overwrite = Overwrite;
+            publisher.Publish(model);
+
+            // read created svg file
+            XNamespace ns ="http://www.w3.org/2000/svg";
+            var nodes = XDocument.Load(Path.Combine(TargetDirectory, "output.svg")).Root.Descendants(ns +"g")
+                .Where(x => x.Attribute("class").Value == "node").ToList();
+            File.Delete(Path.Combine(TargetDirectory, "output.svg"));
+
+            //get leftmost  and topmost value to shift graph accordingly 
+            var xOff = 0.0;
+            var yOff = 0.0;
+            foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
+            {
+                var node = XElement.Parse(nodes.Descendants(ns + "title").Where(x => x.FirstNode.ToString() == item.Name).ToList()[0].NextNode.ToString());
+                var cords = node.Attribute("points").Value.Split(',', ' ');
+                if(Convert.ToDouble(cords[4]) < xOff)
+                {
+                    xOff = Convert.ToDouble(cords[4]);
+                }
+                if(Convert.ToDouble(cords[3]) < yOff)
+                {
+                    yOff = Convert.ToDouble(cords[3]);                }
+                }
+            xOff = Math.Abs(xOff);
+            yOff = Math.Abs(yOff);
+            //get rightmost value
+         //   
             int count = classList.Count;
             // loop through classes and reusable data types
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
@@ -82,7 +118,13 @@ namespace Cogs.Publishers
                            new XAttribute(xmins + "id", CreateId(item.Name)),
                            new XAttribute("name", item.Name)));
                 // add class to diagram
-                diagramElements.Add(new XElement("element", new XAttribute("geometry", "Left=306;Top=338;Right=455;Bottom=408;"),
+                var cords = XElement.Parse(nodes.Descendants(ns + "title").Where(x => x.FirstNode.ToString() == item.Name).ToList()[0].NextNode.ToString())
+                    .Attribute("points").Value.Split(',', ' ');
+                var left = (Convert.ToDouble(cords[4]) + xOff).ToString();
+                var right = (Convert.ToDouble(cords[0]) + xOff).ToString();
+                var top = (Convert.ToDouble(cords[1]) + yOff).ToString();
+                var bottom = (Convert.ToDouble(cords[3]) + yOff).ToString();
+                diagramElements.Add(new XElement("element", new XAttribute("geometry", "Left=" + left + ";Top=" + top + ";Right=" + right+ ";Bottom=" + bottom + ";"),
                     new XAttribute("subject", item.Name), new XAttribute("seqno", count.ToString()), new XAttribute("style",
                     "DUID=" + "item.Name" + ";NSL=0;BCol=-1;BFol=-1;LCol=-1;LWth=-1;fontsz=0;bold=0;black=0;italic=0;ul=0;charset=0;pitch=0;));")));
                 string extends = item.ExtendsTypeName;
