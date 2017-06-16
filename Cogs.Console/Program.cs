@@ -123,9 +123,10 @@ namespace Cogs.Console
                 command.Description = "Publish a svg schema from a COGS data model";
                 command.HelpOption("-?|-h|--help");
 
-                var dotArgument = command.Argument("[dotLocation]", "Directory where the dot.exe file is located.");
+               
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
                 var targetArgument = command.Argument("[targetLocation]", "Directory where the svg schema is generated.");
+                var dotArgument = command.Argument("[dotLocation]", "Directory where the dot.exe file is located.");
 
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",

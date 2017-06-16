@@ -113,6 +113,7 @@ namespace Cogs.Publishers
                 yOff = Math.Abs(yOff);
             } 
             int count = classList.Count;
+            var offset = 1.5;
             // loop through classes and reusable data types
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
@@ -126,10 +127,10 @@ namespace Cogs.Publishers
                     // add class to graph
                     var cords = XElement.Parse(nodes.Descendants(ns + "title").Where(x => x.FirstNode.ToString() == item.Name).ToList()[0].NextNode.ToString())
                     .Attribute("points").Value.Split(',', ' ');
-                    var left = (Convert.ToDouble(cords[4]) + xOff).ToString();
-                    var right = (Convert.ToDouble(cords[0]) + xOff).ToString();
-                    var top = (Convert.ToDouble(cords[1]) + yOff).ToString();
-                    var bottom = (Convert.ToDouble(cords[3]) + yOff).ToString();
+                    var left = ((Convert.ToDouble(cords[4]) + xOff) * offset).ToString();
+                    var right = ((Convert.ToDouble(cords[0]) + xOff) * offset).ToString();
+                    var top = ((Convert.ToDouble(cords[1]) + yOff) * offset).ToString();
+                    var bottom = ((Convert.ToDouble(cords[3]) + yOff) * offset).ToString();
                     diagramElements.Add(new XElement("element", new XAttribute("geometry", "Left=" + left + ";Top=" + top + ";Right=" + right + ";Bottom=" + bottom + ";"),
                         new XAttribute("subject", item.Name), new XAttribute("seqno", count.ToString()), new XAttribute("style",
                         "DUID=" + "item.Name" + ";NSL=0;BCol=-1;BFol=-1;LCol=-1;LWth=-1;fontsz=0;bold=0;black=0;italic=0;ul=0;charset=0;pitch=0;));")));
