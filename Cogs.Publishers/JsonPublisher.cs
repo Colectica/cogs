@@ -66,9 +66,9 @@ namespace Cogs.Publishers
 
 
             root.definitions = define;
-            Console.WriteLine(JsonConvert.SerializeObject(root, settings));
-            //string res = JsonConvert.SerializeObject(root, settings);
-            //File.WriteAllText(@"C:\Users\clement\Desktop\res.json", res);
+            //Console.WriteLine(JsonConvert.SerializeObject(root, settings));
+            string res = JsonConvert.SerializeObject(root, settings);
+            File.WriteAllText(Path.Combine(TargetDirectory, "jsonSchema"+".json"), res);
         }
 
         public List<ReusableType> Iteratereusable(CogsModel model)
