@@ -11,22 +11,22 @@ namespace Cogs.Publishers
 {
     public class JsonPublisher
     {
-        private JsonSerializerSettings settings= new JsonSerializerSettings();
+        private JsonSerializerSettings settings = new JsonSerializerSettings();
 
         public string CogsLocation { get; set; }
         public string TargetDirectory { get; set; }
         public bool Overwrite { get; set; }
 
         public string TargetNamespace { get; set; } = "ddi:3_4";
-
-        //Dictionary<string, string> createdElements = new Dictionary<string, string>();
+        public List<DataType> ReusableStorage { get; set; }
+        public List<ItemType> ItemTypeStorage { get; set; }
 
         public void Publish(CogsModel model)
         {
-            if (CogsLocation == null)
-            {
-                throw new InvalidOperationException("Cogs location must be specified");
-            }
+            //if (CogsLocation == null)
+            //{
+            //    throw new InvalidOperationException("Cogs location must be specified");
+            //}
             if (TargetDirectory == null)
             {
                 throw new InvalidOperationException("Target directory must be specified");
@@ -40,22 +40,86 @@ namespace Cogs.Publishers
             Directory.CreateDirectory(TargetDirectory);
             settings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
             settings.Formatting = Formatting.Indented;
-            settings.Converters.Add(new JsonScehmaPropConverter());
+            settings.Converters.Add(new JsonSchemaConverter());
             settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
             settings.DefaultValueHandling = DefaultValueHandling.Ignore;
 
+            ReusableStorage = model.ReusableDataTypes;
+            ItemTypeStorage = model.ItemTypes;
             //create a list to store jsonschema for each itemtype
+            var root = new SchemaList();
             List<JsonSchema> items = new List<JsonSchema>();
 
-            //foreach (ItemType item in model.ItemTypes)
-            //{
-            //   Console.WriteLine(JsonConvert.SerializeObject(item, settings));
-            //}
+            JsonSchema reference_node = new JsonSchema();
+            ReusableType reference_def = new ReusableType();
+            reference_def.Name = "~~reference~~";
+            reference_node.Title = "~~reference~~";
+            items.Add(reference_node);
+            List<ReusableType> define = Iteratereusable(model);
+            define.Add(reference_def);
+
+            Iterate(model, items);
+
+            root.Schema = "http://json-schema.org/draft-04/schema#";
+            root.Id = "#root";
+            root.Properties = items;
+
+
+            root.definitions = define;
+            //Console.WriteLine(JsonConvert.SerializeObject(root, settings));
+            string res = JsonConvert.SerializeObject(root, settings);
+            File.WriteAllText(Path.Combine(TargetDirectory, "jsonSchema"+".json"), res);
+        }
+
+        public List<ReusableType> Iteratereusable(CogsModel model)
+        {
+            List<ReusableType> res = new List<ReusableType>();
+            foreach (var reuseabletype in model.ReusableDataTypes)
+            {
+                ReusableType define = new ReusableType();
+                define.Name = reuseabletype.Name;
+                foreach(var prop in reuseabletype.Properties)
+                {
+                    var temp = new JsonSchemaProp();
+                    temp.MultiplicityElement = new Cardinality();
+                    temp.Name = prop.Name;
+                    if (IsReusableType(prop.DataType.Name))
+                    {
+                        temp.Reference = "#/definitions/" + prop.DataType.Name;
+                    }
+                    else
+                    {
+                        if (prop.DataType.Name == "int")
+                        {
+                            temp.Type = "integer";
+                        }
+                        else if (prop.DataType.Name == "double" || prop.DataType.Name == "decimal")
+                        {
+                            temp.Type = "number";
+                        }
+                        else
+                        {
+                            temp.Type = prop.DataType.Name.ToLower();
+                        }
+                    }
+                    temp.MultiplicityElement.MinCardinality = prop.MinCardinality;
+                    temp.MultiplicityElement.MaxCardinality = prop.MaxCardinality;
+                    temp.Description = prop.Description;
+                    define.Properties.Add(temp);
+                }
+                res.Add(define);
+            }
+            return res;
+        }
+
+        public void Iterate(CogsModel model, List<JsonSchema> items)
+        {
             foreach (ItemType item in model.ItemTypes)
             {
                 JsonSchema temp = new JsonSchema();
                 temp.Title = item.Name;                          //get the name of the itemtype
                 temp.Type = "object";                           //get the type of the itemtype which is usually Object
+                temp.Id = "#" + item.Name;
                 if (item.ExtendsTypeName != "")             //Check whether there it extends another class
                 {
                     //get the Parent information
@@ -81,26 +145,69 @@ namespace Cogs.Publishers
                 }
                 items.Add(temp);
             }
-            foreach (JsonSchema schema in items)
-            {
-                Console.WriteLine(JsonConvert.SerializeObject(schema, settings));
-            }
-            //Console.WriteLine(JsonConvert.SerializeObject(item, settings));
         }
 
         public void SetJsonSchemaProp(JsonSchema temp, Property property)
         {
             var prop = new JsonSchemaProp();
+            prop.MultiplicityElement = new Cardinality();
             prop.Name = property.Name;
-            prop.Type = property.DataType.Name;
-            prop.MinCardinality = property.MinCardinality;
+            if (IsReusableType(property.DataType.Name))
+            {
+                prop.Reference = "#/definitions/" + property.DataType.Name;
+            }
+            else if (IsItemType(property.DataType.Name))
+            {
+                prop.Reference = "#/definitions/Reference";
+            }
+            else
+            {
+
+                if (property.DataType.Name == "int")
+                {
+                    prop.Type = "integer";
+                }
+                else if (property.DataType.Name == "double" || property.DataType.Name == "decimal")
+                {
+                    prop.Type = "number";
+                }
+                else
+                {
+                    prop.Type = property.DataType.Name.ToLower();
+                }
+            }
+            prop.MultiplicityElement.MinCardinality = property.MinCardinality;
             if (property.MinCardinality == "1")
             {
                 temp.Required.Add(property.Name);
             }
-            prop.MaxCardinality = property.MaxCardinality;
+            prop.MultiplicityElement.MaxCardinality = property.MaxCardinality;
             prop.Description = property.Description;
             temp.Properties.Add(prop);
+        }
+
+        public Boolean IsReusableType(string type)
+        {
+            foreach(var reusable in ReusableStorage)
+            {
+                if(type == reusable.Name)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public Boolean IsItemType(string type)
+        {
+            foreach(var item in ItemTypeStorage)
+            {
+                if(type == item.Name)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }
