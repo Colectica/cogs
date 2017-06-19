@@ -3,7 +3,7 @@ using Cogs.Model;
 using Cogs.Publishers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Schema;
+using NJsonSchema;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,7 +15,7 @@ namespace Cogs.Tests
     public class JsonSchemaTests
     {
         [Fact]
-        public void Jsontest()
+        public async System.Threading.Tasks.Task asyncJsonSchemaTestAsync()
         {
             string path = "..\\..\\..\\..\\cogsburger";
 
@@ -32,8 +32,15 @@ namespace Cogs.Tests
             jsonPublisher.TargetDirectory = outputPath;
             jsonPublisher.Publish(cogsModel);
 
+            var schemadata = File.ReadAllText(Path.Combine(outputPath, "jsonSchema" + ".json"));
+            var schema = await JsonSchema4.FromJsonAsync(schemadata);
+            var jsondata = File.ReadAllText(@"C: \Users\clement\Desktop\JsonFolder\testing1_reference_reusable.json");
+            var validate = schema.Validate(jsondata);
 
-            //var schema = File.ReadAllText(@"C:\Users\clement\Desktop\res.json"));
+            Assert.Null(validate);
+            //var schema = File.ReadAllText(Path.Combine(outputPath, "jsonSchema" + ".json"));
+            //var valida = schema.validate();
+
             //var valid1 = schema.Validate();
             //read JSON directly from a file
             //Assert.True(valid1);

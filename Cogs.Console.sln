@@ -1,4 +1,3 @@
-
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26606.0
@@ -12,6 +11,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cogs.Dto", "Cogs.Dto\Cogs.Dto.csproj", "{4C2B06C5-2CA1-4555-B6E4-F1B41BDC1840}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cogs.Tests", "Cogs.Tests\Cogs.Tests.csproj", "{037C3F92-E251-4F76-AFF2-BE14E82F0C74}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cogs.Tests.Console", "Cogs.Tests.Console\Cogs.Tests.Console.csproj", "{CDBD7A18-E09B-4664-9CF2-97A456BB3746}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,6 +40,10 @@ Global
 		{037C3F92-E251-4F76-AFF2-BE14E82F0C74}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{037C3F92-E251-4F76-AFF2-BE14E82F0C74}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{037C3F92-E251-4F76-AFF2-BE14E82F0C74}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CDBD7A18-E09B-4664-9CF2-97A456BB3746}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CDBD7A18-E09B-4664-9CF2-97A456BB3746}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CDBD7A18-E09B-4664-9CF2-97A456BB3746}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CDBD7A18-E09B-4664-9CF2-97A456BB3746}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
