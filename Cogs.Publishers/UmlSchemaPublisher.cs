@@ -227,7 +227,7 @@ namespace Cogs.Publishers
                    new XDeclaration("1.0", "utf-8", null),
                    new XElement(xmins + "XMI", new XAttribute(XNamespace.Xmlns + "uml", "http://www.omg.org/spec/UML/20110701"),
                         new XAttribute(XNamespace.Xmlns + "xmi", "http://www.omg.org/spec/XMI/20110701"),
-                        new XElement(xmins + "Documentation", new XAttribute("exporter", "Enterprise Architect"), new XAttribute("exporterVersion", "6.5")),
+                        new XElement(xmins + "Documentation", new XElement("exporter", "Enterprise Architect"), new XElement("exporterVersion", "6.5")),
                         new XElement(umlns + "Model", new XAttribute(xmins + "type", "uml:Model"), new XAttribute("name", "EA_Model"), xmodel)));
             }
             else

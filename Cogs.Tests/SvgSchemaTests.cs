@@ -31,7 +31,7 @@ namespace Cogs.Tests
             publisher.TargetDirectory = outputPath;
             publisher.DotLocation = "C:\\Users\\kevin\\Downloads\\graphviz-2.38\\release\\bin";
             publisher.Publish(cogsModel);
-            // svg schema is being created now but no final version is available yet
+            // svg schema is not yet available
         //    Validate(Path.Combine(outputPath, "output.svg"), Path.Combine(Directory.GetCurrentDirectory(), "..\\..\\..\\SVG.xsd"));
         }
 
