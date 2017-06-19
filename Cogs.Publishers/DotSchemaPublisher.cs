@@ -15,7 +15,7 @@ namespace Cogs.Publishers
     /// <summary>
     /// Generate an uml schema using the Garden of Eden approach, all elements and type definitions are declared globally
     /// </summary>
-    public class SvgSchemaPublisher
+    public class DotSchemaPublisher
     {
         /// <summary>
         /// path to write output in
@@ -29,6 +29,10 @@ namespace Cogs.Publishers
         /// boolean to determine whether to replace existing or not
         /// </summary>
         public bool Overwrite { get; set; }
+        /// <summary>
+        /// string specifying output format
+        /// </summary>
+        public string format { get; set; }
 
         public void Publish(CogsModel model)
         {
@@ -103,7 +107,7 @@ namespace Cogs.Publishers
             Process process = new Process();
             ProcessStartInfo startInfo = new ProcessStartInfo(Path.Combine(DotLocation, "dot.exe"));
             startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-            startInfo.Arguments = "/C -T svg -o " + Path.Combine(TargetDirectory, "output.svg") + " " + Path.Combine(TargetDirectory, "input.dot");
+            startInfo.Arguments = "-T " + format + " -o " + Path.Combine(TargetDirectory, "output." + format) + " " + Path.Combine(TargetDirectory, "input.dot");
             process.StartInfo = startInfo;
             process.Start();
             process.WaitForExit();

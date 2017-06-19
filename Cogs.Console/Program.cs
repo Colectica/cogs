@@ -117,20 +117,21 @@ namespace Cogs.Console
 
             });
 
-            app.Command("publish-svg", (command) =>
+            app.Command("publish-dot", (command) =>
             {
 
-                command.Description = "Publish a svg schema from a COGS data model";
+                command.Description = "Publish a dot schema from a COGS data model";
                 command.HelpOption("-?|-h|--help");
 
                
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
-                var targetArgument = command.Argument("[targetLocation]", "Directory where the svg schema is generated.");
+                var targetArgument = command.Argument("[targetLocation]", "Directory where the dot schema is generated.");
                 var dotArgument = command.Argument("[dotLocation]", "Directory where the dot.exe file is located.");
 
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
                                            CommandOptionType.NoValue);
+                var outputFormat = command.Option("-f|--format", "Specifies format for output file. Defaults to svg", CommandOptionType.SingleValue);
 
                 command.OnExecute(() =>
                 {
@@ -138,6 +139,7 @@ namespace Cogs.Console
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
+                    string format = outputFormat.Value() ?? "svg";
 
                     var directoryReader = new CogsDirectoryReader();
                     var cogsDtoModel = directoryReader.Load(location);
@@ -145,12 +147,12 @@ namespace Cogs.Console
                     var modelBuilder = new CogsModelBuilder();
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
 
-                    SvgSchemaPublisher publisher = new SvgSchemaPublisher();
+                    DotSchemaPublisher publisher = new DotSchemaPublisher();
                     publisher.DotLocation = dot;
                     publisher.TargetDirectory = target;
                     publisher.Overwrite = overwrite;
+                    publisher.format = format;
                     publisher.Publish(cogsModel);
-
 
                     return 0;
                 });

@@ -84,7 +84,7 @@ namespace Cogs.Publishers
             if (!Normative)
             {
                 // run svg publisher to create svg file to use for positioning
-                SvgSchemaPublisher publisher = new SvgSchemaPublisher();
+                DotSchemaPublisher publisher = new DotSchemaPublisher();
                 publisher.DotLocation = DotLocation;
                 publisher.TargetDirectory = TargetDirectory;
                 publisher.Overwrite = Overwrite;
