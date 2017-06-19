@@ -159,6 +159,44 @@ namespace Cogs.Console
 
             });
 
+            app.Command("publish-cs", (command) =>
+            {
+
+                command.Description = "Publish a c# class structure from a COGS data model";
+                command.HelpOption("-?|-h|--help");
+
+
+                var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
+                var targetArgument = command.Argument("[targetLocation]", "Directory where the c# schema is generated.");
+                var dotArgument = command.Argument("[dotLocation]", "Directory where the dot.exe file is located.");
+
+                var overwriteOption = command.Option("-o|--overwrite",
+                                           "If the target directory exists, delete and overwrite the location",
+                                           CommandOptionType.NoValue);
+
+                command.OnExecute(() =>
+                {
+                    var dot = dotArgument.Value ?? Environment.CurrentDirectory;
+                    var location = locationArgument.Value ?? Environment.CurrentDirectory;
+                    var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
+                    bool overwrite = overwriteOption.HasValue();
+
+                    var directoryReader = new CogsDirectoryReader();
+                    var cogsDtoModel = directoryReader.Load(location);
+
+                    var modelBuilder = new CogsModelBuilder();
+                    var cogsModel = modelBuilder.Build(cogsDtoModel);
+
+                    CsSchemaPublisher publisher = new CsSchemaPublisher();
+                    publisher.TargetDirectory = target;
+                    publisher.Overwrite = overwrite;
+                    publisher.Publish(cogsModel);
+
+                    return 0;
+                });
+
+            });
+
 
             app.Command("publish-sphinx", (command) =>
             {
