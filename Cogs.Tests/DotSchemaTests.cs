@@ -27,10 +27,14 @@ namespace Cogs.Tests
             var modelBuilder = new CogsModelBuilder();
             var cogsModel = modelBuilder.Build(cogsDtoModel);
 
-            var publisher = new DotSchemaPublisher();
-            publisher.TargetDirectory = outputPath;
-            publisher.DotLocation = "C:\\Users\\kevin\\Downloads\\graphviz-2.38\\release\\bin";
-            publisher.Publish(cogsModel);
+            var choices = new string[3] { "all", "type", "single" };
+            for (int i = 0; i < 3; i++) {
+                var publisher = new DotSchemaPublisher();
+                publisher.TargetDirectory = outputPath;
+                publisher.DotLocation = "C:\\Users\\kevin\\Downloads\\graphviz-2.38\\release\\bin";
+                publisher.Output = choices[i];
+                publisher.Publish(cogsModel);
+            }
         }
     }
 }

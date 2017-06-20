@@ -132,6 +132,12 @@ namespace Cogs.Console
                                            "If the target directory exists, delete and overwrite the location",
                                            CommandOptionType.NoValue);
                 var outputFormat = command.Option("-f|--format", "Specifies format for output file. Defaults to svg", CommandOptionType.SingleValue);
+                var outputAll = command.Option("-a|--all",
+                                           "generate one graph containing all objects",
+                                           CommandOptionType.NoValue);
+                var outputSingle = command.Option("-s|--single",
+                                           "generate a graph for every single item (incoming links and outgoing links)",
+                                           CommandOptionType.NoValue);
 
                 command.OnExecute(() =>
                 {
@@ -140,6 +146,12 @@ namespace Cogs.Console
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
                     string format = outputFormat.Value() ?? "svg";
+                    bool all = outputAll.HasValue();
+                    bool single = outputSingle.HasValue();
+                    if (all && single) throw new ArgumentException();
+                    string output = "topic";
+                    if (all) output = "all";
+                    else if (single) output = "single";
 
                     var directoryReader = new CogsDirectoryReader();
                     var cogsDtoModel = directoryReader.Load(location);
@@ -151,7 +163,8 @@ namespace Cogs.Console
                     publisher.DotLocation = dot;
                     publisher.TargetDirectory = target;
                     publisher.Overwrite = overwrite;
-                    publisher.format = format;
+                    publisher.Format = format;
+                    publisher.Output = output;
                     publisher.Publish(cogsModel);
 
                     return 0;
