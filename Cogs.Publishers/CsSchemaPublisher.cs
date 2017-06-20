@@ -37,21 +37,46 @@ namespace Cogs.Publishers
 
             Directory.CreateDirectory(TargetDirectory);
 
+            //get the project name
+            var projName = "cogsBurger";
+
             // create xml header
-            XDocument = new XDocument();
-
-            
-            foreach(var item in model.ItemTypes.Concat(model.ReusableDataTypes))
+            XDocument project = new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
+                new XElement("PropertyGroup", new XElement("TargetFramework", "netstandard2.0"), 
+                    new XElement("AssemblyName", projName), new XElement("RootNamespace", projName))));
+            //create project file
+            XmlWriterSettings xws = new XmlWriterSettings { OmitXmlDeclaration = true };
+            using (XmlWriter xw = XmlWriter.Create(Path.Combine(TargetDirectory, projName + ".csproj"), xws))
+                project.Save(xw);
+            foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
-                // create new files
-
+                // add class description using '$' for newline and '#' for tabs
+                var newClass = new StringBuilder("using System;$using System.Collections.Generic;$$namespace " + projName +"${$#/// <summary>$#/// " + item.Description + "$#/// <summary>");
+                newClass.Append("$#public ");
                 // add abstract to class title if relevant
-
-                // add name, properties, description, etc (have them initialized to their values in the class)
-
+                if (item.IsAbstract) newClass.Append("abstract ");
+                newClass.Append("class " + item.Name);
+                // allow inheritance when relevant
+                if (!String.IsNullOrWhiteSpace(item.ExtendsTypeName)) newClass.Append(" : " + item.ExtendsTypeName);
+                newClass.Append("$#{");
+                foreach(var prop in item.Properties)
+                {
+                    if (prop.DataTypeName.Equals("boolean")) prop.DataTypeName = "bool";
+                    // create documentation for property
+                    newClass.Append("$##/// <summary>$##/// " + prop.Description + "$##/// <summary>");
+                    // if there is no limit to the amount of properties create a list object
+                    if (prop.MaxCardinality.Equals("n"))
+                        newClass.Append("$##public List<" + prop.DataTypeName + "> " + prop.Name + " = new List<" + prop.DataTypeName + ">();");
+                    // if there can be at most one, create an instance variable
+                    else if (Int32.Parse(prop.MaxCardinality) == 1)
+                        newClass.Append("$##public " + prop.DataTypeName + " " + prop.Name + ";");
+                    // otherwise, when there can be more than 1 but the amount is limited, create an array of the max size
+                    else newClass.Append("$##public " + prop.DataTypeName + "[] " + prop.Name + " = new " + prop.DataTypeName + "[" + prop.MaxCardinality + "];");
+                }
+                newClass.Append("$#}$}");
                 // write class to out folder
+                File.WriteAllText(Path.Combine(TargetDirectory, item.Name + ".cs"), newClass.ToString().Replace("#", "    ").Replace("$", Environment.NewLine));
             }
-            
         }
     }
 }
