@@ -64,14 +64,11 @@ namespace Cogs.Publishers
                     if (prop.DataTypeName.Equals("boolean")) prop.DataTypeName = "bool";
                     // create documentation for property
                     newClass.Append("$##/// <summary>$##/// " + prop.Description + "$##/// <summary>");
-                    // if there is no limit to the amount of properties create a list object
-                    if (prop.MaxCardinality.Equals("n"))
-                        newClass.Append("$##public List<" + prop.DataTypeName + "> " + prop.Name + " = new List<" + prop.DataTypeName + ">();");
                     // if there can be at most one, create an instance variable
-                    else if (Int32.Parse(prop.MaxCardinality) == 1)
+                    if (!prop.MaxCardinality.Equals("n") && Int32.Parse(prop.MaxCardinality) == 1)
                         newClass.Append("$##public " + prop.DataTypeName + " " + prop.Name + ";");
-                    // otherwise, when there can be more than 1 but the amount is limited, create an array of the max size
-                    else newClass.Append("$##public " + prop.DataTypeName + "[] " + prop.Name + " = new " + prop.DataTypeName + "[" + prop.MaxCardinality + "];");
+                    // otherwise, create a list object to allow multiple
+                    else newClass.Append("$##public List<" + prop.DataTypeName + "> " + prop.Name + " = new List<" + prop.DataTypeName + ">();");
                 }
                 newClass.Append("$#}$}");
                 // write class to out folder
