@@ -88,7 +88,8 @@ namespace Cogs.Publishers
                 publisher.DotLocation = DotLocation;
                 publisher.TargetDirectory = TargetDirectory;
                 publisher.Overwrite = Overwrite;
-                publisher.format = "svg";
+                publisher.Format = "svg";
+                publisher.Output = "all";
                 publisher.Publish(model);
 
                 // read created svg file
