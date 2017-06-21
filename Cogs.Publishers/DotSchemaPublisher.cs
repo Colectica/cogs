@@ -166,7 +166,6 @@ namespace Cogs.Publishers
                     if (ReusableList.Contains(property.DataType))
                     {
                         return MakeCluster(item, property.DataType);
-                        //  outputText.Append("edge[ arrowhead = \"none\" headlabel = \"0...1\" taillabel = \"0...1\"] ");
                     }
                     else
                     {
@@ -213,7 +212,16 @@ namespace Cogs.Publishers
         {
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
-                GenerateOutput(item.Name, header + " " + MakeItem(item) + " }");
+                var arrows = "";
+                foreach(var clss in model.ItemTypes.Concat(model.ReusableDataTypes))
+                {
+                    if (clss.ExtendsTypeName.Equals(item.Name)) arrows += clss.Name + " -> " + item.Name + "[arrowhead=\"empty\"] ";
+                    foreach(var property in clss.Properties)
+                    {
+                        if (property.DataTypeName.Equals(item.Name)) arrows += clss.Name + " -> " + item.Name + "[ arrowhead=\"none\" label=" + property.Name + "] ";
+                    }
+                }
+                GenerateOutput(item.Name, header + " " + MakeItem(item) + arrows + " }");
             }
         }
 
