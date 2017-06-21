@@ -98,9 +98,11 @@ namespace Cogs.Publishers
                 File.Delete(Path.Combine(TargetDirectory, "output.svg"));
 
                 //get leftmost  and topmost value to shift graph accordingly 
-                foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
+                foreach (var item in model.ItemTypes)
                 {
-                    var node = XElement.Parse(nodes.Descendants(ns + "title").Where(x => x.FirstNode.ToString() == item.Name).ToList()[0].NextNode.ToString());
+                    string name = item.Name;
+                    if (item.Properties.Where(x => reusableList.Contains(x.DataTypeName)).ToList().Count > 0) name += "Properties";
+                    var node = XElement.Parse(nodes.Descendants(ns + "title").Where(x => x.FirstNode.ToString() == name).ToList()[0].NextNode.ToString());
                     var cords = node.Attribute("points").Value.Split(',', ' ');
                     if (Convert.ToDouble(cords[4]) < xOff)
                     {
@@ -115,7 +117,7 @@ namespace Cogs.Publishers
                 yOff = Math.Abs(yOff);
             } 
             int count = classList.Count;
-            var offset = 1.5;
+            var offset = 1.75;
             // loop through classes and reusable data types
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
@@ -127,7 +129,35 @@ namespace Cogs.Publishers
                 if (!Normative)
                 {
                     // add class to graph
-                    var cords = XElement.Parse(nodes.Descendants(ns + "title").Where(x => x.FirstNode.ToString() == item.Name).ToList()[0].NextNode.ToString())
+                    string name = item.Name;
+                    if(item.Properties.Where(x => reusableList.Contains(x.DataTypeName)).ToList().Count > 0) name += "Properties";
+                    if (reusableList.Contains(item.Name))
+                    {
+                        string containedClass = "";
+                        foreach(var clss in model.ItemTypes)
+                        {
+                            foreach(var prop in clss.Properties)
+                            {
+                                if (prop.DataTypeName.Equals(item.Name))
+                                {
+                                    containedClass = clss.Name;
+                                    break;
+                                }
+                            }
+                        }
+                        if (containedClass.Equals(""))
+                        {
+                            try
+                            {
+                                XElement.Parse(nodes.Descendants(ns + "title").Where(x => x.FirstNode.ToString() == name).ToList()[0].NextNode.ToString());
+                            }
+                            catch
+                            {
+                                break;
+                            }
+                        }else name = containedClass + item.Name;
+                    }
+                    var cords = XElement.Parse(nodes.Descendants(ns + "title").Where(x => x.FirstNode.ToString() == name).ToList()[0].NextNode.ToString())
                     .Attribute("points").Value.Split(',', ' ');
                     var left = ((Convert.ToDouble(cords[4]) + xOff) * offset).ToString();
                     var right = ((Convert.ToDouble(cords[0]) + xOff) * offset).ToString();
