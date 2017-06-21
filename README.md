@@ -11,6 +11,7 @@ COGS is for domain experts and groups who value **ease of collaboration** and **
 Publishable formats include:
 * XML Schema
 * OMG's UML Normative XMI 2.4.2
+* OMG's UML XMI 2.5 with diagram exchange
 * Sphinx HTML documentation and visualizations
 * JSON Schema
 
