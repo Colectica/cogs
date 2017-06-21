@@ -23,9 +23,10 @@ namespace Cogs.Publishers
                 throw new InvalidOperationException("Target directory must be specified");
             }
 
-            if (Overwrite && Directory.Exists(TargetDirectory))
+            string sourcePath = Path.Combine(TargetDirectory, "source");
+            if (Overwrite && Directory.Exists(sourcePath))
             {
-                Directory.Delete(TargetDirectory, true);
+                Directory.Delete(sourcePath, true);
                 System.Threading.Thread.Sleep(1000);
             }
 

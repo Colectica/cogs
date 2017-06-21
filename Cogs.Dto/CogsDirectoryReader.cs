@@ -50,6 +50,15 @@ namespace Cogs.Dto
                 }
             }
 
+            // Load information about articles.
+            string articlesPath = Path.Combine(directory, "Articles");
+            if (Directory.Exists(articlesPath))
+            {
+                model.ArticlesPath = articlesPath;
+                string articlesIndexFileName = Path.Combine(articlesPath, "toc.txt");
+                model.ArticleTocEntries.AddRange(File.ReadAllLines(articlesIndexFileName));
+            }
+
             // Load all item types from the ItemTypes directory.
             LoadDataTypes(directory, "ItemTypes", model, model.ItemTypes);
 

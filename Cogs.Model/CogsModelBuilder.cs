@@ -22,6 +22,10 @@ namespace Cogs.Model
             this.dto = cogsDtoModel;
             this.model = new CogsModel();
 
+            // Copy information about articles.
+            model.ArticlesPath = dto.ArticlesPath;
+            model.ArticleTocEntries.AddRange(dto.ArticleTocEntries);
+
             // First pass: create object stubs.
             foreach (var id in dto.Identification)
             {
