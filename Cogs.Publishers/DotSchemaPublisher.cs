@@ -69,7 +69,7 @@ namespace Cogs.Publishers
                 ReusableList.Add(item);
             }
             var header = "digraph G { compound = true fontsize = 8 node [ " +
-               "fontsize = 8 shape = \"record\"] edge [ fontsize = 8 ] ";
+               "fontsize = 8 shape = \"oval\"] edge [ fontsize = 8 ] ";
 
             if (Output.Equals("all")) MakeGraphAll(model, header);
             else if (Output.Equals("topic")) MakeGraphTopic(model, header);
@@ -78,7 +78,7 @@ namespace Cogs.Publishers
 
         private string MakeItem(DataType item)
         {
-            return MakeNode(item, item.Name + "[ label=\"{" + item.Name + "| ");
+            return MakeNode(item, item.Name + "[ shape = \"record\" label=\"{" + item.Name + "| ");
         }
 
         private string MakeCluster(DataType item, DataType reusable)
@@ -86,7 +86,7 @@ namespace Cogs.Publishers
             StringBuilder output = new StringBuilder();
             StringBuilder outerClass = new StringBuilder("subgraph cluster" + item.Name + " { label=\"" + item.Name + "\" ");
             List<DataType> reusablesPresent = new List<DataType>();
-            outerClass.Append(item.Name + "Properties [ label=\"{Properties |");
+            outerClass.Append(item.Name + "Properties [ shape = \"record\" label=\"{Properties |");
             foreach (var property in item.Properties)
             {
                 outerClass.Append(property.Name + " : " + property.DataTypeName);
@@ -116,7 +116,7 @@ namespace Cogs.Publishers
             outerClass.Append("}\"] ");
             foreach(var reused in reusablesPresent)
             {
-                outerClass.Append(item.Name + reused.Name + " [ label=\"{ " + reused.Name + " | ");
+                outerClass.Append(item.Name + reused.Name + " [ shape = \"record\" label=\"{ " + reused.Name + " | ");
                 foreach(var property in reused.Properties)
                 {
                     outerClass.Append(property.Name + " : " + property.DataTypeName);
