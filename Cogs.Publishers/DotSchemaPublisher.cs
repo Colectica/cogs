@@ -176,7 +176,7 @@ namespace Cogs.Publishers
             }
             if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
             {
-                outputText.Append("edge [arrowhead = \"empty\"] ");
+                outputText.Append("edge [arrowhead = \"empty\" headlabel = \"\" taillabel = \"\"] ");
                 outputText.Append(item.Name + "->" + item.ExtendsTypeName + " ");
             }
             outputText.Append(classText + "}\"] ");
