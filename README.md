@@ -8,7 +8,9 @@ The Convention-based Ontology Generation System (COGS) gives you a powerful, pat
 COGS is for domain experts and groups who value **ease of collaboration** and **low technical barriers** for participation.
 
 ## Output Formats
+
 Publishable formats include:
+
 * XML Schema
 * OMG's UML Normative XMI 2.4.2
 * OMG's UML XMI 2.5 with diagram exchange
@@ -16,8 +18,11 @@ Publishable formats include:
 * JSON Schema
 
 Upcoming formats include:
+
 * OWL 2 / QL (RDF Schema)
 * GraphQL schema language
+* C# class library
+* Class libraries for other languages
 
 ## Platform
 COGS runs on Windows, Linux, and macOS on the .NET Core 2.0 platform.
