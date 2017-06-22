@@ -31,7 +31,7 @@ namespace Cogs.Publishers
             // create graphs for each item
             var builder = new DotSchemaPublisher();
             builder.DotLocation = DotLocation;
-            builder.TargetDirectory = TargetDirectory;
+            builder.TargetDirectory = Path.Combine(Path.Combine(TargetDirectory, "source"), "images");
             builder.Overwrite = Overwrite;
             builder.Format = "svg";
             builder.Output = "single";

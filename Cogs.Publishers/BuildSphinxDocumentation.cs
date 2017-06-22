@@ -220,6 +220,8 @@ namespace Cogs.Publishers
                 // Output the relationships graph
                 builder.AppendLine("Relationships");
                 builder.AppendLine("~~~~~~~~~~~~~");
+                builder.AppendLine(".. image:: ");
+                builder.AppendLine("   " + Path.Combine("..\\..\\images", itemType.Name + ".svg"));
                 builder.AppendLine();
 /*
                 List<Relationship> list = new List<Relationship>();
