@@ -222,19 +222,34 @@ namespace Cogs.Publishers
                 builder.AppendLine("~~~~~~~~~~~~~");
                 builder.AppendLine();
 
-                if (itemType.Relationships.Count == 0)
+                List<Relationship> list = new List<Relationship>();
+                // create list of items that point to each item
+                foreach(var item in dataTypes)
                 {
-                    builder.AppendLine("This type does not have references to any item types.");
+                    foreach(var property in item.Properties)
+                    {
+                        if (property.DataTypeName.Equals(itemType.Name)){
+                            var pointer = new Relationship();
+                            pointer.TargetItemType = item;
+                            pointer.PropertyName = property.Name;
+                            list.Add(pointer);
+                        }
+                    }
+                }
+                if (list.Count == 0 && itemType.Relationships.Count == 0)
+                {
+                    builder.AppendLine("This type does not have references to or from any item types.");
                 }
                 else
                 {
                     builder.AppendLine(".. graphviz::");
                     builder.AppendLine();
                     builder.AppendLine("   digraph test1 {");
-
                     ProcessRelationships(itemType.Name, itemType.Relationships, builder);
+                    ProcessRelationships(itemType.Name, list, builder, false);
                     builder.AppendLine("   }");
                 }
+
                 builder.AppendLine();
 
 
@@ -293,11 +308,12 @@ namespace Cogs.Publishers
             }
         }
 
-        private void ProcessRelationships(string sourceTypeName, List<Relationship> relationships, StringBuilder builder)
+        private void ProcessRelationships(string sourceTypeName, List<Relationship> relationships, StringBuilder builder, bool forward = true)
         {
             foreach (var first in relationships)
             {
                 string line = $"       \"{sourceTypeName}\" -> \"{first.TargetItemType.Name}\" [label=\"{first.PropertyName}\"]";
+                if(!forward) line = $"       \"{first.TargetItemType.Name}\" -> \"{sourceTypeName}\" [label=\"{first.PropertyName}\"]";
                 builder.AppendLine(line);
 
                 //foreach (var second in first.TargetItemType.Relationships)
