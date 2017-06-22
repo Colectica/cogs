@@ -221,7 +221,7 @@ namespace Cogs.Publishers
                 builder.AppendLine("Relationships");
                 builder.AppendLine("~~~~~~~~~~~~~");
                 builder.AppendLine();
-
+/*
                 List<Relationship> list = new List<Relationship>();
                 // create list of items that point to each item
                 foreach(var item in dataTypes)
@@ -251,7 +251,7 @@ namespace Cogs.Publishers
                 }
 
                 builder.AppendLine();
-
+                */
 
                 // Output Properties details
                 builder.AppendLine("Properties");

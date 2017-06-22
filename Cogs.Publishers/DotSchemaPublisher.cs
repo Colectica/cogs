@@ -72,7 +72,7 @@ namespace Cogs.Publishers
             {
                 ReusableList.Add(item);
             }
-            var header = "digraph G { compound = true fontsize = 8 node [ " +
+            var header = "digraph G { compound = true rankdir=LR fontsize = 8 node [ " +
                "fontsize = 8 shape = \"oval\"] edge [ fontsize = 8 ] ";
 
             if (Output.Equals("all")) MakeGraphAll(model, header);
@@ -210,7 +210,17 @@ namespace Cogs.Publishers
             var output = new StringBuilder(header);
             foreach (var item in model.ItemTypes)
             {
-                output.Append(MakeItem(item));
+                if (Inheritance && !String.IsNullOrWhiteSpace(item.ExtendsTypeName))
+                {
+                    output.Append(item.Name + " -> " + item.ExtendsTypeName + " [arrowhead=\"empty\"]");
+                }
+                foreach (var property in item.Properties)
+                {
+                    if (ClassList.Contains(property.DataTypeName))
+                    {
+                        output.Append(item.Name + " -> " + property.DataTypeName + " ");
+                    }
+                }
             }
             output.Append("}");
             GenerateOutput("output", output.ToString());
@@ -221,9 +231,28 @@ namespace Cogs.Publishers
             foreach(var topic in model.TopicIndices)
             {
                 var output = new StringBuilder(header);
-                foreach(var item in topic.ItemTypes)
+                Stack<DataType> stack = new Stack<DataType>();
+                List<string> seen = new List<string>();
+                foreach (var item in topic.ItemTypes)
                 {
-                    output.Append(MakeItem(item));
+                    stack.Push(item);
+                }
+                while(stack.Count > 0)
+                {
+                    var item = stack.Pop();
+                    seen.Add(item.Name);
+                    if(Inheritance && !String.IsNullOrWhiteSpace(item.ExtendsTypeName))
+                    {
+                        output.Append(item.Name + " -> " + item.ExtendsTypeName + " [arrowhead=\"empty\"]");
+                    }
+                    foreach (var property in item.Properties)
+                    {
+                        if (ClassList.Contains(property.DataTypeName) && !seen.Contains(property.DataTypeName))
+                        {
+                            output.Append(item.Name + " -> " + property.DataTypeName + " ");
+                            stack.Push(property.DataType);
+                        }
+                    }
                 }
                 output.Append("}");
                 GenerateOutput(topic.Name, output.ToString());

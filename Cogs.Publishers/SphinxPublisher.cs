@@ -35,6 +35,7 @@ namespace Cogs.Publishers
             builder.Overwrite = Overwrite;
             builder.Format = "svg";
             builder.Output = "single";
+            builder.Inheritance = false;
             builder.Publish(model);
             // create documentation
             var doc = new BuildSphinxDocumentation();
