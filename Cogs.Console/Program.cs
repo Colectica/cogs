@@ -133,11 +133,13 @@ namespace Cogs.Console
                                            CommandOptionType.NoValue);
                 var outputFormat = command.Option("-f|--format", "Specifies format for output file. Defaults to svg", CommandOptionType.SingleValue);
                 var outputAll = command.Option("-a|--all",
-                                           "generate one graph containing all objects",
+                                           "generate one graph containing all objects. Connot be used with -s",
                                            CommandOptionType.NoValue);
                 var outputSingle = command.Option("-s|--single",
-                                           "generate a graph for every single item (incoming links and outgoing links)",
+                                           "generate a graph for every single item (incoming links and outgoing links). Cannot be used with -a",
                                            CommandOptionType.NoValue);
+                var inheritanceArgument = command.Option("-i|--inheritance",
+                                            "allow inheritance in the graph(s)", CommandOptionType.NoValue);
 
                 command.OnExecute(() =>
                 {
@@ -152,6 +154,7 @@ namespace Cogs.Console
                     string output = "topic";
                     if (all) output = "all";
                     else if (single) output = "single";
+                    bool inheritance = inheritanceArgument.HasValue();
 
                     var directoryReader = new CogsDirectoryReader();
                     var cogsDtoModel = directoryReader.Load(location);
@@ -165,6 +168,7 @@ namespace Cogs.Console
                     publisher.Overwrite = overwrite;
                     publisher.Format = format;
                     publisher.Output = output;
+                    publisher.Inheritance = inheritance;
                     publisher.Publish(cogsModel);
 
                     return 0;
@@ -181,7 +185,6 @@ namespace Cogs.Console
 
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
                 var targetArgument = command.Argument("[targetLocation]", "Directory where the c# schema is generated.");
-                var dotArgument = command.Argument("[dotLocation]", "Directory where the dot.exe file is located.");
 
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
@@ -189,7 +192,6 @@ namespace Cogs.Console
 
                 command.OnExecute(() =>
                 {
-                    var dot = dotArgument.Value ?? Environment.CurrentDirectory;
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
@@ -219,6 +221,7 @@ namespace Cogs.Console
 
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
                 var targetArgument = command.Argument("[targetLocation]", "Directory where the sphinx documentation is generated.");
+                var dotArgument = command.Argument("[dotLocation]", "Directory where the dot.exe file is located.");
 
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
@@ -230,6 +233,7 @@ namespace Cogs.Console
                 {
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
+                    var dot = dotArgument.Value ?? Environment.CurrentDirectory;
                     bool overwrite = overwriteOption.HasValue();
 
                     var directoryReader = new CogsDirectoryReader();
@@ -241,6 +245,7 @@ namespace Cogs.Console
                     SphinxPublisher publisher = new SphinxPublisher();
                     publisher.TargetDirectory = target;
                     publisher.Overwrite = overwrite;
+                    publisher.DotLocation = dot;
 
                     publisher.Publish(cogsModel);
 

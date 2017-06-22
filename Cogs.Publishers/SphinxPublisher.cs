@@ -12,6 +12,7 @@ namespace Cogs.Publishers
     {
         public string TargetDirectory { get; set; }
         public bool Overwrite { get; set; }
+        public string DotLocation { get; set; }
 
         public void Publish(CogsModel model)
         {
@@ -27,9 +28,17 @@ namespace Cogs.Publishers
             }
 
             Directory.CreateDirectory(TargetDirectory);
-
-            var builder = new BuildSphinxDocumentation();
-            builder.Build(model, TargetDirectory);
+            // create graphs for each item
+            var builder = new DotSchemaPublisher();
+            builder.DotLocation = DotLocation;
+            builder.TargetDirectory = TargetDirectory;
+            builder.Overwrite = Overwrite;
+            builder.Format = "svg";
+            builder.Output = "single";
+            builder.Publish(model);
+            // create documentation
+            var doc = new BuildSphinxDocumentation();
+            doc.Build(model, TargetDirectory);
         }
     }
 }
