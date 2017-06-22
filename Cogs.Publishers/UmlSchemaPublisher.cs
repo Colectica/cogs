@@ -115,10 +115,11 @@ namespace Cogs.Publishers
                 yOff = Math.Abs(yOff);
             } 
             int count = classList.Count;
-            var offset = 1.75;
+            var offset = 2.5;
             // loop through classes and reusable data types
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
+                if (reusableList.Contains(item.Name)) break;
                 // Create class
                 var newItem = new XElement(new XElement("packagedElement", new XAttribute(xmins + "type", "uml:Class"),
                            new XAttribute(xmins + "id", CreateId(item.Name)),
