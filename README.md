@@ -16,12 +16,12 @@ Publishable formats include:
 * OMG's UML XMI 2.5 with diagram exchange
 * Sphinx HTML documentation and visualizations
 * JSON Schema
+* C# class library
+* GraphQL schema language
 
 Upcoming formats include:
 
 * OWL 2 / QL (RDF Schema)
-* GraphQL schema language
-* C# class library
 * Class libraries for other languages
 
 ## Platform
