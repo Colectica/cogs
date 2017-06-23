@@ -2,6 +2,7 @@
 using Cogs.Model;
 using Cogs.Publishers;
 using NJsonSchema;
+using NJsonSchema.Validation;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -28,19 +29,25 @@ namespace Cogs.Tests.Console
             jsonPublisher.TargetDirectory = outputPath;
             jsonPublisher.Publish(cogsModel);
 
-            var schemadata = File.ReadAllText(Path.Combine(outputPath, "jsonSchema" + ".json"));
-            //var schema = await JsonSchema4.FromJsonAsync(schemadata);
-            //var jsondata = File.ReadAllText(@"C: \Users\clement\Desktop\JsonFolder\testing1_reference_reusable.json");
+            //var schema = await JsonSchema4.FromTypeAsync<Program>();
+            //string schemaData = schema.ToJson();
+            //var schemaData = File.ReadAllText(Path.Combine(outputPath, "jsonSchema" + ".json"));
+
+            var schema = await JsonSchema4.FromFileAsync(Path.Combine(outputPath, "jsonSchema" + ".json"));
+            //schema = await JsonSchema4.FromJsonAsync(schemaData);
+            var jsondata = File.ReadAllText(@"testing1_reference_reusable.json");
+            var validator = new JsonSchemaValidator();
+            ICollection<ValidationError> validate = validator.Validate(jsondata, schema);
             //var validate = schema.Validate(jsondata);
 
-            //if (validate == null)
-            //{
-            //    System.Console.WriteLine("JSON Match");
-            //}
-            //else
-            //{
-            //    System.Console.WriteLine("JSON does not match");
-            //}
+            if (validate == null)
+            {
+                System.Console.WriteLine("JSON Match");
+            }
+            else
+            {
+                System.Console.WriteLine("JSON does not match");
+            }
         }
     }
 }

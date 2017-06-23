@@ -9,7 +9,12 @@ namespace Cogs.Publishers
         public string Type { get; set; }
         [JsonProperty("$ref")]
         public string Reference { get; set; }
+
         public Cardinality MultiplicityElement { get; set; }
+
+        public string MinCardinality { get; set; }
+        public string MaxCardinality { get; set; }
+
         public string Description { get; set; }
     }
 }
