@@ -220,23 +220,9 @@ namespace Cogs.Publishers
                 // Output the relationships graph
                 builder.AppendLine("Relationships");
                 builder.AppendLine("~~~~~~~~~~~~~");
+                builder.AppendLine(".. image:: ");
+                builder.AppendLine("   " + Path.Combine("..\\..\\images", itemType.Name + ".svg"));
                 builder.AppendLine();
-
-                if (itemType.Relationships.Count == 0)
-                {
-                    builder.AppendLine("This type does not have references to any item types.");
-                }
-                else
-                {
-                    builder.AppendLine(".. graphviz::");
-                    builder.AppendLine();
-                    builder.AppendLine("   digraph test1 {");
-
-                    ProcessRelationships(itemType.Name, itemType.Relationships, builder);
-                    builder.AppendLine("   }");
-                }
-                builder.AppendLine();
-
 
                 // Output Properties details
                 builder.AppendLine("Properties");
@@ -273,39 +259,6 @@ namespace Cogs.Publishers
             string allTypesIndexFileName = Path.Combine(outputDirectory, "source", path, "index.rst");
             File.WriteAllText(allTypesIndexFileName, indexBuilder.ToString());
 
-        }
-
-        private void ProcessRelationshipsRecursive(string sourceTypeName, List<Relationship> relationships, StringBuilder builder, HashSet<string> seenLines)
-        {
-            foreach (var rel in relationships)
-            {
-                string line = $"       \"{sourceTypeName}\" -> \"{rel.TargetItemType.Name}\" [label=\"{rel.PropertyName}\"]";
-                if (seenLines.Contains(line))
-                {
-                    continue;
-                }
-                seenLines.Add(line);
-
-                builder.AppendLine(line);
-
-                // Dive deeper.
-                ProcessRelationshipsRecursive(rel.PropertyName, rel.TargetItemType.Relationships, builder, seenLines);
-            }
-        }
-
-        private void ProcessRelationships(string sourceTypeName, List<Relationship> relationships, StringBuilder builder)
-        {
-            foreach (var first in relationships)
-            {
-                string line = $"       \"{sourceTypeName}\" -> \"{first.TargetItemType.Name}\" [label=\"{first.PropertyName}\"]";
-                builder.AppendLine(line);
-
-                //foreach (var second in first.TargetItemType.Relationships)
-                //{
-                //    line = $"       \"{first.TargetItemType.Name}\" -> \"{second.TargetItemType.Name}\" [label=\"{second.PropertyName}\"]";
-                //    builder.AppendLine(line);
-                //}
-            }
         }
 
         private string GetDataTypeRoot(string typeName)

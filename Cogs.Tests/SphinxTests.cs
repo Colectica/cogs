@@ -27,6 +27,7 @@ namespace Cogs.Tests
 
             var sphinxPublisher = new SphinxPublisher();
             sphinxPublisher.TargetDirectory = outputPath;
+            sphinxPublisher.DotLocation = "C:\\Users\\kevin\\Downloads\\graphviz-2.38\\release\\bin";
             sphinxPublisher.Publish(cogsModel);
 
 

@@ -21,6 +21,18 @@ namespace Cogs.Model
         public string DeprecatedNamespace { get; set; }
         public string DeprecatedElementOrAttribute { get; set; }
         public string DeprecatedChoiceGroup { get; set; }
+        public bool IsPrimitive
+        {
+            get
+            {
+                // temporary until model contains IsPrimitive definition
+                if (DataTypeName.ToLower().Contains("string") || DataTypeName.ToLower().Contains("date") || DataTypeName.ToLower().Contains("codeValue"))
+                {
+                    return true;
+                }
+                return false;
+            }
+        }
 
         public override string ToString()
         {

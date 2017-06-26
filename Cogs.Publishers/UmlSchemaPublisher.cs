@@ -84,10 +84,13 @@ namespace Cogs.Publishers
             if (!Normative)
             {
                 // run svg publisher to create svg file to use for positioning
-                SvgSchemaPublisher publisher = new SvgSchemaPublisher();
+                DotSchemaPublisher publisher = new DotSchemaPublisher();
                 publisher.DotLocation = DotLocation;
                 publisher.TargetDirectory = TargetDirectory;
                 publisher.Overwrite = Overwrite;
+                publisher.Format = "svg";
+                publisher.Output = "all";
+                publisher.Inheritance = true;
                 publisher.Publish(model);
 
                 // read created svg file
@@ -96,27 +99,27 @@ namespace Cogs.Publishers
                 File.Delete(Path.Combine(TargetDirectory, "output.svg"));
 
                 //get leftmost  and topmost value to shift graph accordingly 
-                foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
+                foreach (var item in nodes.Descendants(ns + "title").ToList())
                 {
-                    var node = XElement.Parse(nodes.Descendants(ns + "title").Where(x => x.FirstNode.ToString() == item.Name).ToList()[0].NextNode.ToString());
-                    var cords = node.Attribute("points").Value.Split(',', ' ');
-                    if (Convert.ToDouble(cords[4]) < xOff)
+                    var node = XElement.Parse(item.NextNode.ToString());
+                    if (Convert.ToDouble(node.Attribute("cx").Value) < xOff)
                     {
-                        xOff = Convert.ToDouble(cords[4]);
+                        xOff = Convert.ToDouble(node.Attribute("cx").Value);
                     }
-                    if (Convert.ToDouble(cords[3]) < yOff)
+                    if (Convert.ToDouble(node.Attribute("cy").Value) < yOff)
                     {
-                        yOff = Convert.ToDouble(cords[3]);
+                        yOff = Convert.ToDouble(node.Attribute("cy").Value);
                     }
                 }
                 xOff = Math.Abs(xOff);
                 yOff = Math.Abs(yOff);
             } 
             int count = classList.Count;
-            var offset = 1.5;
+            var offset = 2.5;
             // loop through classes and reusable data types
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
+                if (reusableList.Contains(item.Name)) break;
                 // Create class
                 var newItem = new XElement(new XElement("packagedElement", new XAttribute(xmins + "type", "uml:Class"),
                            new XAttribute(xmins + "id", CreateId(item.Name)),
@@ -124,13 +127,11 @@ namespace Cogs.Publishers
                 // add class to diagram
                 if (!Normative)
                 {
-                    // add class to graph
-                    var cords = XElement.Parse(nodes.Descendants(ns + "title").Where(x => x.FirstNode.ToString() == item.Name).ToList()[0].NextNode.ToString())
-                    .Attribute("points").Value.Split(',', ' ');
-                    var left = ((Convert.ToDouble(cords[4]) + xOff) * offset).ToString();
-                    var right = ((Convert.ToDouble(cords[0]) + xOff) * offset).ToString();
-                    var top = ((Convert.ToDouble(cords[1]) + yOff) * offset).ToString();
-                    var bottom = ((Convert.ToDouble(cords[3]) + yOff) * offset).ToString();
+                    var node = XElement.Parse(nodes.Descendants(ns + "title").Where(x => x.FirstNode.ToString().Contains(item.Name)).ToList()[0].NextNode.ToString());
+                    var left = (Double.Parse(node.Attribute("cx").Value) - Double.Parse(node.Attribute("rx").Value) + xOff) * offset;
+                    var right = (Double.Parse(node.Attribute("cx").Value) + Double.Parse(node.Attribute("rx").Value) + xOff) * offset;
+                    var top = (Double.Parse(node.Attribute("cy").Value) - Double.Parse(node.Attribute("ry").Value) + yOff) * offset;
+                    var bottom = (Double.Parse(node.Attribute("cy").Value) + Double.Parse(node.Attribute("ry").Value) + yOff) * offset;
                     diagramElements.Add(new XElement("element", new XAttribute("geometry", "Left=" + left + ";Top=" + top + ";Right=" + right + ";Bottom=" + bottom + ";"),
                         new XAttribute("subject", item.Name), new XAttribute("seqno", count.ToString()), new XAttribute("style",
                         "DUID=" + "item.Name" + ";NSL=0;BCol=-1;BFol=-1;LCol=-1;LWth=-1;fontsz=0;bold=0;black=0;italic=0;ul=0;charset=0;pitch=0;));")));
@@ -163,7 +164,7 @@ namespace Cogs.Publishers
                     }
                     newItem.Add(newProperty);
                     // see if property is a type of class
-                    if(classList.Contains(property.DataTypeName)){
+                    if(classList.Contains(property.DataTypeName) && !IdList.Contains("Association.from" + property.Name + ".to." + property.DataTypeName)){
                         // create link association
                         var classLink = new XElement("packagedElement", new XAttribute(xmins + "type", "uml:Association"),
                             new XAttribute(xmins + "id", CreateId("Association.from" + property.Name + ".to." + property.DataTypeName)));
@@ -227,7 +228,7 @@ namespace Cogs.Publishers
                    new XDeclaration("1.0", "utf-8", null),
                    new XElement(xmins + "XMI", new XAttribute(XNamespace.Xmlns + "uml", "http://www.omg.org/spec/UML/20110701"),
                         new XAttribute(XNamespace.Xmlns + "xmi", "http://www.omg.org/spec/XMI/20110701"),
-                        new XElement(xmins + "Documentation", new XAttribute("exporter", "Enterprise Architect"), new XAttribute("exporterVersion", "6.5")),
+                        new XElement(xmins + "Documentation", new XElement("exporter", "Enterprise Architect"), new XElement("exporterVersion", "6.5")),
                         new XElement(umlns + "Model", new XAttribute(xmins + "type", "uml:Model"), new XAttribute("name", "EA_Model"), xmodel)));
             }
             else
@@ -281,7 +282,7 @@ namespace Cogs.Publishers
         {
             if (IdList.Contains(name))
             {
-                Console.WriteLine("ERROR: name '%s' used twice", name);
+                Console.WriteLine("ERROR: name '{0}' used twice", name);
                 throw new InvalidOperationException();
             }
             IdList.Add(name);

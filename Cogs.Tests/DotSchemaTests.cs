@@ -6,13 +6,15 @@ using Cogs.Model;
 using Cogs.Publishers;
 using System.IO;
 using Xunit;
+using System.Xml;
+using System.Xml.Schema;
 
 namespace Cogs.Tests
 {
-    public class SvgSchemaTests
+    public class DotSchemaTests
     {
         [Fact]
-        public void UmlForHamburgersTest()
+        public void SvgForHamburgersTest()
         {
             string path = "..\\..\\..\\..\\cogsburger";
 
@@ -25,15 +27,14 @@ namespace Cogs.Tests
             var modelBuilder = new CogsModelBuilder();
             var cogsModel = modelBuilder.Build(cogsDtoModel);
 
-            var publisher = new SvgSchemaPublisher();
-            publisher.TargetDirectory = outputPath;
-            publisher.DotLocation = "C:\\Users\\kevin\\Downloads\\graphviz-2.38\\release\\bin";
-            publisher.Publish(cogsModel);
-
-            // TODO use xml importer to check that svg is properly formed.
-            // For now we are just making sure there are no errors while running.
-
-
+            var choices = new string[3] { "all", "type", "single" };
+            for (int i = 0; i < 3; i++) {
+                var publisher = new DotSchemaPublisher();
+                publisher.TargetDirectory = outputPath;
+                publisher.DotLocation = "C:\\Users\\kevin\\Downloads\\graphviz-2.38\\release\\bin";
+                publisher.Output = choices[i];
+                publisher.Publish(cogsModel);
+            }
         }
     }
 }
