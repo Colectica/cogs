@@ -53,6 +53,7 @@ namespace Cogs.Publishers
             JsonSchema reference_node = new JsonSchema();
             ReusableType reference_def = new ReusableType();
             reference_def.Name = "~~reference~~";
+
             reference_node.Title = "~~reference~~";
             items.Add(reference_node);
             List<ReusableType> define = Iteratereusable(model);
@@ -66,9 +67,10 @@ namespace Cogs.Publishers
 
 
             root.definitions = define;
+
             //Console.WriteLine(JsonConvert.SerializeObject(root, settings));
             string res = JsonConvert.SerializeObject(root, settings);
-            File.WriteAllText(Path.Combine(TargetDirectory, "jsonSchema"+".json"), res);
+            File.WriteAllText(Path.Combine(TargetDirectory, "jsonSchema" + ".json"), res);
         }
 
         public List<ReusableType> Iteratereusable(CogsModel model)
@@ -176,6 +178,8 @@ namespace Cogs.Publishers
                     prop.Type = property.DataType.Name.ToLower();
                 }
             }
+            prop.MultiplicityElement.MinCardinality = property.MinCardinality;
+
             prop.MultiplicityElement.MinCardinality = property.MinCardinality;
             if (property.MinCardinality == "1")
             {
