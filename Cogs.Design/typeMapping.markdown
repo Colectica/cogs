@@ -1,0 +1,170 @@
+
+#boolean
+c#: built-in bool type
+
+#string
+c#: built-in string class
+
+#decimal
+c#: built-in decimal type
+
+#float
+c#: built-in float type
+
+#double
+c#: built-in double type
+
+#duration
+c#: struct duration : DateSuper{
+	int Years;
+	int Months;
+	int Days;
+	char T;
+	int Hours;
+	int Minutes;
+	int Seconds;
+	duration MinInclusive;
+	duration MinExclusive;
+	duration MaxInclusive;
+	duration MaxExclusive;
+
+	public duration(int y, int m, int d, int h, int min, int s)
+	{
+		Years = y;
+		Months = m;
+		Days = d;
+		Hours = h;
+		Minutes = min;
+		Seconds = s;
+	}
+
+	public string getValue()
+	{
+		return Years.ToString() + Months.ToString() + Days.ToString() + T + Hours.ToString() + Minutes.ToString() + seconds.ToString();
+	}
+}
+
+#dateTime
+c#: struct dateTime : DateSuper{
+	int C;
+	int Y;
+	int M;
+	int D;
+	char T;
+	int h;
+	int m;
+	int s;
+	char zone = '';
+	char sign = '+';
+	dateTime MinInclusive;
+	dateTime MinExclusive;
+	dateTime MaxInclusive;
+	dateTime MaxExclusive;
+
+	public dateTime(int c, int y, int m, int d, int h, int min, int s)
+	{
+		C = c;
+		Y = y;
+		M = m;
+		D = d;
+		this.h = h;
+		this.m = min;
+		this.s = s;
+	}
+
+	public string getValue()
+	{
+		return sign + C.ToString() + Y.ToString() + "-" + M.ToString() + "-" + D.ToString() + T + h.ToString() + ":" + m.ToString() + ":" + s.ToString() + zone;
+	}
+}
+
+#time
+c#: built-in DateTimeOffset type
+
+#date
+c#: built-in DateTimeOffset type wrapped in class inheriting from DateSuper
+
+#gYearMonth
+c#: built-in GregorianCalendar class wrapped in class inheriting from DateSuper
+
+#gYear
+c#: built-in GregorianCalendar class wrapped in class inheriting from DateSuper
+
+#gYearDay
+c#: built-in GregorianCalendar class wrapped in class inheriting from DateSuper
+
+#gDay
+c#: built-in GregorianCalendar class wrapped in class inheriting from DateSuper
+
+#gMonth
+c#: built-in GregorianCalendar class wrapped in class inheriting from DateSuper
+
+#anyURI
+c#: built-in Uri class
+
+#language
+c#: built-in string class
+
+#integer
+c#: built-in int type
+
+#nonPositiveInteger
+c#: built-in int type
+
+#negativeInteger
+c#: built-in int type
+
+#long
+c#: built-in long type
+
+#int
+c#: built-in int type
+
+#nonNegativeInteger
+c#: built-in uint type
+
+#unsignedLong
+c#: built-in ulong type
+
+#positiveInteger
+c#: built-in uint type
+
+#cogsDate
+c#: struct CogsDate{
+	Type type;
+	DateSuper Date;
+
+	public CogsDate(DateSuper date){
+		type = Object.GetType();
+		Date = date;
+	}
+
+	public string GetValue(){
+		return Date.GetValue();
+	}
+}
+
+#Min/Max's for built-in types and classes will be checked with the following attribute:
+public class CardinalityAttribute : Attribute
+{
+	public void CheckValueString(string input, int minLength, int maxLength, enum enumeration, pattern)
+	{
+		if(input.Length < minLength || input.Length > maxLength || !enumeration.GetNames(typeof(string)).Contains(input) )
+		{
+			thow new InvalidOperationException();
+		}
+	}
+
+	public void CheckValueInt(T input, int minInclusive, int minExclusive, int maxInclusive, maxExclusive)
+	{
+		if(minInclusive != null && input < minInclusive || minExclusive != null && input <= minExclusive)
+		{
+			throw new InvalidOperationException();
+		}
+		if(maxInclusive != null && input > maxInclusive || maxExclusive != null && input >= maxExclusive)
+		{
+			throw new InvalidOperationException();
+		}
+	}
+}
+Dates and times can be validated through multiple CheckValueInt calls
