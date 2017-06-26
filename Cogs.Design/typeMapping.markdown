@@ -27,6 +27,7 @@ c#: struct duration : DateSuper{
 	duration MinExclusive;
 	duration MaxInclusive;
 	duration MaxExclusive;
+	string[] values;
 
 	public duration(int y, int m, int d, int h, int min, int s)
 	{
@@ -36,10 +37,25 @@ c#: struct duration : DateSuper{
 		Hours = h;
 		Minutes = min;
 		Seconds = s;
+		values = new string[] {y, m, d, h, min, s};
 	}
 
 	public string getValue()
 	{
+		int counter = 0;
+			foreach(var item in Values)
+			{
+				int minIn = 0;
+				int minEx = -1;
+				int maxEx = int64.MaxInt();
+				int maxIn = int64.MaxInt();
+				if(MinInclusive != null) { minIn = MinInclusive.Values[counter]; }
+				if(MinExclusive != null) { minEx = MinExclusive.Values[counter]; }
+				if(MaxInclusive != null) { maxIn = MaxInclusive.Values[counter]; }
+				if(MaxExclusive != null) { maxEx = MaxExclusive.Values[counter]; }
+				[CheckValueInt(item, minInt, minEx, maxIn, MaxEx)]
+				counter++;
+			}
 		return Years.ToString("0000") + Months.ToString("00") + Days.ToString("00") + T + Hours.ToString("00") + Minutes.ToString("00") + seconds.ToString("00");
 	}
 }
@@ -60,6 +76,7 @@ c#: struct dateTime : DateSuper{
 	dateTime MinExclusive;
 	dateTime MaxInclusive;
 	dateTime MaxExclusive;
+	string[] values;
 
 	public dateTime(int c, int y, int m, int d, int h, int min, int s)
 	{
@@ -70,10 +87,25 @@ c#: struct dateTime : DateSuper{
 		this.h = h;
 		this.m = min;
 		this.s = s;
+		values = new string[] {C, Y, M, D, h, m, s};
 	}
 
 	public string getValue()
 	{
+		int counter = 0;
+		foreach(var item in Values)
+		{
+			int minIn = 0;
+			int minEx = 0;
+			int maxEx = 0;
+			int maxIn = 0;
+			if(MinInclusive != null) { minIn = MinInclusive.Values[counter]; }
+			if(MinExclusive != null) { minEx = MinExclusive.Values[counter]; }
+			if(MaxInclusive != null) { maxIn = MaxInclusive.Values[counter]; }
+			if(MaxExclusive != null) { maxEx = MaxExclusive.Values[counter]; }
+			[CheckValueInt(item, minInt, minEx, maxIn, MaxEx)]
+			counter++;
+		}
 		return sign + C.ToString("00") + Y.ToString("00") + "-" + M.ToString("00") + "-" + D.ToString("00") + T + h.ToString("00") + ":" + m.ToString("00") + ":" + s.ToString("00") + zone;
 	}
 }
@@ -155,7 +187,7 @@ public class CardinalityAttribute : Attribute
 		}
 	}
 
-	public void CheckValueInt(T input, int minInclusive, int minExclusive, int maxInclusive, maxExclusive)
+	public void CheckValueNum(T input, int minInclusive, int minExclusive, int maxInclusive, maxExclusive)
 	{
 		if(minInclusive != null && input < minInclusive || minExclusive != null && input <= minExclusive)
 		{
@@ -167,4 +199,3 @@ public class CardinalityAttribute : Attribute
 		}
 	}
 }
-Dates and times can be validated through CheckValueInt calls
