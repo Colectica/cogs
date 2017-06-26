@@ -40,7 +40,7 @@ c#: struct duration : DateSuper{
 
 	public string getValue()
 	{
-		return Years.ToString() + Months.ToString() + Days.ToString() + T + Hours.ToString() + Minutes.ToString() + seconds.ToString();
+		return Years.ToString("0000") + Months.ToString("00") + Days.ToString("00") + T + Hours.ToString("00") + Minutes.ToString("00") + seconds.ToString("00");
 	}
 }
 
@@ -74,7 +74,7 @@ c#: struct dateTime : DateSuper{
 
 	public string getValue()
 	{
-		return sign + C.ToString() + Y.ToString() + "-" + M.ToString() + "-" + D.ToString() + T + h.ToString() + ":" + m.ToString() + ":" + s.ToString() + zone;
+		return sign + C.ToString("00") + Y.ToString("00") + "-" + M.ToString("00") + "-" + D.ToString("00") + T + h.ToString("00") + ":" + m.ToString("00") + ":" + s.ToString("00") + zone;
 	}
 }
 
