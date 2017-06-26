@@ -23,6 +23,7 @@ namespace Cogs.Model
         public List<Relationship> Relationships { get; } = new List<Relationship>();
 
         public bool IsAbstract { get; set; }
+        public bool IsPrimitive { get; set; }
 
         public List<Property> Properties { get; set; } = new List<Property>();
 

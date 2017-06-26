@@ -96,6 +96,12 @@ namespace Cogs.Dto
                     itemType.IsAbstract = true;
                 }
 
+                string primitiveFileName = Path.Combine(typeDir, "Primitive");
+                if (File.Exists(primitiveFileName))
+                {
+                    itemType.IsPrimitive = true;
+                }
+
                 // Read the properties
                 if (File.Exists(propertiesFileName))
                 {
