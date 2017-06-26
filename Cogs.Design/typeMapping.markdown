@@ -167,4 +167,4 @@ public class CardinalityAttribute : Attribute
 		}
 	}
 }
-Dates and times can be validated through multiple CheckValueInt calls
+Dates and times can be validated through CheckValueInt calls
