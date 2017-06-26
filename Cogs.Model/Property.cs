@@ -25,6 +25,7 @@ namespace Cogs.Model
         {
             get
             {
+                // temporary until model contains IsPrimitive definition
                 if (DataTypeName.ToLower().Contains("string") || DataTypeName.ToLower().Contains("date") || DataTypeName.ToLower().Contains("codeValue"))
                 {
                     return true;
