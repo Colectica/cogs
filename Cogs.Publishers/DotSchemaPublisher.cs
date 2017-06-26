@@ -75,9 +75,9 @@ namespace Cogs.Publishers
             var header = "digraph G { compound = true rankdir=LR fontsize = 8 node [ " +
                "fontsize = 8 shape = \"oval\"] edge [ fontsize = 8 ] ";
 
-            if (Output.Equals("all")) MakeGraphAll(model, header);
-            else if (Output.Equals("topic")) MakeGraphTopic(model, header);
-            else MakeGraphSingle(model, header);
+            if (Output.Equals("all")) { MakeGraphAll(model, header); }
+            else if (Output.Equals("topic")) { MakeGraphTopic(model, header); }
+            else { MakeGraphSingle(model, header); }
         }
 
         private string MakeItem(DataType item)
@@ -265,8 +265,10 @@ namespace Cogs.Publishers
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
                 if (previousOutput > item.Name.Length)
+                {
                     Console.Write("\rCreating Graph for " + item.Name + string.Join("", Enumerable.Repeat(" ", previousOutput - item.Name.Length)));
-                else Console.Write("\rCreating Graph for " + item.Name);
+                }
+                else { Console.Write("\rCreating Graph for " + item.Name); }
                 previousOutput = item.Name.Length;
                 var arrows = "";
                 bool ifCluster = false;
@@ -275,7 +277,7 @@ namespace Cogs.Publishers
                 {
                     if (clss.ExtendsTypeName.Equals(item.Name) && Inheritance)
                     {
-                        if(ifCluster) arrows += clss.Name + " -> " + item.Name + "Properties" + "[arrowhead=\"empty\" lhead = cluster" + item.Name + "] ";
+                        if (ifCluster) { arrows += clss.Name + " -> " + item.Name + "Properties" + "[arrowhead=\"empty\" lhead = cluster" + item.Name + "] "; }
                         else arrows += clss.Name + " -> " + item.Name + "[arrowhead=\"empty\"] ";
 
 
@@ -285,7 +287,9 @@ namespace Cogs.Publishers
                         if (property.DataTypeName.Equals(item.Name))
                         {
                             if (clss.Name.Equals(item.Name) && ifCluster)
+                            {
                                 arrows += clss.Name + "Properties -> " + item.Name + "Properties [ arrowhead=\"none\" label=" + property.Name + " ] ";
+                            } 
                             else if (ifCluster) arrows += clss.Name + " -> " + item.Name + "Properties [ arrowhead=\"none\" label=" + property.Name + " lhead = cluster" + item.Name + "] ";
                             else arrows += clss.Name + " -> " + item.Name + "[ arrowhead=\"none\" label=" + property.Name + "] ";
                         }
