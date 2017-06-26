@@ -35,7 +35,7 @@ namespace Cogs.Publishers
                         var obj2 = new JObject();
                         foreach (var prop in reuse.Properties)
                         {
-                            if (prop.Reference != null)
+                           if (prop.Reference != null)
                             {
                                 if (prop.MultiplicityElement.MaxCardinality == "1")
                                 {

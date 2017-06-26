@@ -38,13 +38,6 @@ namespace Cogs.Tests
             var validate = schema.Validate(jsondata);
 
             Assert.Null(validate);
-            //var schema = File.ReadAllText(Path.Combine(outputPath, "jsonSchema" + ".json"));
-            //var valida = schema.validate();
-
-            //var valid1 = schema.Validate();
-            //read JSON directly from a file
-            //Assert.True(valid1);
-            //Assert.True(valid2);
         }
     }
 }
