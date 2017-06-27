@@ -110,6 +110,72 @@ namespace Cogs.Publishers
             TextWriter tmp = Console.Out;
             StreamWriter sw = new StreamWriter(fs);
             Console.SetOut(sw);
+            //writeout simple type
+            //duration
+            Console.WriteLine("type duration {");
+            Console.WriteLine("\t years: Int");
+            Console.WriteLine("\t months : Int");
+            Console.WriteLine("\t days : Int");
+            Console.WriteLine("\t hour: Int");
+            Console.WriteLine("\t minutes: Int");
+            Console.WriteLine("\t seconds: Int");
+            Console.WriteLine("\t timezone: String");
+            Console.WriteLine("}");
+            //datetime
+            Console.WriteLine("type datetime {");
+            Console.WriteLine("\t date: date");
+            Console.WriteLine("\t time: time");
+            Console.WriteLine("\t timezone: String");
+            Console.WriteLine("}");
+            //time
+            Console.WriteLine("type time {");
+            Console.WriteLine("\t hour: Int");
+            Console.WriteLine("\t minutes: Int");
+            Console.WriteLine("\t second: Int");
+            Console.WriteLine("\t timezone: String");
+            Console.WriteLine("}");
+            //date
+            Console.WriteLine("type date {");
+            Console.WriteLine("\t year: Int");
+            Console.WriteLine("\t month: Int");
+            Console.WriteLine("\t day: Int");
+            Console.WriteLine("\t timezone: String");
+            Console.WriteLine("}");
+            //gyearmonth
+            Console.WriteLine("type gYearMonth {");
+            Console.WriteLine("\t Year: Int");
+            Console.WriteLine("\t Month: Int");
+            Console.WriteLine("\t timezone: String");
+            Console.WriteLine("}");
+            //gyear
+            Console.WriteLine("type gYear {");
+            Console.WriteLine("\t Year: Int");
+            Console.WriteLine("\t timezone: String");
+            Console.WriteLine("}");
+            //gmonthday
+            Console.WriteLine("type gMonthDay {");
+            Console.WriteLine("\t Month: Int");
+            Console.WriteLine("\t Day: Int");
+            Console.WriteLine("\t timezone: String");
+            Console.WriteLine("}");
+            //gDay
+            Console.WriteLine("type gDay {");
+            Console.WriteLine("\t Day: Int");
+            Console.WriteLine("\t timezone: String");
+            Console.WriteLine("}");
+            //gmonth
+            Console.WriteLine("type gMonth {");
+            Console.WriteLine("\t Month: Int");
+            Console.WriteLine("\t timezone: String");
+            Console.WriteLine("}");
+            //cogdate
+            Console.WriteLine("type cogsDate {");
+            Console.WriteLine("\t dateTime: datetime");
+            Console.WriteLine("\t date : date");
+            Console.WriteLine("\t gYearMonth : gYearMonth");
+            Console.WriteLine("\t gYear : gYear");
+            Console.WriteLine("\t duration : duration");
+            Console.WriteLine("}");
             foreach (var item in items)
             {
                 Console.WriteLine("type " + item.Type + "{");
