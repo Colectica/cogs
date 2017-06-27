@@ -5,7 +5,6 @@ c#: built-in bool type
 
 ## string
 c#: built-in string class with StringLength attribute
-// what about pattern and enumerations
 
 ## decimal
 c#: built-in decimal type with Range and ExclusiveRange attributes
