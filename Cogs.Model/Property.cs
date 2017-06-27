@@ -29,7 +29,16 @@ namespace Cogs.Model
                 return DataType.IsPrimitive;
             }
         }
-
+        /*
+        public int? MinLength { get; set; } = null;
+        public int? MaxLength { get; set; } = null;
+        public int? MinInclusive { get; set; } = null;
+        public int? MinExclusive { get; set; } = null;
+        public int? MaxInclusive { get; set; } = null;
+        public int? MaxExclusive { get; set; } = null;
+        public Enum Enumerations { get; set; } = null;
+        public string Pattern { get; set; } = null;
+        */
         public override string ToString()
         {
             return $"{Name} - {DataType} - {MinCardinality}..{MaxCardinality}";

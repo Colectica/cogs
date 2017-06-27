@@ -25,7 +25,7 @@ built-in DateTimeOffset type
 built-in DateTimeOffset type 
 
 ## date
-built-in DateTimeOffset type wrapped in class inheriting from DateSuper
+built-in DateTimeOffset type
 
 ## gYearMonth
 built-in tuple type containing two ints
@@ -64,13 +64,13 @@ built-in long type with Range and ExclusiveRange attributes
 built-in int type with Range and ExclusiveRange attributes
 
 ## nonNegativeInteger
-built-in uint type with Range and ExclusiveRange attributes
+built-in int type with Range and ExclusiveRange attributes
 
 ## unsignedLong
 built-in ulong type with Range and ExclusiveRange attributes
 
 ## positiveInteger
-built-in uint type with Range and ExclusiveRange attributes
+built-in int type with Range and ExclusiveRange attributes
 
 ## cogsDate
-generic Object type 
+generated CogsDate struct
