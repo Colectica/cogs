@@ -1,0 +1,1 @@
+A string in a specific language

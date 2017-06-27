@@ -14,6 +14,7 @@ namespace Cogs.Dto
         public string Extends { get; set; }
 
         public bool IsAbstract { get; set; }
+        public bool IsPrimitive { get; set; }
 
         public List<Property> Properties { get; set; } = new List<Property>();
 

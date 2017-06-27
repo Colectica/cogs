@@ -194,6 +194,7 @@ namespace Cogs.Model
             dataType.Name = dto.Name;
             dataType.Description = dto.Description;
             dataType.IsAbstract = dto.IsAbstract;
+            dataType.IsPrimitive = dto.IsPrimitive;
             dataType.ExtendsTypeName = dto.Extends;
             dataType.DeprecatedNamespace = dto.DeprecatedNamespace;
             dataType.IsDeprecated = dto.IsDeprecated;

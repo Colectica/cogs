@@ -8,7 +8,7 @@ COGS simple type system
 |boolean | |Represents Boolean values, which are either true or false.|
 |string |maxLength, minLength, enumeration, pattern|Represents character strings.|
 |boolean ||Represents Boolean values, which are either true or false.|
-|decimal |minInclusive, maxInclusive, maxExclusive|Represents arbitrary precision numbers.|
+|decimal |minInclusive, minExclusive, maxInclusive, maxExclusive|Represents arbitrary precision numbers.|
 |float |minInclusive, minExclusive, maxInclusive, maxExclusive|Represents single-precision 32-bit floating-point numbers.|
 |double |minInclusive, minExclusive, maxInclusive, maxExclusive|Represents double-precision 64-bit floating-point numbers.|
 |duration |minInclusive, minExclusive, maxInclusive, maxExclusive|Represents a duration of time. The pattern for duration is PnYnMnDTnHnMnS, where nY represents the number of years, nM the number of months, nD the number of days, T the date/time separator, nH the number of hours, nM the number of minutes, and nS the number of seconds.|
