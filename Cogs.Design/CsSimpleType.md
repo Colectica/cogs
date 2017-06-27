@@ -1,73 +1,74 @@
+# C# Simple Type Mappings
 
-#boolean
+## boolean
 c#: built-in bool type
 
-#string
+## string
 c#: built-in string class with StringLength attribute
 // what about pattern and enumerations
 
-#decimal
+## decimal
 c#: built-in decimal type with Range and ExclusiveRange attributes
 
-#float
+## float
 c#: built-in float type with Range and ExclusiveRange attributes
 
-#double
+## double
 c#: built-in double type with Range and ExclusiveRange attributes
 
-#duration
+## duration
 c#: built-in timespan type
 
-#dateTime
+## dateTime
 c#: built-in DateTimeOffset type
 
-#time
+## time
 c#: built-in DateTimeOffset type 
 
-#date
+## date
 c#: built-in DateTimeOffset type wrapped in class inheriting from DateSuper
 
-#gYearMonth
+## gYearMonth
 c#: tuple of two ints
 
-#gYear
+## gYear
 c#: int type with Range and ExclusiveRange attributes
 
-#gYearDay
+## gYearDay
 c#: tuple of two ints
 
-#gDay
+## gDay
 c#: int type with Range and ExclusiveRange attributes
 
-#gMonth
+## gMonth
 c#: int type with Range and ExclusiveRange attributes
 
-#anyURI
+## anyURI
 c#: built-in Uri class with StringLength attribute
 
-#language
+## language
 c#: built-in string class
 
-#integer
+## integer
 c#: built-in int type with Range and ExclusiveRange attributes
 
-#nonPositiveInteger
+## nonPositiveInteger
 c#: built-in int type with Range and ExclusiveRange attributes
 
-#negativeInteger
+## negativeInteger
 c#: built-in int type with Range and ExclusiveRange attributes
 
-#long
+## long
 c#: built-in long type with Range and ExclusiveRange attributes
 
-#int
+## int
 c#: built-in int type with Range and ExclusiveRange attributes
 
-#nonNegativeInteger
+## nonNegativeInteger
 c#: built-in uint type with Range and ExclusiveRange attributes
 
-#unsignedLong
+## unsignedLong
 c#: built-in ulong type with Range and ExclusiveRange attributes
 
-#positiveInteger
+## positiveInteger
 c#: built-in uint type with Range and ExclusiveRange attributes
