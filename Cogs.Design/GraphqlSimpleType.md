@@ -31,6 +31,7 @@
         hour: Int
         minutes: Int
         seconds: Int
+        timezone: String
     }
     ```
 ## datetime 
@@ -39,6 +40,7 @@
     type datetime {
         date: date
         time: time
+        timezone: String
     }
     ```
 
@@ -49,6 +51,7 @@
         hour: Int
         minutes: Int
         second: Int
+        timezone: String
     }
     ```
 
@@ -59,6 +62,7 @@
         year: Int
         month: Int
         day: Int
+        timezone: String
     }
     ```
 
@@ -68,6 +72,7 @@
     type gYearMonth {
         Year: Int
         Month: Int
+        timezone: String
     }
     ```
 
@@ -76,6 +81,7 @@
     ```
     type gYear {
         Year: Int
+        timezone: String
     }
     ```
 
@@ -85,6 +91,7 @@
     type gMonthDay {
         Month: Int
         Day: Int
+        timezone: String
     }
     ```
 
@@ -93,6 +100,7 @@
     ```
     type gDay {
         Day: Int
+        timezone: String
     }
     ```
 
@@ -101,6 +109,7 @@
     ```
     type gMonth {
         Month: Int
+        timezone: String
     }
     ```
 
@@ -115,27 +124,34 @@
 
 ## integer
 1. Represent as `Int` 
+2. no specific way to define the Facets 
 
 ## nonPositiveInteger
 1. Represent as `Int`
+2. no specific way to define the Facets 
 
 ## negativeInteger
 1. Represent as `Int`
+2. no specific way to define the Facets 
 
 ## long 
 1. It is not define in graphql schema for now
 
 ## int
 1. Represent as `Int`
+2. no specific way to define the Facets 
 
 ## nonNegativeInteger	
 1. Represent as `Int`
+2. no specific way to define the Facets 
 
 ## unsignedLong	
 1. Represent as `Int`
+2. no specific way to define the Facets 
 
 ## positiveInteger	
 1. Represent as `Int`
+2. no specific way to define the Facets 
 
 ## cogsDate	
 1. Define as below

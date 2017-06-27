@@ -112,7 +112,8 @@
         "type" : "object",
         "properties" : {
             "year" : {"type" : "integer"},
-            "month" : {"type" : "integer"}
+            "month" : {"type" : "integer"},
+            "timezone" : {"type" : "string"}
         }
         "required" : ["year", "month"]
     }
@@ -122,7 +123,11 @@
 1. Represent as below
     ```
     "year" : {
-        "type" : "integer",
+        "type" : "object",
+        "properties" : {
+            "year" : {"type" : "integer"},
+            "timezone" : {"type" : "string"} 
+        }
     }
     ```
 ## GMonthDay
@@ -133,7 +138,8 @@
         "type" : "object",
         "properties" : {
             "month" : {"type" : "integer"},
-            "day" : {"type" : "integer"}
+            "day" : {"type" : "integer"},
+            "timezone" : {"type" : "string"}
         }
         "required" : ["month", "day"]
     }
@@ -144,18 +150,27 @@
 1. Represent as below
     ```
     "day" : {
-        "type" : "integer",
+        "type" : "object",
+        "properties" : {
+            "day" : {"type" : "integer"},
+           "timezone" : {"type" : "string"} 
+        }
     }
+    ```
 
 ## GMonth
 
 1. Represent as below
     ```
     "month" : {
-        "type" : "integer",
+        "type" : "object",
+        "properties" : {
+            "month" : {"type" : "integer"},
+            "timezone" : {"type" : "string"} 
+        }
     }
     ```
-    
+
 ## AnyURI
 
 1. Json Schema is represented as below
@@ -171,7 +186,12 @@
 
 ## Language
 
-1. 
+1. Represent as below
+    ```
+    "Language" {
+        "type" : "string"
+    }
+    ```
 
 ## Integer
 
@@ -295,6 +315,7 @@
         "type: "object",
         "properties" : {
             "dateTime" : { $ref : #/path/datetime },
+            "date" : { $ref : #/path/date },
             "gYearMonth" : {$ref : #/path/GYearMonth},
             "gYear" : {$ref : #/path/gYear},
             "duration" : {$ref : #/path/duration}
