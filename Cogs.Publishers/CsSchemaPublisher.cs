@@ -108,27 +108,26 @@ namespace Cogs.Publishers
         // takes a data type name string and translates to a c# data structure representation name string
         private string SetDataTypeName(string dataType)
         {
-            if (dataType.Equals("boolean")) { return "bool"; }
-            if (dataType.Equals("integer")) { return "int"; }
-            if (dataType.Equals("string")) { return "string"; }
-            if (dataType.Equals("language")) { return "string"; }
-            if (dataType.Equals("duration")) { return "TimeSpan"; }
-            if (dataType.Equals("dateTime")) { return "DateTimeOffset"; }
-            if (dataType.Equals("time")) { return "DateTimeOffset"; }
-            if (dataType.Equals("date")) { return "DateTimeOffset"; }
-            if (dataType.Equals("gYearMonth")) { return "Tuple<int, int>"; }
-            if (dataType.Equals("gYear")) { return "int"; }
-            if (dataType.Equals("gYearDay")) { return "Tuple<int, int>"; }
-            if (dataType.Equals("gDay")) { return "int"; }
-            if (dataType.Equals("gMonth")) { return "int"; }
-            if (dataType.Equals("anyURI")) { return "Uri"; }
-            if (dataType.Equals("nonPositiveInteger")) { return "int"; }
-            if (dataType.Equals("negativeInteger")) { return "int"; }
-            if (dataType.Equals("long")) { return "long"; }
-            if (dataType.Equals("nonNegativeInteger")) { return "int"; }
-            if (dataType.Equals("unsignedLong")) { return "ulong"; }
-            if (dataType.Equals("positiveInteger")) { return "int"; }
-            if (dataType.Equals("cogsDate")) { return "CogsDate"; }
+            if (string.Equals(dataType, "boolean", StringComparison.OrdinalIgnoreCase)) { return "bool"; }
+            if (string.Equals(dataType, "integer", StringComparison.OrdinalIgnoreCase)) { return "int"; }
+            if (string.Equals(dataType, "string", StringComparison.OrdinalIgnoreCase)) { return "string"; }
+            if (string.Equals(dataType, "language", StringComparison.OrdinalIgnoreCase)) { return "string"; }
+            if (string.Equals(dataType, "duration", StringComparison.OrdinalIgnoreCase)) { return "TimeSpan"; }
+            if (string.Equals(dataType, "dateTime", StringComparison.OrdinalIgnoreCase)) { return "DateTimeOffset"; }
+            if (string.Equals(dataType, "time", StringComparison.OrdinalIgnoreCase)) { return "DateTimeOffset"; }
+            if (string.Equals(dataType, "date", StringComparison.OrdinalIgnoreCase)) { return "DateTimeOffset"; }
+            if (string.Equals(dataType, "gYearMonth", StringComparison.OrdinalIgnoreCase)) { return "Tuple<int, int>"; }
+            if (string.Equals(dataType, "gYear", StringComparison.OrdinalIgnoreCase)) { return "int"; }
+            if (string.Equals(dataType, "gYearDay", StringComparison.OrdinalIgnoreCase)) { return "Tuple<int, int>"; }
+            if (string.Equals(dataType, "gDay", StringComparison.OrdinalIgnoreCase)) { return "int"; }
+            if (string.Equals(dataType, "gMonth", StringComparison.OrdinalIgnoreCase)) { return "int"; }
+            if (string.Equals(dataType, "anyURI", StringComparison.OrdinalIgnoreCase)) { return "Uri"; }
+            if (string.Equals(dataType, "nonPositiveInteger", StringComparison.OrdinalIgnoreCase)) { return "int"; }
+            if (string.Equals(dataType, "negativeInteger", StringComparison.OrdinalIgnoreCase)) { return "int"; }
+            if (string.Equals(dataType, "nonNegativeInteger", StringComparison.OrdinalIgnoreCase)) { return "int"; }
+            if (string.Equals(dataType, "unsignedLong", StringComparison.OrdinalIgnoreCase)) { return "ulong"; }
+            if (string.Equals(dataType, "positiveInteger", StringComparison.OrdinalIgnoreCase)) { return "int"; }
+            if (string.Equals(dataType, "cogsDate", StringComparison.OrdinalIgnoreCase)) { return "CogsDate"; }
             return dataType;
         }
     }
