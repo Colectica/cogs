@@ -3,6 +3,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using System.ComponentModel.DataAnnotations.ValidationAttribute;
 
 namespace cogsBurger
 {
@@ -60,37 +61,49 @@ namespace cogsBurger
 
     public struct CogsDate
     {
-        DateTimeOffset DateTime;
-        DateTimeOffset Date;
-        Tuple<int, int> GYearMonth;
-        int GYear;
-        TimeSpan Duration;
-        enum CogsDateType {DateTime, Date, GYearMonth, GYear, Duration};
+        public DateTimeOffset DateTime { get; set; }
+        public DateTimeOffset Date { get; set; }
+        public Tuple<int, int> GYearMonth { get; set; }
+        public int GYear { get; set; }
+        public TimeSpan Duration { get; set; }
+        public enum CogsDateType { DateTime, Date, GYearMonth, GYear, Duration } 
+        public CogsDateType UsedType { get; private set; }
 
         public CogsDate(DateTimeOffset item, bool isDate = false) : this()
         {
-            if (isDate) { Date = item; }
-            else { DateTime = item; }
+            if (isDate)
+            {
+                Date = item;
+                UsedType = CogsDateType.Date;
+            }
+            else
+            {
+                DateTime = item;
+                UsedType = CogsDateType.DateTime;
+            }
         }
 
         public CogsDate(Tuple<int, int> item) : this()
         {
             GYearMonth = item;
+            UsedType = CogsDateType.GYearMonth;
         }
 
         public CogsDate(int item) : this()
         {
             GYear = item;
+            UsedType = CogsDateType.GYear;
         }
 
         public CogsDate(TimeSpan item) : this()
         {
             Duration = item;
+            UsedType = CogsDateType.Duration;
         }
 
         public string GetValue()
         {
-            switch(CogsDateType)
+            switch (UsedType)
             {
                 case CogsDateType.DateTime:
                     {
@@ -113,7 +126,7 @@ namespace cogsBurger
                         return Duration.Duration().ToString();
                     }
             }
-     //       throw new InvalidOperationException();
+            throw new InvalidOperationException();
         }
     }
 }
