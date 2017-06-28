@@ -20,6 +20,7 @@ namespace Cogs.Publishers
         public string TargetNamespace { get; set; } = "ddi:3_4";
         public List<DataType> ReusableStorage { get; set; }
         public List<ItemType> ItemTypeStorage { get; set; }
+        public List<string> Simpletype { get; set; }
 
         public void Publish(CogsModel model)
         {
@@ -46,6 +47,8 @@ namespace Cogs.Publishers
 
             ReusableStorage = model.ReusableDataTypes;
             ItemTypeStorage = model.ItemTypes;
+            Simpletype = new List<string>();
+            CreateSimpleTypeList(Simpletype);
             //create a list to store jsonschema for each itemtype
             var root = new SchemaList();
             List<JsonSchema> items = new List<JsonSchema>();
@@ -64,6 +67,7 @@ namespace Cogs.Publishers
             root.Schema = "http://json-schema.org/draft-04/schema#";
             root.Id = "#root";
             root.Properties = items;
+            root.SimpleType = "root";
 
 
             root.definitions = define;
@@ -88,6 +92,10 @@ namespace Cogs.Publishers
                     if (IsReusableType(prop.DataType.Name))
                     {
                         temp.Reference = "#/definitions/" + prop.DataType.Name;
+                    }
+                    else if (IsSimpleType(prop.DataType.Name))
+                    {
+                        temp.Reference = "#/simpleType/" + prop.DataType.Name;
                     }
                     else
                     {
@@ -158,6 +166,10 @@ namespace Cogs.Publishers
             {
                 prop.Reference = "#/definitions/" + property.DataType.Name;
             }
+            else if(IsSimpleType(property.DataType.Name))
+            {
+                prop.Reference = "#/simpleType/" + property.DataType.Name;
+            }
             else if (IsItemType(property.DataType.Name))
             {
                 prop.Reference = "#/definitions/Reference";
@@ -207,6 +219,32 @@ namespace Cogs.Publishers
             foreach(var item in ItemTypeStorage)
             {
                 if(type == item.Name)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        public void CreateSimpleTypeList(List<string> simpletype)
+        {
+            simpletype.Add("duration");
+            simpletype.Add("dateTime");
+            simpletype.Add("time");
+            simpletype.Add("date");
+            simpletype.Add("gYearMonth");
+            simpletype.Add("gYear");
+            simpletype.Add("gMonthDay");
+            simpletype.Add("gDay");
+            simpletype.Add("gMonth");
+            simpletype.Add("anyURI");
+            simpletype.Add("language");
+            simpletype.Add("cogsDate");
+        }
+        public Boolean IsSimpleType(string type)
+        {
+            foreach(var item in Simpletype)
+            {
+                if(item == type)
                 {
                     return true;
                 }
