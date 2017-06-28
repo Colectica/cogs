@@ -65,44 +65,55 @@ namespace cogsBurger
         Tuple<int, int> GYearMonth;
         int GYear;
         TimeSpan Duration;
-        Type Type;
+        enum CogsDateType {DateTime, Date, GYearMonth, GYear, Duration};
 
         public CogsDate(DateTimeOffset item, bool isDate = false) : this()
         {
             if (isDate) { Date = item; }
             else { DateTime = item; }
-            Type = item.GetType();
         }
 
         public CogsDate(Tuple<int, int> item) : this()
         {
             GYearMonth = item;
-            Type = item.GetType();
         }
 
         public CogsDate(int item) : this()
         {
             GYear = item;
-            Type = item.GetType();
         }
 
         public CogsDate(TimeSpan item) : this()
         {
             Duration = item;
-            Type = item.GetType();
         }
 
         public string GetValue()
         {
-            if (Type == DateTime.GetType())
+            switch(CogsDateType)
             {
-                if (DateTime != null) { return DateTime.DateTime.ToString(); }
-                return Date.Date.ToString();
+                case CogsDateType.DateTime:
+                    {
+                        return DateTime.DateTime.ToString();
+                    }
+                case CogsDateType.Date:
+                    {
+                        return Date.Date.ToString();
+                    }
+                case CogsDateType.GYearMonth:
+                    {
+                        return GYearMonth.Item1 + "-" + GYearMonth.Item2;
+                    }
+                case CogsDateType.GYear:
+                    {
+                        return GYear.ToString();
+                    }
+                case CogsDateType.Duration:
+                    {
+                        return Duration.Duration().ToString();
+                    }
             }
-            if (Type == GYearMonth.GetType()) { return GYearMonth.Item1 + "-" + GYearMonth.Item2; }
-            if (Type == GYear.GetType()) { return GYear.ToString(); }
-            if (Type == Duration.GetType()) { return Duration.Duration().ToString(); }
-            throw new InvalidOperationException();
+     //       throw new InvalidOperationException();
         }
     }
 }
