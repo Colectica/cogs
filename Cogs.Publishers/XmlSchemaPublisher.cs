@@ -196,6 +196,20 @@ namespace Cogs.Publishers
                 {
                     element.SchemaTypeName = new XmlQualifiedName("ReferenceType", TargetNamespace);
                 }
+                else if(CogsTypes.SimpleTypeNames.Contains(property.DataTypeName))
+                {
+                    if(string.Equals(property.DataTypeName, CogsTypes.CogsDate, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // make sure we use the right casing for the xs: type
+                        string xsTypeName = CogsTypes.SimpleTypeNames.First(x => x.Equals(property.DataTypeName, StringComparison.OrdinalIgnoreCase));
+
+                        element.SchemaTypeName = new XmlQualifiedName(xsTypeName, TargetNamespace);
+                    }
+                    else
+                    {
+                        element.SchemaTypeName = new XmlQualifiedName(property.DataTypeName, XmlSchema.Namespace);
+                    }                    
+                }
                 else
                 {
                     element.SchemaTypeName = new XmlQualifiedName(property.DataTypeName, TargetNamespace);

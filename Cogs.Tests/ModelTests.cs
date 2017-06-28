@@ -77,6 +77,111 @@ namespace Cogs.Tests
         }
 
 
+        [Fact]
+        public void DataTypesMustBeDefined()
+        {
 
+            CogsDtoModel dto = new CogsDtoModel();
+
+            Dto.ItemType item = new Dto.ItemType()
+            {
+                Name = "TestItem1"
+            };
+            dto.ItemTypes.Add(item);
+
+            Dto.Property property = new Dto.Property()
+            {
+                Name = "MyProp",
+                DataType = "Unknown",
+                MinCardinality = "0",
+                MaxCardinality = "n"
+            };
+            item.Properties.Add(property);
+
+            var errors = DtoValidation.CheckDataTypesMustBeDefined(dto);
+
+            Assert.NotEqual(0, errors.Count);
+        }
+
+        [Fact]
+        public void DataTypeNamesShouldMatchCase()
+        {
+            CogsDtoModel dto = new CogsDtoModel();
+
+            Dto.ItemType item = new Dto.ItemType()
+            {
+                Name = "TestItem1"
+            };
+            dto.ItemTypes.Add(item);
+
+            Dto.Property property = new Dto.Property()
+            {
+                Name = "MyProp",
+                DataType = "StrinG",
+                MinCardinality = "0",
+                MaxCardinality = "n"
+            };
+            item.Properties.Add(property);
+
+            var errors = DtoValidation.CheckDataTypeNamesShouldMatchCase(dto);
+
+            Assert.NotEqual(0, errors.Count);
+        }
+
+        
+        [Fact]
+        public void DataTypeNamesShouldNotConflictWithBuiltins()
+        {
+            CogsDtoModel dto = new CogsDtoModel();
+
+            Dto.ItemType item = new Dto.ItemType()
+            {
+                Name = "String"
+            };
+            dto.ItemTypes.Add(item);
+            
+            var errors = DtoValidation.CheckDataTypeNamesShouldNotConflictWithBuiltins(dto);
+
+            Assert.NotEqual(0, errors.Count);
+        }
+
+        [Fact]
+        public void DataTypeNamesShouldBePascalCase()
+        {
+            CogsDtoModel dto = new CogsDtoModel();
+
+            Dto.ItemType item = new Dto.ItemType()
+            {
+                Name = "myNonPascalCaseItem"
+            };
+            dto.ItemTypes.Add(item);
+
+            var errors = DtoValidation.CheckDataTypeNamesShouldBePascalCase(dto);
+
+            Assert.NotEqual(0, errors.Count);
+        }
+
+        [Fact]
+        public void PropertyNamesShouldBePascalCase()
+        {
+            CogsDtoModel dto = new CogsDtoModel();
+
+            Dto.ItemType item = new Dto.ItemType()
+            {
+                Name = "TestItem1"
+            };
+            dto.ItemTypes.Add(item);
+
+            Dto.Property property = new Dto.Property()
+            {
+                Name = "myProp",
+            };
+            item.Properties.Add(property);
+
+            var errors = DtoValidation.CheckPropertyNamesShouldBePascalCase(dto);
+
+            Assert.NotEqual(0, errors.Count);
+        }
+        
     }
 }
