@@ -106,7 +106,7 @@ namespace Cogs.Publishers
                         // add reusableTypes within that type to reusable list as well
                         Stack<DataType> stack = new Stack<DataType>();
                         stack.Push(property.DataType);
-                        reusablesPresent.Add(property.DataType);
+                        if(!property.DataTypeName.Equals(item.Name)) { reusablesPresent.Add(property.DataType); }
                         while(stack.Count > 0)
                         {
                             var type = stack.Pop();
@@ -122,12 +122,14 @@ namespace Cogs.Publishers
                                 }
                             }
                         }
+                        output.Append(item.Name + "Properties -> " + item.Name + property.DataTypeName + "[ arrowhead = \"none\" label = \"" + property.Name + "\"] ");
                     }
                     else
                     {
                         output.Append("edge[ arrowhead = \"none\" headlabel = \"0...*\" taillabel = \"0...*\"] ");
+                        output.Append(item.Name + "Properties -> " + property.DataTypeName + "[ arrowhead = \"none\" label = \"" + property.Name + "\"] ");
                     }
-                    output.Append(item.Name + "Properties -> " + item.Name + property.DataTypeName + "[ arrowhead = \"none\" label = \"" + property.Name + "\"] ");
+                    
                 }
             }
             if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName) && Inheritance)

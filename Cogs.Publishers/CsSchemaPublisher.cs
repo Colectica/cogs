@@ -9,6 +9,7 @@ using System.Text;
 using System.Xml.Linq;
 using System.Xml;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace Cogs.Publishers
 {
@@ -50,6 +51,8 @@ namespace Cogs.Publishers
             {
                 project.Save(xw);
             }
+            // copy types file
+            File.Copy(Path.Combine(Path.Combine(Path.Combine(TargetDirectory, ".."), ".."), "Types.cs"), Path.Combine(TargetDirectory, "Types.cs"));
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
                 // add class description using '$' for newline and '#' for tabs
@@ -63,9 +66,31 @@ namespace Cogs.Publishers
                 newClass.Append("$#{");
                 foreach(var prop in item.Properties)
                 {
-                    if (prop.DataTypeName.Equals("boolean")) { prop.DataTypeName = "bool"; }
                     // create documentation for property
                     newClass.Append("$##/// <summary>$##/// " + prop.Description + "$##/// <summary>");
+                    // create constraints
+                    /*
+                    if(prop.DataTypeName.Equals("string") || prop.DataTypeName.Equals("anyURI"))
+                    {
+                        newClass.Append("$##[StringLength(" + prop.MaxLength + ")]");
+                        if(prop.MinLength != null) { newClass.Append("$##[StringLength.MinimumLength = " + prop.MinLength + "]"); }
+                        if (prop.DataTypeName.Equals("string") && (prop.Enumerations != null || prop.Pattern != null))
+                        {
+                            // work with Enum and pattern
+                            newClass.Append("$##[StringValidation(" + prop.Enumerations + ", " + prop.Pattern + ")]");
+                        }
+                    }else if(!prop.DataTypeName.Equals("boolean") && !prop.DataType.Equals("language") && !prop.DataTypeName.Equals("cogsDate"))
+                    {
+                        if (prop.MinInclusive != null || prop.MaxInclusive != null)
+                        {
+                            newClass.Append("$##[Range(" + prop.MinInclusive + ", " + prop.MaxInclusive + ")]");
+                        }
+                        if (prop.MinExclusive != null || prop.MaxExclusive != null)
+                        {
+                            newClass.Append("$##[ExclusiveRange(" + prop.MinExclusive + ", " + prop.MaxExclusive + ")]");
+                        }
+                    }*/
+                    prop.DataTypeName = SetDataTypeName(prop.DataTypeName);
                     // if there can be at most one, create an instance variable
                     if (!prop.MaxCardinality.Equals("n") && Int32.Parse(prop.MaxCardinality) == 1)
                     {
@@ -78,6 +103,32 @@ namespace Cogs.Publishers
                 // write class to out folder
                 File.WriteAllText(Path.Combine(TargetDirectory, item.Name + ".cs"), newClass.ToString().Replace("#", "    ").Replace("$", Environment.NewLine));
             }
+        }
+
+        // takes a data type name string and translates to a c# data structure representation name string
+        private string SetDataTypeName(string dataType)
+        {
+            if (string.Equals(dataType, "boolean", StringComparison.OrdinalIgnoreCase)) { return "bool"; }
+            if (string.Equals(dataType, "integer", StringComparison.OrdinalIgnoreCase)) { return "int"; }
+            if (string.Equals(dataType, "string", StringComparison.OrdinalIgnoreCase)) { return "string"; }
+            if (string.Equals(dataType, "language", StringComparison.OrdinalIgnoreCase)) { return "string"; }
+            if (string.Equals(dataType, "duration", StringComparison.OrdinalIgnoreCase)) { return "TimeSpan"; }
+            if (string.Equals(dataType, "dateTime", StringComparison.OrdinalIgnoreCase)) { return "DateTimeOffset"; }
+            if (string.Equals(dataType, "time", StringComparison.OrdinalIgnoreCase)) { return "DateTimeOffset"; }
+            if (string.Equals(dataType, "date", StringComparison.OrdinalIgnoreCase)) { return "DateTimeOffset"; }
+            if (string.Equals(dataType, "gYearMonth", StringComparison.OrdinalIgnoreCase)) { return "Tuple<int, int>"; }
+            if (string.Equals(dataType, "gYear", StringComparison.OrdinalIgnoreCase)) { return "int"; }
+            if (string.Equals(dataType, "gYearDay", StringComparison.OrdinalIgnoreCase)) { return "Tuple<int, int>"; }
+            if (string.Equals(dataType, "gDay", StringComparison.OrdinalIgnoreCase)) { return "int"; }
+            if (string.Equals(dataType, "gMonth", StringComparison.OrdinalIgnoreCase)) { return "int"; }
+            if (string.Equals(dataType, "anyURI", StringComparison.OrdinalIgnoreCase)) { return "Uri"; }
+            if (string.Equals(dataType, "nonPositiveInteger", StringComparison.OrdinalIgnoreCase)) { return "int"; }
+            if (string.Equals(dataType, "negativeInteger", StringComparison.OrdinalIgnoreCase)) { return "int"; }
+            if (string.Equals(dataType, "nonNegativeInteger", StringComparison.OrdinalIgnoreCase)) { return "int"; }
+            if (string.Equals(dataType, "unsignedLong", StringComparison.OrdinalIgnoreCase)) { return "ulong"; }
+            if (string.Equals(dataType, "positiveInteger", StringComparison.OrdinalIgnoreCase)) { return "int"; }
+            if (string.Equals(dataType, "cogsDate", StringComparison.OrdinalIgnoreCase)) { return "CogsDate"; }
+            return dataType;
         }
     }
 }
