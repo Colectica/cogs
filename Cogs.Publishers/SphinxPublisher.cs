@@ -44,9 +44,8 @@ namespace Cogs.Publishers
             //copy over image css file
             var path = Path.Combine(Path.Combine(Path.Combine(Path.Combine(TargetDirectory, "build"), "html"), "_static"), "css");
             Directory.CreateDirectory(path);
-            string source = Path.Combine(Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), ".."), "copiedFiles"), "image.css");
-            string dest = Path.Combine(path, "image.css");
-            File.Copy(source, dest);
+            var source = Path.Combine(Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), ".."), "copiedFiles"), "image.css");
+            File.Copy(source, Path.Combine(path, "image.css"), true);
         }
     }
 }

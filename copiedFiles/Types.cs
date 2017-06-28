@@ -3,11 +3,10 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
-using System.ComponentModel.DataAnnotations.ValidationAttribute;
+using System.ComponentModel.DataAnnotations;
 
 namespace cogsBurger
 {
-    /*
     [AttributeUsage(AttributeTargets.All)]
     public class ExclusiveRangeAttribute : RangeAttribute
     {
@@ -30,8 +29,8 @@ namespace cogsBurger
             dynamic min = Minimum;
             dynamic max = Maximum;
 
-            if (MinExclusive && val <= min) { return false; }
-            if (MaxExclusive && val >= max) { return false; }
+            if (val <= min) { return false; }
+            if (val >= max) { return false; }
             return true;
         }
     }
@@ -43,9 +42,9 @@ namespace cogsBurger
         Regex Rgx;
         Enum Enumerations;
 
-        public StringValidationAttribute(Enum enumerations, string pattern)
+        public StringValidationAttribute(Enum enumerations, string pattern = null)
         {
-            this.Rgx = new Regex(pattern);
+            if(pattern != null) { this.Rgx = new Regex(pattern); }
             this.Enumerations = enumerations;
         }
 
@@ -56,7 +55,6 @@ namespace cogsBurger
             return true;
         }
     }
-    */
 
 
     public struct CogsDate

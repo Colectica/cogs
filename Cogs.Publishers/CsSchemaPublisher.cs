@@ -52,11 +52,12 @@ namespace Cogs.Publishers
                 project.Save(xw);
             }
             // copy types file
-            File.Copy(Path.Combine(Path.Combine(Path.Combine(Path.Combine(TargetDirectory, ".."), ".."), "copiedFiles"), "Types.cs"), Path.Combine(TargetDirectory, "Types.cs"));
+            File.Copy(Path.Combine(Path.Combine(Path.Combine(Path.Combine(TargetDirectory, ".."), ".."), "copiedFiles"), "Types.cs"), Path.Combine(TargetDirectory, "Types.cs"), true);
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
                 // add class description using '$' for newline and '#' for tabs
-                var newClass = new StringBuilder("using System;$using System.Collections.Generic;$$namespace " + projName +"${$#/// <summary>$#/// " + item.Description + "$#/// <summary>");
+                var newClass = new StringBuilder("using System;$using System.Collections.Generic;$using System.ComponentModel.DataAnnotations;$$namespace " + 
+                    projName +"${$#/// <summary>$#/// " + item.Description + "$#/// <summary>");
                 newClass.Append("$#public ");
                 // add abstract to class title if relevant
                 if (item.IsAbstract) { newClass.Append("abstract "); }
@@ -69,15 +70,31 @@ namespace Cogs.Publishers
                     // create documentation for property
                     newClass.Append("$##/// <summary>$##/// " + prop.Description + "$##/// <summary>");
                     // create constraints
-                    /*
                     if(prop.DataTypeName.Equals("string") || prop.DataTypeName.Equals("anyURI"))
                     {
-                        newClass.Append("$##[StringLength(" + prop.MaxLength + ")]");
-                        if(prop.MinLength != null) { newClass.Append("$##[StringLength.MinimumLength = " + prop.MinLength + "]"); }
-                        if (prop.DataTypeName.Equals("string") && (prop.Enumerations != null || prop.Pattern != null))
+                        if(prop.MinLength != null && prop.MaxLength != null)
+                        {
+                            newClass.Append("$##[StringLength(" + prop.MaxLength + ", MinimumLength = " + prop.MinLength + ")]");
+                        }
+                        else if(prop.MaxLength != null)
+                        {
+                            newClass.Append("$##[StringLength(" + prop.MaxLength + ")]");
+                        }
+                        else if (prop.MinLength != null)
+                        {
+                            newClass.Append("$##[StringLength(" + Int32.MaxValue + ", " + prop.MinLength + ")]");
+                        }
+                        if (prop.DataTypeName.Equals("string") && (prop.Enumeration.Count > 0 || !string.IsNullOrWhiteSpace(prop.Pattern)))
                         {
                             // work with Enum and pattern
-                            newClass.Append("$##[StringValidation(" + prop.Enumerations + ", " + prop.Pattern + ")]");
+                            newClass.Append("$##[StringValidation(new List<string>(");
+                            foreach(var option in prop.Enumeration)
+                            {
+                                newClass.Append(option);
+                            }
+                            if(!string.IsNullOrWhiteSpace(prop.Pattern)) { newClass.Append("), " + prop.Pattern + ")]"); }
+                            else { newClass.Append("))]"); }
+                            
                         }
                     }else if(!prop.DataTypeName.Equals("boolean") && !prop.DataType.Equals("language") && !prop.DataTypeName.Equals("cogsDate"))
                     {
@@ -89,7 +106,7 @@ namespace Cogs.Publishers
                         {
                             newClass.Append("$##[ExclusiveRange(" + prop.MinExclusive + ", " + prop.MaxExclusive + ")]");
                         }
-                    }*/
+                    }
                     prop.DataTypeName = SetDataTypeName(prop.DataTypeName);
                     // if there can be at most one, create an instance variable
                     if (!prop.MaxCardinality.Equals("n") && Int32.Parse(prop.MaxCardinality) == 1)
