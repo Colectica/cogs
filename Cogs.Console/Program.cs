@@ -4,6 +4,7 @@ using Cogs.Common;
 using Cogs.Dto;
 using Cogs.Model;
 using Cogs.Publishers;
+using Cogs.Validation;
 using Microsoft.Extensions.CommandLineUtils;
 using System;
 using System.Collections.Generic;
@@ -54,9 +55,11 @@ namespace Cogs.Console
                     var targetNamespace = namespaceUri.Value() ?? "cogs:default";
                     var prefix = namespaceUri.Value() ?? "cogs";
 
+                    // read cogs directory and validate the contents
                     var directoryReader = new CogsDirectoryReader();
                     var cogsDtoModel = directoryReader.Load(location);
                     HandleErrors(directoryReader.Errors);
+                    HandleErrors(DtoValidation.Validate(cogsDtoModel));
 
                     var modelBuilder = new CogsModelBuilder();
                     var cogsModel = modelBuilder.Build(cogsDtoModel);

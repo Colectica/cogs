@@ -20,6 +20,7 @@
     <ProjectReference Include="..\Cogs.Dto\Cogs.Dto.csproj" />
     <ProjectReference Include="..\Cogs.Model\Cogs.Model.csproj" />
     <ProjectReference Include="..\Cogs.Publishers\Cogs.Publishers.csproj" />
+    <ProjectReference Include="..\Cogs.Validation\Cogs.Validation.csproj" />
   </ItemGroup>
 
 </Project>

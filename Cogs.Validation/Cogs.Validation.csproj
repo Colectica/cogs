@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cogs.Common\Cogs.Common.csproj" />
+    <ProjectReference Include="..\Cogs.Dto\Cogs.Dto.csproj" />
+  </ItemGroup>
+
+</Project>
