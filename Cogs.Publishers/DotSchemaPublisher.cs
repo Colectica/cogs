@@ -116,8 +116,8 @@ namespace Cogs.Publishers
                             foreach (var prop in type.Properties)
                             {
                                 // checks: item is a reusable type, item is not already seen, item isn't current item, item isn't primitive
-                                if (ReusableList.Contains(prop.DataType) && !reusablesPresent.Contains(type) &&
-                                    !type.Name.Equals(prop.DataTypeName) && !prop.IsPrimitive && !prop.DataTypeName.Equals(item.Name))
+                                if (ReusableList.Contains(prop.DataType) && !reusablesPresent.Contains(type) && !prop.IsPrimitive &&
+                                    !type.Name.Equals(prop.DataTypeName)  && !prop.DataTypeName.Equals(item.Name))
                                 {
                                     stack.Push(prop.DataType);
                                     reusablesPresent.Add(prop.DataType);

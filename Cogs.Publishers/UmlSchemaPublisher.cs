@@ -143,6 +143,7 @@ namespace Cogs.Publishers
                     var newProperty = new XElement("ownedAttribute", new XAttribute(xmins+ "type", "uml:Property"),
                            new XAttribute(xmins + "id", CreateId(item.Name + "." + property.Name)),
                            new XAttribute("name", property.Name));
+                    if (string.Equals(property.DataTypeName, "cogsDate", StringComparison.OrdinalIgnoreCase)) { property.DataTypeName = "string"; }
                     newProperty.Add(new XElement("type", new XAttribute(xmins + "idref", property.DataTypeName)));
                     if(property.MinCardinality != null)
                     {

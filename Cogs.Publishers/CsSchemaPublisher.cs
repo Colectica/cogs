@@ -52,7 +52,7 @@ namespace Cogs.Publishers
                 project.Save(xw);
             }
             // copy types file
-            File.Copy(Path.Combine(Path.Combine(Path.Combine(TargetDirectory, ".."), ".."), "Types.cs"), Path.Combine(TargetDirectory, "Types.cs"));
+            File.Copy(Path.Combine(Path.Combine(Path.Combine(Path.Combine(TargetDirectory, ".."), ".."), "copiedFiles"), "Types.cs"), Path.Combine(TargetDirectory, "Types.cs"));
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
                 // add class description using '$' for newline and '#' for tabs
