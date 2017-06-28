@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Cogs.Common\Cogs.Common.csproj" />
     <ProjectReference Include="..\Cogs.Dto\Cogs.Dto.csproj" />
     <ProjectReference Include="..\Cogs.Model\Cogs.Model.csproj" />
     <ProjectReference Include="..\Cogs.Publishers\Cogs.Publishers.csproj" />

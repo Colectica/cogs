@@ -9,6 +9,7 @@ using System.Text;
 using System.Xml;
 using System.Xml.Schema;
 using System.Threading;
+using Cogs.Common;
 
 namespace Cogs.Publishers
 {
@@ -17,6 +18,8 @@ namespace Cogs.Publishers
     /// </summary>
     public class XmlSchemaPublisher
     {
+        public List<CogsError> Errors { get; } = new List<CogsError>();
+
         public string CogsLocation { get; set; }
         public string TargetDirectory { get; set; }
         public bool Overwrite { get; set; }
@@ -266,14 +269,16 @@ namespace Cogs.Publishers
             return CreateDataType(reference);
         }
 
-        static void ValidationCallback(object sender, ValidationEventArgs args)
+        void ValidationCallback(object sender, ValidationEventArgs args)
         {
             if (args.Severity == XmlSeverityType.Warning)
-                Console.Write("WARNING: ");
+            {
+                Errors.Add(new CogsError(ErrorLevel.Warning, args.Message));
+            }
             else if (args.Severity == XmlSeverityType.Error)
-                Console.Write("ERROR: ");
-
-            Console.WriteLine(args.Message);
+            {
+                Errors.Add(new CogsError(ErrorLevel.Error, args.Message));
+            }
         }
 
         public static XmlNode[] TextToNodeArray(string text)

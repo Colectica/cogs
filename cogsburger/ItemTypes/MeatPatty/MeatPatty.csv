@@ -1,2 +1,2 @@
-Name,DataType,MinCardinality,MaxCardinality,Description,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
-SourceAnimal,Animal,0,n,The animals which compose the patty,,,
+Name,DataType,MinCardinality,MaxCardinality,Description,MinLength,MaxLength,Enumeration,Pattern,MinInclusive,MinExclusive,MaxInclusive,MaxExclusive,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
+SourceAnimal,Animal,0,n,The animals which compose the patty,,,,,,,,,,,

@@ -1,2 +1,2 @@
-Name,DataType,MinCardinality,MaxCardinality,Description,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
-SesameSeeds,boolean,0,1,Does the bread roll have sesame seeds on it,,,
+Name,DataType,MinCardinality,MaxCardinality,Description,MinLength,MaxLength,Enumeration,Pattern,MinInclusive,MinExclusive,MaxInclusive,MaxExclusive,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
+SesameSeeds,boolean,0,1,Does the bread roll have sesame seeds on it,,,,,,,,,,,
