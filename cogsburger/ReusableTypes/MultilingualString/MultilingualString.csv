@@ -1,3 +1,3 @@
-Name,DataType,MinCardinality,MaxCardinality,Description,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
-Language,language,0,1,Language of the string,,,
-Content,string,0,1,The text content in a specific language,,,
+Name,DataType,MinCardinality,MaxCardinality,Description,MinLength,MaxLength,Enumeration,Pattern,MinInclusive,MinExclusive,MaxInclusive,MaxExclusive,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
+Language,language,0,1,Language of the string,,,,,,,,,,,
+Content,string,0,1,The text content in a specific language,,,,,,,,,,,

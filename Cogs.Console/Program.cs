@@ -1,11 +1,15 @@
 ﻿// Copyright (c) 2017 Colectica. All rights reserved
 // See the LICENSE file in the project root for more information.
+using Cogs.Common;
 using Cogs.Dto;
 using Cogs.Model;
 using Cogs.Publishers;
+using Cogs.Validation;
 using Microsoft.Extensions.CommandLineUtils;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace Cogs.Console
 {
@@ -51,11 +55,15 @@ namespace Cogs.Console
                     var targetNamespace = namespaceUri.Value() ?? "cogs:default";
                     var prefix = namespaceUri.Value() ?? "cogs";
 
+                    // read cogs directory and validate the contents
                     var directoryReader = new CogsDirectoryReader();
                     var cogsDtoModel = directoryReader.Load(location);
+                    HandleErrors(directoryReader.Errors);
+                    HandleErrors(DtoValidation.Validate(cogsDtoModel));
 
                     var modelBuilder = new CogsModelBuilder();
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
+                    HandleErrors(modelBuilder.Errors);
 
                     XmlSchemaPublisher publisher = new XmlSchemaPublisher();
                     publisher.CogsLocation = location;
@@ -65,6 +73,7 @@ namespace Cogs.Console
                     publisher.TargetNamespacePrefix = prefix;
 
                     publisher.Publish(cogsModel);
+                    HandleErrors(publisher.Errors);
 
 
                     return 0;
@@ -350,7 +359,26 @@ namespace Cogs.Console
             Environment.Exit(result);
         }
 
-
+        private static void HandleErrors(List<CogsError> errors)
+        {
+            foreach(var error in errors)
+            {
+                System.Console.Error.Write(Enum.GetName(typeof(ErrorLevel), error.Level) + ": ");
+                if(error.Level == ErrorLevel.Message)
+                {
+                    System.Console.WriteLine(error.Message);
+                }
+                else
+                {
+                    System.Console.Error.WriteLine(error.Message);
+                }
+                             
+            }
+            if(errors.Any(x => x.Level == ErrorLevel.Error))
+            {
+                Environment.Exit(100);
+            }
+        }
 
         private static string cogsLogo = 
 @"  ______   ______     _______      _______.
