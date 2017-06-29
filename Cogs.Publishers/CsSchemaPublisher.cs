@@ -23,6 +23,10 @@ namespace Cogs.Publishers
         /// boolean to determine whether to replace existing or not
         /// </summary>
         public bool Overwrite { get; set; }
+        /// <summary>
+        /// dictionary for translating names to c# datatype representations
+        /// </summary>
+        private Dictionary<string, string> Translator { get; set; }
 
         public void Publish(CogsModel model)
         {
@@ -38,6 +42,7 @@ namespace Cogs.Publishers
 
             Directory.CreateDirectory(TargetDirectory);
 
+            InitializeDictionary();
             //get the project name
             var projName = "cogsBurger";
 
@@ -118,7 +123,7 @@ namespace Cogs.Publishers
                             newClass.Append("$##[ExclusiveRange(" + prop.MinExclusive + ", " + prop.MaxExclusive + ")]");
                         }
                     }
-                    prop.DataTypeName = SetDataTypeName(prop.DataTypeName);
+                    if (Translator.ContainsKey(prop.DataTypeName)) { prop.DataTypeName = Translator[prop.DataTypeName]; }
                     // if there can be at most one, create an instance variable
                     if (!prop.MaxCardinality.Equals("n") && Int32.Parse(prop.MaxCardinality) == 1)
                     {
@@ -133,30 +138,32 @@ namespace Cogs.Publishers
             }
         }
 
-        // takes a data type name string and translates to a c# data structure representation name string
-        private string SetDataTypeName(string dataType)
+
+        // initialize the Translator dictionary
+        private void InitializeDictionary()
         {
-            if (string.Equals(dataType, "boolean", StringComparison.OrdinalIgnoreCase)) { return "bool"; }
-            if (string.Equals(dataType, "integer", StringComparison.OrdinalIgnoreCase)) { return "int"; }
-            if (string.Equals(dataType, "string", StringComparison.OrdinalIgnoreCase)) { return "string"; }
-            if (string.Equals(dataType, "language", StringComparison.OrdinalIgnoreCase)) { return "string"; }
-            if (string.Equals(dataType, "duration", StringComparison.OrdinalIgnoreCase)) { return "TimeSpan"; }
-            if (string.Equals(dataType, "dateTime", StringComparison.OrdinalIgnoreCase)) { return "DateTimeOffset"; }
-            if (string.Equals(dataType, "time", StringComparison.OrdinalIgnoreCase)) { return "DateTimeOffset"; }
-            if (string.Equals(dataType, "date", StringComparison.OrdinalIgnoreCase)) { return "DateTimeOffset"; }
-            if (string.Equals(dataType, "gYearMonth", StringComparison.OrdinalIgnoreCase)) { return "Tuple<int, int>"; }
-            if (string.Equals(dataType, "gYear", StringComparison.OrdinalIgnoreCase)) { return "int"; }
-            if (string.Equals(dataType, "gYearDay", StringComparison.OrdinalIgnoreCase)) { return "Tuple<int, int>"; }
-            if (string.Equals(dataType, "gDay", StringComparison.OrdinalIgnoreCase)) { return "int"; }
-            if (string.Equals(dataType, "gMonth", StringComparison.OrdinalIgnoreCase)) { return "int"; }
-            if (string.Equals(dataType, "anyURI", StringComparison.OrdinalIgnoreCase)) { return "Uri"; }
-            if (string.Equals(dataType, "nonPositiveInteger", StringComparison.OrdinalIgnoreCase)) { return "int"; }
-            if (string.Equals(dataType, "negativeInteger", StringComparison.OrdinalIgnoreCase)) { return "int"; }
-            if (string.Equals(dataType, "nonNegativeInteger", StringComparison.OrdinalIgnoreCase)) { return "int"; }
-            if (string.Equals(dataType, "unsignedLong", StringComparison.OrdinalIgnoreCase)) { return "ulong"; }
-            if (string.Equals(dataType, "positiveInteger", StringComparison.OrdinalIgnoreCase)) { return "int"; }
-            if (string.Equals(dataType, "cogsDate", StringComparison.OrdinalIgnoreCase)) { return "CogsDate"; }
-            return dataType;
+            Translator = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "boolean", "bool" },
+                { "integer", "int" },
+                { "language", "string" },
+                { "duration", "TimeSpan" },
+                { "dateTime", "DateTimeOffset" },
+                { "time", "DateTimeOffset" },
+                { "date", "DateTimeOffset" },
+                { "gYearMonth", "Tuple<int, int>" },
+                { "gYear", "int" },
+                { "gYearDay", "Tuple<int, int>" },
+                { "gDay", "int" },
+                { "gMonth", "int" },
+                { "anyURI", "Uri" },
+                { "nonPositiveInteger", "int" },
+                { "negativeInteger", "int" },
+                { "nonNegativeInteger", "int" },
+                { "unsignedLong", "ulong" },
+                { "positiveInteger", "int" },
+                { "cogsDate", "CogsDate" }
+            };
         }
     }
 }
