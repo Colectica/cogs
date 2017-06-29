@@ -1,4 +1,4 @@
 Name,DataType,MinCardinality,MaxCardinality,Description,MinLength,MaxLength,Enumeration,Pattern,MinInclusive,MinExclusive,MaxInclusive,MaxExclusive,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
-Name,String,0,1,A name for the Condiment,,,,,,,,,,,
-Description,String,0,1,A description of the Hamburger,,,,,,,,,,,
+Name,string,0,1,A name for the Condiment,,,,,,,,,,,
+Description,string,0,1,A description of the Hamburger,,,,,,,,,,,
 IsSpecial,boolean,0,1,Denote if the condiment is special,,,,,,,,,,,

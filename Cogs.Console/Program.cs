@@ -26,6 +26,34 @@ namespace Cogs.Console
             app.HelpOption("-?|-h|--help");
 
 
+            app.Command("validate", (command) =>
+            {
+
+                command.Description = "Validate a on disk COGS data model directory";
+                command.HelpOption("-?|-h|--help");
+
+                var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");                                
+
+                command.OnExecute(() =>
+                {
+                    var location = locationArgument.Value ?? Environment.CurrentDirectory;
+
+                    // read cogs directory and validate the contents
+                    var directoryReader = new CogsDirectoryReader();
+                    HandleErrors(directoryReader.Errors);
+                    var cogsDtoModel = directoryReader.Load(location);
+                    HandleErrors(DtoValidation.Validate(cogsDtoModel));
+
+                    // this could find gaps in the validation, but idealy return nothing
+                    var modelBuilder = new CogsModelBuilder();
+                    var cogsModel = modelBuilder.Build(cogsDtoModel);
+                    HandleErrors(modelBuilder.Errors);
+
+                    return 0;
+                });
+
+            });
+
             app.Command("publish-xsd", (command) =>
             {
 
@@ -57,8 +85,8 @@ namespace Cogs.Console
 
                     // read cogs directory and validate the contents
                     var directoryReader = new CogsDirectoryReader();
-                    var cogsDtoModel = directoryReader.Load(location);
                     HandleErrors(directoryReader.Errors);
+                    var cogsDtoModel = directoryReader.Load(location);
                     HandleErrors(DtoValidation.Validate(cogsDtoModel));
 
                     var modelBuilder = new CogsModelBuilder();
