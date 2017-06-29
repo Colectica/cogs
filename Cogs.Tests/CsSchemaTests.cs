@@ -36,12 +36,13 @@ namespace Cogs.Tests
         }
 
         // builds the created project
-        public void Build(string filename, string outputPath)
+        private void Build(string filename, string outputPath)
         {
             Run(@"C:\Program Files\dotnet\dotnet.exe", "restore " + Path.Combine(outputPath, filename + ".csproj"));
             Run(@"C:\Program Files\dotnet\dotnet.exe", "build " + Path.Combine(outputPath, filename + ".csproj"));
         }
-         public void Run(string exeLocation, string arguments)
+
+         private void Run(string exeLocation, string arguments)
         {
             var proc = new Process
             {
@@ -59,7 +60,7 @@ namespace Cogs.Tests
             {
                 string line = proc.StandardOutput.ReadLine();
                 Debug.WriteLine(line);
-                if (line.Equals("Build FAILED.")) Assert.False(true);
+                if (line.Equals("Build FAILED.")) { Assert.False(true); }
             }
         }
     }

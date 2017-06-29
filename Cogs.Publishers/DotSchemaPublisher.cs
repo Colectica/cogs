@@ -105,16 +105,19 @@ namespace Cogs.Publishers
                     {
                         // add reusableTypes within that type to reusable list as well
                         Stack<DataType> stack = new Stack<DataType>();
-                        stack.Push(property.DataType);
-                        if(!property.DataTypeName.Equals(item.Name)) { reusablesPresent.Add(property.DataType); }
+                        if(!property.DataTypeName.Equals(item.Name) && !reusablesPresent.Contains(property.DataType) && !property.IsPrimitive)
+                        {
+                            stack.Push(property.DataType);
+                            reusablesPresent.Add(property.DataType);
+                        }
                         while(stack.Count > 0)
                         {
                             var type = stack.Pop();
                             foreach (var prop in type.Properties)
                             {
                                 // checks: item is a reusable type, item is not already seen, item isn't current item, item isn't primitive
-                                if (ReusableList.Contains(prop.DataType) && !reusablesPresent.Contains(type) &&
-                                    !type.Name.Equals(prop.DataTypeName) && !prop.IsPrimitive && !prop.DataTypeName.Equals(item.Name))
+                                if (ReusableList.Contains(prop.DataType) && !reusablesPresent.Contains(type) && !prop.IsPrimitive &&
+                                    !type.Name.Equals(prop.DataTypeName)  && !prop.DataTypeName.Equals(item.Name))
                                 {
                                     stack.Push(prop.DataType);
                                     reusablesPresent.Add(prop.DataType);

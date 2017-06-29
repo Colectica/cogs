@@ -220,8 +220,12 @@ namespace Cogs.Publishers
                 // Output the relationships graph
                 builder.AppendLine("Relationships");
                 builder.AppendLine("~~~~~~~~~~~~~");
-                builder.AppendLine(".. image:: ");
-                builder.AppendLine("   " + Path.Combine("..\\..\\images", itemType.Name + ".svg"));
+                builder.AppendLine(".. container:: image");
+                builder.AppendLine();
+                builder.AppendLine("   |stub|");
+                builder.AppendLine();
+                builder.Append(".. |stub| image:: ");
+                builder.AppendLine(Path.Combine("..\\..\\images", itemType.Name + ".svg"));
                 builder.AppendLine();
 
                 // Output Properties details
@@ -388,6 +392,8 @@ todo_include_todos = True
 #
 html_theme = ""sphinx_rtd_theme""
 html_theme_path = [""themes""]
+def setup(app):
+  app.add_stylesheet( ""css/image.css"" )
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -399,6 +405,7 @@ html_theme_path = [""themes""]
 # relative to this directory. They are copied after the builtin static files,
 # so a file named ""default.css"" will overwrite the builtin ""default.css"".
 html_static_path = ['_static']
+
 
 
 # -- Options for HTMLHelp output ------------------------------------------

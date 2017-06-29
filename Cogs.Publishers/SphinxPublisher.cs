@@ -3,6 +3,7 @@
 using Cogs.Model;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 
@@ -40,6 +41,19 @@ namespace Cogs.Publishers
             // create documentation
             var doc = new BuildSphinxDocumentation();
             doc.Build(model, TargetDirectory);
+            //copy over image css file
+            var path = Path.Combine(Path.Combine(Path.Combine(Path.Combine(TargetDirectory, "build"), "html"), "_static"), "css");
+            Directory.CreateDirectory(path);
+            var source = Path.Combine(Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), ".."), "copiedFiles"), "image.css");
+            try
+            {
+                File.Copy(source, Path.Combine(path, "image.css"), true);
+            }
+            catch (DirectoryNotFoundException)
+            {
+                // when testing, filepath is different
+                File.Copy(Directory.GetCurrentDirectory() + @"..\..\..\..\..\copiedFiles\image.css", Path.Combine(path, "image.css"), true);
+            }
         }
     }
 }
