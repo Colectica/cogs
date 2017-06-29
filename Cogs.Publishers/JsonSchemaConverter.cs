@@ -21,6 +21,7 @@ namespace Cogs.Publishers
         {
             if(value is List<JsonSchema> schema)
             {
+                var prop_integer = new JObject();
                 var prop_int_npint = new JObject();
                 var prop_int_negativeint = new JObject();
                 var prop_num_long = new JObject();
@@ -28,6 +29,8 @@ namespace Cogs.Publishers
                 var prop_num_nonnegativeint = new JObject();
                 var prop_num_ulong = new JObject();
                 var prop_num_pveint = new JObject();
+                //Integer
+                prop_integer.Add(new JProperty("type", "integer"));
                 //nonpositive Integer
                 prop_int_npint.Add(new JProperty("type", "integer"));
                 prop_int_npint.Add(new JProperty("maximum", 0));
@@ -128,6 +131,9 @@ namespace Cogs.Publishers
                                                 break;
                                             case "long":
                                                 temp = prop_num_long;
+                                                break;
+                                            case "integer":
+                                                temp = prop_integer;
                                                 break;
                                             default:
                                                 temp = null;
