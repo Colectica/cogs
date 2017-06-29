@@ -21,6 +21,48 @@ namespace Cogs.Publishers
         {
             if(value is List<JsonSchema> schema)
             {
+                var prop_int_npint = new JObject();
+                var prop_int_negativeint = new JObject();
+                var prop_num_long = new JObject();
+                var prop_num_int = new JObject();
+                var prop_num_nonnegativeint = new JObject();
+                var prop_num_ulong = new JObject();
+                var prop_num_pveint = new JObject();
+                //nonpositive Integer
+                prop_int_npint.Add(new JProperty("type", "integer"));
+                prop_int_npint.Add(new JProperty("maximum", 0));
+                prop_int_npint.Add(new JProperty("exclusiveMaximum", false));
+                //negatvie integer
+                prop_int_negativeint.Add(new JProperty("type", "integer"));
+                prop_int_negativeint.Add(new JProperty("maximum", 0));
+                prop_int_negativeint.Add(new JProperty("exclusiveMaximum", true));
+                //long 
+                prop_num_long.Add(new JProperty("type", "integer"));
+                prop_num_long.Add(new JProperty("minimum", -9223372036854775808));
+                prop_num_long.Add(new JProperty("maximum", 9223372036854775808));
+                prop_num_long.Add(new JProperty("exclusiveMinimum", false));
+                prop_num_long.Add(new JProperty("exclusiveMaximum", false));
+                //int 
+                prop_num_int.Add(new JProperty("type", "integer"));
+                prop_num_int.Add(new JProperty("minimum", -2147483648));
+                prop_num_int.Add(new JProperty("maximum", 2147483648));
+                prop_num_int.Add(new JProperty("exclusiveMinimum", false));
+                prop_num_int.Add(new JProperty("exclusiveMaximum", false));
+                //non negative integer
+                prop_num_nonnegativeint.Add(new JProperty("type", "integer"));
+                prop_num_nonnegativeint.Add(new JProperty("minimum", 0));
+                prop_num_nonnegativeint.Add(new JProperty("exlusiveMinimum", false));
+                //unsigned long 
+                prop_num_ulong.Add(new JProperty("type", "integer"));
+                prop_num_ulong.Add(new JProperty("minimum", 0));
+                prop_num_ulong.Add(new JProperty("maximum", 18446744073709551615));
+                prop_num_ulong.Add(new JProperty("exclusiveMinimum", false));
+                prop_num_ulong.Add(new JProperty("exclusiveMaximum", false));
+                //positive integer
+                prop_num_pveint.Add(new JProperty("type", "integer"));
+                prop_num_pveint.Add(new JProperty("minimum", 0));
+                prop_num_pveint.Add(new JProperty("exlusiveMinimum", true));
+
                 var obj2 = new JObject();
                 foreach (var prop in schema)
                 {
@@ -57,17 +99,71 @@ namespace Cogs.Publishers
                             {
                                 if (inner_prop.MultiplicityElement.MaxCardinality == "1")
                                 {
-                                    obj.Add(new JProperty(inner_prop.Name,
-                                    new JObject(new JProperty("type", inner_prop.Type),
-                                            new JProperty("MultiplicityElement", (new JObject(new JProperty("lower", Convert.ToInt32(inner_prop.MultiplicityElement.MinCardinality)), new JProperty("upper", Convert.ToInt32(inner_prop.MultiplicityElement.MaxCardinality))))),
-                                                    new JProperty("Description", inner_prop.Description))));
+                                    var temp = new JObject();
+                                    if(inner_prop.original_type == null )
+                                    {
+                                        temp = null;
+                                    }
+                                    else
+                                    {
+                                        switch (inner_prop.original_type.ToLower())
+                                        {
+                                            case "nonpositiveinteger":
+                                                temp = prop_int_npint;
+                                                break;
+                                            case "negativeinteger":
+                                                temp = prop_int_negativeint;
+                                                break;
+                                            case "int":
+                                                temp = prop_num_int;
+                                                break;
+                                            case "nonnegativeinteger":
+                                                temp = prop_num_nonnegativeint;
+                                                break;
+                                            case "positiveinteger":
+                                                temp = prop_num_pveint;
+                                                break;
+                                            case "unsignedlong":
+                                                temp = prop_num_ulong;
+                                                break;
+                                            case "long":
+                                                temp = prop_num_long;
+                                                break;
+                                            default:
+                                                temp = null;
+                                                break;
+
+                                        }
+                                    }
+                                    if(temp == null)
+                                    {
+                                        obj.Add(
+                                        new JProperty(inner_prop.Name,
+                                        new JObject(
+                                            new JProperty("type", inner_prop.Type),
+                                            new JProperty("MultiplicityElement",
+                                            (new JObject(
+                                                new JProperty("lower", Convert.ToInt32(inner_prop.MultiplicityElement.MinCardinality)),
+                                                new JProperty("upper", Convert.ToInt32(inner_prop.MultiplicityElement.MaxCardinality))))),
+                                            new JProperty("Description", inner_prop.Description))));
+                                    }
+                                    else
+                                    {
+                                        temp.Add(new JProperty("Description", inner_prop.Description));
+                                        obj.Add(new JProperty(inner_prop.Name, temp));
+                                    }
                                 }
                                 else
                                 {
-                                    obj.Add(new JProperty(inner_prop.Name,
-                                    new JObject(new JProperty("type", "array"), new JProperty("items", new JObject(new JProperty("type", inner_prop.Type))),
+                                    obj.Add(
+                                        new JProperty(inner_prop.Name,
+                                        new JObject(
+                                            new JProperty("type", "array"), 
+                                            new JProperty("items", 
+                                            new JObject(
+                                                new JProperty("type", inner_prop.Type))),
                                             new JProperty("minItems", Convert.ToInt32(inner_prop.MultiplicityElement.MinCardinality)),
-                                                    new JProperty("Description", inner_prop.Description))));
+                                            new JProperty("Description", inner_prop.Description))));
                                 }
                             }
                         }

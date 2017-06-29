@@ -176,6 +176,10 @@ namespace Cogs.Publishers
             Console.WriteLine("\t gYear : gYear");
             Console.WriteLine("\t duration : duration");
             Console.WriteLine("}");
+            //language
+            Console.WriteLine("type language {");
+            Console.WriteLine("\t lanugage: String");
+            Console.WriteLine("}");
             foreach (var item in items)
             {
                 Console.WriteLine("type " + item.Type + "{");

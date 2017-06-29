@@ -99,13 +99,15 @@ namespace Cogs.Publishers
                     }
                     else
                     {
-                        if (prop.DataType.Name == "int")
+                        if (TypeBelongToInt(prop.DataType.Name))
                         {
                             temp.Type = "integer";
+                            temp.original_type = prop.DataType.Name;
                         }
-                        else if (prop.DataType.Name == "double" || prop.DataType.Name == "decimal")
+                        else if (TypeBelongToNum(prop.DataType.Name))
                         {
                             temp.Type = "number";
+                            temp.original_type = prop.DataType.Name;
                         }
                         else
                         {
@@ -176,14 +178,15 @@ namespace Cogs.Publishers
             }
             else
             {
-
-                if (property.DataType.Name == "int")
+                if (TypeBelongToInt(property.DataType.Name))
                 {
                     prop.Type = "integer";
+                    prop.original_type = property.DataType.Name;
                 }
-                else if (property.DataType.Name == "double" || property.DataType.Name == "decimal")
+                else if (TypeBelongToNum(property.DataType.Name))
                 {
                     prop.Type = "number";
+                    prop.original_type = property.DataType.Name;
                 }
                 else
                 {
@@ -250,6 +253,25 @@ namespace Cogs.Publishers
                 }
             }
             return false;
+        }
+
+        public bool TypeBelongToInt(string type)
+        {
+            type = type.ToLower();
+            return type == "integer"
+                || type == "nonpositiveinteger"
+                || type == "negativeinteger"
+                || type == "int"
+                || type == "nonnegativeinteger"
+                || type == "positiveinteger"
+                || type == "unsignedlong"
+                || type == "long";
+        }
+
+        public bool TypeBelongToNum(string type)
+        {
+            type = type.ToLower();
+            return type == "float" || type == "double" || type == "decimal";
         }
     }
 }
