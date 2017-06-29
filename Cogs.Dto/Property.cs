@@ -17,6 +17,17 @@ namespace Cogs.Dto
 
         public string Description { get; set; }
 
+        // simple string restrictions
+        public int? MinLength { get; set; }
+        public int? MaxLength { get; set; }
+        public string Enumeration { get; set; }
+        public string Pattern { get; set; }
+        // numeric restrictions
+        public int? MinInclusive { get; set; }
+        public int? MinExclusive { get; set; }
+        public int? MaxInclusive { get; set; }
+        public int? MaxExclusive { get; set; }
+
         public string DeprecatedNamespace { get; set; }
         public string DeprecatedElementOrAttribute { get; set; }
         public string DeprecatedChoiceGroup { get; set; }

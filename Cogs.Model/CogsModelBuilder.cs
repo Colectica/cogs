@@ -1,5 +1,6 @@
 ﻿// Copyright (c) 2017 Colectica. All rights reserved
 // See the LICENSE file in the project root for more information.
+using Cogs.Common;
 using Cogs.Model;
 using System;
 using System.Collections.Generic;
@@ -11,6 +12,8 @@ namespace Cogs.Model
 {
     public class CogsModelBuilder
     {
+        public List<CogsError> Errors { get; } = new List<CogsError>();
+
         private Cogs.Dto.CogsDtoModel dto;
         private CogsModel model;
 
@@ -198,6 +201,7 @@ namespace Cogs.Model
             dataType.ExtendsTypeName = dto.Extends;
             dataType.DeprecatedNamespace = dto.DeprecatedNamespace;
             dataType.IsDeprecated = dto.IsDeprecated;
+            
 
             foreach (var dtoProperty in dto.Properties)
             {
@@ -223,6 +227,23 @@ namespace Cogs.Model
             property.MinCardinality = dto.MinCardinality;
             property.MaxCardinality = dto.MaxCardinality;
             property.Description = dto.Description;
+
+
+            // simple string restrictions
+            property.MinLength = dto.MinLength;
+            property.MaxLength = dto.MaxLength;
+            if (!string.IsNullOrWhiteSpace(dto.Enumeration))
+            {                
+                string[] parts = dto.Enumeration.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
+                property.Enumeration = new List<string>(parts);
+            }           
+            property.Pattern = dto.Pattern;
+            // numeric restrictions
+            property.MinInclusive = dto.MinInclusive;
+            property.MinExclusive = dto.MaxExclusive;
+            property.MaxInclusive = dto.MinExclusive;
+            property.MaxExclusive = dto.MaxExclusive;
+
             property.DeprecatedNamespace = dto.DeprecatedNamespace;
             property.DeprecatedElementOrAttribute = dto.DeprecatedElementOrAttribute;
             property.DeprecatedChoiceGroup = dto.DeprecatedChoiceGroup;

@@ -1,5 +1,6 @@
 ﻿// Copyright (c) 2017 Colectica. All rights reserved
 // See the LICENSE file in the project root for more information.
+using Cogs.Common;
 using Cogs.Dto;
 using CsvHelper;
 using System;
@@ -15,6 +16,7 @@ namespace Cogs.Dto
     public class CogsDirectoryReader
     {
         public string SettingsDirectoryName { get; set; }
+        public List<CogsError> Errors { get; } = new List<CogsError>();
 
         public CogsDtoModel Load(string directory)
         {
@@ -27,15 +29,25 @@ namespace Cogs.Dto
 
             if (!File.Exists(identificationFile))
             {
-                //TODO exit codes
-                throw new InvalidOperationException("identification information is not present in the Settings directory.");
+                Errors.Add(new CogsError(ErrorLevel.Error, "identification information is not present in the Settings directory."));
+                return model;
             }
+
+
             string csvStr = File.ReadAllText(identificationFile, Encoding.UTF8);
             using (var textReader = new StringReader(csvStr))
             {
-                var csvReader = new CsvReader(textReader);
-                var records = csvReader.GetRecords<Property>();
-                model.Identification.AddRange(records);
+                try
+                {
+                    var csvReader = new CsvReader(textReader);
+                    var records = csvReader.GetRecords<Property>();
+                    model.Identification.AddRange(records);
+                }
+                catch(Exception e)
+                {
+                    Errors.Add(new CogsError(ErrorLevel.Error, e.Message + " " + identificationFile, e));
+                    return model;
+                }
             }
 
             // Load all item types from the ItemTypes directory.
@@ -108,9 +120,16 @@ namespace Cogs.Dto
                     string csvStr = File.ReadAllText(propertiesFileName, Encoding.UTF8);
                     using (var textReader = new StringReader(csvStr))
                     {
-                        var csvReader = new CsvReader(textReader);
-                        var records = csvReader.GetRecords<Property>().ToList();
-                        itemType.Properties = records;
+                        try
+                        {
+                            var csvReader = new CsvReader(textReader);
+                            var records = csvReader.GetRecords<Property>().ToList();
+                            itemType.Properties = records;
+                        }
+                        catch (Exception e)
+                        {
+                            Errors.Add(new CogsError(ErrorLevel.Error, e.Message + " " + propertiesFileName, e));
+                        }
                     }
                 }
 

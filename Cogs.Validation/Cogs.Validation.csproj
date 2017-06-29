@@ -5,10 +5,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="..\Cogs.licenseheader" Link="Cogs.licenseheader" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Cogs.Common\Cogs.Common.csproj" />
     <ProjectReference Include="..\Cogs.Dto\Cogs.Dto.csproj" />
   </ItemGroup>

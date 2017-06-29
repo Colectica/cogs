@@ -1,4 +1,4 @@
-Name,DataType,MinCardinality,MaxCardinality,Description,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
-Name,String,0,1,A name for the Cheese,,,
-Description,String,0,1,A description of the Hamburger,,,
-MilkSource,Animal,0,1,The animal from which the cheese is produced,,,
+Name,DataType,MinCardinality,MaxCardinality,Description,MinLength,MaxLength,Enumeration,Pattern,MinInclusive,MinExclusive,MaxInclusive,MaxExclusive,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
+Name,string,0,1,A name for the Cheese,,,,,,,,,,,
+Description,string,0,1,A description of the Hamburger,,,,,,,,,,,
+MilkSource,Animal,0,1,The animal from which the cheese is produced,,,,,,,,,,,

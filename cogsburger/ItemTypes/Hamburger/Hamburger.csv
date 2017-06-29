@@ -1,7 +1,7 @@
-Name,DataType,MinCardinality,MaxCardinality,Description,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
-HamburgerName,String,0,1,A name for the Hamburger,,,
-Description,String,0,1,A description of the Hamburger,,,
-Enclosure,Breading,0,1,Type of enclosure of the hamburger,,,
-Patty,Protein,1,n,The type of protein ,,,
-Sauce,Condiment,0,n,Sauces and other liquid toppings,,,
-CheeseUsed,Cheese,0,n,Cheese slices placed on the hamburger,,,
+Name,DataType,MinCardinality,MaxCardinality,Description,MinLength,MaxLength,Enumeration,Pattern,MinInclusive,MinExclusive,MaxInclusive,MaxExclusive,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
+HamburgerName,string,0,1,A name for the Hamburger,,,,,,,,,,,
+Description,string,0,1,A description of the Hamburger,,,,,,,,,,,
+Enclosure,Breading,0,1,Type of enclosure of the hamburger,,,,,,,,,,,
+Patty,Protein,1,n,The type of protein,,,,,,,,,,,
+Sauce,Condiment,0,n,Sauces and other liquid toppings,,,,,,,,,,,
+CheeseUsed,Cheese,0,n,Cheese slices placed on the hamburger,,,,,,,,,,,

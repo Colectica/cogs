@@ -1,4 +1,4 @@
-Name,DataType,MinCardinality,MaxCardinality,Description,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
-Name,String,0,1,A name for the breading,,,
-Description,MultilingualString,0,n,A description of the breading,,,
-CountryOfOrigin,String,0,1,The country the animal was from,,,
+Name,DataType,MinCardinality,MaxCardinality,Description,MinLength,MaxLength,Enumeration,Pattern,MinInclusive,MinExclusive,MaxInclusive,MaxExclusive,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
+Name,string,0,1,A name for the breading,,,,,,,,,,,
+LingualDescription,MultilingualString,0,n,A description of the breading,,,,,,,,,,,
+CountryOfOrigin,string,0,1,The country the animal was from,,,,,,,,,,,
