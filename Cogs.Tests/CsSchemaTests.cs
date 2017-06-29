@@ -59,7 +59,7 @@ namespace Cogs.Tests
             {
                 string line = proc.StandardOutput.ReadLine();
                 Debug.WriteLine(line);
-                if (line.Equals("Build FAILED.")) Assert.False(true);
+                if (line.Equals("Build FAILED.")) { Assert.False(true); }
             }
         }
     }

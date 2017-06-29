@@ -44,7 +44,10 @@ namespace Cogs.Publishers
             // create xml header
             XDocument project = new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
                 new XElement("PropertyGroup", new XElement("TargetFramework", "netstandard2.0"), 
-                    new XElement("AssemblyName", projName), new XElement("RootNamespace", projName))));
+                    new XElement("AssemblyName", projName), new XElement("RootNamespace", projName)),
+                new XElement("ItemGroup", new XElement("PackageReference", new XAttribute("Include","System.ComponentModel.Annotations"),
+                    new XAttribute("Version", "4.4.0-preview2-25405-01")),
+                    new XElement("PackageReference", new XAttribute("Include", "Microsoft.CSharp"), new XAttribute("Version", "4.4.0-preview2-25405-01")))));
             //create project file
             XmlWriterSettings xws = new XmlWriterSettings { OmitXmlDeclaration = true };
             using (XmlWriter xw = XmlWriter.Create(Path.Combine(TargetDirectory, projName + ".csproj"), xws))
@@ -52,7 +55,15 @@ namespace Cogs.Publishers
                 project.Save(xw);
             }
             // copy types file
-            File.Copy(Path.Combine(Path.Combine(Path.Combine(Path.Combine(TargetDirectory, ".."), ".."), "copiedFiles"), "Types.cs"), Path.Combine(TargetDirectory, "Types.cs"), true);
+            try
+            {
+                File.Copy(Path.Combine(Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), ".."), "copiedFiles"), "Types.cs"), Path.Combine(TargetDirectory, "Types.cs"), true);
+            }
+            catch (DirectoryNotFoundException)
+            {
+                // when testing, filepath is different
+                File.Copy(Directory.GetCurrentDirectory() + @"..\..\..\..\..\copiedFiles\Types.cs", Path.Combine(TargetDirectory, "Types.cs"), true);
+            }
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
                 // add class description using '$' for newline and '#' for tabs

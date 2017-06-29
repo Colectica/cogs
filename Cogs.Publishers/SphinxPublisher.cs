@@ -45,7 +45,15 @@ namespace Cogs.Publishers
             var path = Path.Combine(Path.Combine(Path.Combine(Path.Combine(TargetDirectory, "build"), "html"), "_static"), "css");
             Directory.CreateDirectory(path);
             var source = Path.Combine(Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), ".."), "copiedFiles"), "image.css");
-            File.Copy(source, Path.Combine(path, "image.css"), true);
+            try
+            {
+                File.Copy(source, Path.Combine(path, "image.css"), true);
+            }
+            catch (DirectoryNotFoundException)
+            {
+                // when testing, filepath is different
+                File.Copy(Directory.GetCurrentDirectory() + @"..\..\..\..\..\copiedFiles\image.css", Path.Combine(path, "image.css"), true);
+            }
         }
     }
 }
