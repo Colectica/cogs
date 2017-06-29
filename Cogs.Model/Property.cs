@@ -41,7 +41,6 @@ namespace Cogs.Model
         public int? MaxInclusive { get; set; }
         public int? MaxExclusive { get; set; }
         
-        
         public override string ToString()
         {
             return $"{Name} - {DataType} - {MinCardinality}..{MaxCardinality}";
