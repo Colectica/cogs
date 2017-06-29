@@ -40,17 +40,17 @@ namespace cogsBurger
     public class StringValidationAttribute : ValidationAttribute
     {
         Regex Rgx;
-        Enum Enumerations;
+        List<string> Enumerations;
 
-        public StringValidationAttribute(Enum enumerations, string pattern = null)
+        public StringValidationAttribute(string[] enumerations, string pattern = null)
         {
-            if(pattern != null) { this.Rgx = new Regex(pattern); }
-            this.Enumerations = enumerations;
+            if (pattern != null) { this.Rgx = new Regex(pattern); }
+            if (enumerations != null) { this.Enumerations = new List<string>(enumerations); }
         }
 
         public override bool IsValid(object value)
         {
-            if (!System.Enum.IsDefined(Enumerations.GetType(), value)) { return false; }
+            if (Enumerations != null && !System.Enum.IsDefined(Enumerations.GetType(), value)) { return false; }
             // check regex Pattern
             return true;
         }

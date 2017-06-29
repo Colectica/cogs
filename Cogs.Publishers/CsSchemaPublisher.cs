@@ -98,18 +98,29 @@ namespace Cogs.Publishers
                         }
                         else if (prop.MinLength != null)
                         {
-                            newClass.Append("$##[StringLength(" + Int32.MaxValue + ", " + prop.MinLength + ")]");
+                            newClass.Append("$##[StringLength(" + Int32.MaxValue + ", MinimumLength = " + prop.MinLength + ")]");
                         }
-                        if (prop.DataTypeName.Equals("string") && (prop.Enumeration.Count > 0 || !string.IsNullOrWhiteSpace(prop.Pattern)))
+                        if (prop.DataTypeName.Equals("string"))
                         {
                             // work with Enum and pattern
-                            newClass.Append("$##[StringValidation(new List<string>(");
-                            foreach(var option in prop.Enumeration)
+                            if (prop.Enumeration.Count > 0)
                             {
-                                newClass.Append(option);
+                                newClass.Append("$##[StringValidation(new string[] {");
+                                bool useComma = false;
+                                foreach (var option in prop.Enumeration)
+                                {
+                                    if(useComma) { newClass.Append(", "); }
+                                    newClass.Append("$###\"" + option + "\"");
+                                    useComma = true;
+                                }
+                                if (!string.IsNullOrWhiteSpace(prop.Pattern)) { newClass.Append("$##}, " + prop.Pattern + ")]"); }
+                                else { newClass.Append("$##})]"); }
                             }
-                            if(!string.IsNullOrWhiteSpace(prop.Pattern)) { newClass.Append("), " + prop.Pattern + ")]"); }
-                            else { newClass.Append("))]"); }
+                            else if(!string.IsNullOrWhiteSpace(prop.Pattern))
+                            {
+                                newClass.Append("$##[StringValidation(null, \"" + prop.Pattern + "\")]");
+                            }
+                           
                             
                         }
                     }else if(!prop.DataTypeName.Equals("boolean") && !prop.DataType.Equals("language") && !prop.DataTypeName.Equals("cogsDate"))
