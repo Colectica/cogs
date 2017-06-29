@@ -83,10 +83,12 @@ namespace Cogs.Publishers
                 newClass.Append("$#{");
                 foreach(var prop in item.Properties)
                 {
+                    // set c# datatype representation
+                    if (Translator.ContainsKey(prop.DataTypeName)) { prop.DataTypeName = Translator[prop.DataTypeName]; }
                     // create documentation for property
                     newClass.Append("$##/// <summary>$##/// " + prop.Description + "$##/// <summary>");
                     // create constraints
-                    if(prop.DataTypeName.Equals("string") || prop.DataTypeName.Equals("anyURI"))
+                    if(prop.DataTypeName.Equals("string") || prop.DataTypeName.Equals("Uri"))
                     {
                         if(prop.MinLength != null && prop.MaxLength != null)
                         {
@@ -120,10 +122,8 @@ namespace Cogs.Publishers
                             {
                                 newClass.Append("$##[StringValidation(null, \"" + prop.Pattern + "\")]");
                             }
-                           
-                            
                         }
-                    }else if(!prop.DataTypeName.Equals("boolean") && !prop.DataType.Equals("language") && !prop.DataTypeName.Equals("cogsDate"))
+                    }else if(!prop.DataTypeName.Equals("bool") && !prop.DataTypeName.Equals("CogsDate"))
                     {
                         if (prop.MinInclusive != null || prop.MaxInclusive != null)
                         {
@@ -134,7 +134,6 @@ namespace Cogs.Publishers
                             newClass.Append("$##[ExclusiveRange(" + prop.MinExclusive + ", " + prop.MaxExclusive + ")]");
                         }
                     }
-                    if (Translator.ContainsKey(prop.DataTypeName)) { prop.DataTypeName = Translator[prop.DataTypeName]; }
                     // if there can be at most one, create an instance variable
                     if (!prop.MaxCardinality.Equals("n") && Int32.Parse(prop.MaxCardinality) == 1)
                     {
