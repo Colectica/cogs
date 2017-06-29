@@ -50,8 +50,13 @@ namespace cogsBurger
 
         public override bool IsValid(object value)
         {
-            if (Enumerations != null && !System.Enum.IsDefined(Enumerations.GetType(), value)) { return false; }
+            if(value == null)
+            {
+                return true;
+            }
+            if (Enumerations != null && !Enumerations.Contains(value.ToString())) { return false; }
             // check regex Pattern
+            if (Rgx != null && !this.Rgx.IsMatch(value.ToString())) { return false; }
             return true;
         }
     }
