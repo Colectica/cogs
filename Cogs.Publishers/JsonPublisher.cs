@@ -1,4 +1,5 @@
-﻿using Cogs.Model;
+﻿using Cogs.Common;
+using Cogs.Model;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System;
@@ -20,7 +21,6 @@ namespace Cogs.Publishers
         public string TargetNamespace { get; set; } = "ddi:3_4";
         public List<DataType> ReusableStorage { get; set; }
         public List<ItemType> ItemTypeStorage { get; set; }
-        public List<string> Simpletype { get; set; }
 
         public void Publish(CogsModel model)
         {
@@ -47,8 +47,6 @@ namespace Cogs.Publishers
 
             ReusableStorage = model.ReusableDataTypes;
             ItemTypeStorage = model.ItemTypes;
-            Simpletype = new List<string>();
-            CreateSimpleTypeList(Simpletype);
             //create a list to store jsonschema for each itemtype
             var root = new SchemaList();
             List<JsonSchema> items = new List<JsonSchema>();
@@ -228,26 +226,11 @@ namespace Cogs.Publishers
             }
             return false;
         }
-        public void CreateSimpleTypeList(List<string> simpletype)
-        {
-            simpletype.Add("duration");
-            simpletype.Add("dateTime");
-            simpletype.Add("time");
-            simpletype.Add("date");
-            simpletype.Add("gYearMonth");
-            simpletype.Add("gYear");
-            simpletype.Add("gMonthDay");
-            simpletype.Add("gDay");
-            simpletype.Add("gMonth");
-            simpletype.Add("anyURI");
-            simpletype.Add("language");
-            simpletype.Add("cogsDate");
-        }
         public Boolean IsSimpleType(string type)
         {
-            foreach(var item in Simpletype)
+            for(int i = 0; i < CogsTypes.SimpleTypeNames.Length ; i++)
             {
-                if(item == type)
+                if(type == CogsTypes.SimpleTypeNames[i])
                 {
                     return true;
                 }
