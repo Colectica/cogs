@@ -39,21 +39,20 @@ namespace Cogs.Publishers
                 Directory.Delete(TargetDirectory, true);
             }
             // TODO: if Overwrite is false and Directory.Exists(TargetDirectory)) throw an error and exit
-
             Directory.CreateDirectory(TargetDirectory);
 
             InitializeDictionary();
             //get the project name
             var projName = "cogsBurger";
-
-            // create xml header
+            CreateIIdentifiable(model, projName);
+            //create project file
             XDocument project = new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
                 new XElement("PropertyGroup", new XElement("TargetFramework", "netstandard2.0"), 
                     new XElement("AssemblyName", projName), new XElement("RootNamespace", projName)),
                 new XElement("ItemGroup", new XElement("PackageReference", new XAttribute("Include","System.ComponentModel.Annotations"),
                     new XAttribute("Version", "4.4.0-preview2-25405-01")),
-                    new XElement("PackageReference", new XAttribute("Include", "Microsoft.CSharp"), new XAttribute("Version", "4.4.0-preview2-25405-01")))));
-            //create project file
+                    new XElement("PackageReference", new XAttribute("Include", "Microsoft.CSharp"), new XAttribute("Version", "4.4.0-preview2-25405-01")),
+                    new XElement("PackageReference", new XAttribute("Include", "Newtonsoft.Json"), new XAttribute("Version", "10.0.3")))));
             XmlWriterSettings xws = new XmlWriterSettings { OmitXmlDeclaration = true };
             using (XmlWriter xw = XmlWriter.Create(Path.Combine(TargetDirectory, projName + ".csproj"), xws))
             {
@@ -80,6 +79,7 @@ namespace Cogs.Publishers
                 newClass.Append("class " + item.Name);
                 // allow inheritance when relevant
                 if (!String.IsNullOrWhiteSpace(item.ExtendsTypeName)) newClass.Append(" : " + item.ExtendsTypeName);
+                else if(!model.ReusableDataTypes.Contains(item)) { newClass.Append(" : IIdentifiable"); }
                 newClass.Append("$#{");
                 foreach(var prop in item.Properties)
                 {
@@ -137,15 +137,34 @@ namespace Cogs.Publishers
                     // if there can be at most one, create an instance variable
                     if (!prop.MaxCardinality.Equals("n") && Int32.Parse(prop.MaxCardinality) == 1)
                     {
-                        newClass.Append("$##public " + prop.DataTypeName + " " + prop.Name + ";");
+                        newClass.Append("$##public " + prop.DataTypeName + " " + prop.Name + " { get; set; }");
                     }
                     // otherwise, create a list object to allow multiple
-                    else { newClass.Append("$##public List<" + prop.DataTypeName + "> " + prop.Name + " = new List<" + prop.DataTypeName + ">();"); }
+                    else { newClass.Append("$##public List<" + prop.DataTypeName + "> " + prop.Name + "{ get; set; }  = new List<" + prop.DataTypeName + ">();"); }
+                }
+                if(!item.IsAbstract)
+                {
+                    newClass.Append("$##/// <summary>$##/// Used to Serialize this object to Json $##/// <summary>");
+                    newClass.Append("$##public void ToJson()$##{$###Newtonsoft.Json.JsonConvert.SerializeObject(new " + item.Name + "());$##}");
                 }
                 newClass.Append("$#}$}");
                 // write class to out folder
                 File.WriteAllText(Path.Combine(TargetDirectory, item.Name + ".cs"), newClass.ToString().Replace("#", "    ").Replace("$", Environment.NewLine));
             }
+        }
+
+        // creates a file call IIdentifiable.cs which holds the IIdentifiable interface from which all item types descend
+        private void CreateIIdentifiable(CogsModel model, string projName)
+        {
+            StringBuilder builder = new StringBuilder("using System;$using System.Collections.Generic;$$namespace " +
+                    projName + "${$#/// <summary>$#/// IIdentifiable class which all object Inherit from. Used to Serialize to Json $#/// <summary>");
+            builder.Append("$#public interface IIdentifiable$#{");
+            foreach (var prop in model.Identification)
+            {
+                builder.Append("$##" + prop.DataTypeName + " " + prop.Name + " { get; set; }");
+            }
+            builder.Append("$#}$}");
+            File.WriteAllText(Path.Combine(TargetDirectory, "IIdentifiable.cs"), builder.ToString().Replace("#", "    ").Replace("$", Environment.NewLine));
         }
 
 
