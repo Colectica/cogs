@@ -10,6 +10,7 @@ using System.Xml.Linq;
 using System.Xml;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
+using System.Reflection;
 
 namespace Cogs.Publishers
 {
@@ -45,6 +46,7 @@ namespace Cogs.Publishers
             //get the project name
             var projName = "cogsBurger";
             CreateIIdentifiable(model, projName);
+            CreateItemContainer(model, projName);
             //create project file
             XDocument project = new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
                 new XElement("PropertyGroup", new XElement("TargetFramework", "netstandard2.0"), 
@@ -142,16 +144,26 @@ namespace Cogs.Publishers
                     // otherwise, create a list object to allow multiple
                     else { newClass.Append("$##public List<" + prop.DataTypeName + "> " + prop.Name + "{ get; set; }  = new List<" + prop.DataTypeName + ">();"); }
                 }
-                if(!item.IsAbstract)
+                newClass.Append("$##/// <summary>$##/// Used to Serialize this object to Json $##/// <summary>");
+                if (!item.IsAbstract)
                 {
-                    newClass.Append("$##/// <summary>$##/// Used to Serialize this object to Json $##/// <summary>");
-                    newClass.Append("$##public void ToJson()$##{$###Newtonsoft.Json.JsonConvert.SerializeObject(new " + item.Name + "());$##}");
+
+                    if(!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
+                    {
+                        newClass.Append("$##public new string ToJson()$##{$###return Newtonsoft.Json.JsonConvert.SerializeObject(new " + item.Name + "());$##}");
+                    }
+                    else { newClass.Append("$##public string ToJson()$##{$###return Newtonsoft.Json.JsonConvert.SerializeObject(new " + item.Name + "());$##}"); }
                 }
+                else { newClass.Append("$##public string ToJson() { return \"\"; }"); }
                 newClass.Append("$#}$}");
                 // write class to out folder
                 File.WriteAllText(Path.Combine(TargetDirectory, item.Name + ".cs"), newClass.ToString().Replace("#", "    ").Replace("$", Environment.NewLine));
             }
         }
+
+
+        //
+
 
         // creates a file call IIdentifiable.cs which holds the IIdentifiable interface from which all item types descend
         private void CreateIIdentifiable(CogsModel model, string projName)
@@ -163,9 +175,30 @@ namespace Cogs.Publishers
             {
                 builder.Append("$##" + prop.DataTypeName + " " + prop.Name + " { get; set; }");
             }
+            builder.Append("$##string ToJson();");
             builder.Append("$#}$}");
             File.WriteAllText(Path.Combine(TargetDirectory, "IIdentifiable.cs"), builder.ToString().Replace("#", "    ").Replace("$", Environment.NewLine));
         }
+
+        // Creates the ItemContainer Class
+        private void CreateItemContainer(CogsModel model, string projName)
+        {
+            StringBuilder builder = new StringBuilder("using System;$using System.Text;$using System.Reflection;$using System.Collections.Generic;$$namespace " +
+                    projName + "${$#/// <summary>$#/// Class that contains a list of all items in the model $#/// <summary>");
+            builder.Append("$#public class ItemContainer$#{$##public List<IIdentifiable> Items { get; } = new List<IIdentifiable>();");
+            builder.Append("$##public List<IIdentifiable> Items { get; } = new List<IIdentifiable>();");
+            builder.Append("$##public void Serialize()$##{");
+            builder.Append("$###StringBuilder builder = new StringBuilder();");
+            builder.Append("$###foreach(var item in Assembly.GetExecutingAssembly().GetTypes()$####if(Items.Contains(item))$####{");
+            // body of serialization
+            builder.Append("$#####");
+            builder.Append("$####}$###}");
+
+            builder.Append("$###return builder.ToString();");
+            builder.Append("$##}$#}$}");
+            File.WriteAllText(Path.Combine(TargetDirectory, "ItemContainer.cs"), builder.ToString().Replace("#", "    ").Replace("$", Environment.NewLine));
+        }
+
 
 
         // initialize the Translator dictionary

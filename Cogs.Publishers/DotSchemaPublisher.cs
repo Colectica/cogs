@@ -327,23 +327,28 @@ namespace Cogs.Publishers
             using (StreamReader reader = new StreamReader(file))
             {
                 string line;
+                bool isFirst = true;
                 while ((line = reader.ReadLine()) != null)
                 {
                     if (line.Contains("viewBox"))
                     {
                         newFile.Append(line + Environment.NewLine + "<filter id = \"dropshadow\" height = \"130%\" ><feGaussianBlur in= \"SourceAlpha\" stdDeviation = \"3\"/>" +
-                            "<!--stdDeviation is how much to blur--><feOffset dx = \"2\" dy = \"2\" result = \"offsetblur\"/> <!--how much to offset-->" +
-                            "<feMerge><feMergeNode/> <!--this contains the offset blurred image--><feMergeNode in= \"SourceGraphic\"/>" +
-                            "<!--this contains the element that the filter is applied to --> </feMerge></filter>" + Environment.NewLine);
+                            "<!--stdDeviation is how much to blur--><feOffset dx = \"2\" dy = \"2\" result = \"offsetblur\"/><!--how much to offset-->" +
+                            "<feMerge><feMergeNode/><!--this contains the offset blurred image--><feMergeNode in= \"SourceGraphic\"/>" +
+                            "<!--this contains the element that the filter is applied to --></feMerge></filter>" + Environment.NewLine);
                     }
                     else if (line.Contains("polygon") || line.Contains("ellipse"))
                     {
-                        foreach (var chr in line)
+                        if(!isFirst)
                         {
-                            if (!chr.Equals('/')) { newFile.Append(chr); }
-                            else { newFile.Append(" style=\"filter: url(#dropshadow)\"" + chr); }
+                            foreach (var chr in line)
+                            {
+                                if (!chr.Equals('/')) { newFile.Append(chr); }
+                                else { newFile.Append(" style=\"filter: url(#dropshadow)\"" + chr); }
+                            }
+                            newFile.Append(Environment.NewLine);
                         }
-                        newFile.Append(Environment.NewLine);
+                        else { isFirst = false; }
                     }
                     else { newFile.Append(line.ToString() + Environment.NewLine); }
                 }
