@@ -29,15 +29,16 @@ namespace Cogs.Tests.Console
             jsonPublisher.TargetDirectory = outputPath;
             jsonPublisher.Publish(cogsModel);
 
-            //var schema = await JsonSchema4.FromTypeAsync<Program>();
-            //string schemaData = schema.ToJson();
-            //var schemaData = File.ReadAllText(Path.Combine(outputPath, "jsonSchema" + ".json"));
+            var schemaData = File.ReadAllText(Path.Combine(outputPath, "jsonSchema" + ".json"));
 
-            var schema = await JsonSchema4.FromFileAsync(Path.Combine(outputPath, "jsonSchema" + ".json"));
+            //var schema = await JsonSchema4.FromFileAsync(Path.Combine(outputPath, "jsonSchema" + ".json"));
+
+            var schema = await JsonSchema4.FromJsonAsync(schemaData);
             //schema = await JsonSchema4.FromJsonAsync(schemaData);
             var jsondata = File.ReadAllText(@"testing1_reference_reusable.json");
-            var validator = new JsonSchemaValidator();
-            ICollection<ValidationError> validate = validator.Validate(jsondata, schema);
+            //var validator = new JsonSchemaValidator();
+            //ICollection<ValidationError> validate = validator.Validate(jsondata, schema);
+            var validate = schema.Validate(jsondata);
             //var validate = schema.Validate(jsondata);
 
             if (validate == null)

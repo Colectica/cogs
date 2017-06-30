@@ -138,7 +138,6 @@ namespace Cogs.Publishers
                                             default:
                                                 temp = null;
                                                 break;
-
                                         }
                                     }
                                     if(temp == null)

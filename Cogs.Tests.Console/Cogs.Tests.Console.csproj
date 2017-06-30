@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NJsonSchema" Version="9.1.12" />
+    <PackageReference Include="NJsonSchema" Version="9.2.5" />
   </ItemGroup>
 
   <ItemGroup>

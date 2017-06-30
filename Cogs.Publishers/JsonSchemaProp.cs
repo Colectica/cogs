@@ -13,10 +13,10 @@ namespace Cogs.Publishers
         public Cardinality MultiplicityElement { get; set; }
 
         //string properties
-        //public int Maxlength { get; set; } 
-        //public int Minlength { get; set; }
-        //public string [] Enumeration { get; set; }
-        //public string pattern { get; set; }
+        public int Maxlength { get; set; }
+        public int Minlength { get; set; }
+        public string[] Enumeration { get; set; }
+        public string pattern { get; set; }
 
         //number and integer properties
         public string original_type { get; set; }
