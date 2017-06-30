@@ -1,7 +1,6 @@
 {
-    "Reference" :[
-            { "$type" : "ref", "value" : ["Hamburger", "id-54"] }
-    ]
+    "TopLevelReference" :[
+            { "$type" : "ref", "value" : ["Hamburger", "id-54"] }]
     ,
     "Hamburger" : 
     {
@@ -9,7 +8,7 @@
         {
             "ID" : "id-54",
             "HamburgerName" : "Big Mac on bread",
-            "Enclosure" : { "$type" : "ref", "value" : ["Roll", "goodbread"] },
+            "Enclosure" :  {"$type" : "ref", "value" : ["Roll", "goodbread"] },
             "Patty" : 
             [
                 { "$type" : "ref", "value" : ["MeatPatty", "Beef"] },
@@ -18,7 +17,11 @@
             "Sauce": 
             [
                 { "$type" : "ref", "value" : ["Condiment", "bigmacsauce-id"] }
-            ]
+            ],
+              "date" : {
+               	"date" : 123,
+                  "timzone" : "tc"
+              }
         }
     },
     "Condiment" : 
@@ -82,8 +85,14 @@
     "Animal" :
     {
         "chuck23" : {
+          "cogsDate" : {
+            "date" : "2017-06-01"
+          },
             "ID" : "chuck23",
-            "Description" : "Kate's cow",
+            "Description" : [
+              {"Content" : "Kate's cow"}
+              ]
+            ,
             "CountryOfOrigin" : "US"
         }
     }

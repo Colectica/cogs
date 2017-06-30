@@ -229,8 +229,12 @@ namespace Cogs.Publishers
         public Boolean IsSimpleType(string type)
         {
             for(int i = 0; i < CogsTypes.SimpleTypeNames.Length ; i++)
-            {
-                if(type == CogsTypes.SimpleTypeNames[i])
+            {   
+                if(type == "float" || type == "double" || type == "decimal" || type == "string" || type == "boolean" || type =="int")
+                {
+                    return false;
+                }
+                if (type == CogsTypes.SimpleTypeNames[i])
                 {
                     return true;
                 }
