@@ -1,6 +1,7 @@
 ﻿using Cogs.Dto;
 using Cogs.Model;
 using Cogs.Publishers;
+using Newtonsoft.Json;
 using NJsonSchema;
 using NJsonSchema.Validation;
 using System;
@@ -29,25 +30,38 @@ namespace Cogs.Tests.Console
             jsonPublisher.TargetDirectory = outputPath;
             jsonPublisher.Publish(cogsModel);
 
-            //var schema = await JsonSchema4.FromTypeAsync<Program>();
-            //string schemaData = schema.ToJson();
-            //var schemaData = File.ReadAllText(Path.Combine(outputPath, "jsonSchema" + ".json"));
-
-            var schema = await JsonSchema4.FromFileAsync(Path.Combine(outputPath, "jsonSchema" + ".json"));
-            //schema = await JsonSchema4.FromJsonAsync(schemaData);
-            var jsondata = File.ReadAllText(@"testing1_reference_reusable.json");
-            var validator = new JsonSchemaValidator();
-            ICollection<ValidationError> validate = validator.Validate(jsondata, schema);
-            //var validate = schema.Validate(jsondata);
-
-            if (validate == null)
+            JsonConvert.DefaultSettings = () => new JsonSerializerSettings
             {
-                System.Console.WriteLine("JSON Match");
-            }
-            else
+                MetadataPropertyHandling = MetadataPropertyHandling.Ignore
+            };
+            var schemaData = File.ReadAllText(Path.Combine(outputPath, "jsonSchema" + ".json"));
+            var schema = await JsonSchema4.FromJsonAsync(schemaData);
+
+            var jsondata1 = File.ReadAllText(@"testing1_reference_reusable.json");
+            var jsondata2 = File.ReadAllText(@"testing2_reference_Object.json");
+            var jsondata4 = File.ReadAllText(@"test4_invalid_json.json");
+
+            var validate1 = schema.Validate(jsondata1);
+            var validate2 = schema.Validate(jsondata2);
+            var validate4 = schema.Validate(jsondata4);
+
+            foreach (var error in validate1)
             {
-                System.Console.WriteLine("JSON does not match");
+                System.Console.WriteLine(error);
             }
+            System.Console.WriteLine("JSON 1 validation done");
+
+            foreach (var error in validate2)
+            {
+                System.Console.WriteLine(error);
+            }
+            System.Console.WriteLine("JSON 2 validation done");
+
+            foreach (var error in validate4)
+            {
+                System.Console.WriteLine(error);
+            }
+            System.Console.WriteLine("JSON 4 validation done");
         }
     }
 }

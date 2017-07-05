@@ -1,4 +1,5 @@
-﻿using Cogs.Model;
+﻿using Cogs.Common;
+using Cogs.Model;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System;
@@ -64,6 +65,7 @@ namespace Cogs.Publishers
             root.Schema = "http://json-schema.org/draft-04/schema#";
             root.Id = "#root";
             root.Properties = items;
+            root.SimpleType = "root";
 
 
             root.definitions = define;
@@ -89,15 +91,21 @@ namespace Cogs.Publishers
                     {
                         temp.Reference = "#/definitions/" + prop.DataType.Name;
                     }
+                    else if (IsSimpleType(prop.DataType.Name))
+                    {
+                        temp.Reference = "#/simpleType/" + prop.DataType.Name;
+                    }
                     else
                     {
-                        if (prop.DataType.Name == "int")
+                        if (TypeBelongToInt(prop.DataType.Name))
                         {
                             temp.Type = "integer";
+                            temp.original_type = prop.DataType.Name;
                         }
-                        else if (prop.DataType.Name == "double" || prop.DataType.Name == "decimal")
+                        else if (TypeBelongToNum(prop.DataType.Name))
                         {
                             temp.Type = "number";
+                            temp.original_type = prop.DataType.Name;
                         }
                         else
                         {
@@ -158,20 +166,25 @@ namespace Cogs.Publishers
             {
                 prop.Reference = "#/definitions/" + property.DataType.Name;
             }
+            else if(IsSimpleType(property.DataType.Name))
+            {
+                prop.Reference = "#/simpleType/" + property.DataType.Name;
+            }
             else if (IsItemType(property.DataType.Name))
             {
                 prop.Reference = "#/definitions/Reference";
             }
             else
             {
-
-                if (property.DataType.Name == "int")
+                if (TypeBelongToInt(property.DataType.Name))
                 {
                     prop.Type = "integer";
+                    prop.original_type = property.DataType.Name;
                 }
-                else if (property.DataType.Name == "double" || property.DataType.Name == "decimal")
+                else if (TypeBelongToNum(property.DataType.Name))
                 {
                     prop.Type = "number";
+                    prop.original_type = property.DataType.Name;
                 }
                 else
                 {
@@ -212,6 +225,40 @@ namespace Cogs.Publishers
                 }
             }
             return false;
+        }
+        public Boolean IsSimpleType(string type)
+        {
+            for(int i = 0; i < CogsTypes.SimpleTypeNames.Length ; i++)
+            {   
+                if(type == "float" || type == "double" || type == "decimal" || type == "string" || type == "boolean" || type =="int")
+                {
+                    return false;
+                }
+                if (type == CogsTypes.SimpleTypeNames[i])
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public Boolean TypeBelongToInt(string type)
+        {
+            type = type.ToLower();
+            return type == "integer"
+                || type == "nonpositiveinteger"
+                || type == "negativeinteger"
+                || type == "int"
+                || type == "nonnegativeinteger"
+                || type == "positiveinteger"
+                || type == "unsignedlong"
+                || type == "long";
+        }
+
+        public Boolean TypeBelongToNum(string type)
+        {
+            type = type.ToLower();
+            return type == "float" || type == "double" || type == "decimal";
         }
     }
 }
