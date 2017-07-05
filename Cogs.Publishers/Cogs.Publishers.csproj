@@ -5,6 +5,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Types.cs.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Types.cs.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="..\Cogs.licenseheader" Link="Cogs.licenseheader" />
   </ItemGroup>
 
