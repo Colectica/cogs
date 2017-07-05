@@ -17,7 +17,7 @@ notifications:
     on_failure: always
 
 before_script:
-  - dotnet restore
+  - dotnet restore ./Cogs.Console.sln
 
 script:
   - dotnet build ./Cogs.Console.sln
