@@ -31,3 +31,4 @@ bld/
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
 Cogs.Console/Properties/launchSettings.json
+/generated
