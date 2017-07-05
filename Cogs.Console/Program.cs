@@ -39,9 +39,9 @@ namespace Cogs.Console
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
 
                     // read cogs directory and validate the contents
-                    var directoryReader = new CogsDirectoryReader();
-                    HandleErrors(directoryReader.Errors);
+                    var directoryReader = new CogsDirectoryReader();                    
                     var cogsDtoModel = directoryReader.Load(location);
+                    HandleErrors(directoryReader.Errors);
                     HandleErrors(DtoValidation.Validate(cogsDtoModel));
 
                     // this could find gaps in the validation, but idealy return nothing
@@ -84,9 +84,9 @@ namespace Cogs.Console
                     var prefix = namespaceUri.Value() ?? "cogs";
 
                     // read cogs directory and validate the contents
-                    var directoryReader = new CogsDirectoryReader();
-                    HandleErrors(directoryReader.Errors);
+                    var directoryReader = new CogsDirectoryReader();                    
                     var cogsDtoModel = directoryReader.Load(location);
+                    HandleErrors(directoryReader.Errors);
                     HandleErrors(DtoValidation.Validate(cogsDtoModel));
 
                     var modelBuilder = new CogsModelBuilder();
