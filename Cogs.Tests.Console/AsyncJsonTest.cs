@@ -45,17 +45,18 @@ namespace Cogs.Tests.Console
             var validate2 = schema.Validate(jsondata2);
             var validate4 = schema.Validate(jsondata4);
 
-
             foreach (var error in validate1)
             {
                 System.Console.WriteLine(error);
             }
             System.Console.WriteLine("JSON 1 validation done");
+
             foreach (var error in validate2)
             {
                 System.Console.WriteLine(error);
             }
             System.Console.WriteLine("JSON 2 validation done");
+
             foreach (var error in validate4)
             {
                 System.Console.WriteLine(error);

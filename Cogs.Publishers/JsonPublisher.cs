@@ -242,7 +242,7 @@ namespace Cogs.Publishers
             return false;
         }
 
-        public bool TypeBelongToInt(string type)
+        public Boolean TypeBelongToInt(string type)
         {
             type = type.ToLower();
             return type == "integer"
@@ -255,7 +255,7 @@ namespace Cogs.Publishers
                 || type == "long";
         }
 
-        public bool TypeBelongToNum(string type)
+        public Boolean TypeBelongToNum(string type)
         {
             type = type.ToLower();
             return type == "float" || type == "double" || type == "decimal";
