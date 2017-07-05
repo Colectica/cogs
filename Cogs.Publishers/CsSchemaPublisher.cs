@@ -73,9 +73,10 @@ namespace Cogs.Publishers
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
                 // add class description using '$' for newline and '#' for tabs
-                var newClass = new StringBuilder("using System;$using System.Collections.Generic;$using System.ComponentModel.DataAnnotations;$$namespace " + 
-                    projName +"${$#/// <summary>$#/// " + item.Description + "$#/// <summary>");
+                var newClass = new StringBuilder("using System;$using System.Linq;$using Newtonsoft.Json.Linq;$using System.Collections.Generic;$" +
+                    "using System.ComponentModel.DataAnnotations;$$namespace " + projName +"${$#/// <summary>$#/// " + item.Description + "$#/// <summary>");
                 newClass.Append("$#public ");
+                var jsonProperties = new StringBuilder();
                 // add abstract to class title if relevant
                 if (item.IsAbstract) { newClass.Append("abstract "); }
                 newClass.Append("class " + item.Name);
@@ -83,6 +84,7 @@ namespace Cogs.Publishers
                 if (!String.IsNullOrWhiteSpace(item.ExtendsTypeName)) newClass.Append(" : " + item.ExtendsTypeName);
                 else if(!model.ReusableDataTypes.Contains(item)) { newClass.Append(" : IIdentifiable"); }
                 newClass.Append("$#{");
+                bool first = true;
                 foreach(var prop in item.Properties)
                 {
                     // set c# datatype representation
@@ -90,7 +92,7 @@ namespace Cogs.Publishers
                     // create documentation for property
                     newClass.Append("$##/// <summary>$##/// " + prop.Description + "$##/// <summary>");
                     // create constraints
-                    if(prop.DataTypeName.Equals("string") || prop.DataTypeName.Equals("Uri"))
+                    if (prop.DataTypeName.Equals("string") || prop.DataTypeName.Equals("Uri"))
                     {
                         if(prop.MinLength != null && prop.MaxLength != null)
                         {
@@ -136,26 +138,31 @@ namespace Cogs.Publishers
                             newClass.Append("$##[ExclusiveRange(" + prop.MinExclusive + ", " + prop.MaxExclusive + ")]");
                         }
                     }
+                    if (!first) { jsonProperties.Append(","); }
                     // if there can be at most one, create an instance variable
                     if (!prop.MaxCardinality.Equals("n") && Int32.Parse(prop.MaxCardinality) == 1)
                     {
                         newClass.Append("$##public " + prop.DataTypeName + " " + prop.Name + " { get; set; }");
+                        jsonProperties.Append("$####new JProperty(\"" + prop.DataTypeName + "\", " + prop.Name + ")");
                     }
                     // otherwise, create a list object to allow multiple
-                    else { newClass.Append("$##public List<" + prop.DataTypeName + "> " + prop.Name + "{ get; set; }  = new List<" + prop.DataTypeName + ">();"); }
+                    else
+                    {
+                        newClass.Append("$##public List<" + prop.DataTypeName + "> " + prop.Name + "{ get; set; }  = new List<" + prop.DataTypeName + ">();");
+                        jsonProperties.Append("$####new JProperty(\"" + prop.DataTypeName + "\", $#####new JArray($######from item in " + prop.Name +
+                            "$######select new JObject($#######new JProperty(\"" + prop.DataTypeName + "\", item))))");
+                    }
+                    first = false;
                 }
                 newClass.Append("$##/// <summary>$##/// Used to Serialize this object to Json $##/// <summary>");
-                if (!item.IsAbstract)
+                if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
                 {
-
-                    if(!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
-                    {
-                        newClass.Append("$##public new string ToJson()$##{$###return Newtonsoft.Json.JsonConvert.SerializeObject(new " + item.Name + "());$##}");
-                    }
-                    else { newClass.Append("$##public string ToJson()$##{$###return Newtonsoft.Json.JsonConvert.SerializeObject(new " + item.Name + "());$##}"); }
+                    newClass.Append("$##public new string ToJson()$##{");
                 }
-                else { newClass.Append("$##public string ToJson() { return \"\"; }"); }
-                newClass.Append("$#}$}");
+                else { newClass.Append("$##public string ToJson()$##{"); }
+                newClass.Append("$###JProperty json = new JProperty(\"ID\", new JObject(");
+                newClass.Append(jsonProperties.ToString());
+                newClass.Append("));$###return json.ToString();$##}$#}$}");
                 // write class to out folder
                 File.WriteAllText(Path.Combine(TargetDirectory, item.Name + ".cs"), newClass.ToString().Replace("#", "    ").Replace("$", Environment.NewLine));
             }
@@ -183,20 +190,90 @@ namespace Cogs.Publishers
         // Creates the ItemContainer Class
         private void CreateItemContainer(CogsModel model, string projName)
         {
-            StringBuilder builder = new StringBuilder("using System;$using System.Text;$using System.Reflection;$using System.Collections.Generic;$$namespace " +
-                    projName + "${$#/// <summary>$#/// Class that contains a list of all items in the model $#/// <summary>");
+            StringBuilder builder = new StringBuilder("using System;$using System.Linq;$using System.Reflection;$using Newtonsoft.Json.Linq;"+
+                "$using System.Collections.Generic;$$namespace " + projName + "${$#/// <summary>$#/// Class that contains a list of all items in the model $#/// <summary>");
             builder.Append("$#public class ItemContainer$#{$##public List<IIdentifiable> Items { get; } = new List<IIdentifiable>();");
-            builder.Append("$##public List<IIdentifiable> Items { get; } = new List<IIdentifiable>();");
-            builder.Append("$##public void Serialize()$##{");
-            builder.Append("$###StringBuilder builder = new StringBuilder();");
-            builder.Append("$###foreach(var item in Assembly.GetExecutingAssembly().GetTypes()$####if(Items.Contains(item))$####{");
-            // body of serialization
-            builder.Append("$#####");
-            builder.Append("$####}$###}");
-
-            builder.Append("$###return builder.ToString();");
-            builder.Append("$##}$#}$}");
-            File.WriteAllText(Path.Combine(TargetDirectory, "ItemContainer.cs"), builder.ToString().Replace("#", "    ").Replace("$", Environment.NewLine));
+            builder.Append("$##public List<IIdentifiable> Reusables { get; } = new List<IIdentifiable>();");
+            builder.Append("$##public string Serialize()$##{");
+            builder.Append("$###JObject builder = new JObject$###{");
+            builder.Append("$####new JProperty(\"schema\", \"http://json-schema.org/draft-04/schema@\"),$####new JProperty(\"id\", \"@root\")," +
+                "$####new JProperty(\"simpleType\", new JObject(" +
+                "$#####new JProperty(\"duration\", new JObject(" +
+                    "$######new JProperty(\"type\", \"number\"), $######new JProperty(\"format\", \"utc-millisec\"))), " +
+                "$#####new JProperty(\"dateTime\", new JObject(" +
+                    "$######new JProperty(\"type\", \"string\")," +
+                    "$######new JProperty(\"format\", \"date-time\"))), " +
+                "$#####new JProperty(\"time\", new JObject(" +
+                    "$######new JProperty(\"type\", \"string\"), " +
+                    "$######new JProperty(\"format\", \"time\"))), " +
+                "$#####new JProperty(\"date\", new JObject(" +
+                    "$######new JProperty(\"type\", \"string\"), " +
+                    "$######new JProperty(\"format\", \"date\"))), " +
+                "$#####new JProperty(\"gYearMonth\", new JObject(" +
+                    "$######new JProperty(\"type\", \"object\"), " +
+                    "$######new JProperty(\"properties\", new JObject(" +
+                        "$#######new JProperty(\"year\", new JObject(" +
+                            "$########new JProperty(\"type\", \"integer\"))), " +
+                        "$#######new JProperty(\"month\", new JObject(" +
+                            "$########new JProperty(\"type\", \"integer\"))), " +
+                        "$#######new JProperty(\"timezone\", new JObject(" +
+                            "$########new JProperty(\"type\", \"string\"))))), " +
+                    "$######new JProperty(\"required\", new JArray(" +
+                        "$#######new JProperty(\"year\"), new JProperty(\"month\"))))))), " +
+                "$#####new JProperty(\"gYear\", new JObject(" +
+                    "$######new JProperty(\"type\", \"object\"), " +
+                    "$######new JProperty(\"properties\", new JObject(" +
+                        "$#######new JProperty(\"year\", new JObject(" +
+                            "$########new JProperty(\"type\", \"integer\"))), " +
+                        "$#######new JProperty(\"timezone\", new JObject(" +
+                            "$########new JProperty(\"type\", \"string\"))))), " +
+                "$#####new JProperty(\"gMonthDay\", new JObject(" +
+                    "$######new JProperty(\"type\", \"object\"), " +
+                    "$######new JProperty(\"properties\", new JObject(" +
+                        "$#######new JProperty(\"month\", new JObject(" +
+                            "$########new JProperty(\"type\", \"integer\"))), " +
+                        "$#######new JProperty(\"day\", new JObject(" +
+                            "$########new JProperty(\"type\", \"integer\"))), " +
+                        "$#######new JProperty(\"timezone\", new JObject(" +
+                            "$########new JProperty(\"type\", \"string\"))))), " +
+                    "$######new JProperty(\"required\", new JArray(" +
+                        "$#######new JProperty(\"month\"), new JProperty(\"day\"))))))), " +
+                "$#####new JProperty(\"gDay\", new JObject(" +
+                    "$######new JProperty(\"type\", \"object\"), " +
+                    "$######new JProperty(\"properties\", new JObject(" +
+                        "$#######new JProperty(\"day\", new JObject(" +
+                            "$########new JProperty(\"type\", \"integer\"))), " +
+                        "$#######new JProperty(\"timezone\", new JObject(" +
+                            "$########new JProperty(\"type\", \"string\"))))))), " +
+                "$#####new JProperty(\"gMonth\", new JObject(" +
+                    "$######new JProperty(\"type\", \"object\"), " +
+                    "$######new JProperty(\"properties\", new JObject(" +
+                        "$#######new JProperty(\"month\", new JObject(" +
+                            "$########new JProperty(\"type\", \"integer\"))), " +
+                        "$#######new JProperty(\"timezone\", new JObject(" +
+                            "$########new JProperty(\"type\", \"string\"))))))), " +
+                "$#####new JProperty(\"anyURI\", new JObject(" +
+                    "$######new JProperty(\"type\", \"string\"))), " +
+                "$#####new JProperty(\"cogsDate\", new JObject(" +
+                    "$######new JProperty(\"type\", \"object\"), " +
+                    "$######new JProperty(\"properties\", new JObject(" +
+                        "$#######new JProperty(\"dateTime\", new JObject(" +
+                            "$########new JProperty(\"!ref\", \"@/simpleType/dateTime\"))), " +
+                        "$#######new JProperty(\"date\", new JObject(" +
+                            "$########new JProperty(\"!ref\", \"@/simpleType/date\"))), " +
+                        "$#######new JProperty(\"gYearMonth\", new JObject(" +
+                            "$########new JProperty(\"!ref\", \"@/simpleType/gYearMonth\"))), " +
+                        "$#######new JProperty(\"gYear\", new JObject(" +
+                            "$########new JProperty(\"!ref\", \"@/simpleType/gYear\"))), " +
+                        "$#######new JProperty(\"duration\", new JObject(" +
+                            "$########new JProperty(\"!ref\", \"@/simpleType/duration\"))))))), " +
+                "$#####new JProperty(\"language\", new JObject(" +
+                    "$######new JProperty(\"type\", \"string\")))};");
+            builder.Append("$###var refTypes = new JObject();$###foreach(var item in Reusables)$###{$####refTypes.Add(item.ToJson());$###}$###builder.Add(new JProperty(\"definitions\", refTypes));");
+            builder.Append("$###foreach(var item in Assembly.GetExecutingAssembly().GetTypes())$###{$####var elements = Items.Where(x => x.GetType().Equals(item)).ToList();");
+            builder.Append("$####if (elements.Count() > 0)$####{$#####var classType = new JObject();$#####foreach(var element in elements)$#####{" +
+                "$######classType.Add(element.ToJson());$#####}$#####builder.Add(new JProperty(item.Name, new JObject(classType.ToString())));$####}$###}$###return builder.ToString();$##}$#}$}");
+            File.WriteAllText(Path.Combine(TargetDirectory, "ItemContainer.cs"), builder.ToString().Replace("#", "    ").Replace("$", Environment.NewLine).Replace("@", "#").Replace("!", "$"));
         }
 
 
