@@ -1,0 +1,16 @@
+{
+    "Animal" : 
+    {
+        "id-29" :
+        {
+            "ID" : "something",
+            "Name" : "chicken",
+            "LingualDescription" : [
+                {
+                    "Language" : "Chicken"
+                }
+            ],
+            "CountryOfOrigin" : "Africa"
+        }
+    }
+}
