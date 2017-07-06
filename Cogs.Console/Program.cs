@@ -15,7 +15,7 @@ namespace Cogs.Console
 {
     class Program
     {
-        public static void Main(string[] args)
+        static void Main(string[] args)
         {
             System.Console.WriteLine(cogsLogo);
 
