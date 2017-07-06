@@ -47,8 +47,8 @@ namespace Cogs.Tests.Integration
             container.Items.Add(meatPatty2);
             
             string json = JsonConvert.SerializeObject(container);
-            
-            string jsonSchema = File.ReadAllText(@"..\..\generated\jsonSchema.json");
+
+            string jsonSchema = File.ReadAllText(@"..\..\..\..\generated\jsonSchema.json");
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings
             {
                 MetadataPropertyHandling = MetadataPropertyHandling.Ignore
