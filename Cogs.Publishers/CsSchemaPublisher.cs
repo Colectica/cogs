@@ -61,7 +61,7 @@ namespace Cogs.Publishers
                 project.Save(xw);
             }
             // copy types file
-            Assembly.GetExecutingAssembly().GetManifestResourceStream("Cogs.Publishers.Types.cs.txt").CopyTo(new FileStream(Path.Combine(TargetDirectory, "Types.cs"), FileMode.Create));
+            this.GetType().GetTypeInfo().Assembly.GetManifestResourceStream("Cogs.Publishers.Types.txt").CopyTo(new FileStream(Path.Combine(TargetDirectory, "Types.cs"), FileMode.Create));
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
                 // add class description using '$' for newline and '#' for tabs
