@@ -15,13 +15,15 @@ namespace Cogs.Tests.Integration
             Hamburger hamburger = new Hamburger
             {
                 ID = Guid.NewGuid().ToString(),
-                Description = "Large Special"
+                Description = "Large Special",
+                HamburgerName = "Four Corners Burger"
             };
 
             Roll roll = new Roll
             {
                 ID = Guid.NewGuid().ToString(),
-                Name = "Sesame seed bun"
+                Name = "Sesame seed bun",
+                Description = "freshly baked daily!"
             };
 
             MeatPatty meatPatty = new MeatPatty
@@ -46,7 +48,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(meatPatty);
             container.Items.Add(meatPatty2);
             
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.Serialize();
 
             string jsonSchema = File.ReadAllText(@"..\..\..\..\generated\jsonSchema.json");
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings
@@ -58,6 +60,12 @@ namespace Cogs.Tests.Integration
             var errors = schema.Validate(json);
 
             Assert.Empty(errors);
+
+            ItemContainer newContainer = new ItemContainer();
+            newContainer.Parse(json);
+            errors = schema.Validate(JsonConvert.SerializeObject(newContainer));
+            Assert.Empty(errors);
+            Assert.Equal(json, JsonConvert.SerializeObject(newContainer));
         }
     }
 }

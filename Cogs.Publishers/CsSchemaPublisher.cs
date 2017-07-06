@@ -139,7 +139,7 @@ namespace Cogs.Publishers
                         if(model.ReusableDataTypes.Contains(prop.DataType)) { toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", " + prop.Name + ".ToJson())"); }
                         else if (!model.ItemTypes.Contains(prop.DataType)) { toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", " + prop.Name + ")"); }
                         else { toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", new JArray($#####new JObject(new JProperty(\"!type\", \"ref\"), " +
-                            "$######new JProperty(\"value\", new JArray($#######new JProperty(\"" + prop.DataTypeName + "\"), $#######new JProperty(" + prop.Name + ".ID))))))"); }
+                            "$######new JProperty(\"value\", new JArray($#######\"" + prop.DataTypeName + "\", $#######" + prop.Name + ".ID)))))"); }
                     }
                     // otherwise, create a list object to allow multiple
                     else
@@ -154,34 +154,36 @@ namespace Cogs.Publishers
                         {
                             toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
                                 "$######select new JObject(new JProperty(\"!type\", \"ref\"), " +
-                            "$#######new JProperty(\"value\", new JArray($########new JProperty(\"" + prop.DataTypeName + "\"), $########new JProperty(item.ID))))))"); 
+                            "$#######new JProperty(\"value\", new JArray($########\"" + prop.DataTypeName + "\", $########item.ID)))))"); 
                         }
                     }
                     first = false;
                 }
                 newClass.Append("$##/// <summary>$##/// Used to Serialize this object to Json $##/// <summary>");
                 fromJsonProperties.Append("$##/// <summary>$##/// Used to set this object's properties from Json $##/// <summary>");
+                string returnType = "JProperty";
+                if(model.ReusableDataTypes.Contains(item)) { returnType = "JObject"; }
                 if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
                 {
-                    newClass.Append("$##public new string ToJson()$##{");
+                    newClass.Append("$##public new " + returnType + " ToJson()$##{");
                     fromJsonProperties.Append("$##public new void FromJson(JObject json)$##{");
                 }
                 else
                 {
-                    newClass.Append("$##public string ToJson()$##{");
+                    newClass.Append("$##public " + returnType + " ToJson()$##{");
                     fromJsonProperties.Append("$##public void FromJson(JObject json)$##{");
                 }
                 if (!model.ReusableDataTypes.Contains(item))
                 {
                     newClass.Append("$###JProperty json = new JProperty(ID, new JObject(");
                     newClass.Append(toJsonProperties.ToString());
-                    newClass.Append("));$###return json.ToString();$##}");
+                    newClass.Append("));$###return json;$##}");
                 }
                 else
                 {
                     newClass.Append("$###JObject json = new JObject() {");
                     newClass.Append(toJsonProperties.ToString());
-                    newClass.Append("};$###return json.ToString();$##}");
+                    newClass.Append("};$###return json;$##}");
                 }
                 fromJsonProperties.Append("$###foreach (var prop in json)$###{$####this.GetType().GetProperties().Where(x => x.Name.Equals(prop.Key)).ToArray()[0].SetValue(this, prop.Value);");
                 newClass.Append(fromJsonProperties + "$###}$##}$#}$}");
@@ -203,7 +205,7 @@ namespace Cogs.Publishers
             {
                 builder.Append("$##" + prop.DataTypeName + " " + prop.Name + " { get; set; }");
             }
-            builder.Append("$##string ToJson();$##void FromJson(JObject json);$#}$}");
+            builder.Append("$##JProperty ToJson();$##void FromJson(JObject json);$#}$}");
             File.WriteAllText(Path.Combine(TargetDirectory, "IIdentifiable.cs"), builder.ToString().Replace("#", "    ").Replace("$", Environment.NewLine));
         }
 
@@ -218,9 +220,9 @@ namespace Cogs.Publishers
             builder.Append("$##public List<IIdentifiable> TopLevelReferences { get; } = new List<IIdentifiable>();");
             //create serializer
             builder.Append("$$$##public string Serialize()$##{");
-            builder.Append("$###JObject builder = new JObject {new JProperty(\"Reference\", new JArray($####from obj in TopLevelReferences" +
+            builder.Append("$###JObject builder = new JObject {new JProperty(\"TopLevelReference\", new JArray($####from obj in TopLevelReferences" +
                 "$####select new JObject($#####new JProperty(\"!type\", \"ref\"), " +
-                "$#####new JProperty(\"value\", new JArray($######new JProperty(obj.GetType().ToString()), $######new JProperty(obj.ID))))))};");
+                "$#####new JProperty(\"value\", new JArray($######obj.GetType().ToString(), $######obj.ID)))))};");
             builder.Append("$###foreach(var item in Assembly.GetExecutingAssembly().GetTypes())$###{$####var elements = Items.Where(x => x.GetType().Equals(item)).ToList();");
             builder.Append("$####if (elements.Count() > 0)$####{$#####var classType = new JObject();$#####foreach(var element in elements)$#####{" +
                 "$######classType.Add(element.ToJson());$#####}$#####builder.Add(new JProperty(item.Name, new JObject(classType.ToString())));$####}");
