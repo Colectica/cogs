@@ -154,7 +154,7 @@ namespace Cogs.Publishers
                         {
                             toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
                                 "$######select new JObject(new JProperty(\"!type\", \"ref\"), " +
-                            "$#######new JProperty(\"value\", new JArray($########\"" + prop.DataTypeName + "\", $########item.ID)))))"); 
+                            "$#######new JProperty(\"value\", new JArray($########item.GetType().Name.ToString(), $########item.ID)))))"); 
                         }
                     }
                     first = false;
