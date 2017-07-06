@@ -6,7 +6,6 @@
 
   <ItemGroup>
     <None Remove="image.css" />
-    <None Remove="Types.cs.txt" />
     <None Remove="Types.txt" />
   </ItemGroup>
 
