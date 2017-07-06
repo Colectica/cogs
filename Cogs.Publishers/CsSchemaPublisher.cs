@@ -135,9 +135,10 @@ namespace Cogs.Publishers
                     if (!prop.MaxCardinality.Equals("n") && Int32.Parse(prop.MaxCardinality) == 1)
                     {
                         newClass.Append("$##public " + prop.DataTypeName + " " + prop.Name + " { get; set; }");
-                        if (!model.ItemTypes.Contains(prop.DataType)) { jsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", " + prop.Name + ")"); }
+                        if(model.ReusableDataTypes.Contains(prop.DataType)) { jsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", " + prop.Name + ".ToJson())"); }
+                        else if (!model.ItemTypes.Contains(prop.DataType)) { jsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", " + prop.Name + ")"); }
                         else { jsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", new JArray($#####new JObject(new JProperty(\"!type\", \"ref\"), " +
-                            "$######new Property(\"value\", new JArray($#######new JProperty(\"" + prop.DataTypeName + "\"), $#######new JProperty(" + prop.Name + "))))))"); }
+                            "$######new JProperty(\"value\", new JArray($#######new JProperty(\"" + prop.DataTypeName + "\"), $#######new JProperty(" + prop.Name + ".ID))))))"); }
                     }
                     // otherwise, create a list object to allow multiple
                     else
@@ -152,7 +153,7 @@ namespace Cogs.Publishers
                         {
                             jsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
                                 "$######select new JObject(new JProperty(\"!type\", \"ref\"), " +
-                            "$#######new Property(\"value\", new JArray($########new JProperty(\"" + prop.DataTypeName + "\"), $########new JProperty(" + prop.Name + "))))))"); 
+                            "$#######new JProperty(\"value\", new JArray($########new JProperty(\"" + prop.DataTypeName + "\"), $########new JProperty(item.ID))))))"); 
                         }
                     }
                     first = false;
@@ -163,11 +164,21 @@ namespace Cogs.Publishers
                     newClass.Append("$##public new string ToJson()$##{");
                 }
                 else { newClass.Append("$##public string ToJson()$##{"); }
-                newClass.Append("$###JProperty json = new JProperty(ID, new JObject(");
-                newClass.Append(jsonProperties.ToString());
-                newClass.Append("));$###return json.ToString();$##}$#}$}");
+                if (!model.ReusableDataTypes.Contains(item))
+                {
+                    newClass.Append("$###JProperty json = new JProperty(ID, new JObject(");
+                    newClass.Append(jsonProperties.ToString());
+                    newClass.Append("));$###return json.ToString();$##}$#}$}");
+                }
+                else
+                {
+                    newClass.Append("$###JObject json = new JObject() {");
+                    newClass.Append(jsonProperties.ToString());
+                    newClass.Append("};$###return json.ToString();$##}$#}$}");
+                }
+                
                 // write class to out folder
-                File.WriteAllText(Path.Combine(TargetDirectory, item.Name + ".cs"), newClass.ToString().Replace("#", "    ").Replace("$", Environment.NewLine));
+                File.WriteAllText(Path.Combine(TargetDirectory, item.Name + ".cs"), newClass.ToString().Replace("#", "    ").Replace("$", Environment.NewLine).Replace("!", "$"));
             }
         }
 
@@ -205,7 +216,7 @@ namespace Cogs.Publishers
             builder.Append("$####if (elements.Count() > 0)$####{$#####var classType = new JObject();$#####foreach(var element in elements)$#####{" +
                 "$######classType.Add(element.ToJson());$#####}$#####builder.Add(new JProperty(item.Name, new JObject(classType.ToString())));$####}");
             builder.Append("$###}$###return builder.ToString();$##}$#}$}");
-            File.WriteAllText(Path.Combine(TargetDirectory, "ItemContainer.cs"), builder.ToString().Replace("#", "    ").Replace("$", Environment.NewLine).Replace("@", "#").Replace("!", "$"));
+            File.WriteAllText(Path.Combine(TargetDirectory, "ItemContainer.cs"), builder.ToString().Replace("#", "    ").Replace("$", Environment.NewLine).Replace("!", "$"));
         }
 
 
