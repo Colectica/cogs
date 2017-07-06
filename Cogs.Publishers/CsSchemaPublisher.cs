@@ -138,8 +138,8 @@ namespace Cogs.Publishers
                         newClass.Append("$##public " + prop.DataTypeName + " " + prop.Name + " { get; set; }");
                         if(model.ReusableDataTypes.Contains(prop.DataType)) { toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", " + prop.Name + ".ToJson())"); }
                         else if (!model.ItemTypes.Contains(prop.DataType)) { toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", " + prop.Name + ")"); }
-                        else { toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", new JArray($#####new JObject(new JProperty(\"!type\", \"ref\"), " +
-                            "$######new JProperty(\"value\", new JArray($#######\"" + prop.DataTypeName + "\", $#######" + prop.Name + ".ID)))))"); }
+                        else { toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", new JObject(new JProperty(\"!type\", \"ref\"), " +
+                            "$#####new JProperty(\"value\", new JArray($######\"" + prop.DataTypeName + "\", $######" + prop.Name + ".ID))))"); }
                     }
                     // otherwise, create a list object to allow multiple
                     else
@@ -225,18 +225,17 @@ namespace Cogs.Publishers
                 "$#####new JProperty(\"value\", new JArray($######obj.GetType().ToString(), $######obj.ID)))))};");
             builder.Append("$###foreach(var item in Assembly.GetExecutingAssembly().GetTypes())$###{$####var elements = Items.Where(x => x.GetType().Equals(item)).ToList();");
             builder.Append("$####if (elements.Count() > 0)$####{$#####var classType = new JObject();$#####foreach(var element in elements)$#####{" +
-                "$######classType.Add(element.ToJson());$#####}$#####builder.Add(new JProperty(item.Name, new JObject(classType.ToString())));$####}");
+                "$######classType.Add(element.ToJson());$#####}$#####builder.Add(new JProperty(item.Name, new JObject(classType)));$####}");
             builder.Append("$###}$###return builder.ToString();$##}");
             //create parser
             builder.Append("$$$##public void Parse(string json)$##{$###string id = \"\";$###JObject builder = JObject.Parse(json);$###foreach (var type in builder)$###{" +
-                "$####if(type.Key.Equals(\"TopLevelReference\"))$####{$#####id = type.Value.Value<JArray>(\"value\")[2].ToString();$####}$####else$####{$#####var clss = type.Key;" +
+                "$####if(type.Key.Equals(\"TopLevelReference\"))$####{$#####id = type.Value.First.Last.First.Last.ToString();$####}$####else$####{$#####var clss = type.Key;" +
                 "$#####foreach (KeyValuePair<string, JToken> instance in (JObject)type.Value)$#####{$######IIdentifiable obj = " +
-                "(IIdentifiable)Activator.CreateInstance(Assembly.GetEntryAssembly().GetTypes().Where(x => x.Name.Equals(clss)).ToArray()[0]);" +
-                "$######obj.FromJson((JObject)instance.Value);$######Items.Add(obj);$#####}$####}$###}$##}");
+                "(IIdentifiable)Activator.CreateInstance(Assembly.GetExecutingAssembly().GetTypes().Where(x => x.Name.Equals(clss)).ToArray()[0]);" +
+                "$######obj.FromJson((JObject)instance.Value);$######Items.Add(obj);$#####if(obj.ID.Equals(id)) { TopLevelReferences.Add(obj); }$#####}$####}$###}$##}");
             builder.Append("$#}$}");
             File.WriteAllText(Path.Combine(TargetDirectory, "ItemContainer.cs"), builder.ToString().Replace("#", "    ").Replace("$", Environment.NewLine).Replace("!", "$"));
         }
-
 
 
         // initialize the Translator dictionary
