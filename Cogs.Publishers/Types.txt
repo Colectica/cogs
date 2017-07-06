@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.ComponentModel.DataAnnotations;
 
-namespace cogsBurger
+namespace Cogs.DataAnnotations
 {
     [AttributeUsage(AttributeTargets.All)]
     public class ExclusiveRangeAttribute : RangeAttribute
@@ -40,18 +40,23 @@ namespace cogsBurger
     public class StringValidationAttribute : ValidationAttribute
     {
         Regex Rgx;
-        Enum Enumerations;
+        List<string> Enumerations;
 
-        public StringValidationAttribute(Enum enumerations, string pattern = null)
+        public StringValidationAttribute(string[] enumerations, string pattern = null)
         {
-            if(pattern != null) { this.Rgx = new Regex(pattern); }
-            this.Enumerations = enumerations;
+            if (pattern != null) { this.Rgx = new Regex(pattern); }
+            if (enumerations != null) { this.Enumerations = new List<string>(enumerations); }
         }
 
         public override bool IsValid(object value)
         {
-            if (!System.Enum.IsDefined(Enumerations.GetType(), value)) { return false; }
+            if(value == null)
+            {
+                return true;
+            }
+            if (Enumerations != null && !Enumerations.Contains(value.ToString())) { return false; }
             // check regex Pattern
+            if (Rgx != null && !this.Rgx.IsMatch(value.ToString())) { return false; }
             return true;
         }
     }

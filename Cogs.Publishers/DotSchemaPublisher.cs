@@ -72,8 +72,7 @@ namespace Cogs.Publishers
             {
                 ReusableList.Add(item);
             }
-            var header = "digraph G { compound = true rankdir=LR fontsize = 8 node [ " +
-               "fontsize = 8 shape = \"oval\"] edge [ fontsize = 8 ] ";
+            var header = "digraph G { compound = true rankdir=LR fontsize = 8 node [fontsize = 8 shape = \"oval\" style = \"filled\" fillcolor = \"#f7b733\"] edge [ fontsize = 8 ] ";
 
             if (Output.Equals("all")) { MakeGraphAll(model, header); }
             else if (Output.Equals("topic")) { MakeGraphTopic(model, header); }
@@ -82,13 +81,13 @@ namespace Cogs.Publishers
 
         private string MakeItem(DataType item)
         {
-            return MakeNode(item, item.Name + "[ shape = \"record\" color = blue label=\"{" + item.Name + "| ");
+            return MakeNode(item, item.Name + "[ shape = \"record\"  label=\"{" + item.Name + "| ");
         }
 
         private string MakeCluster(DataType item, DataType reusable)
         {
             StringBuilder output = new StringBuilder();
-            StringBuilder outerClass = new StringBuilder("subgraph cluster" + item.Name + " { color = blue label=\"" + item.Name + "\" ");
+            StringBuilder outerClass = new StringBuilder("subgraph cluster" + item.Name + " { style = \"filled\" fillcolor = \"#4abdac\" label=\"" + item.Name + "\" ");
             List<DataType> reusablesPresent = new List<DataType>();
             outerClass.Append(item.Name + "Properties [ shape = \"record\" label=\"{Properties |");
             foreach (var property in item.Properties)
@@ -143,7 +142,7 @@ namespace Cogs.Publishers
             outerClass.Append("}\"] ");
             foreach(var reused in reusablesPresent)
             {
-                outerClass.Append(item.Name + reused.Name + " [ shape = \"record\" label=\"{ " + reused.Name + " | ");
+                outerClass.Append(item.Name + reused.Name + " [ shape = \"record\" fillcolor = \"#fc4a1a\" label=\"{ " + reused.Name + " | ");
                 foreach(var property in reused.Properties)
                 {
                     outerClass.Append(property.Name + " : " + property.DataTypeName);
@@ -319,6 +318,43 @@ namespace Cogs.Publishers
 
             // delete the intermediate file
             File.Delete(Path.Combine(TargetDirectory, "input.dot"));
+            AddShadow(Path.Combine(TargetDirectory, filename.Replace(" ", "") + "." + Format));
+        }
+
+        private void AddShadow(string file)
+        {
+            StringBuilder newFile = new StringBuilder();
+            using (StreamReader reader = new StreamReader(file))
+            {
+                string line;
+                bool isFirst = true;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    if (line.Contains("viewBox"))
+                    {
+                        newFile.Append(line + Environment.NewLine + "<filter id = \"dropshadow\" height = \"130%\" ><feGaussianBlur in= \"SourceAlpha\" stdDeviation = \"3\"/>" +
+                            "<!--stdDeviation is how much to blur--><feOffset dx = \"2\" dy = \"2\" result = \"offsetblur\"/><!--how much to offset-->" +
+                            "<feMerge><feMergeNode/><!--this contains the offset blurred image--><feMergeNode in= \"SourceGraphic\"/>" +
+                            "<!--this contains the element that the filter is applied to --></feMerge></filter>" + Environment.NewLine);
+                    }
+                    else if (line.Contains("polygon") || line.Contains("ellipse"))
+                    {
+                        if(!isFirst)
+                        {
+                            foreach (var chr in line)
+                            {
+                                if (!chr.Equals('/')) { newFile.Append(chr); }
+                                else { newFile.Append(" style=\"filter: url(#dropshadow)\"" + chr); }
+                            }
+                            newFile.Append(Environment.NewLine);
+                        }
+                        else { isFirst = false; }
+                    }
+                    else { newFile.Append(line.ToString() + Environment.NewLine); }
+                }
+            }
+            File.Delete(file);
+            File.WriteAllText(file, newFile.ToString());
         }
     }
 }
