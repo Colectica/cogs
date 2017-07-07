@@ -33,6 +33,7 @@ namespace Cogs.Tests
                 publisher.TargetDirectory = outputPath;
                 publisher.DotLocation = "C:\\Users\\kevin\\Downloads\\graphviz-2.38\\release\\bin";
                 publisher.Output = choices[i];
+                publisher.Format = "svg";
                 publisher.Publish(cogsModel);
             }
         }
