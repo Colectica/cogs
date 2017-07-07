@@ -2,3 +2,4 @@ Name,DataType,MinCardinality,MaxCardinality,Description,MinLength,MaxLength,Enum
 Name,string,0,1,A name for the breading,,,,,,,,,,,
 LingualDescription,MultilingualString,0,n,A description of the breading,,,,,,,,,,,
 CountryOfOrigin,string,0,1,The country the animal was from,,,,,,,,,,,
+Date,date,0,1,The date animal is obtained,,,,,,,,,,,

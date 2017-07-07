@@ -43,17 +43,24 @@ namespace Cogs.Tests
             var jsondata2 = File.ReadAllText(@"C:\Users\clement\Documents\GitHub\cogs\Cogs.Tests.Console\testing2_reference_Object.json");
             var jsondata3 = File.ReadAllText(@"C:\Users\clement\Documents\GitHub\cogs\Cogs.Tests.Console\test3_SimpleType.json");
             var jsondata4 = File.ReadAllText(@"C:\Users\clement\Documents\GitHub\cogs\Cogs.Tests.Console\test4_invalid_json.json");
+            var jsondata5 = File.ReadAllText(@"C:\Users\clement\Documents\GitHub\cogs\Cogs.Tests.Console\ToDo.json");
+            var jsondata6 = File.ReadAllText(@"C:\Users\clement\Documents\GitHub\cogs\Cogs.Tests.Console\jsonOut.json");
 
 
             var validate1 = schema.Validate(jsondata1);
             var validate2 = schema.Validate(jsondata2);
             var validate3 = schema.Validate(jsondata3);
             var validate4 = schema.Validate(jsondata4);
+            var validate5 = schema.Validate(jsondata5);
+            //var validate6 = schema.Validate(jsondata6);
+
 
             Assert.Empty(validate1);
             Assert.Empty(validate2);
             Assert.Empty(validate3);
             Assert.NotEmpty(validate4);
+            Assert.Empty(validate5);
+            //Assert.Empty(validate6);
         }
     }
 }

@@ -1,0 +1,60 @@
+{
+	"TopLevelReference": [
+		{
+			"$type": "ref",
+			"value": [
+				"cogsBurger.Hamburger",
+				"b43cf994-6235-4d40-b999-33fc89bd7c80"
+			]
+		}
+	],
+	"Hamburger": {
+		"b43cf994-6235-4d40-b999-33fc89bd7c80": {
+			"ID": "b43cf994-6235-4d40-b999-33fc89bd7c80",
+			"HamburgerName": "Four Corners Burger",
+			"Description": "Large Special",
+			"Enclosure": [
+				{
+					"$type": "ref",
+					"value": [
+						"Breading",
+						"e415c228-8870-4644-800a-cf6fb9365b88"
+					]
+				}
+			],
+			"Patty": [
+				{
+					"$type": "ref",
+					"value": [
+						"Protein", "5147d9b9-e697-406a-a12a-fb7e72b4c177"
+					]
+				},
+				{
+					"$type": "ref", 
+					"value": [
+						"Protein",
+						"eac8628b-39e5-4d6f-9c17-97e355010b81"
+					]
+				}
+			],
+			"Sauce": [],
+			"CheeseUsed": []
+		}
+	},
+	"MeatPatty": {
+		"5147d9b9-e697-406a-a12a-fb7e72b4c177": {
+			"ID": "5147d9b9-e697-406a-a12a-fb7e72b4c177"
+		},
+		"eac8628b-39e5-4d6f-9c17-97e355010b81": {
+			"ID": "eac8628b-39e5-4d6f-9c17-97e355010b81"
+		}
+	},
+	"Roll": {
+		"e415c228-8870-4644-800a-cf6fb9365b88": {
+			"ID": "e415c228-8870-4644-800a-cf6fb9365b88",
+			"Name": "Sesame seed bun",
+			"Description": "freshly baked daily!",
+			"Grain": []
+		}
+	}
+}
