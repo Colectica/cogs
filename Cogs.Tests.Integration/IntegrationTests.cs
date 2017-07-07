@@ -39,7 +39,7 @@ namespace Cogs.Tests.Integration
             hamburger.Enclosure = roll;
             hamburger.Patty.Add(meatPatty);
             hamburger.Patty.Add(meatPatty2);
-            
+
             ItemContainer container = new ItemContainer();
             container.TopLevelReferences.Add(hamburger);
 
@@ -47,7 +47,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(roll);
             container.Items.Add(meatPatty);
             container.Items.Add(meatPatty2);
-            
+
             string json = container.Serialize();
 
             string jsonSchema = File.ReadAllText(@"..\..\..\..\generated\jsonSchema.json");
