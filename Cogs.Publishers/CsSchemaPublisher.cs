@@ -60,6 +60,7 @@ namespace Cogs.Publishers
             {
                 project.Save(xw);
             }
+            CreateJsonConverter(projName);
             // copy types file
             this.GetType().GetTypeInfo().Assembly.GetManifestResourceStream("Cogs.Publishers.Types.txt").CopyTo(new FileStream(Path.Combine(TargetDirectory, "Types.cs"), FileMode.Create));
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
@@ -169,12 +170,12 @@ namespace Cogs.Publishers
                 if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
                 {
                     newClass.Append("$##public new " + returnType + " ToJson()$##{");
-                    InitializeReferences.Append("$##public new void InitializeReferences(Dictionary<string, object> dict)$##{");
+                    InitializeReferences.Append("$##public new void InitializeReferences(Dictionary<string, IIdentifiable> dict)$##{");
                 }
                 else
                 {
                     newClass.Append("$##public " + returnType + " ToJson()$##{");
-                    InitializeReferences.Append("$##public void InitializeReferences(Dictionary<string, object> dict)$##{");
+                    InitializeReferences.Append("$##public void InitializeReferences(Dictionary<string, IIdentifiable> dict)$##{");
                 }
                 if (!model.ReusableDataTypes.Contains(item))
                 {
@@ -209,7 +210,7 @@ namespace Cogs.Publishers
             {
                 builder.Append("$##" + prop.DataTypeName + " " + prop.Name + " { get; set; }");
             }
-            builder.Append("$##JProperty ToJson();$##string ReferenceId { get; set; }$#}$}");
+            builder.Append("$##JProperty ToJson();$##string ReferenceId { get; set; }$##void InitializeReferences(Dictionary<string, IIdentifiable> dict);$#}$}");
             File.WriteAllText(Path.Combine(TargetDirectory, "IIdentifiable.cs"), builder.ToString().Replace("#", "    ").Replace("$", Environment.NewLine));
         }
 
@@ -218,27 +219,160 @@ namespace Cogs.Publishers
         // Creates the ItemContainer Class
         private void CreateItemContainer(CogsModel model, string projName)
         {
-            StringBuilder builder = new StringBuilder("using System;$using System.Linq;$using Newtonsoft.Json;$using System.Reflection;$using Newtonsoft.Json.Linq;" +
-                "$using System.Collections.Generic;$$namespace " + projName + "${$#/// <summary>$#/// Class that contains a list of all items in the model $#/// <summary>");
-            builder.Append("$#public class ItemContainer$#{$##public List<IIdentifiable> Items { get; } = new List<IIdentifiable>();");
-            builder.Append("$##public List<IIdentifiable> TopLevelReferences { get; } = new List<IIdentifiable>();");
-            //create serializer
-            builder.Append("$$$##public string Serialize()$##{");
-            builder.Append("$###JObject builder = new JObject {new JProperty(\"TopLevelReference\", new JArray($####from obj in TopLevelReferences" +
-                "$####select new JObject($#####new JProperty(\"!type\", \"ref\"), " +
-                "$#####new JProperty(\"value\", new JArray($######obj.GetType().ToString(), $######obj.ID)))))};");
-            builder.Append("$###foreach(var item in Assembly.GetExecutingAssembly().GetTypes())$###{$####var elements = Items.Where(x => x.GetType().Equals(item)).ToList();");
-            builder.Append("$####if (elements.Count() > 0)$####{$#####var classType = new JObject();$#####foreach(var element in elements)$#####{" +
-                "$######classType.Add(element.ToJson());$#####}$#####builder.Add(new JProperty(item.Name, new JObject(classType)));$####}");
-            builder.Append("$###}$###return builder.ToString();$##}");
-            //create parser
-            builder.Append("$$$##public void Parse(string json)$##{$###string id = \"\";$###JObject builder = JObject.Parse(json);$###foreach (var type in builder)$###{" +
-                "$####if(type.Key.Equals(\"TopLevelReference\"))$####{$#####id = type.Value.First.Last.First.Last.ToString();$####}$####else$####{$#####var clss = type.Key;" +
-                "$#####foreach (KeyValuePair<string, JToken> instance in (JObject)type.Value)$#####{$######IIdentifiable obj = " +
-                "JsonConvert.DeserializeObject<Hamburger>(instance.Value.ToString());" +
-                "$######Items.Add(obj);$######if(obj.ID.Equals(id)) { TopLevelReferences.Add(obj); }$#####}$####}$###}$##}");
-            builder.Append("$#}$}");
-            File.WriteAllText(Path.Combine(TargetDirectory, "ItemContainer.cs"), builder.ToString().Replace("#", "    ").Replace("$", Environment.NewLine).Replace("!", "$"));
+            string clss = @"using System;
+using System.Linq;
+using Newtonsoft.Json;
+using System.Reflection;
+using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
+
+namespace !!!
+{
+    /// <summary>
+    /// Class that contains a list of all items in the model 
+    /// <summary>
+    public class ItemContainer
+    {
+        public List<IIdentifiable> Items { get; } = new List<IIdentifiable>();
+        public List<IIdentifiable> TopLevelReferences { get; } = new List<IIdentifiable>();
+
+
+        public string Serialize()
+        {
+            JObject builder = new JObject {new JProperty(""TopLevelReference"", new JArray(
+                from obj in TopLevelReferences
+                select new JObject(
+                    new JProperty(""$type"", ""ref""),
+                    new JProperty(""value"", new JArray(
+                        obj.GetType().ToString(),
+                        obj.ID)))))};
+            foreach(var item in Assembly.GetExecutingAssembly().GetTypes())
+            {
+                var elements = Items.Where(x => x.GetType().Equals(item)).ToList();
+                if (elements.Count() > 0)
+                {
+                    var classType = new JObject();
+                    foreach(var element in elements)
+                    {
+                        classType.Add(element.ToJson());
+                    }
+                    builder.Add(new JProperty(item.Name, new JObject(classType)));
+                }
+            }
+            return builder.ToString();
+        }
+
+
+        public void Parse(string json)
+        {
+            string id = """";
+            JObject builder = JObject.Parse(json);
+            Dictionary<string, IIdentifiable> dict = new Dictionary<string, IIdentifiable>();
+            foreach (var type in builder)
+            {
+                if (type.Key.Equals(""TopLevelReference""))
+                {
+                    id = type.Value.First.Last.First.Last.ToString();
+                }
+                else
+                {
+                    var clss = type.Key;
+                    foreach (KeyValuePair<string, JToken> instance in (JObject)type.Value)
+                    {
+                        IIdentifiable obj = null;
+                        ???
+                        if (obj == null) { throw new InvalidOperationException(); }
+                        obj.ReferenceId = instance.Key;
+                        Items.Add(obj);
+                        dict.Add(instance.Key, obj);
+                        if (obj.ID.Equals(id)) { TopLevelReferences.Add(obj); }
+                    }
+                }
+            }
+            foreach (var obj in dict.Values)
+            {
+                obj.InitializeReferences(dict);
+            }
+        }
+    }
+}";
+            StringBuilder ifs = new StringBuilder();
+            foreach(var item in model.ItemTypes)
+            {
+                ifs.Append("$######if (clss.Equals(\"" + item.Name + "\")) { obj = JsonConvert.DeserializeObject<" + item.Name + ">(instance.Value.ToString()); }");
+            }
+            File.WriteAllText(Path.Combine(TargetDirectory, "ItemContainer.cs"), clss.Replace("!!!", projName).Replace("???", ifs.ToString()
+                .Replace("#", "    ").Replace("$", Environment.NewLine)));
+        }
+
+
+        public void CreateJsonConverter(string projName)
+        {
+            string clss =@"using System;
+using Newtonsoft.Json;
+
+namespace !!!
+{
+    class IIdentifiableConverter : JsonConverter
+    {
+        public override bool CanConvert(Type objectType)
+        {
+            return objectType is IIdentifiable;
+        }
+
+        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override bool CanRead
+        {
+            get { return true; }
+        }
+
+        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        {
+            IIdentifiable obj = (IIdentifiable)Activator.CreateInstance(objectType);
+            existingValue = obj;
+            if (reader.TokenType != JsonToken.Null)
+            {
+                /*
+                if (reader.TokenType == JsonToken.StartArray)
+                {
+                    JToken token = JToken.Load(reader);
+                    List<string> items = token.ToObject<List<string>>();
+                    List<IIdentifiable> objects = new List<IIdentifiable>();
+                    foreach (var item in items)
+                    {
+                        objects.Add((IIdentifiable)Activator.CreateInstance(item.GetType()));
+                    }
+                    obj = objects;
+
+                else */
+                {
+                    while (reader.Read())
+                    {
+                        if (reader.Value.Equals(""value""))
+                        {
+                            reader.Read();
+                            reader.Read();
+                            reader.Read();
+                            if (reader.Value != null && !string.IsNullOrWhiteSpace(reader.Value.ToString()))
+                            {
+                                obj.ReferenceId = reader.Value.ToString();
+                            }
+                            return obj;
+                        }
+                    }
+                }
+            }
+            existingValue = obj;
+            return obj;
+        }
+    }
+}";
+
+            File.WriteAllText(Path.Combine(TargetDirectory, "IIdentifiableConverter.cs"), clss.Replace("!!!", projName));
         }
 
 
