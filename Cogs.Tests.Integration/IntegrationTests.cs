@@ -19,11 +19,18 @@ namespace Cogs.Tests.Integration
                 HamburgerName = "Four Corners Burger"
             };
 
-            Roll roll = new Roll
+
+            Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
                 Name = "Sesame seed bun",
                 Description = "freshly baked daily!"
+            };
+
+            Roll roll = new Roll
+            {
+                ID = Guid.NewGuid().ToString(),
+                Name = "Sesame seed bun"
             };
 
             MeatPatty meatPatty = new MeatPatty
@@ -42,7 +49,7 @@ namespace Cogs.Tests.Integration
 
             ItemContainer container = new ItemContainer();
             container.TopLevelReferences.Add(hamburger);
-
+            container.Items.Add(bread);
             container.Items.Add(hamburger);
             container.Items.Add(roll);
             container.Items.Add(meatPatty);
