@@ -12,60 +12,52 @@ namespace Cogs.Tests.Integration
         [Fact]
         public async void CsharpWritesValidJson()
         {
-            string type = "$type";
-            //Hamburger hamburger = new Hamburger
-            //{
-            //    ID = Guid.NewGuid().ToString(),
-            //    HamburgerName = "Big Mac",
-            //    Description = "Large Special",
-            //    Enclosure = ,
-            //    Patty = ,
-            //    Sauce = ,
-            //    CheeseUsed = 
+            Hamburger hamburger = new Hamburger
+            {
+                ID = Guid.NewGuid().ToString(),
+                Description = "Large Special",
+                HamburgerName = "Four Corners Burger"
+            };
 
-            //};
+
             Bread bread = new Bread
             {
-                ID = "bread123",
-                Name = "Bagels",
-                Size = new Dimensions
-                {
-                    Width = 12,
-                    Length = 13,
-                }
-
+                ID = Guid.NewGuid().ToString(),
+                Name = "Sesame seed bun",
+                Description = "freshly baked daily!"
             };
-            //Roll roll = new Roll
-            //{
-            //    ID = Guid.NewGuid().ToString(),
-            //    Name = "Sesame seed bun"
-            //};
 
-            //MeatPatty meatPatty = new MeatPatty
-            //{
-            //    ID = Guid.NewGuid().ToString()
-            //};
+            Roll roll = new Roll
+            {
+                ID = Guid.NewGuid().ToString(),
+                Name = "Sesame seed bun"
+            };
 
-            //MeatPatty meatPatty2 = new MeatPatty
-            //{
-            //    ID = Guid.NewGuid().ToString()
-            //};
+            MeatPatty meatPatty = new MeatPatty
+            {
+                ID = Guid.NewGuid().ToString()
+            };
 
-            //hamburger.Enclosure = roll;
-            //hamburger.Patty.Add(meatPatty);
-            //hamburger.Patty.Add(meatPatty2);
-            
+            MeatPatty meatPatty2 = new MeatPatty
+            {
+                ID = Guid.NewGuid().ToString()
+            };
+
+            hamburger.Enclosure = roll;
+            hamburger.Patty.Add(meatPatty);
+            hamburger.Patty.Add(meatPatty2);
+
             ItemContainer container = new ItemContainer();
-            //container.TopLevelReferences.Add(hamburger);
+            container.TopLevelReferences.Add(hamburger);
             container.Items.Add(bread);
-            //container.Items.Add(hamburger);
-            //container.Items.Add(roll);
-            //container.Items.Add(meatPatty);
-            //container.Items.Add(meatPatty2);
-
-            string json = container.Serialize();
+            container.Items.Add(hamburger);
+            container.Items.Add(roll);
+            container.Items.Add(meatPatty);
+            container.Items.Add(meatPatty2);
             
-            string jsonSchema = File.ReadAllText(@"..\..\generated\jsonSchema.json");
+            string json = container.Serialize();
+
+            string jsonSchema = File.ReadAllText(@"..\..\..\..\generated\jsonSchema.json");
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings
             {
                 MetadataPropertyHandling = MetadataPropertyHandling.Ignore
@@ -75,6 +67,12 @@ namespace Cogs.Tests.Integration
             var errors = schema.Validate(json);
 
             Assert.Empty(errors);
+
+            ItemContainer newContainer = new ItemContainer();
+            newContainer.Parse(json);
+            errors = schema.Validate(JsonConvert.SerializeObject(newContainer));
+            Assert.Empty(errors);
+            Assert.Equal(json, JsonConvert.SerializeObject(newContainer));
         }
     }
 }

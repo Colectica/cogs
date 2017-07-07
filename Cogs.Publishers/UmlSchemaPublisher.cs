@@ -66,17 +66,6 @@ namespace Cogs.Publishers
             XElement xmodel = new XElement("packagedElement", new XAttribute(xmins + "type", "uml:Package"), 
                 new XAttribute(xmins + "id", projectName), new XAttribute("name", projectName));
             XElement diagramElements = new XElement("elements");
-            // create list of all classes so you know if a class is being referenced
-            var classList = new List<string>();
-            foreach(var item in model.ItemTypes.Concat(model.ReusableDataTypes)){
-                classList.Add(item.Name);
-            }
-            // create list of all reusable types so you know if a reusable type is being referenced
-            var reusableList = new List<string>();
-            foreach(var item in model.ReusableDataTypes)
-            {
-                reusableList.Add(item.Name);
-            }
             List<XElement> nodes = null;
             var xOff = 0.0;
             var yOff = 0.0;
@@ -114,12 +103,12 @@ namespace Cogs.Publishers
                 xOff = Math.Abs(xOff);
                 yOff = Math.Abs(yOff);
             } 
-            int count = classList.Count;
+            int count = model.ItemTypes.Count;
             var offset = 2.5;
             // loop through classes and reusable data types
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
-                if (reusableList.Contains(item.Name)) break;
+                if (model.ReusableDataTypes.Contains(item)) break;
                 // Create class
                 var newItem = new XElement(new XElement("packagedElement", new XAttribute(xmins + "type", "uml:Class"),
                            new XAttribute(xmins + "id", CreateId(item.Name)),
@@ -165,7 +154,7 @@ namespace Cogs.Publishers
                     }
                     newItem.Add(newProperty);
                     // see if property is a type of class
-                    if(classList.Contains(property.DataTypeName) && !IdList.Contains("Association.from" + property.Name + ".to." + property.DataTypeName)){
+                    if(model.ItemTypes.Contains(property.DataType) && !IdList.Contains("Association.from" + property.Name + ".to." + property.DataTypeName)){
                         // create link association
                         var classLink = new XElement("packagedElement", new XAttribute(xmins + "type", "uml:Association"),
                             new XAttribute(xmins + "id", CreateId("Association.from" + property.Name + ".to." + property.DataTypeName)));
@@ -180,7 +169,7 @@ namespace Cogs.Publishers
                         var min = "0";
                         var max = "*";
                         // check to see if item being referenced is a ReusableDataType
-                        if (reusableList.Contains(property.DataTypeName))
+                        if (model.ReusableDataTypes.Contains(property.DataType))
                         {
                             min = "1";
                             max = "1";
