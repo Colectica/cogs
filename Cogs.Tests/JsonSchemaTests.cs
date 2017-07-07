@@ -52,7 +52,7 @@ namespace Cogs.Tests
             var validate3 = schema.Validate(jsondata3);
             var validate4 = schema.Validate(jsondata4);
             var validate5 = schema.Validate(jsondata5);
-            //var validate6 = schema.Validate(jsondata6);
+            var validate6 = schema.Validate(jsondata6);
 
 
             Assert.Empty(validate1);
@@ -60,7 +60,7 @@ namespace Cogs.Tests
             Assert.Empty(validate3);
             Assert.NotEmpty(validate4);
             Assert.Empty(validate5);
-            //Assert.Empty(validate6);
+            Assert.Empty(validate6);
         }
     }
 }
