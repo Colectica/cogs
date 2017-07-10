@@ -62,6 +62,7 @@ namespace Cogs.Tests
                 Debug.WriteLine(line);
                 if (line.Equals("Build FAILED.")) { Assert.False(true); }
             }
+            
         }
     }
 }

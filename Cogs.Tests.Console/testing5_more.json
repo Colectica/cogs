@@ -17,12 +17,23 @@
             "Sauce": 
             [
                 { "$type" : "ref", "value" : ["Condiment", "bigmacsauce-id"] }
+            ]
+        },
+        "id-55" : 
+        {
+            "ID" : "id-55",
+            "HamburgerName" : "Chicken on bread",
+            "Enclosure" :  {"$type" : "ref", "value" : ["Roll", "goodbread"] },
+            "Patty" : 
+            [
+                { "$type" : "ref", "value" : ["MeatPatty", "Chicken"] },
+                { "$type" : "ref", "value" : ["VeggiePatty", "reallyBeanie"] }
             ],
-              "date" : {
-               	"date" : 123,
-                  "timzone" : "tc"
-              }
-        }
+            "Sauce": 
+            [
+                { "$type" : "ref", "value" : ["Condiment", "bigmacsauce-id"] }
+            ]
+        },
     },
     "Condiment" : 
     {
@@ -67,6 +78,12 @@
             [
                 { "$type" : "ref", "value" : ["Animal", "chuck23"] }
             ]
+        },
+        "Chicken" : {
+            "ID" : "chicken",
+            "SourceAnimal" : [
+                {"$type" : "ref", "value": ["Animal", "chuck24"]}
+            ]
         }
     },
     "VeggiePatty":
@@ -94,17 +111,16 @@
               ]
             ,
             "CountryOfOrigin" : "US"
-        }
-    },
-    "Cheese" : 
-    {
-	"cheese23" : {
-	    "ID" : "23",
-            "Name" : "Cheddar",
-            "YearMonth" : {
-		"year" : 1666,
-		"month" : 5
-	    }
+        },
+        "chuck24" : {
+            "cogsDate" : {
+                "date" : "2017-09-02"
+            },
+            "ID" : "chuck24",
+            "Description" : [
+                {"Content" : "Kate's chicken"}
+            ],
+            "CountryOfOrigin" : "US"
         }
     }
 }
