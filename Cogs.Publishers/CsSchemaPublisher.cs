@@ -60,7 +60,7 @@ namespace Cogs.Publishers
             {
                 project.Save(xw);
             }
-            CreateJsonConverter(projName);
+            CreateJsonConverter(model, projName);
             // copy types file
             this.GetType().GetTypeInfo().Assembly.GetManifestResourceStream("Cogs.Publishers.Types.txt").CopyTo(new FileStream(Path.Combine(TargetDirectory, "Types.cs"), FileMode.Create));
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
@@ -137,7 +137,7 @@ namespace Cogs.Publishers
                     // if there can be at most one, create an instance variable
                     if (!prop.MaxCardinality.Equals("n") && Int32.Parse(prop.MaxCardinality) == 1)
                     {
-                        if (model.ItemTypes.Contains(prop.DataType)) { newClass.Append("$##[JsonConverter(typeof(IIdentifiableConverter))]"); }
+                        if (model.ItemTypes.Contains(prop.DataType) && !item.IsAbstract) { newClass.Append("$##[JsonConverter(typeof(IIdentifiableConverter))]"); }
                         newClass.Append("$##public " + prop.DataTypeName + " " + prop.Name + " { get; set; }");
                         if(model.ReusableDataTypes.Contains(prop.DataType)) { toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", " + prop.Name + ".ToJson())"); }
                         else if (!model.ItemTypes.Contains(prop.DataType)) { toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", " + prop.Name + ")"); }
@@ -147,7 +147,7 @@ namespace Cogs.Publishers
                     // otherwise, create a list object to allow multiple
                     else
                     {
-                        if (model.ItemTypes.Contains(prop.DataType)) { newClass.Append("$##[JsonConverter(typeof(IIdentifiableConverter))]"); }
+                        if (model.ItemTypes.Contains(prop.DataType) && !item.IsAbstract) { newClass.Append("$##[JsonConverter(typeof(IIdentifiableConverter))]"); }
                         newClass.Append("$##public List<" + prop.DataTypeName + "> " + prop.Name + "{ get; set; }  = new List<" + prop.DataTypeName + ">();");
                         if (!model.ItemTypes.Contains(prop.DataType))
                         {
@@ -306,12 +306,16 @@ namespace !!!
         }
 
 
-        public void CreateJsonConverter(string projName)
+        public void CreateJsonConverter(CogsModel model, string projName)
         {
-            string clss =@"using System;
+            string clss = @"using System;
+using System.Linq;
 using Newtonsoft.Json;
+using System.Collections;
+using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
 
-namespace !!!
+namespace cogsBurger
 {
     class IIdentifiableConverter : JsonConverter
     {
@@ -332,47 +336,82 @@ namespace !!!
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
-            IIdentifiable obj = (IIdentifiable)Activator.CreateInstance(objectType);
-            existingValue = obj;
-            if (reader.TokenType != JsonToken.Null)
+            IIdentifiable single = null;
+            List<IIdentifiable> list = null;
+            JToken obj = null;
+            if (typeof(IEnumerable).IsAssignableFrom(objectType) && !objectType.ToString().ToLower().Equals(""string""))
             {
-                /*
-                if (reader.TokenType == JsonToken.StartArray)
+                list = ((IEnumerable)Activator.CreateInstance(objectType)).Cast<IIdentifiable>().ToList();
+                obj = JArray.Load(reader);
+            }
+            else
+            {
+                single = (IIdentifiable)Activator.CreateInstance(objectType);
+                obj = JObject.Load(reader);
+            }
+            if (obj != null && obj.First != null)
+            {
+                var props = obj.Children();
+                if (single != null)
                 {
-                    JToken token = JToken.Load(reader);
-                    List<string> items = token.ToObject<List<string>>();
-                    List<IIdentifiable> objects = new List<IIdentifiable>();
-                    foreach (var item in items)
-                    {
-                        objects.Add((IIdentifiable)Activator.CreateInstance(item.GetType()));
-                    }
-                    obj = objects;
-
-                else */
+                    var id = props.ElementAt(1).First.Last.ToString();
+                    single.ReferenceId = id;
+                }
+                else
                 {
-                    while (reader.Read())
+                    for (int i = 0; i < obj.Count(); i++)
                     {
-                        if (reader.Value.Equals(""value""))
-                        {
-                            reader.Read();
-                            reader.Read();
-                            reader.Read();
-                            if (reader.Value != null && !string.IsNullOrWhiteSpace(reader.Value.ToString()))
-                            {
-                                obj.ReferenceId = reader.Value.ToString();
-                            }
-                            return obj;
-                        }
+                        var id = props.ElementAt(i).Last.Last.Last.ToString();
+                        var type = Type.GetType(typeof(IIdentifiable).Namespace + ""."" + props.ElementAt(i).Last.Last.First.ToString());
+                        IIdentifiable temp = (IIdentifiable)Activator.CreateInstance(type);
+                        temp.ReferenceId = id;
+                        list.Add(temp);
                     }
                 }
             }
-            existingValue = obj;
-            return obj;
+            /*
+            while (reader.Value == null && reader.Read()) ;
+            if (reader.TokenType != JsonToken.Null)
+            {
+                while (reader.TokenType != JsonToken.EndObject)
+                {
+                    if (reader.Value.Equals(""value""))
+                    {
+                        reader.Read();
+                        reader.Read();
+                        if (list != null)
+                        {
+                            if (type == null) { type = Type.GetType(typeof(IIdentifiable).Namespace + ""."" + reader.Value.ToString()); }
+                            IIdentifiable add = (IIdentifiable)Activator.CreateInstance(type);
+                            MakeObject(add, reader);
+                            list.Add(add);
+                            reader.Read();
+                        }
+                        else { MakeObject(single, reader); }
+                    }else if(!""$typeref"".Contains(reader.Value.ToString())) { break; }
+                    reader.Read();
+                }
+            } */
+            if (single != null) { return single; }
+            var t = objectType.GetGenericArguments()[0].Name;???
+            return new InvalidOperationException();
+        }
+
+        private void MakeObject(IIdentifiable obj, JsonReader reader)
+        {
+            reader.Read();
+            obj.ReferenceId = reader.Value.ToString();
+            reader.Read();
         }
     }
 }";
-
-            File.WriteAllText(Path.Combine(TargetDirectory, "IIdentifiableConverter.cs"), clss.Replace("!!!", projName));
+            StringBuilder ifs = new StringBuilder();
+            foreach (var item in model.ItemTypes)
+            {
+                ifs.Append("$###if (t.Equals(\"" + item.Name + "\")) { return list.Cast<" + item.Name + ">().ToList(); }");
+            }
+            File.WriteAllText(Path.Combine(TargetDirectory, "IIdentifiableConverter.cs"), clss.Replace("!!!", projName).Replace("???", ifs.ToString()
+                .Replace("$", Environment.NewLine).Replace("#", "    ")));
         }
 
 
