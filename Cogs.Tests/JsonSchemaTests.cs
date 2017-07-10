@@ -45,6 +45,7 @@ namespace Cogs.Tests
             var jsondata4 = File.ReadAllText(@"C:\Users\clement\Documents\GitHub\cogs\Cogs.Tests.Console\test4_invalid_json.json");
             var jsondata5 = File.ReadAllText(@"C:\Users\clement\Documents\GitHub\cogs\Cogs.Tests.Console\ToDo.json");
             var jsondata6 = File.ReadAllText(@"C:\Users\clement\Documents\GitHub\cogs\Cogs.Tests.Console\jsonOut.json");
+            var jsondata7 = File.ReadAllText(@"C:\Users\clement\Documents\GitHub\cogs\Cogs.Tests.Console\testing5_more.json");
 
 
             var validate1 = schema.Validate(jsondata1);
@@ -53,7 +54,7 @@ namespace Cogs.Tests
             var validate4 = schema.Validate(jsondata4);
             var validate5 = schema.Validate(jsondata5);
             var validate6 = schema.Validate(jsondata6);
-
+            var validate7 = schema.Validate(jsondata7);
 
             Assert.Empty(validate1);
             Assert.Empty(validate2);
@@ -61,6 +62,7 @@ namespace Cogs.Tests
             Assert.NotEmpty(validate4);
             Assert.Empty(validate5);
             Assert.Empty(validate6);
+            Assert.Empty(validate7);
         }
     }
 }

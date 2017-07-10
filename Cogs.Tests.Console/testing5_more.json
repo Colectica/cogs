@@ -1,0 +1,126 @@
+{
+    "TopLevelReference" :[
+            { "$type" : "ref", "value" : ["Hamburger", "id-54"] }]
+    ,
+    "Hamburger" : 
+    {
+        "id-54" : 
+        {
+            "ID" : "id-54",
+            "HamburgerName" : "Big Mac on bread",
+            "Enclosure" :  {"$type" : "ref", "value" : ["Roll", "goodbread"] },
+            "Patty" : 
+            [
+                { "$type" : "ref", "value" : ["MeatPatty", "Beef"] },
+                { "$type" : "ref", "value" : ["VeggiePatty", "reallyBeanie"] }
+            ],
+            "Sauce": 
+            [
+                { "$type" : "ref", "value" : ["Condiment", "bigmacsauce-id"] }
+            ]
+        },
+        "id-55" : 
+        {
+            "ID" : "id-55",
+            "HamburgerName" : "Chicken on bread",
+            "Enclosure" :  {"$type" : "ref", "value" : ["Roll", "goodbread"] },
+            "Patty" : 
+            [
+                { "$type" : "ref", "value" : ["MeatPatty", "Chicken"] },
+                { "$type" : "ref", "value" : ["VeggiePatty", "reallyBeanie"] }
+            ],
+            "Sauce": 
+            [
+                { "$type" : "ref", "value" : ["Condiment", "bigmacsauce-id"] }
+            ]
+        },
+    },
+    "Condiment" : 
+    {
+        "bigmacsauce-id" : 
+        {
+            "ID" : "bigmacsauce-id",
+            "Name" : "Special Sauce",
+            "IsSpecial" : true
+        },
+        "mustard" : 
+        {
+            "ID" : "mustard",
+            "Name" : "Yellow Mustard",
+            "IsSpecial" : false
+        },        
+        "ketchup" : 
+        {
+            "ID" : "ketchup",
+            "Name" : "Heinz 57",
+            "IsSpecial" : false
+        }
+    },
+    "Bread" : 
+    {
+        "goodbread" :
+        {
+            "ID" : "goodbread",
+            "Name" : "White bread",
+            "Grain" : [],
+            "Size" : {
+                "Width" : 140,
+                "Length" : 4.2,
+                "Height" : [0.012]
+            }
+        }
+    },
+    "MeatPatty":
+    {
+        "Beef" : {
+            "ID" : "Beef",
+            "SourceAnimal" : 
+            [
+                { "$type" : "ref", "value" : ["Animal", "chuck23"] }
+            ]
+        },
+        "Chicken" : {
+            "ID" : "chicken",
+            "SourceAnimal" : [
+                {"$type" : "ref", "value": ["Animal", "chuck24"]}
+            ]
+        }
+    },
+    "VeggiePatty":
+    {
+        "reallyBeanie" :
+        {
+            "ID" : "reallyBeanie",
+            "VegetableUsed" : ["red beans", "Black beans"]
+        },
+        "notSoBeanie" :
+        {
+            "ID" : "notSoBeanie",
+            "VegetableUsed" : ["garbanzo beans"]
+        }            
+    },
+    "Animal" :
+    {
+        "chuck23" : {
+          "cogsDate" : {
+            "date" : "2017-06-01"
+          },
+            "ID" : "chuck23",
+            "Description" : [
+              {"Content" : "Kate's cow"}
+              ]
+            ,
+            "CountryOfOrigin" : "US"
+        },
+        "chuck24" : {
+            "cogsDate" : {
+                "date" : "2017-09-02"
+            },
+            "ID" : "chuck24",
+            "Description" : [
+                {"Content" : "Kate's chicken"}
+            ],
+            "CountryOfOrigin" : "US"
+        }
+    }
+}
