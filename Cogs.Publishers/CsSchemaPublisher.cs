@@ -71,6 +71,7 @@ namespace Cogs.Publishers
                 newClass.Append("$#public ");
                 var toJsonProperties = new StringBuilder();
                 var initializeReferences = new StringBuilder();
+                var reusableToJson = new StringBuilder();
                 // add abstract to class title if relevant
                 if (item.IsAbstract) { newClass.Append("abstract "); }
                 newClass.Append("class " + item.Name);
@@ -133,13 +134,21 @@ namespace Cogs.Publishers
                             newClass.Append("$##[ExclusiveRange(" + prop.MinExclusive + ", " + prop.MaxExclusive + ")]");
                         }
                     }
-                    if (!first) { toJsonProperties.Append(","); }
+                    if (!first && !model.ReusableDataTypes.Contains(prop.DataType)) { toJsonProperties.Append(","); }
                     // if there can be at most one, create an instance variable
                     if (!prop.MaxCardinality.Equals("n") && Int32.Parse(prop.MaxCardinality) == 1)
                     {
                         if (model.ItemTypes.Contains(prop.DataType) && !item.IsAbstract) { newClass.Append("$##[JsonConverter(typeof(IIdentifiableConverter))]"); }
                         newClass.Append("$##public " + prop.DataTypeName + " " + prop.Name + " { get; set; }");
-                        if(model.ReusableDataTypes.Contains(prop.DataType)) { toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", " + prop.Name + ".ToJson())"); }
+                        if(model.ReusableDataTypes.Contains(prop.DataType))
+                        {
+                            reusableToJson.Append("$###if (" + prop.Name + " != null) {");
+                            if(!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
+                            {
+                                reusableToJson.Append("((JObject)json.First).Add(new JProperty(\"" + prop.Name + "\", " + prop.Name + ".ToJson())); }");
+                            }
+                            else { reusableToJson.Append("json.Add(new JProperty(\"" + prop.Name + "\", " + prop.Name + ".ToJson())); }"); }
+                        }
                         else if (!model.ItemTypes.Contains(prop.DataType)) { toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", " + prop.Name + ")"); }
                         else
                         {
@@ -154,7 +163,18 @@ namespace Cogs.Publishers
                     {
                         if (model.ItemTypes.Contains(prop.DataType) && !item.IsAbstract) { newClass.Append("$##[JsonConverter(typeof(IIdentifiableConverter))]"); }
                         newClass.Append("$##public List<" + prop.DataTypeName + "> " + prop.Name + "{ get; set; }  = new List<" + prop.DataTypeName + ">();");
-                        if (!model.ItemTypes.Contains(prop.DataType))
+                        if(model.ReusableDataTypes.Contains(prop.DataType))
+                        {
+                            reusableToJson.Append("$###if (" + prop.Name + " != null) $###{");
+                            if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
+                            {
+                                reusableToJson.Append("$####((JObject)json.First).Add(new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
+                                "$######select new JObject($#######new JProperty(\"" + prop.DataTypeName + "\", item.ToJson()))))); }");
+                            }
+                            else { reusableToJson.Append("json.Add(new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
+                                "$######select new JObject($#######new JProperty(\"" + prop.DataTypeName + "\", item.ToJson()))))); }"); }
+                        }
+                        else if (!model.ItemTypes.Contains(prop.DataType))
                         {
                             toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
                                 "$######select new JObject($#######new JProperty(\"" + prop.DataTypeName + "\", item))))");
@@ -173,19 +193,26 @@ namespace Cogs.Publishers
                 newClass.Append("$##/// <summary>$##/// Used to Serialize this object to Json $##/// <summary>");
                 string returnType = "JProperty";
                 if(model.ReusableDataTypes.Contains(item)) { returnType = "JObject"; }
-                if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName)) { newClass.Append("$##public new " + returnType + " ToJson()$##{"); }
-                else { newClass.Append("$##public " + returnType + " ToJson()$##{"); }
                 if (!model.ReusableDataTypes.Contains(item))
                 {
-                    newClass.Append("$###JProperty json = new JProperty(ID, new JObject(");
+                    if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
+                    {
+                        newClass.Append("$##public override " + returnType + " ToJson()$##{$###JProperty json = base.ToJson();$###((JObject)json.First).Add(");
+                    }
+                    else { newClass.Append("$##public virtual " + returnType + " ToJson()$##{$###JProperty json = new JProperty(ID, new JObject("); }
                     newClass.Append(toJsonProperties.ToString());
-                    newClass.Append("));$###return json;$##}");
+                    if (string.IsNullOrWhiteSpace(item.ExtendsTypeName)) { newClass.Append(")"); }
+                    newClass.Append(");" + reusableToJson.ToString() + "$###return json;$##}");
                 }
                 else
                 {
-                    newClass.Append("$###JObject json = new JObject() {");
-                    newClass.Append(toJsonProperties.ToString());
-                    newClass.Append("};$###return json;$##}");
+                    if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
+                    {
+                        newClass.Append("$##public override " + returnType + " ToJson()$##{$###JObject json = base.ToJson();$###((JObject)json.First).Add(");
+                    }
+                    else { newClass.Append("$##public virtual " + returnType + " ToJson()$##{$###JObject json = new JObject() {"); }
+                    newClass.Append(toJsonProperties.ToString() + reusableToJson.ToString());
+                    newClass.Append("};" + reusableToJson.ToString() + "$###return json;$##}");
                 }
                 newClass.Append("$$##/// <summary>$##/// Used to set this object's properties from Json $##/// <summary>");
                 if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
@@ -196,7 +223,8 @@ namespace Cogs.Publishers
                 newClass.Append(initializeReferences + "$##}$#}$}$");
                 
                 // write class to out folder
-                File.WriteAllText(Path.Combine(TargetDirectory, item.Name + ".cs"), newClass.ToString().Replace("#", "    ").Replace("$", Environment.NewLine).Replace("@", "$"));
+                File.WriteAllText(Path.Combine(TargetDirectory, item.Name + ".cs"), newClass.ToString().
+                    Replace("$###((JObject)json.First).Add();", "").Replace("#", "    ").Replace("$", Environment.NewLine).Replace("@", "$"));
             }
         }
 
@@ -371,29 +399,6 @@ namespace cogsBurger
                     }
                 }
             }
-            /*
-            while (reader.Value == null && reader.Read()) ;
-            if (reader.TokenType != JsonToken.Null)
-            {
-                while (reader.TokenType != JsonToken.EndObject)
-                {
-                    if (reader.Value.Equals(""value""))
-                    {
-                        reader.Read();
-                        reader.Read();
-                        if (list != null)
-                        {
-                            if (type == null) { type = Type.GetType(typeof(IIdentifiable).Namespace + ""."" + reader.Value.ToString()); }
-                            IIdentifiable add = (IIdentifiable)Activator.CreateInstance(type);
-                            MakeObject(add, reader);
-                            list.Add(add);
-                            reader.Read();
-                        }
-                        else { MakeObject(single, reader); }
-                    }else if(!""$typeref"".Contains(reader.Value.ToString())) { break; }
-                    reader.Read();
-                }
-            } */
             if (single != null) { return single; }
             var t = objectType.GetGenericArguments()[0].Name;???
             return new InvalidOperationException();

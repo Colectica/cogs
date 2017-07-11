@@ -104,7 +104,7 @@ namespace Cogs.Tests.Integration
             string json = container.Serialize();
             string json2 = container2.Serialize();
             string json3 = container3.Serialize();
-            //File.WriteAllText(@"C:\Users\clement\Desktop\test.json", json3);
+            File.WriteAllText(@"C:\Users\kevin\Documents\test.json", json2);
             string jsonSchema = File.ReadAllText(@"..\..\..\..\generated\jsonSchema.json");
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings
             {
