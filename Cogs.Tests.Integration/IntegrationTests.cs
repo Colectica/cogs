@@ -120,11 +120,11 @@ namespace Cogs.Tests.Integration
             Assert.Empty(errors2);
             Assert.Empty(errors3);
 
-            //ItemContainer newContainer = new ItemContainer();
-            //newContainer.Parse(json);
-            //errors = schema.Validate(JsonConvert.SerializeObject(newContainer));
-            //Assert.Empty(errors);
-            //Assert.Equal(json, JsonConvert.SerializeObject(newContainer));
+            ItemContainer newContainer = new ItemContainer();
+            newContainer.Parse(json);
+            errors = schema.Validate(newContainer.Serialize());
+            Assert.Empty(errors);
+            Assert.Equal(json, newContainer.Serialize());
         }
     }
 }
