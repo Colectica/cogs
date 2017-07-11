@@ -63,9 +63,9 @@ namespace Cogs.Tests.Integration
 
             ItemContainer newContainer = new ItemContainer();
             newContainer.Parse(json);
-            errors = schema.Validate(JsonConvert.SerializeObject(newContainer));
+            errors = schema.Validate(newContainer.Serialize());
             Assert.Empty(errors);
-            Assert.Equal(json, JsonConvert.SerializeObject(newContainer));
+            Assert.Equal(json, newContainer.Serialize());
         }
     }
 }
