@@ -9,6 +9,7 @@ using System.Text;
 using System.Xml.Linq;
 using System.Xml;
 using System.Diagnostics;
+using System.Reflection;
 
 namespace Cogs.Publishers
 {
@@ -21,10 +22,6 @@ namespace Cogs.Publishers
         /// path to write output in
         /// </summary>
         public string TargetDirectory { get; set; }
-        /// <summary>
-        /// path to dot.exe file
-        /// </summary>
-        public string DotLocation { get; set; }
         /// <summary>
         /// boolean to determine whether to replace existing or not
         /// </summary>
@@ -43,7 +40,7 @@ namespace Cogs.Publishers
         /// </summary>
         public bool Inheritance { get; set; }
 
-        private List<string> ClassList { get; set; }
+        private List<ItemType> ClassList { get; set; }
         private List<DataType> ReusableList { get; set; }
 
         public void Publish(CogsModel model)
@@ -60,18 +57,16 @@ namespace Cogs.Publishers
 
             Directory.CreateDirectory(TargetDirectory);
 
+            using (Stream resFilestream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Cogs.Publishers.dot.exe"))
+            {
+                byte[] b = new byte[resFilestream.Length];
+                resFilestream.Read(b, 0, b.Length);
+                File.WriteAllBytes(Path.Combine(TargetDirectory, "dot.exe"), b);
+            }
             // create list of all class names so you know if a class is being referenced
-            ClassList = new List<string>();
-            foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
-            {
-                ClassList.Add(item.Name);
-            }
+            ClassList = model.ItemTypes;
             // create list of all reusable types so you know if a reusable type is being referenced and can get information about it
-            ReusableList = new List<DataType>();
-            foreach (var item in model.ReusableDataTypes)
-            {
-                ReusableList.Add(item);
-            }
+            ReusableList = model.ReusableDataTypes;
             var header = "digraph G { compound = true rankdir=LR fontsize = 8 node [fontsize = 8 shape = \"oval\" style = \"filled\" fillcolor = \"#f7b733\"] edge [ fontsize = 8 ] ";
 
             if (Output.Equals("all")) { MakeGraphAll(model, header); }
@@ -98,7 +93,7 @@ namespace Cogs.Publishers
                     outerClass.Append("[" + property.MinCardinality + "..." + property.MaxCardinality + "] ");
                 }
                 outerClass.Append("\\l");
-                if (ClassList.Contains(property.DataTypeName))
+                if (ClassList.Contains(property.DataType))
                 {
                     if (ReusableList.Contains(property.DataType))
                     {
@@ -151,7 +146,7 @@ namespace Cogs.Publishers
                         outerClass.Append("[" + property.MinCardinality + "..." + property.MaxCardinality + "] ");
                     }
                     outerClass.Append("\\l");
-                    if (ClassList.Contains(property.DataTypeName))
+                    if (ClassList.Contains(property.DataType))
                     {
                         if (reusablesPresent.Contains(property.DataType))
                         {
@@ -187,7 +182,7 @@ namespace Cogs.Publishers
                     classText += "[" + property.MinCardinality + "..." + property.MaxCardinality + "] ";
                 }
                 classText += "\\l";
-                if (ClassList.Contains(property.DataTypeName))
+                if (ClassList.Contains(property.DataType))
                 {
                     if (ReusableList.Contains(property.DataType))
                     {
@@ -220,7 +215,7 @@ namespace Cogs.Publishers
                 }
                 foreach (var property in item.Properties)
                 {
-                    if (ClassList.Contains(property.DataTypeName))
+                    if (ClassList.Contains(property.DataType))
                     {
                         output.Append(item.Name + " -> " + property.DataTypeName + " ");
                     }
@@ -251,7 +246,7 @@ namespace Cogs.Publishers
                     }
                     foreach (var property in item.Properties)
                     {
-                        if (ClassList.Contains(property.DataTypeName) && !seen.Contains(property.DataTypeName))
+                        if (ClassList.Contains(property.DataType) && !seen.Contains(property.DataTypeName))
                         {
                             output.Append(item.Name + " -> " + property.DataTypeName + " ");
                             stack.Push(property.DataType);
@@ -309,7 +304,7 @@ namespace Cogs.Publishers
             File.WriteAllText(Path.Combine(TargetDirectory, "input.dot"), outputText);
             // run graphviz dot
             Process process = new Process();
-            ProcessStartInfo startInfo = new ProcessStartInfo(Path.Combine(DotLocation, "dot.exe"));
+            ProcessStartInfo startInfo = new ProcessStartInfo(Path.Combine(TargetDirectory, "dot.exe"));
             startInfo.WindowStyle = ProcessWindowStyle.Hidden;
             startInfo.Arguments = "-T " + Format + " -o " + Path.Combine(TargetDirectory, filename.Replace(" ", "") + "." + Format) + " " + Path.Combine(TargetDirectory, "input.dot");
             process.StartInfo = startInfo;

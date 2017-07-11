@@ -5,11 +5,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="dot.exe" />
     <None Remove="image.css" />
     <None Remove="Types.txt" />
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="dot.exe" />
     <EmbeddedResource Include="image.css" />
     <EmbeddedResource Include="Types.txt" />
   </ItemGroup>

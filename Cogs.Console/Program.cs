@@ -163,7 +163,6 @@ namespace Cogs.Console
                
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
                 var targetArgument = command.Argument("[targetLocation]", "Directory where the dot schema is generated.");
-                var dotArgument = command.Argument("[dotLocation]", "Directory where the dot.exe file is located.");
 
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
@@ -180,7 +179,6 @@ namespace Cogs.Console
 
                 command.OnExecute(() =>
                 {
-                    var dot = dotArgument.Value ?? Environment.CurrentDirectory;
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
@@ -200,7 +198,6 @@ namespace Cogs.Console
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
 
                     DotSchemaPublisher publisher = new DotSchemaPublisher();
-                    publisher.DotLocation = dot;
                     publisher.TargetDirectory = target;
                     publisher.Overwrite = overwrite;
                     publisher.Format = format;

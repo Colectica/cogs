@@ -1,13 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Cogs.Dto;
+﻿using Cogs.Dto;
 using Cogs.Model;
 using Cogs.Publishers;
 using System.IO;
 using Xunit;
-using System.Xml;
-using System.Xml.Schema;
+using System.Reflection;
+using System.IO.Compression;
+using System;
 
 namespace Cogs.Tests
 {
@@ -16,7 +14,17 @@ namespace Cogs.Tests
         [Fact]
         public void SvgForHamburgersTest()
         {
-            string path = "..\\..\\..\\..\\cogsburger";
+            var testDir = Path.Combine(Directory.GetCurrentDirectory(), "testing");
+            Directory.CreateDirectory(Path.Combine(testDir, "temp"));
+
+            string path = null;
+            using (Stream resFilestream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Cogs.Tests.cogsburger.zip"))
+            {
+                path = Path.Combine(testDir, "cogsburger");
+                var temp = Path.Combine(Path.Combine(testDir, "temp"), "cogsburger.zip");
+                using (var stream = new FileStream(path + ".zip", FileMode.Create)) { resFilestream.CopyTo(stream); }
+                ZipFile.ExtractToDirectory(path + ".zip", path);
+            };
 
             string subdir = Path.GetFileNameWithoutExtension(Path.GetTempFileName());
             string outputPath = Path.Combine(Path.GetTempPath(), subdir);
@@ -31,11 +39,11 @@ namespace Cogs.Tests
             for (int i = 0; i < 3; i++) {
                 var publisher = new DotSchemaPublisher();
                 publisher.TargetDirectory = outputPath;
-                publisher.DotLocation = "C:\\Users\\kevin\\Downloads\\graphviz-2.38\\release\\bin";
                 publisher.Output = choices[i];
                 publisher.Format = "svg";
                 publisher.Publish(cogsModel);
             }
+            Directory.Delete(testDir, true);
         }
     }
 }

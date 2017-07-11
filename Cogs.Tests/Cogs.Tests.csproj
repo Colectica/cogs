@@ -7,6 +7,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="cogsburger.zip" />
+    <None Remove="dot.exe" />
+    <None Remove="dotnet.exe" />
+    <None Remove="normativeXMI.xsd" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="cogsburger.zip" />
+    <EmbeddedResource Include="dotnet.exe" />
+    <EmbeddedResource Include="normativeXMI.xsd" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.3.0-preview-20170628-02" />
     <PackageReference Include="NJsonSchema" Version="9.3.0" />
     <PackageReference Include="xunit" Version="2.3.0-beta3-build3705" />

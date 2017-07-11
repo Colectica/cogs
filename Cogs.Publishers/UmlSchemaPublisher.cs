@@ -74,7 +74,6 @@ namespace Cogs.Publishers
             {
                 // run svg publisher to create svg file to use for positioning
                 DotSchemaPublisher publisher = new DotSchemaPublisher();
-                publisher.DotLocation = DotLocation;
                 publisher.TargetDirectory = TargetDirectory;
                 publisher.Overwrite = Overwrite;
                 publisher.Format = "svg";

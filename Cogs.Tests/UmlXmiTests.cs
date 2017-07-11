@@ -8,6 +8,8 @@ using System.IO;
 using Xunit;
 using System.Xml;
 using System.Xml.Schema;
+using System.Reflection;
+using System.IO.Compression;
 
 namespace Cogs.Tests
 {
@@ -16,7 +18,17 @@ namespace Cogs.Tests
         [Fact]
         public void UmlForHamburgersTest()
         {
-            string path = "..\\..\\..\\..\\cogsburger";
+            var testDir = Path.Combine(Directory.GetCurrentDirectory(), "testing");
+            Directory.CreateDirectory(Path.Combine(testDir, "temp"));
+
+            string path = null;
+            using (Stream resFilestream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Cogs.Tests.cogsburger.zip"))
+            {
+                path = Path.Combine(testDir, "cogsburger");
+                var temp = Path.Combine(Path.Combine(testDir, "temp"), "cogsburger.zip");
+                using (var stream = new FileStream(path + ".zip", FileMode.Create)) { resFilestream.CopyTo(stream); }
+                ZipFile.ExtractToDirectory(path + ".zip", path);
+            };
 
             string subdir = Path.GetFileNameWithoutExtension(Path.GetTempFileName());
             string outputPath = Path.Combine(Path.GetTempPath(), subdir);
@@ -31,29 +43,33 @@ namespace Cogs.Tests
             var publisher = new UmlSchemaPublisher();
             publisher.TargetDirectory = outputPath;
             publisher.Normative = false;
-            publisher.DotLocation = @"C:\Users\kevin\Downloads\graphviz-2.38\release\bin";
             publisher.Publish(cogsModel);
             // test with normative since 2.5 does not have a xsd schema yet
-            Validate(Path.Combine(outputPath, "uml.xmi.xml"), Path.Combine(Directory.GetCurrentDirectory(), "..\\..\\..\\normativeXMI.xsd"));
+            Validate(Path.Combine(outputPath, "uml.xmi.xml"));
 
             publisher = new UmlSchemaPublisher();
             publisher.TargetDirectory = outputPath;
             publisher.Normative = true;
             publisher.Publish(cogsModel);
             // not working yet
-            Validate(Path.Combine(outputPath, "uml.xmi.xml"), Path.Combine(Directory.GetCurrentDirectory(), "..\\..\\..\\normativeXMI.xsd"));
+            Validate(Path.Combine(outputPath, "uml.xmi.xml"));
+            Directory.Delete(testDir, true);
         }
 
 
         // takes filename of created xml document and filename for schema and validates the schema
-        private static void Validate(string filename, string schemaFile)
+        private static void Validate(string filename)
         {
-            // used https://msdn.microsoft.com/en-us/library/system.xml.schema.validationeventargs.severity(v=vs.110).aspx
             Console.WriteLine();
             Console.WriteLine("\r\nValidating XML file {0}...", filename);
 
             XmlSchemaSet schemaSet = new XmlSchemaSet();
-            schemaSet.Add(null, schemaFile);
+            //get schema
+            using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Cogs.Tests.normativeXMI.xsd"))
+            {
+                schemaSet.Add(null, XmlReader.Create(stream));
+            }
+            
 
             XmlSchema compiledSchema = null;
 
