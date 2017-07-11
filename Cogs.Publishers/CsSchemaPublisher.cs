@@ -169,15 +169,23 @@ namespace Cogs.Publishers
                             if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
                             {
                                 reusableToJson.Append("$####((JObject)json.First).Add(new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
-                                "$######select new JObject($#######new JProperty(\"" + prop.DataTypeName + "\", item.ToJson()))))); }");
+                                "$######select new JObject($#######new JProperty(\"" + prop.DataTypeName + "\", item.ToJson()))))); $###}");
                             }
-                            else { reusableToJson.Append("json.Add(new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
-                                "$######select new JObject($#######new JProperty(\"" + prop.DataTypeName + "\", item.ToJson()))))); }"); }
+                            else { reusableToJson.Append("$####json.Add(new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
+                                "$######select new JObject($#######new JProperty(\"" + prop.DataTypeName + "\", item.ToJson()))))); $###}"); }
                         }
                         else if (!model.ItemTypes.Contains(prop.DataType))
                         {
-                            toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
+                            if(model.ReusableDataTypes.Contains(item))
+                            {
+                                toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
+                                "$######select item))");
+                            }
+                            else
+                            {
+                                toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
                                 "$######select new JObject($#######new JProperty(\"" + prop.DataTypeName + "\", item))))");
+                            }
                         }
                         else
                         {
