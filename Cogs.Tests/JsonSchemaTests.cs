@@ -47,7 +47,6 @@ namespace Cogs.Tests
             var jsondata6 = File.ReadAllText(@"C:\Users\clement\Documents\GitHub\cogs\Cogs.Tests.Console\jsonOut.json");
             var jsondata7 = File.ReadAllText(@"C:\Users\clement\Documents\GitHub\cogs\Cogs.Tests.Console\testing5_more.json");
 
-
             var validate1 = schema.Validate(jsondata1);
             var validate2 = schema.Validate(jsondata2);
             var validate3 = schema.Validate(jsondata3);
