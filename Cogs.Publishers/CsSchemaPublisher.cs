@@ -145,7 +145,7 @@ namespace Cogs.Publishers
                         {
                             toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", new JObject(new JProperty(\"@type\", \"ref\"), " +
                             "$#####new JProperty(\"value\", new JArray($######\"" + prop.DataTypeName + "\", $######" + prop.Name + ".ID))))");
-                            initializeReferences.Append("$###if (" + prop.Name + ".ReferenceId != null) { " + prop.Name + "= (" + prop.DataTypeName +
+                            initializeReferences.Append("$###if (" + prop.Name + ".ReferenceId != null) { " + prop.Name + " = (" + prop.DataTypeName +
                                 ")dict[" + prop.Name + ".ReferenceId]; }");
                         }
                     }
