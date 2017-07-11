@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <None Remove="cogsburger.zip" />
-    <None Remove="dot.exe" />
     <None Remove="dotnet.exe" />
     <None Remove="normativeXMI.xsd" />
   </ItemGroup>
