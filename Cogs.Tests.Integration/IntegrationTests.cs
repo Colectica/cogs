@@ -46,7 +46,7 @@ namespace Cogs.Tests.Integration
             List<decimal> heights = new List<decimal>();
             heights.Add(5);
             heights.Add(5);
-            Tuple<int, int> GYM = new Tuple<int, int> (2017, 06 );
+            Tuple<int, int, string> GYM = new Tuple<int, int, string> (2017, 06, "utc");
             Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
@@ -140,34 +140,31 @@ namespace Cogs.Tests.Integration
             container4.Items.Add(veggiePatty);
             container4.Items.Add(veggiePatty2);
 
-            string json = container.Serialize();
-            string json2 = container2.Serialize();
-            string json3 = container3.Serialize();
-            string json4 = container4.Serialize();
-
-            File.WriteAllText(@"C:\Users\kevin\Documents\test.json", json2);
+            // evaluation
             string jsonSchema = File.ReadAllText(@"..\..\..\..\generated\jsonSchema.json");
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings
             {
                 MetadataPropertyHandling = MetadataPropertyHandling.Ignore
             };
             JsonSchema4 schema = await JsonSchema4.FromJsonAsync(jsonSchema);
-
-            var errors = schema.Validate(json);
-            var errors2 = schema.Validate(json2);
-            var errors3 = schema.Validate(json3);
-            var errors4 = schema.Validate(json4);
-
-            Assert.Empty(errors);
-            Assert.Empty(errors2);
-            Assert.Empty(errors3);
-            Assert.Empty(errors4);
-
-            ItemContainer newContainer = new ItemContainer();
-            newContainer.Parse(json);
-            errors = schema.Validate(newContainer.Serialize());
-            Assert.Empty(errors);
-            Assert.Equal(json, newContainer.Serialize());
+            var containers = new ItemContainer[] { container, container2, container3, container4 };
+            for(int i = 0; i < 4; i++)
+            {
+                // test serializing
+                string json = containers[i].Serialize();
+                File.WriteAllText(@"C:\Users\kevin\Documents\jsonOutput\toJson" + i + ".json", json);
+                var errors = schema.Validate(json);
+                Assert.Empty(errors);
+                // test parsing
+                ItemContainer newContainer = new ItemContainer();
+                newContainer.Parse(json);
+                var newJson = newContainer.Serialize();
+                File.WriteAllText(@"C:\Users\kevin\Documents\jsonOutput\fromJson" + i + ".json", newJson);
+                errors = schema.Validate(newJson);
+                Assert.Empty(errors);
+                // check that outputs are the same
+              //  Assert.Equal(json, newJson);
+            } 
         }
     }
 }

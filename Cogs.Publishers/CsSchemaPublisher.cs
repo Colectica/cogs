@@ -83,8 +83,14 @@ namespace Cogs.Publishers
                 bool first = true;
                 foreach(var prop in item.Properties)
                 {
-                    // set c# datatype representation
-                    if (Translator.ContainsKey(prop.DataTypeName)) { prop.DataTypeName = Translator[prop.DataTypeName]; }
+                    // set c# datatype representation while saving original so can tell what type it is
+                    string origDataTypeName = null;
+                    if (Translator.ContainsKey(prop.DataTypeName))
+                    {
+                        origDataTypeName = prop.DataTypeName;
+                        prop.DataTypeName = Translator[prop.DataTypeName];
+                        first = true;
+                    }
                     // create documentation for property
                     newClass.Append("$##/// <summary>$##/// " + prop.Description + "$##/// <summary>");
                     // create constraints
@@ -135,27 +141,37 @@ namespace Cogs.Publishers
                         }
                     }
                     if (!first && !model.ReusableDataTypes.Contains(prop.DataType)) { toJsonProperties.Append(","); }
+                    var start = "((JObject)json.First).Add(";
+                    if(origDataTypeName != null && !"boolintstringulong".Contains(prop.DataTypeName)) { newClass.Append("$##[JsonConverter(typeof(SimpleTypeConverter))]"); }
+                    if(model.ReusableDataTypes.Contains(item)) { start = "json.Add("; }
                     // if there can be at most one, create an instance variable
                     if (!prop.MaxCardinality.Equals("n") && Int32.Parse(prop.MaxCardinality) == 1)
                     {
                         if (model.ItemTypes.Contains(prop.DataType) && !item.IsAbstract) { newClass.Append("$##[JsonConverter(typeof(IIdentifiableConverter))]"); }
                         newClass.Append("$##public " + prop.DataTypeName + " " + prop.Name + " { get; set; }");
-                        if(model.ReusableDataTypes.Contains(prop.DataType))
+                        if(origDataTypeName != null)
                         {
-                            reusableToJson.Append("$###if (" + prop.Name + " != null) {");
-                            if(!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
-                            {
-                                reusableToJson.Append("((JObject)json.First).Add(new JProperty(\"" + prop.Name + "\", " + prop.Name + ".ToJson())); }");
-                            }
-                            else { reusableToJson.Append("json.Add(new JProperty(\"" + prop.Name + "\", " + prop.Name + ".ToJson())); }"); }
+                            reusableToJson.Append("$###if (" + prop.Name + " != null) $###{$####"+ start +
+                                SimpleToJson(origDataTypeName, prop.Name) + ");$###}");
+                            first = true;
                         }
-                        else if (!model.ItemTypes.Contains(prop.DataType)) { toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", " + prop.Name + ")"); }
+                        else if (model.ReusableDataTypes.Contains(prop.DataType))
+                        {
+                            reusableToJson.Append("$###if (" + prop.Name + " != null) { ");
+                            reusableToJson.Append(start + "new JProperty(\"" + prop.Name + "\", " + prop.Name + ".ToJson())); }");
+                        }
+                        else if (!model.ItemTypes.Contains(prop.DataType))
+                        {
+                            toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", " + prop.Name + ")");
+                            first = false;
+                        }
                         else
                         {
                             toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", new JObject(new JProperty(\"@type\", \"ref\"), " +
                             "$#####new JProperty(\"value\", new JArray($######\"" + prop.DataTypeName + "\", $######" + prop.Name + ".ID))))");
                             initializeReferences.Append("$###if (" + prop.Name + ".ReferenceId != null) { " + prop.Name + " = (" + prop.DataTypeName +
                                 ")dict[" + prop.Name + ".ReferenceId]; }");
+                            first = false;
                         }
                     }
                     // otherwise, create a list object to allow multiple
@@ -163,29 +179,17 @@ namespace Cogs.Publishers
                     {
                         if (model.ItemTypes.Contains(prop.DataType) && !item.IsAbstract) { newClass.Append("$##[JsonConverter(typeof(IIdentifiableConverter))]"); }
                         newClass.Append("$##public List<" + prop.DataTypeName + "> " + prop.Name + "{ get; set; }  = new List<" + prop.DataTypeName + ">();");
-                        if(model.ReusableDataTypes.Contains(prop.DataType))
+                        if (model.ReusableDataTypes.Contains(prop.DataType))
                         {
                             reusableToJson.Append("$###if (" + prop.Name + " != null) $###{");
-                            if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
-                            {
-                                reusableToJson.Append("$####((JObject)json.First).Add(new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
+                            reusableToJson.Append("$####" + start + "new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
                                 "$######select new JObject($#######new JProperty(\"" + prop.DataTypeName + "\", item.ToJson()))))); $###}");
-                            }
-                            else { reusableToJson.Append("$####json.Add(new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
-                                "$######select new JObject($#######new JProperty(\"" + prop.DataTypeName + "\", item.ToJson()))))); $###}"); }
                         }
                         else if (!model.ItemTypes.Contains(prop.DataType))
                         {
-                            if(model.ReusableDataTypes.Contains(item))
-                            {
-                                toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
+                            toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
                                 "$######select item))");
-                            }
-                            else
-                            {
-                                toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
-                                "$######select new JObject($#######new JProperty(\"" + prop.DataTypeName + "\", item))))");
-                            }
+                            first = false;
                         }
                         else
                         {
@@ -194,9 +198,9 @@ namespace Cogs.Publishers
                             "$#######new JProperty(\"value\", new JArray($########item.GetType().Name.ToString(), $########item.ID)))))");
                             initializeReferences.Append("$###if (" + prop.Name + " != null)$###{$####for (int i = 0; i < " + prop.Name + ".Count; i++)" +
                                 "$####{$#####dynamic temp = dict[" + prop.Name + "[i].ReferenceId];$#####" + prop.Name + "[i] = temp;$####}$###}");
+                            first = false;
                         }
                     }
-                    first = false;
                 }
                 newClass.Append("$##/// <summary>$##/// Used to Serialize this object to Json $##/// <summary>");
                 string returnType = "JProperty";
@@ -219,7 +223,7 @@ namespace Cogs.Publishers
                         newClass.Append("$##public override " + returnType + " ToJson()$##{$###JObject json = base.ToJson();$###((JObject)json.First).Add(");
                     }
                     else { newClass.Append("$##public virtual " + returnType + " ToJson()$##{$###JObject json = new JObject() {"); }
-                    newClass.Append(toJsonProperties.ToString() + reusableToJson.ToString());
+                    newClass.Append(toJsonProperties.ToString());
                     newClass.Append("};" + reusableToJson.ToString() + "$###return json;$##}");
                 }
                 newClass.Append("$$##/// <summary>$##/// Used to set this object's properties from Json $##/// <summary>");
@@ -234,6 +238,45 @@ namespace Cogs.Publishers
                 File.WriteAllText(Path.Combine(TargetDirectory, item.Name + ".cs"), newClass.ToString().
                     Replace("$###((JObject)json.First).Add();", "").Replace("#", "    ").Replace("$", Environment.NewLine).Replace("@", "$"));
             }
+        }
+
+        private string SimpleToJson(string origDataTypeName, string name)
+        {
+            if (origDataTypeName.Equals("duration")) { return "new JProperty(\"duration\", " + name + ".Milliseconds)"; }
+            if (origDataTypeName.Equals("dateTime")) { return "new JProperty(\"datetime\", " + name + ".ToString(\"s\"))"; }
+            if (origDataTypeName.Equals("time")) { return "new JProperty(\"time\", " + name + ".ToString(\"u\").Split(' ')[1])"; }
+            if (origDataTypeName.Equals("date")) { return "new JProperty(\"date\", " + name + ".ToString(\"u\").Split(' ')[0])"; }
+            if (origDataTypeName.Equals("gYearMonth"))
+            {
+                return "new JProperty(\"GYearMonth\", new JObject($#####new JProperty(\"year\", " + name + ".Item1),$#####new " +
+                    "JProperty(\"month\", " + name + ".Item2),$#####new JProperty(\"timezone\", " + name + ".Item3)))";
+            }
+            if (origDataTypeName.Equals("gYear"))
+            {
+                return "new JProperty(\"year\", new JObject($#####new JProperty(\"year\", " + name + ".Item1),$#####new JProperty(\"timezone\", " + name + ".Item2)))";
+            }
+            if(origDataTypeName.Equals("gMonthDay"))
+            {
+                return "new JProperty(\"gMonthDay\", new JObject($#####new JProperty(\"month\", " + name + ".Item1),$#####new " +
+                    "JProperty(\"day\", " + name + ".Item2),$#####new JProperty(\"timezone\", " + name + ".Item3)))";
+            }
+            if(origDataTypeName.Equals("gDay")) {
+                return "new JProperty(\"day\", new JObject($#####new JProperty(\"day\", " + name + ".Item1), " +
+                    "$#####new JProperty(\"timezone\", " + name + ".Item2)))";
+            }
+            if (origDataTypeName.Equals("gMonth"))
+            {
+                return "new JProperty(\"month\", new JObject($#####new JProperty(\"month\", " + name + ".Item1), " +
+                    "$#####new JProperty(\"timezone\", " + name + ".Item2)))";
+            }
+            if(origDataTypeName.Equals("anyUri")) { return "new JProperty(\"anyuri\", " + name + ")"; }
+            if(origDataTypeName.Equals("cogsDate"))
+            {
+                return "new JProperty(\"cogsdate\", new JObject($#####new JProperty(\"dateTime\", " + name +
+                    ".DateTime),$#####new JProperty(\"date\", " + name + ".date),$#####new JProperty(\"gYearMonth\", " + name +
+                    ".GYearMonth),$#####new JProperty(\"gYear\", " + name + ".GYear),$#####new JProperty(\"Duration\", " + name + ".Duration)))";
+            }
+            return "new JProperty(\"" + name + "\", " + name + ")";
         }
 
 
@@ -310,7 +353,7 @@ namespace !!!
             {
                 if (type.Key.Equals(""TopLevelReference""))
                 {
-                    id = type.Value.First.Last.First.Last.ToString();
+                    if(type.Value.First != null) { id = type.Value.First.Last.First.Last.ToString(); }
                 }
                 else
                 {
@@ -352,6 +395,7 @@ using Newtonsoft.Json;
 using System.Collections;
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
+using Cogs.DataAnnotations;
 
 namespace cogsBurger
 {
@@ -419,6 +463,80 @@ namespace cogsBurger
             reader.Read();
         }
     }
+
+
+
+    class SimpleTypeConverter : JsonConverter
+    {
+        public override bool CanConvert(Type objectType)
+        {
+            return true;
+        }
+
+        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override bool CanRead
+        {
+            get { return true; }
+        }
+
+        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        {
+            if (typeof(IEnumerable).IsAssignableFrom(objectType) && !objectType.ToString().ToLower().Equals(""string""))
+            {
+                JArray obj = JArray.Load(reader);
+            }
+            else
+            {
+                if (objectType == typeof(TimeSpan))
+                {
+                    JToken prop = JToken.Load(reader);
+                    return new TimeSpan(Int32.Parse(prop.ToString()));
+                }
+                if (objectType == typeof(DateTimeOffset))
+                {
+                    JToken prop = JToken.Load(reader);
+                    string[] values = prop.ToString().Split(new char[] { ' ', '/', ':', });
+                    if (values.Length > 5)
+                    {
+                        return new DateTimeOffset(Int32.Parse(values[2]), Int32.Parse(values[1]), Int32.Parse(values[0]),
+                            Int32.Parse(values[3]), Int32.Parse(values[4]), Int32.Parse(values[5]), new TimeSpan());
+                    }
+                    if (values.Length == 1)
+                    {
+                        values = prop.ToString().Split(new char[] { '-' });
+                        return new DateTimeOffset(Int32.Parse(values[0]), Int32.Parse(values[1]), Int32.Parse(values[2]), 0, 0, 0, new TimeSpan());
+                    }
+                    return new DateTimeOffset(0, 0, 0, Int32.Parse(values[0]), Int32.Parse(values[1]), Int32.Parse(values[2]), new TimeSpan());
+
+                }
+                JObject obj = JObject.Load(reader);
+                if (objectType == typeof(Tuple<int, int, string>))
+                {
+                    int a = Int32.Parse(((JProperty)obj.First).First.ToString());
+                    int b = Int32.Parse(((JProperty)obj.First).Next.First.ToString());
+                    return new Tuple<int, int, string>(a, b, ((JProperty)obj.Last).Value.ToString());
+                }
+                if (objectType == typeof(Tuple<int, string>))
+                {
+                    int a = Int32.Parse(((JProperty)obj.First).First.ToString());
+                    return new Tuple<int, string>(a, ((JProperty)obj.Last).Value.ToString());
+                }
+                if (objectType == typeof(Uri))
+                {
+                    return new Uri(((JProperty)obj.First).First.ToString());
+                }
+                if (objectType == typeof(CogsDate))
+                {
+
+                }
+            }
+            return null;
+        }
+    }
 }";
             StringBuilder ifs = new StringBuilder();
             foreach (var item in model.ItemTypes)
@@ -442,11 +560,11 @@ namespace cogsBurger
                 { "dateTime", "DateTimeOffset" },
                 { "time", "DateTimeOffset" },
                 { "date", "DateTimeOffset" },
-                { "gYearMonth", "Tuple<int, int>" },
-                { "gYear", "int" },
-                { "gYearDay", "Tuple<int, int>" },
-                { "gDay", "int" },
-                { "gMonth", "int" },
+                { "gYearMonth", "Tuple<int, int, string>" },
+                { "gYear", "Tuple<int, string>" },
+                { "gYearDay", "Tuple<int, int, string>" },
+                { "gDay", "Tuple<int, string>" },
+                { "gMonth", "Tuple<int, string>" },
                 { "anyURI", "Uri" },
                 { "nonPositiveInteger", "int" },
                 { "negativeInteger", "int" },
