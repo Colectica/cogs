@@ -24,25 +24,45 @@ namespace Cogs.Tests.Integration
             {
                 ID = Guid.NewGuid().ToString(),
                 Description = "small Special",
-                HamburgerName = "Four Corners Burger"
+                HamburgerName = "Five Corners Burger"
             };
 
-            Bread bread = new Bread
+            MultilingualString describe = new MultilingualString
+            {
+                Language = "eng",
+                Content = "Just a normal cow"
+            };
+
+            Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                Name = "Sesame seed bun",
-                Description = "freshly baked daily!"
+                Name = "Cow",
+                LingualDescription = new List<MultilingualString> { describe },
+                CountryOfOrigin = "USA",
+                Date = new DateTime(2017, 6, 9)
+
             };
 
             List<decimal> heights = new List<decimal>();
             heights.Add(5);
             heights.Add(5);
+            Tuple<int, int> GYM = new Tuple<int, int> (2017, 06 );
+            Bread bread = new Bread
+            {
+                ID = Guid.NewGuid().ToString(),
+                Name = "Sesame seed bun",
+                Description = "freshly baked daily!",
+                Size = new Dimensions { Width =6, Length = 5.00, Height = heights },
+                Gyearmonth = GYM
+            };
+
             Bread bread2 = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
                 Name = "Sepcial Bun",
                 Description = " a special bun never had before!",
-                Size = new Dimensions { Width = 5, Length = 5.00, Height = heights }
+                Size = new Dimensions { Width = 5, Length = 5.00, Height = heights },
+                Gyearmonth = GYM
             };
 
             Roll roll = new Roll
@@ -78,6 +98,18 @@ namespace Cogs.Tests.Integration
                 ID = Guid.NewGuid().ToString()
             };
 
+            VeggiePatty veggiePatty = new VeggiePatty
+            {
+                ID = Guid.NewGuid().ToString(),
+                VegetableUsed = new List<string> { "red beans", "black beans" }
+            };
+
+            VeggiePatty veggiePatty2 = new VeggiePatty
+            {
+                ID = Guid.NewGuid().ToString(),
+                VegetableUsed = new List<string> { "garbonzo beans" }
+            };
+
             hamburger.Enclosure = roll;
             hamburger.Patty.Add(meatPatty);
             hamburger.Patty.Add(meatPatty2);
@@ -85,6 +117,8 @@ namespace Cogs.Tests.Integration
             ItemContainer container = new ItemContainer();
             ItemContainer container2 = new ItemContainer();
             ItemContainer container3 = new ItemContainer();
+            ItemContainer container4 = new ItemContainer();
+
             //container
             container.TopLevelReferences.Add(hamburger);
             container.Items.Add(bread);
@@ -97,13 +131,20 @@ namespace Cogs.Tests.Integration
             container2.Items.Add(bread2);
             container2.Items.Add(meatPatty);
             //container 3
-            container3.TopLevelReferences.Add(hamburger2);
             container3.Items.Add(condiment);
             container3.Items.Add(condiment2);
+
+            //container 4
+            container4.TopLevelReferences.Add(hamburger2);
+            container4.Items.Add(animal);
+            container4.Items.Add(veggiePatty);
+            container4.Items.Add(veggiePatty2);
 
             string json = container.Serialize();
             string json2 = container2.Serialize();
             string json3 = container3.Serialize();
+            string json4 = container4.Serialize();
+
             File.WriteAllText(@"C:\Users\kevin\Documents\test.json", json2);
             string jsonSchema = File.ReadAllText(@"..\..\..\..\generated\jsonSchema.json");
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings
@@ -115,10 +156,12 @@ namespace Cogs.Tests.Integration
             var errors = schema.Validate(json);
             var errors2 = schema.Validate(json2);
             var errors3 = schema.Validate(json3);
+            var errors4 = schema.Validate(json4);
 
             Assert.Empty(errors);
             Assert.Empty(errors2);
             Assert.Empty(errors3);
+            Assert.Empty(errors4);
 
             ItemContainer newContainer = new ItemContainer();
             newContainer.Parse(json);
