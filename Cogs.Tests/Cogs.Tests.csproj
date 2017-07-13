@@ -8,12 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="cogsburger.zip" />
     <None Remove="normativeXMI.xsd" />
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="cogsburger.zip" />
     <EmbeddedResource Include="normativeXMI.xsd" />
   </ItemGroup>
 
