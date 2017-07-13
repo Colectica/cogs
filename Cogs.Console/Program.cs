@@ -93,12 +93,14 @@ namespace Cogs.Console
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
                     HandleErrors(modelBuilder.Errors);
 
-                    XmlSchemaPublisher publisher = new XmlSchemaPublisher();
-                    publisher.CogsLocation = location;
-                    publisher.TargetDirectory = target;
-                    publisher.Overwrite = overwrite;
-                    publisher.TargetNamespace = targetNamespace;
-                    publisher.TargetNamespacePrefix = prefix;
+                    XmlSchemaPublisher publisher = new XmlSchemaPublisher
+                    {
+                        CogsLocation = location,
+                        TargetDirectory = target,
+                        Overwrite = overwrite,
+                        TargetNamespace = targetNamespace,
+                        TargetNamespacePrefix = prefix
+                    };
 
                     publisher.Publish(cogsModel);
                     HandleErrors(publisher.Errors);
@@ -141,11 +143,13 @@ namespace Cogs.Console
                     var modelBuilder = new CogsModelBuilder();
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
 
-                    UmlSchemaPublisher publisher = new UmlSchemaPublisher();
-                    publisher.DotLocation = dot;
-                    publisher.TargetDirectory = target;
-                    publisher.Overwrite = overwrite;
-                    publisher.Normative = normative;
+                    UmlSchemaPublisher publisher = new UmlSchemaPublisher
+                    {
+                        DotLocation = dot,
+                        TargetDirectory = target,
+                        Overwrite = overwrite,
+                        Normative = normative
+                    };
                     publisher.Publish(cogsModel);
 
 
@@ -199,13 +203,15 @@ namespace Cogs.Console
                     var modelBuilder = new CogsModelBuilder();
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
 
-                    DotSchemaPublisher publisher = new DotSchemaPublisher();
-                    publisher.DotLocation = dot;
-                    publisher.TargetDirectory = target;
-                    publisher.Overwrite = overwrite;
-                    publisher.Format = format;
-                    publisher.Output = output;
-                    publisher.Inheritance = inheritance;
+                    DotSchemaPublisher publisher = new DotSchemaPublisher
+                    {
+                        DotLocation = dot,
+                        TargetDirectory = target,
+                        Overwrite = overwrite,
+                        Format = format,
+                        Output = output,
+                        Inheritance = inheritance
+                    };
                     publisher.Publish(cogsModel);
 
                     return 0;
@@ -239,9 +245,11 @@ namespace Cogs.Console
                     var modelBuilder = new CogsModelBuilder();
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
 
-                    CsSchemaPublisher publisher = new CsSchemaPublisher();
-                    publisher.TargetDirectory = target;
-                    publisher.Overwrite = overwrite;
+                    CsSchemaPublisher publisher = new CsSchemaPublisher
+                    {
+                        TargetDirectory = target,
+                        Overwrite = overwrite
+                    };
                     publisher.Publish(cogsModel);
 
                     return 0;
@@ -279,10 +287,12 @@ namespace Cogs.Console
                     var modelBuilder = new CogsModelBuilder();
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
 
-                    SphinxPublisher publisher = new SphinxPublisher();
-                    publisher.TargetDirectory = target;
-                    publisher.Overwrite = overwrite;
-                    publisher.DotLocation = dot;
+                    SphinxPublisher publisher = new SphinxPublisher
+                    {
+                        TargetDirectory = target,
+                        Overwrite = overwrite,
+                        DotLocation = dot
+                    };
 
                     publisher.Publish(cogsModel);
 
@@ -321,10 +331,12 @@ namespace Cogs.Console
                     var modelBuilder = new CogsModelBuilder();
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
 
-                    JsonPublisher publisher = new JsonPublisher();
-                    publisher.CogsLocation = location;
-                    publisher.TargetDirectory = target;
-                    publisher.Overwrite = overwrite;
+                    JsonPublisher publisher = new JsonPublisher
+                    {
+                        CogsLocation = location,
+                        TargetDirectory = target,
+                        Overwrite = overwrite
+                    };
 
                     publisher.Publish(cogsModel);
 
@@ -362,10 +374,12 @@ namespace Cogs.Console
                     var modelBuilder = new CogsModelBuilder();
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
 
-                    GraphQLPublisher publisher = new GraphQLPublisher();
-                    publisher.CogsLocation = location;
-                    publisher.TargetDirectory = target;
-                    publisher.Overwrite = overwrite;
+                    GraphQLPublisher publisher = new GraphQLPublisher
+                    {
+                        CogsLocation = location,
+                        TargetDirectory = target,
+                        Overwrite = overwrite
+                    };
 
                     publisher.Publish(cogsModel);
 

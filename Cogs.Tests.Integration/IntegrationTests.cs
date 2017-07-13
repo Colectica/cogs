@@ -111,8 +111,10 @@ namespace Cogs.Tests.Integration
             };
 
             hamburger.Enclosure = roll;
+            hamburger2.Enclosure = roll;
             hamburger.Patty.Add(meatPatty);
             hamburger.Patty.Add(meatPatty2);
+            hamburger2.Patty.Add(veggiePatty);
 
             ItemContainer container = new ItemContainer();
             ItemContainer container2 = new ItemContainer();
@@ -127,7 +129,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(meatPatty);
             container.Items.Add(meatPatty2);
             //container 2
-            container2.TopLevelReferences.Add(hamburger);
+          //  container2.TopLevelReferences.Add(hamburger); <- this references an object not in the model: add hamburger to container
             container2.Items.Add(bread2);
             container2.Items.Add(meatPatty);
             //container 3
@@ -135,13 +137,16 @@ namespace Cogs.Tests.Integration
             container3.Items.Add(condiment2);
 
             //container 4
-            container4.TopLevelReferences.Add(hamburger2);
+            container4.TopLevelReferences.Add(hamburger2); // <- this references an object not in the model: add hamburger to container
+            container4.Items.Add(hamburger2); // now hamburger2 is part of model and can be referenced
             container4.Items.Add(animal);
             container4.Items.Add(veggiePatty);
             container4.Items.Add(veggiePatty2);
+            container4.Items.Add(roll);
 
             // evaluation
-            string jsonSchema = File.ReadAllText(@"..\..\..\..\generated\jsonSchema.json");
+            string schemaPath = Path.Combine(Path.Combine(Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), ".."), ".."), ".."), "..");
+            string jsonSchema = File.ReadAllText(Path.Combine(Path.Combine(schemaPath, "generated"), "jsonSchema.json"));
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings
             {
                 MetadataPropertyHandling = MetadataPropertyHandling.Ignore
@@ -152,18 +157,18 @@ namespace Cogs.Tests.Integration
             {
                 // test serializing
                 string json = containers[i].Serialize();
-                File.WriteAllText(@"C:\Users\kevin\Documents\jsonOutput\toJson" + i + ".json", json);
+                File.WriteAllText(@"C:\Users\kevin\Documents\jsonOutput\toJson" + (i + 1) + ".json", json);
                 var errors = schema.Validate(json);
                 Assert.Empty(errors);
                 // test parsing
                 ItemContainer newContainer = new ItemContainer();
                 newContainer.Parse(json);
                 var newJson = newContainer.Serialize();
-                File.WriteAllText(@"C:\Users\kevin\Documents\jsonOutput\fromJson" + i + ".json", newJson);
+                File.WriteAllText(@"C:\Users\kevin\Documents\jsonOutput\fromJson" + (i + 1) + ".json", newJson);
                 errors = schema.Validate(newJson);
                 Assert.Empty(errors);
                 // check that outputs are the same
-              //  Assert.Equal(json, newJson);
+                Assert.Equal(json, newJson);
             } 
         }
     }

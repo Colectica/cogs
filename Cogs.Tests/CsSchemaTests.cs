@@ -4,8 +4,6 @@ using Cogs.Publishers;
 using System.IO;
 using Xunit;
 using System.Diagnostics;
-using System.Reflection;
-using System.IO.Compression;
 using System;
 
 namespace Cogs.Tests

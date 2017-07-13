@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using Cogs.Dto;
 using Cogs.Model;
 using Cogs.Publishers;
@@ -9,7 +7,6 @@ using Xunit;
 using System.Xml;
 using System.Xml.Schema;
 using System.Reflection;
-using System.IO.Compression;
 
 namespace Cogs.Tests
 {

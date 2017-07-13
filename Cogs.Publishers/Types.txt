@@ -70,11 +70,48 @@ namespace Cogs.DataAnnotations
     {
         public DateTimeOffset DateTime { get; set; }
         public DateTimeOffset Date { get; set; }
-        public Tuple<int, int> GYearMonth { get; set; }
-        public int GYear { get; set; }
+        public Tuple<int, int, string> GYearMonth { get; set; }
+        public Tuple<int, string> GYear { get; set; }
         public TimeSpan Duration { get; set; }
         public enum CogsDateType { DateTime, Date, GYearMonth, GYear, Duration } 
         public CogsDateType UsedType { get; private set; }
+
+        public CogsDate(CogsDateType type, object o) : this()
+        {
+            switch (type)
+            {
+                case CogsDateType.DateTime:
+                    {
+                        DateTime = (DateTimeOffset)o;
+                        UsedType = CogsDateType.DateTime;
+                        break;
+                    }
+                case CogsDateType.Date:
+                    {
+                        Date = (DateTimeOffset)o;
+                        UsedType = CogsDateType.Date;
+                        break;
+                    }
+                case CogsDateType.GYearMonth:
+                    {
+                        GYearMonth = (Tuple<int, int, string>)o;
+                        UsedType = CogsDateType.GYearMonth;
+                        break;
+                    }
+                case CogsDateType.GYear:
+                    {
+                        GYear = (Tuple<int, string>)o;
+                        UsedType = CogsDateType.GYear;
+                        break;
+                    }
+                case CogsDateType.Duration:
+                    {
+                        Duration = (TimeSpan)o;
+                        UsedType = CogsDateType.Duration;
+                        break;
+                    }
+            }
+        }
 
         public CogsDate(DateTimeOffset item, bool isDate = false) : this()
         {
@@ -90,13 +127,13 @@ namespace Cogs.DataAnnotations
             }
         }
 
-        public CogsDate(Tuple<int, int> item) : this()
+        public CogsDate(Tuple<int, int, string> item) : this()
         {
             GYearMonth = item;
             UsedType = CogsDateType.GYearMonth;
         }
 
-        public CogsDate(int item) : this()
+        public CogsDate(Tuple<int, string> item) : this()
         {
             GYear = item;
             UsedType = CogsDateType.GYear;

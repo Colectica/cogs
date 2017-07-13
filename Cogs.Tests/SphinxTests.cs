@@ -2,9 +2,7 @@
 using Cogs.Model;
 using Cogs.Publishers;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using Xunit;
 
 namespace Cogs.Tests

@@ -3,8 +3,6 @@ using Cogs.Model;
 using Cogs.Publishers;
 using System.IO;
 using Xunit;
-using System.Reflection;
-using System.IO.Compression;
 using System;
 
 namespace Cogs.Tests

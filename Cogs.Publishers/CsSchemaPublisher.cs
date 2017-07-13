@@ -8,8 +8,6 @@ using System.IO;
 using System.Text;
 using System.Xml.Linq;
 using System.Xml;
-using System.Diagnostics;
-using System.Text.RegularExpressions;
 using System.Reflection;
 
 namespace Cogs.Publishers
@@ -76,10 +74,9 @@ namespace Cogs.Publishers
                 if (item.IsAbstract) { newClass.Append("abstract "); }
                 newClass.Append("class " + item.Name);
                 // allow inheritance when relevant
-                if (!String.IsNullOrWhiteSpace(item.ExtendsTypeName)) newClass.Append(" : " + item.ExtendsTypeName);
-                else if(!model.ReusableDataTypes.Contains(item)) { newClass.Append(" : IIdentifiable"); }
-                newClass.Append("$#{");
-                newClass.Append("$##public string ReferenceId { set; get; }");
+                if (!String.IsNullOrWhiteSpace(item.ExtendsTypeName)) newClass.Append(" : " + item.ExtendsTypeName + "$#{$##public new string ReferenceId { set; get; }");
+                else if (!model.ReusableDataTypes.Contains(item)) { newClass.Append(" : IIdentifiable$#{$##public string ReferenceId { set; get; }"); }
+                else { newClass.Append("$#{"); }
                 bool first = true;
                 foreach(var prop in item.Properties)
                 {
@@ -151,8 +148,17 @@ namespace Cogs.Publishers
                         newClass.Append("$##public " + prop.DataTypeName + " " + prop.Name + " { get; set; }");
                         if(origDataTypeName != null)
                         {
-                            reusableToJson.Append("$###if (" + prop.Name + " != null) $###{$####"+ start +
-                                SimpleToJson(origDataTypeName, prop.Name) + ");$###}");
+                            if(prop.DataTypeName.Equals("DateTimeOffset") || prop.DataTypeName.Equals("TimeSpan"))
+                            {
+                                reusableToJson.Append("$###if (" + prop.Name + " != default(" + prop.DataTypeName + "))");
+                            }
+                            else { reusableToJson.Append("$###if (" + prop.Name + " != null)"); }
+                            reusableToJson.Append("$###{$####"+ start + SimpleToJson(origDataTypeName, prop.Name) + ");$###}");
+                            if(origDataTypeName.Equals("cogsDate"))
+                            {
+                                initializeReferences.Append("$###if (" + prop.Name + ".UsedType != null) { " + prop.Name + ".SetValue(" + prop.Name +
+                                    ".UsedType, dict[" + prop.Name + ".Gyear[1]]; }");
+                            }
                             first = true;
                         }
                         else if (model.ReusableDataTypes.Contains(prop.DataType))
@@ -181,8 +187,12 @@ namespace Cogs.Publishers
                         newClass.Append("$##public List<" + prop.DataTypeName + "> " + prop.Name + "{ get; set; }  = new List<" + prop.DataTypeName + ">();");
                         if (model.ReusableDataTypes.Contains(prop.DataType))
                         {
-                            reusableToJson.Append("$###if (" + prop.Name + " != null) $###{");
-                            reusableToJson.Append("$####" + start + "new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
+                            if (prop.DataTypeName.Equals("DateTimeOffset") || prop.DataTypeName.Equals("TimeSpan"))
+                            {
+                                reusableToJson.Append("$###if (" + prop.Name + " != default(" + prop.DataTypeName + "))");
+                            }
+                            else { reusableToJson.Append("$###if (" + prop.Name + " != null)"); }
+                            reusableToJson.Append("$###{$####" + start + "new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
                                 "$######select new JObject($#######new JProperty(\"" + prop.DataTypeName + "\", item.ToJson()))))); $###}");
                         }
                         else if (!model.ItemTypes.Contains(prop.DataType))
@@ -346,14 +356,20 @@ namespace !!!
 
         public void Parse(string json)
         {
-            string id = """";
+            List<string> ids = new List<string>();
             JObject builder = JObject.Parse(json);
             Dictionary<string, IIdentifiable> dict = new Dictionary<string, IIdentifiable>();
             foreach (var type in builder)
             {
                 if (type.Key.Equals(""TopLevelReference""))
                 {
-                    if(type.Value.First != null) { id = type.Value.First.Last.First.Last.ToString(); }
+                    if (type.Value.First != null)
+                    {
+                        foreach (var reference in (JArray)type.Value)
+                        {
+                            ids.Add(reference.Last.First.Last.ToString());
+                        }
+                    }
                 }
                 else
                 {
@@ -366,7 +382,7 @@ namespace !!!
                         obj.ReferenceId = instance.Key;
                         Items.Add(obj);
                         dict.Add(instance.Key, obj);
-                        if (obj.ID.Equals(id)) { TopLevelReferences.Add(obj); }
+                        if (ids.Contains(obj.ID)) { TopLevelReferences.Add(obj); }
                     }
                 }
             }
@@ -511,7 +527,11 @@ namespace cogsBurger
                         return new DateTimeOffset(Int32.Parse(values[0]), Int32.Parse(values[1]), Int32.Parse(values[2]), 0, 0, 0, new TimeSpan());
                     }
                     return new DateTimeOffset(0, 0, 0, Int32.Parse(values[0]), Int32.Parse(values[1]), Int32.Parse(values[2]), new TimeSpan());
-
+                }
+                if (objectType == typeof(Uri))
+                {
+                    JToken prop = JToken.Load(reader);
+                    return new Uri(prop.ToString());
                 }
                 JObject obj = JObject.Load(reader);
                 if (objectType == typeof(Tuple<int, int, string>))
@@ -525,13 +545,11 @@ namespace cogsBurger
                     int a = Int32.Parse(((JProperty)obj.First).First.ToString());
                     return new Tuple<int, string>(a, ((JProperty)obj.Last).Value.ToString());
                 }
-                if (objectType == typeof(Uri))
-                {
-                    return new Uri(((JProperty)obj.First).First.ToString());
-                }
                 if (objectType == typeof(CogsDate))
                 {
-
+                    // create CogsDate object and set its UsedType property to be the the type given
+                    // set its GYear<int, string> string value to be the reference Id
+                    throw new NotImplementedException();
                 }
             }
             return null;
