@@ -17,7 +17,11 @@ namespace Cogs.Tests.Integration
             {
                 ID = Guid.NewGuid().ToString(),
                 Description = "Large Special",
-                HamburgerName = "Four Corners Burger"
+                HamburgerName = "Four Corners Burger",
+                Date = new DateTimeOffset(),
+                DateTime = new DateTimeOffset(),
+                Gyear = 2017,
+                Duration = new TimeSpan()
             };
 
             Hamburger hamburger2 = new Hamburger
@@ -118,6 +122,7 @@ namespace Cogs.Tests.Integration
             ItemContainer container2 = new ItemContainer();
             ItemContainer container3 = new ItemContainer();
             ItemContainer container4 = new ItemContainer();
+            ItemContainer container5 = new ItemContainer();
 
             //container
             container.TopLevelReferences.Add(hamburger);
@@ -131,6 +136,7 @@ namespace Cogs.Tests.Integration
             container2.Items.Add(bread2);
             container2.Items.Add(meatPatty);
             //container 3
+            container3.TopLevelReferences.Add(hamburger);
             container3.Items.Add(condiment);
             container3.Items.Add(condiment2);
 
@@ -140,11 +146,14 @@ namespace Cogs.Tests.Integration
             container4.Items.Add(veggiePatty);
             container4.Items.Add(veggiePatty2);
 
+            //container 5
+            container5.Items.Add(condiment);
             string json = container.Serialize();
             string json2 = container2.Serialize();
             string json3 = container3.Serialize();
             string json4 = container4.Serialize();
-            File.WriteAllText(@"C:\Users\clement\Desktop\test.json", json2);
+            string json5 = container5.Serialize();
+            File.WriteAllText(@"C:\Users\clement\Desktop\test.json", json3);
             string jsonSchema = File.ReadAllText(@"..\..\..\..\generated\jsonSchema.json");
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings
             {
@@ -156,17 +165,26 @@ namespace Cogs.Tests.Integration
             var errors2 = schema.Validate(json2);
             var errors3 = schema.Validate(json3);
             var errors4 = schema.Validate(json4);
-
+            var errors5 = schema.Validate(json5);
             Assert.Empty(errors);
             Assert.Empty(errors2);
             Assert.Empty(errors3);
             Assert.Empty(errors4);
+            Assert.Empty(errors5);
 
             ItemContainer newContainer = new ItemContainer();
-            newContainer.Parse(json);
-            errors = schema.Validate(newContainer.Serialize());
-            Assert.Empty(errors);
-            Assert.Equal(json, newContainer.Serialize());
+            ItemContainer newContainer5 = new ItemContainer();
+            newContainer5.Parse(json5);
+            newContainer.Parse(json3);
+            var json_5 = newContainer5.Serialize();
+            var json_test = newContainer.Serialize();
+            File.WriteAllText(@"C:\Users\clement\Desktop\test.json", json_test);
+            var errors_test = schema.Validate(json_test);
+            var errors_5 = schema.Validate(json_5);
+            Assert.Empty(errors_test);
+            Assert.Equal(json3, json_test);
+            Assert.Empty(errors_5);
+            Assert.Equal(json_5, json5);
         }
     }
 }
