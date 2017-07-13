@@ -15,7 +15,7 @@ namespace Cogs.Tests.Integration
         {
             Hamburger hamburger = new Hamburger
             {
-                ID = Guid.NewGuid().ToString(),
+                ID = "ID-27",
                 Description = "Large Special",
                 HamburgerName = "Four Corners Burger",
                 Date = new DateTimeOffset(),
@@ -26,9 +26,13 @@ namespace Cogs.Tests.Integration
 
             Hamburger hamburger2 = new Hamburger
             {
-                ID = Guid.NewGuid().ToString(),
+                ID = "ID-28",
                 Description = "small Special",
-                HamburgerName = "Five Corners Burger"
+                HamburgerName = "Five Corners Burger",
+                Date = new DateTimeOffset(),
+                DateTime = new DateTimeOffset(),
+                Gyear = 2017,
+                Duration = new TimeSpan()
             };
 
             MultilingualString describe = new MultilingualString
@@ -39,12 +43,12 @@ namespace Cogs.Tests.Integration
 
             Animal animal = new Animal
             {
-                ID = Guid.NewGuid().ToString(),
+                ID = "ID-29",
                 Name = "Cow",
                 LingualDescription = new List<MultilingualString> { describe },
                 CountryOfOrigin = "USA",
-                Date = new DateTime(2017, 6, 9)
-
+                Date = new DateTime(2017, 6, 9),
+                Duration = new TimeSpan()
             };
 
             List<decimal> heights = new List<decimal>();
@@ -53,7 +57,7 @@ namespace Cogs.Tests.Integration
             Tuple<int, int> GYM = new Tuple<int, int> (2017, 06 );
             Bread bread = new Bread
             {
-                ID = Guid.NewGuid().ToString(),
+                ID = "ID-30",
                 Name = "Sesame seed bun",
                 Description = "freshly baked daily!",
                 Size = new Dimensions { Width =6, Length = 5.00, Height = heights },
@@ -62,7 +66,7 @@ namespace Cogs.Tests.Integration
 
             Bread bread2 = new Bread
             {
-                ID = Guid.NewGuid().ToString(),
+                ID = "ID-31",
                 Name = "Sepcial Bun",
                 Description = " a special bun never had before!",
                 Size = new Dimensions { Width = 5, Length = 5.00, Height = heights },
@@ -71,14 +75,14 @@ namespace Cogs.Tests.Integration
 
             Roll roll = new Roll
             {
-                ID = Guid.NewGuid().ToString(),
+                ID = "ID-32",
                 Name = "Sesame seed bun",
                 Description = "A nice bun"
             };
 
             Condiment condiment = new Condiment
             {
-                ID = Guid.NewGuid().ToString(),
+                ID = "ID-33",
                 Name = "mustard",
                 Description = "special mustard",
                 IsSpecial = true
@@ -86,7 +90,7 @@ namespace Cogs.Tests.Integration
 
             Condiment condiment2 = new Condiment
             {
-                ID = Guid.NewGuid().ToString(),
+                ID = "ID-34",
                 Name = "ketchup",
                 Description = "normal ketchup",
                 IsSpecial = false
@@ -94,23 +98,23 @@ namespace Cogs.Tests.Integration
 
             MeatPatty meatPatty = new MeatPatty
             {
-                ID = Guid.NewGuid().ToString()
+                ID = "ID-35"
             };
 
             MeatPatty meatPatty2 = new MeatPatty
             {
-                ID = Guid.NewGuid().ToString()
+                ID = "ID-36"
             };
 
             VeggiePatty veggiePatty = new VeggiePatty
             {
-                ID = Guid.NewGuid().ToString(),
+                ID = "ID-37",
                 VegetableUsed = new List<string> { "red beans", "black beans" }
             };
 
             VeggiePatty veggiePatty2 = new VeggiePatty
             {
-                ID = Guid.NewGuid().ToString(),
+                ID = "ID-38",
                 VegetableUsed = new List<string> { "garbonzo beans" }
             };
 
@@ -133,15 +137,18 @@ namespace Cogs.Tests.Integration
             container.Items.Add(meatPatty2);
             //container 2
             container2.TopLevelReferences.Add(hamburger);
+            container2.Items.Add(hamburger);
             container2.Items.Add(bread2);
             container2.Items.Add(meatPatty);
             //container 3
             container3.TopLevelReferences.Add(hamburger);
+            container3.Items.Add(hamburger);
             container3.Items.Add(condiment);
             container3.Items.Add(condiment2);
 
             //container 4
-            container4.TopLevelReferences.Add(hamburger2);
+            container4.TopLevelReferences.Add(hamburger);
+            container4.Items.Add(hamburger);
             container4.Items.Add(animal);
             container4.Items.Add(veggiePatty);
             container4.Items.Add(veggiePatty2);
@@ -153,7 +160,7 @@ namespace Cogs.Tests.Integration
             string json3 = container3.Serialize();
             string json4 = container4.Serialize();
             string json5 = container5.Serialize();
-            File.WriteAllText(@"C:\Users\clement\Desktop\test.json", json3);
+            File.WriteAllText(@"C:\Users\clement\Desktop\test.json", json);
             string jsonSchema = File.ReadAllText(@"..\..\..\..\generated\jsonSchema.json");
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings
             {
@@ -178,7 +185,7 @@ namespace Cogs.Tests.Integration
             newContainer.Parse(json3);
             var json_5 = newContainer5.Serialize();
             var json_test = newContainer.Serialize();
-            File.WriteAllText(@"C:\Users\clement\Desktop\test.json", json_test);
+            //File.WriteAllText(@"C:\Users\clement\Desktop\test.json", json_test);
             var errors_test = schema.Validate(json_test);
             var errors_5 = schema.Validate(json_5);
             Assert.Empty(errors_test);
