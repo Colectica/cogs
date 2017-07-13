@@ -31,12 +31,15 @@ namespace Cogs.Publishers
 
             Directory.CreateDirectory(TargetDirectory);
             // create graphs for each item
-            var builder = new DotSchemaPublisher();
-            builder.TargetDirectory = Path.Combine(Path.Combine(TargetDirectory, "source"), "images");
-            builder.Overwrite = Overwrite;
-            builder.Format = "svg";
-            builder.Output = "single";
-            builder.Inheritance = false;
+            var builder = new DotSchemaPublisher
+            {
+                TargetDirectory = Path.Combine(Path.Combine(TargetDirectory, "source"), "images"),
+                DotLocation = DotLocation,
+                Overwrite = Overwrite,
+                Format = "svg",
+                Output = "single",
+                Inheritance = false
+            };
             builder.Publish(model);
             // create documentation
             var doc = new BuildSphinxDocumentation();

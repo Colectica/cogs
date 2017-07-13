@@ -4,17 +4,16 @@
     <TargetFramework>netcoreapp2.0</TargetFramework>
 
     <IsPackable>false</IsPackable>
+
   </PropertyGroup>
 
   <ItemGroup>
     <None Remove="cogsburger.zip" />
-    <None Remove="dotnet.exe" />
     <None Remove="normativeXMI.xsd" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="cogsburger.zip" />
-    <EmbeddedResource Include="dotnet.exe" />
     <EmbeddedResource Include="normativeXMI.xsd" />
   </ItemGroup>
 

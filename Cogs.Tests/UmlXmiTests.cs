@@ -18,17 +18,8 @@ namespace Cogs.Tests
         [Fact]
         public void UmlForHamburgersTest()
         {
-            var testDir = Path.Combine(Directory.GetCurrentDirectory(), "testing");
-            Directory.CreateDirectory(Path.Combine(testDir, "temp"));
-
-            string path = null;
-            using (Stream resFilestream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Cogs.Tests.cogsburger.zip"))
-            {
-                path = Path.Combine(testDir, "cogsburger");
-                var temp = Path.Combine(Path.Combine(testDir, "temp"), "cogsburger.zip");
-                using (var stream = new FileStream(path + ".zip", FileMode.Create)) { resFilestream.CopyTo(stream); }
-                ZipFile.ExtractToDirectory(path + ".zip", path);
-            };
+            string path = Path.Combine(Path.Combine(Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), ".."), ".."), ".."), "..");
+            path = Path.Combine(path, "cogsburger");
 
             string subdir = Path.GetFileNameWithoutExtension(Path.GetTempFileName());
             string outputPath = Path.Combine(Path.GetTempPath(), subdir);
@@ -39,21 +30,38 @@ namespace Cogs.Tests
             var modelBuilder = new CogsModelBuilder();
             var cogsModel = modelBuilder.Build(cogsDtoModel);
 
+            string dotLoc = null;
+            if(File.Exists("dot.exe")) { dotLoc = Path.GetFullPath("dot.exe"); }
+            else
+            {
+                var values = Environment.GetEnvironmentVariable("PATH");
+                foreach (var exe in values.Split(Path.PathSeparator))
+                {
+                    var fullPath = Path.Combine(exe, "dot.exe");
+                    if(File.Exists(fullPath)) { dotLoc = exe; }
+                }
+            }
+            if (dotLoc == null) { throw new InvalidOperationException(); }
             // test both normative and not normative outputs
-            var publisher = new UmlSchemaPublisher();
-            publisher.TargetDirectory = outputPath;
-            publisher.Normative = false;
+            var publisher = new UmlSchemaPublisher
+            {
+                TargetDirectory = outputPath,
+                DotLocation = dotLoc,
+                Normative = false
+            };
             publisher.Publish(cogsModel);
             // test with normative since 2.5 does not have a xsd schema yet
             Validate(Path.Combine(outputPath, "uml.xmi.xml"));
 
-            publisher = new UmlSchemaPublisher();
-            publisher.TargetDirectory = outputPath;
-            publisher.Normative = true;
+            publisher = new UmlSchemaPublisher
+            {
+                TargetDirectory = outputPath,
+                DotLocation = dotLoc,
+                Normative = true
+            };
             publisher.Publish(cogsModel);
             // not working yet
             Validate(Path.Combine(outputPath, "uml.xmi.xml"));
-            Directory.Delete(testDir, true);
         }
 
 

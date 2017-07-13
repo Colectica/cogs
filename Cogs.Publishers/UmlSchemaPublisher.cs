@@ -76,6 +76,7 @@ namespace Cogs.Publishers
                 DotSchemaPublisher publisher = new DotSchemaPublisher();
                 publisher.TargetDirectory = TargetDirectory;
                 publisher.Overwrite = Overwrite;
+                publisher.DotLocation = DotLocation;
                 publisher.Format = "svg";
                 publisher.Output = "all";
                 publisher.Inheritance = true;

@@ -6,6 +6,7 @@ using Xunit;
 using System.Diagnostics;
 using System.Reflection;
 using System.IO.Compression;
+using System;
 
 namespace Cogs.Tests
 {
@@ -15,17 +16,8 @@ namespace Cogs.Tests
         [Fact]
         public void CsForHamburgersTest()
         {
-            var testDir = Path.Combine(Directory.GetCurrentDirectory(), "testing");
-            Directory.CreateDirectory(Path.Combine(testDir, "temp"));
-
-            string path = null;
-            using (Stream resFilestream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Cogs.Tests.cogsburger.zip"))
-            {
-                path = Path.Combine(testDir, "cogsburger");
-                var temp = Path.Combine(Path.Combine(testDir, "temp"), "cogsburger.zip");
-                using (var stream = new FileStream(path + ".zip", FileMode.Create)) { resFilestream.CopyTo(stream); }
-                ZipFile.ExtractToDirectory(path + ".zip", path);
-            };
+            string path = Path.Combine(Path.Combine(Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), ".."), ".."), ".."), "..");
+            path = Path.Combine(path, "cogsburger");
 
             string subdir = Path.GetFileNameWithoutExtension(Path.GetTempFileName());
             string outputPath = Path.Combine(Path.GetTempPath(), subdir);
@@ -36,27 +28,35 @@ namespace Cogs.Tests
             var modelBuilder = new CogsModelBuilder();
             var cogsModel = modelBuilder.Build(cogsDtoModel);
 
-            var publisher = new CsSchemaPublisher();
-            publisher.TargetDirectory = outputPath;
+            var publisher = new CsSchemaPublisher
+            {
+                TargetDirectory = outputPath
+            };
             publisher.Publish(cogsModel);
 
-            //set up executable
-            using (Stream resFilestream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Cogs.Tests.dotnet.exe"))
+            // get the dotnet filepath
+            string dotLoc = null;
+            if (File.Exists("dotnet.exe")) { dotLoc = Path.GetFullPath("dotnet.exe"); }
+            else
             {
-                byte[] b = new byte[resFilestream.Length];
-                resFilestream.Read(b, 0, b.Length);
-                File.WriteAllBytes(Path.Combine(outputPath, "dotnet.exe"), b);
+                var values = Environment.GetEnvironmentVariable("PATH");
+                foreach (var exe in values.Split(Path.PathSeparator))
+                {
+                    var fullPath = Path.Combine(exe, "dotnet.exe");
+                    if (File.Exists(fullPath)) { dotLoc = fullPath; }
+                }
             }
-            Build("cogsBurger", outputPath);
-            Directory.Delete(testDir, true);
+            if (dotLoc == null) { throw new InvalidOperationException(); }
+
+            Build("cogsBurger", outputPath, dotLoc);
         }
 
         // builds the created project
-        private void Build(string filename, string outputPath)
+        private void Build(string filename, string outputPath, string dotnet)
         {
 
-            Run(outputPath, "restore " + Path.Combine(outputPath, filename + ".csproj"));
-            Run(outputPath, "build " + Path.Combine(outputPath, filename + ".csproj"));
+            Run(dotnet, "restore " + Path.Combine(outputPath, filename + ".csproj"));
+            Run(dotnet, "build " + Path.Combine(outputPath, filename + ".csproj"));
         }
 
          private void Run(string path, string arguments)
@@ -66,7 +66,7 @@ namespace Cogs.Tests
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    FileName = Path.Combine(path, "dotnet.exe"),
+                    FileName = path,
                     Arguments = arguments,
                     UseShellExecute = false,
                     RedirectStandardOutput = true,

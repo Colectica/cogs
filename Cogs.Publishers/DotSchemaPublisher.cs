@@ -23,6 +23,10 @@ namespace Cogs.Publishers
         /// </summary>
         public string TargetDirectory { get; set; }
         /// <summary>
+        /// path to dot.exe file
+        /// </summary>
+        public string DotLocation { get; set; }
+        /// <summary>
         /// boolean to determine whether to replace existing or not
         /// </summary>
         public bool Overwrite { get; set; }
@@ -57,12 +61,6 @@ namespace Cogs.Publishers
 
             Directory.CreateDirectory(TargetDirectory);
 
-            using (Stream resFilestream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Cogs.Publishers.dot.exe"))
-            {
-                byte[] b = new byte[resFilestream.Length];
-                resFilestream.Read(b, 0, b.Length);
-                File.WriteAllBytes(Path.Combine(TargetDirectory, "dot.exe"), b);
-            }
             // create list of all class names so you know if a class is being referenced
             ClassList = model.ItemTypes;
             // create list of all reusable types so you know if a reusable type is being referenced and can get information about it
@@ -304,9 +302,11 @@ namespace Cogs.Publishers
             File.WriteAllText(Path.Combine(TargetDirectory, "input.dot"), outputText);
             // run graphviz dot
             Process process = new Process();
-            ProcessStartInfo startInfo = new ProcessStartInfo(Path.Combine(TargetDirectory, "dot.exe"));
-            startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-            startInfo.Arguments = "-T " + Format + " -o " + Path.Combine(TargetDirectory, filename.Replace(" ", "") + "." + Format) + " " + Path.Combine(TargetDirectory, "input.dot");
+            ProcessStartInfo startInfo = new ProcessStartInfo(Path.Combine(DotLocation, "dot.exe"))
+            {
+                WindowStyle = ProcessWindowStyle.Hidden,
+                Arguments = "-T " + Format + " -o " + Path.Combine(TargetDirectory, filename.Replace(" ", "") + "." + Format) + " " + Path.Combine(TargetDirectory, "input.dot")
+            };
             process.StartInfo = startInfo;
             process.Start();
             process.WaitForExit();
