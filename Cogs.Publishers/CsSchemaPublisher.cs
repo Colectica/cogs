@@ -9,6 +9,7 @@ using System.Text;
 using System.Xml.Linq;
 using System.Xml;
 using System.Reflection;
+using System.Collections;
 
 namespace Cogs.Publishers
 {
@@ -165,6 +166,7 @@ namespace Cogs.Publishers
                         {
                             reusableToJson.Append("$###if (" + prop.Name + " != null) { ");
                             reusableToJson.Append(start + "new JProperty(\"" + prop.Name + "\", " + prop.Name + ".ToJson())); }");
+                            initializeReferences.Append(InitializeReusable(prop, false));
                         }
                         else if (!model.ItemTypes.Contains(prop.DataType))
                         {
@@ -194,6 +196,7 @@ namespace Cogs.Publishers
                             else { reusableToJson.Append("$###if (" + prop.Name + " != null)"); }
                             reusableToJson.Append("$###{$####" + start + "new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
                                 "$######select new JObject($#######new JProperty(\"" + prop.DataTypeName + "\", item.ToJson()))))); $###}");
+                            initializeReferences.Append(InitializeReusable(prop, true));
                         }
                         else if (!model.ItemTypes.Contains(prop.DataType))
                         {
@@ -239,15 +242,112 @@ namespace Cogs.Publishers
                 newClass.Append("$$##/// <summary>$##/// Used to set this object's properties from Json $##/// <summary>");
                 if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
                 {
-                    newClass.Append("$##public new void InitializeReferences(Dictionary<string, IIdentifiable> dict)$##{");
+                    newClass.Append("$##public override void InitializeReferences(Dictionary<string, IIdentifiable> dict, string json)$##{" +
+                        "$###base.InitializeReferences(dict, json);");
                 }
-                else { newClass.Append("$##public void InitializeReferences(Dictionary<string, IIdentifiable> dict)$##{"); }
-                newClass.Append(initializeReferences + "$##}$#}$}$");
+                else { newClass.Append("$##public virtual void InitializeReferences(Dictionary<string, IIdentifiable> dict, string json)$##{"); }
+                newClass.Append("$###string[] parts = json.Split(new string[] { \":\", \"{\", \"}\", \"[\", \"]\", \",\", Environment.NewLine }, " +
+                    "StringSplitOptions.None);$###bool thisObj = false;" + initializeReferences.ToString() + "$##}$#}$}$");
                 
                 // write class to out folder
                 File.WriteAllText(Path.Combine(TargetDirectory, item.Name + ".cs"), newClass.ToString().
                     Replace("$###((JObject)json.First).Add();", "").Replace("#", "    ").Replace("$", Environment.NewLine).Replace("@", "$"));
             }
+        }
+
+        private string InitializeReusable(Property prop, bool isList)
+        {
+            var name = prop.Name;
+            var type = prop.DataTypeName;
+            StringBuilder builder = new StringBuilder(@"
+            for (int i = 0; i < parts.Length; i ++)
+            {
+                if (parts[i].Contains(ID)) { thisObj = true; }
+                else if(parts[i].Contains(""" + name + @""") && thisObj)
+                {
+                    ");
+            if(isList)
+            {
+                builder.Append(name + " = new List<" + type + @">();
+                    "+ type + " obj = null;");
+            }
+            else { builder.Append(name + " = new " + type + "();"); }
+            builder.Append(@"
+                    i++;
+                    while(this.GetType().GetProperties().Where(x => parts[i].Contains(x.Name)).ToList().Count == 0)
+                    {
+                        if (parts[i].Contains(""" + type + @"""))
+                        {
+                            ");
+            if(isList)
+            {
+                builder.Append("if(obj != null) { " + name + @".Add(obj); }
+                            obj = new " + type + @"();
+                        }");
+                foreach (var p in prop.DataType.Properties)
+                {
+                    builder.Append(@"
+                        if (parts[i].Contains(""" + p.Name + "\"))");
+                    if (!p.MaxCardinality.Equals("1"))
+                    {
+                        builder.Append(@"
+                        {
+                            while (string.IsNullOrWhiteSpace(parts[i]) || " + ReusableTypeConvert(p.DataTypeName) + @")
+                            {
+                                obj." + p.Name + ".Add(" + ReusableTypeConvert(p.DataTypeName) + @");
+                            }
+                        }");
+                    }
+                    else
+                    {
+                        builder.Append(" { obj." + p.Name + " = " + ReusableTypeConvert(p.DataTypeName) + "; }");
+
+                    }
+                }
+                builder.Append(@"
+                        i++;
+                    }
+                    if (obj != null) { " + name + @".Add(obj); }
+                }
+            }
+            thisObj = false;");
+            }
+            else
+            {
+                builder.Append(name + " = new " + type + "();");
+                foreach (var p in prop.DataType.Properties)
+                {
+                    if (!p.MaxCardinality.Equals("1"))
+                    {
+                        builder.Append(@"
+                        {
+                            while (string.IsNullOrWhiteSpace(parts[i]) || " + ReusableTypeConvert(p.DataTypeName) + @")
+                            {
+                                " + name + "." + p.Name + ".Add(" + ReusableTypeConvert(p.DataTypeName) + @");
+                            }
+                        }");
+                    }
+                    else
+                    {
+                        builder.Append(@"
+                        if (parts[i].Contains(""" + p.Name + "\")) { " + name + "." + p.Name + " = " + ReusableTypeConvert(p.DataTypeName) + "; }");
+                    }
+                }
+                builder.Append(@"
+                    }
+                }
+            }
+            thisObj = false;");
+            }
+            return builder.ToString();
+        }
+
+        private string ReusableTypeConvert(string name)
+        {
+            if (name.Equals("int")) { return "int.Parse(parts[i + 1].Trim().Replace(\"\\\"\", \"\"))"; }
+            if (name.Equals("double")) { return "double.Parse(parts[i + 1].Trim().Replace(\"\\\"\", \"\"))"; }
+            if (name.Equals("decimal")) { return "decimal.Parse(parts[i + 1].Trim().Replace(\"\\\"\", \"\"))"; }
+            return "parts[i + 1].Trim().Replace(\"\\\"\", \"\")";
         }
 
         private string SimpleToJson(string origDataTypeName, string name)
@@ -301,7 +401,7 @@ namespace Cogs.Publishers
             {
                 builder.Append("$##" + prop.DataTypeName + " " + prop.Name + " { get; set; }");
             }
-            builder.Append("$##JProperty ToJson();$##string ReferenceId { get; set; }$##void InitializeReferences(Dictionary<string, IIdentifiable> dict);$#}$}");
+            builder.Append("$##JProperty ToJson();$##string ReferenceId { get; set; }$##void InitializeReferences(Dictionary<string, IIdentifiable> dict, string json);$#}$}");
             File.WriteAllText(Path.Combine(TargetDirectory, "IIdentifiable.cs"), builder.ToString().Replace("#", "    ").Replace("$", Environment.NewLine));
         }
 
@@ -388,15 +488,17 @@ namespace !!!
             }
             foreach (var obj in dict.Values)
             {
-                obj.InitializeReferences(dict);
+                obj.InitializeReferences(dict, json);
             }
         }
     }
 }";
             StringBuilder ifs = new StringBuilder();
+            string start = "";
             foreach(var item in model.ItemTypes)
             {
-                ifs.Append("$######if (clss.Equals(\"" + item.Name + "\")) { obj = JsonConvert.DeserializeObject<" + item.Name + ">(instance.Value.ToString()); }");
+                ifs.Append("$######" + start + "if (clss.Equals(\"" + item.Name + "\")) { obj = JsonConvert.DeserializeObject<" + item.Name + ">(instance.Value.ToString()); }");
+                start = "else ";
             }
             File.WriteAllText(Path.Combine(TargetDirectory, "ItemContainer.cs"), clss.Replace("!!!", projName).Replace("???", ifs.ToString()
                 .Replace("#", "    ").Replace("$", Environment.NewLine)));
