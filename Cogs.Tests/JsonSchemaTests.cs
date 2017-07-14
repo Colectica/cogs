@@ -93,9 +93,10 @@ namespace Cogs.Tests
             model.ItemTypes.Add(type);
 
             var jsonPublisher = new JsonPublisher();
-            jsonPublisher.TargetDirectory = @"c:\out\test-cogs";
+            jsonPublisher.TargetDirectory = Environment.CurrentDirectory;
             jsonPublisher.Publish(model);
 
+            Assert.True(true);
         }
     }
 }
