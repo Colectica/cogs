@@ -47,12 +47,13 @@ namespace Cogs.Tests.Integration
             heights.Add(5);
             heights.Add(5);
             Tuple<int, int, string> GYM = new Tuple<int, int, string> (2017, 06, "utc");
+
             Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
                 Name = "Sesame seed bun",
                 Description = "freshly baked daily!",
-                Size = new Dimensions { Width =6, Length = 5.00, Height = heights },
+                Size = new Dimensions { Width = 6, Length = 5.00, Height = heights },
                 Gyearmonth = GYM
             };
 
@@ -147,29 +148,34 @@ namespace Cogs.Tests.Integration
             // evaluation
             string schemaPath = Path.Combine(Path.Combine(Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), ".."), ".."), ".."), "..");
             string jsonSchema = File.ReadAllText(Path.Combine(Path.Combine(schemaPath, "generated"), "jsonSchema.json"));
+
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings
             {
                 MetadataPropertyHandling = MetadataPropertyHandling.Ignore
             };
             JsonSchema4 schema = await JsonSchema4.FromJsonAsync(jsonSchema);
             var containers = new ItemContainer[] { container, container2, container3, container4 };
-            for(int i = 0; i < 4; i++)
+
+            for (int i = 0; i < 4; i++)
             {
                 // test serializing
                 string json = containers[i].Serialize();
-                File.WriteAllText(@"C:\Users\kevin\Documents\jsonOutput\toJson" + (i + 1) + ".json", json);
+                File.WriteAllText(@"C:\Users\clement\Documents\" + i + ".json", json);
+
                 var errors = schema.Validate(json);
                 Assert.Empty(errors);
                 // test parsing
                 ItemContainer newContainer = new ItemContainer();
                 newContainer.Parse(json);
                 var newJson = newContainer.Serialize();
-                File.WriteAllText(@"C:\Users\kevin\Documents\jsonOutput\fromJson" + (i + 1) + ".json", newJson);
+
+                File.WriteAllText(@"C:\Users\clement\Documents\" + i + ".json", newJson);
                 errors = schema.Validate(newJson);
                 Assert.Empty(errors);
                 // check that outputs are the same
-                Assert.Equal(json, newJson);
-            } 
+                  Assert.Equal(json, newJson);
+            }
+
         }
     }
 }
