@@ -2,9 +2,7 @@
 using Cogs.Model;
 using Cogs.Publishers;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using Xunit;
 
 namespace Cogs.Tests
@@ -14,7 +12,8 @@ namespace Cogs.Tests
         [Fact]
         public void SphinxForHamburgersTest()
         {
-            string path = "..\\..\\..\\..\\cogsburger";
+            string path = Path.Combine(Path.Combine(Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), ".."), ".."), ".."), "..");
+            path = Path.Combine(path, "cogsburger");
 
             string subdir = Path.GetFileNameWithoutExtension(Path.GetTempFileName());
             string outputPath = Path.Combine(Path.GetTempPath(), subdir);
@@ -25,9 +24,23 @@ namespace Cogs.Tests
             var modelBuilder = new CogsModelBuilder();
             var cogsModel = modelBuilder.Build(cogsDtoModel);
 
-            var sphinxPublisher = new SphinxPublisher();
-            sphinxPublisher.TargetDirectory = outputPath;
-            sphinxPublisher.DotLocation = "C:\\Users\\kevin\\Downloads\\graphviz-2.38\\release\\bin";
+            string dotLoc = null;
+            if (File.Exists("dot.exe")) { dotLoc = Path.GetFullPath("dot.exe"); }
+            else
+            {
+                var values = Environment.GetEnvironmentVariable("PATH");
+                foreach (var exe in values.Split(Path.PathSeparator))
+                {
+                    var fullPath = Path.Combine(exe, "dot.exe");
+                    if (File.Exists(fullPath)) { dotLoc = exe; }
+                }
+            }
+            if (dotLoc == null) { throw new InvalidOperationException(); }
+            var sphinxPublisher = new SphinxPublisher
+            {
+                TargetDirectory = outputPath,
+                DotLocation = dotLoc
+            };
             sphinxPublisher.Publish(cogsModel);
 
 

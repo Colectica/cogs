@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using Cogs.Dto;
 using Cogs.Model;
 using Cogs.Publishers;
@@ -8,6 +6,7 @@ using System.IO;
 using Xunit;
 using System.Xml;
 using System.Xml.Schema;
+using System.Reflection;
 
 namespace Cogs.Tests
 {
@@ -16,7 +15,8 @@ namespace Cogs.Tests
         [Fact]
         public void UmlForHamburgersTest()
         {
-            string path = "..\\..\\..\\..\\cogsburger";
+            string path = Path.Combine(Path.Combine(Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), ".."), ".."), ".."), "..");
+            path = Path.Combine(path, "cogsburger");
 
             string subdir = Path.GetFileNameWithoutExtension(Path.GetTempFileName());
             string outputPath = Path.Combine(Path.GetTempPath(), subdir);
@@ -27,33 +27,54 @@ namespace Cogs.Tests
             var modelBuilder = new CogsModelBuilder();
             var cogsModel = modelBuilder.Build(cogsDtoModel);
 
+            string dotLoc = null;
+            if(File.Exists("dot.exe")) { dotLoc = Path.GetFullPath("dot.exe"); }
+            else
+            {
+                var values = Environment.GetEnvironmentVariable("PATH");
+                foreach (var exe in values.Split(Path.PathSeparator))
+                {
+                    var fullPath = Path.Combine(exe, "dot.exe");
+                    if(File.Exists(fullPath)) { dotLoc = exe; }
+                }
+            }
+            if (dotLoc == null) { throw new InvalidOperationException(); }
             // test both normative and not normative outputs
-            var publisher = new UmlSchemaPublisher();
-            publisher.TargetDirectory = outputPath;
-            publisher.Normative = false;
-            publisher.DotLocation = @"C:\Users\kevin\Downloads\graphviz-2.38\release\bin";
+            var publisher = new UmlSchemaPublisher
+            {
+                TargetDirectory = outputPath,
+                DotLocation = dotLoc,
+                Normative = false
+            };
             publisher.Publish(cogsModel);
             // test with normative since 2.5 does not have a xsd schema yet
-            Validate(Path.Combine(outputPath, "uml.xmi.xml"), Path.Combine(Directory.GetCurrentDirectory(), "..\\..\\..\\normativeXMI.xsd"));
+            Validate(Path.Combine(outputPath, "uml.xmi.xml"));
 
-            publisher = new UmlSchemaPublisher();
-            publisher.TargetDirectory = outputPath;
-            publisher.Normative = true;
+            publisher = new UmlSchemaPublisher
+            {
+                TargetDirectory = outputPath,
+                DotLocation = dotLoc,
+                Normative = true
+            };
             publisher.Publish(cogsModel);
             // not working yet
-            Validate(Path.Combine(outputPath, "uml.xmi.xml"), Path.Combine(Directory.GetCurrentDirectory(), "..\\..\\..\\normativeXMI.xsd"));
+            Validate(Path.Combine(outputPath, "uml.xmi.xml"));
         }
 
 
         // takes filename of created xml document and filename for schema and validates the schema
-        private static void Validate(string filename, string schemaFile)
+        private static void Validate(string filename)
         {
-            // used https://msdn.microsoft.com/en-us/library/system.xml.schema.validationeventargs.severity(v=vs.110).aspx
             Console.WriteLine();
             Console.WriteLine("\r\nValidating XML file {0}...", filename);
 
             XmlSchemaSet schemaSet = new XmlSchemaSet();
-            schemaSet.Add(null, schemaFile);
+            //get schema
+            using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Cogs.Tests.normativeXMI.xsd"))
+            {
+                schemaSet.Add(null, XmlReader.Create(stream));
+            }
+            
 
             XmlSchema compiledSchema = null;
 

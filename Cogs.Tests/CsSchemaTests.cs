@@ -1,24 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Cogs.Dto;
+﻿using Cogs.Dto;
 using Cogs.Model;
 using Cogs.Publishers;
 using System.IO;
 using Xunit;
-using System.Xml;
-using System.Xml.Schema;
 using System.Diagnostics;
-
+using System;
 
 namespace Cogs.Tests
 {
     public class CsSchemaTests
     {
+
         [Fact]
         public void CsForHamburgersTest()
         {
-            string path = "..\\..\\..\\..\\cogsburger";
+            string path = Path.Combine(Path.Combine(Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), ".."), ".."), ".."), "..");
+            path = Path.Combine(path, "cogsburger");
 
             string subdir = Path.GetFileNameWithoutExtension(Path.GetTempFileName());
             string outputPath = Path.Combine(Path.GetTempPath(), subdir);
@@ -29,26 +26,45 @@ namespace Cogs.Tests
             var modelBuilder = new CogsModelBuilder();
             var cogsModel = modelBuilder.Build(cogsDtoModel);
 
-            var publisher = new CsSchemaPublisher();
-            publisher.TargetDirectory = outputPath;
+            var publisher = new CsSchemaPublisher
+            {
+                TargetDirectory = outputPath
+            };
             publisher.Publish(cogsModel);
-            Build("cogsBurger", outputPath);
+
+            // get the dotnet filepath
+            string dotLoc = null;
+            if (File.Exists("dotnet.exe")) { dotLoc = Path.GetFullPath("dotnet.exe"); }
+            else
+            {
+                var values = Environment.GetEnvironmentVariable("PATH");
+                foreach (var exe in values.Split(Path.PathSeparator))
+                {
+                    var fullPath = Path.Combine(exe, "dotnet.exe");
+                    if (File.Exists(fullPath)) { dotLoc = fullPath; }
+                }
+            }
+            if (dotLoc == null) { throw new InvalidOperationException(); }
+
+            Build("cogsBurger", outputPath, dotLoc);
         }
 
         // builds the created project
-        private void Build(string filename, string outputPath)
+        private void Build(string filename, string outputPath, string dotnet)
         {
-            Run(@"C:\Program Files\dotnet\dotnet.exe", "restore " + Path.Combine(outputPath, filename + ".csproj"));
-            Run(@"C:\Program Files\dotnet\dotnet.exe", "build " + Path.Combine(outputPath, filename + ".csproj"));
+
+            Run(dotnet, "restore " + Path.Combine(outputPath, filename + ".csproj"));
+            Run(dotnet, "build " + Path.Combine(outputPath, filename + ".csproj"));
         }
 
-         private void Run(string exeLocation, string arguments)
+         private void Run(string path, string arguments)
         {
+
             var proc = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    FileName = exeLocation,
+                    FileName = path,
                     Arguments = arguments,
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
@@ -62,7 +78,6 @@ namespace Cogs.Tests
                 Debug.WriteLine(line);
                 if (line.Equals("Build FAILED.")) { Assert.False(true); }
             }
-            
         }
     }
 }
