@@ -292,15 +292,16 @@ namespace Cogs.Publishers
                     {
                         builder.Append(@"
                         {
-                            while (string.IsNullOrWhiteSpace(parts[i]) || " + ReusableTypeConvert(p.DataTypeName) + @")
+                            while (string.IsNullOrWhiteSpace(parts[i])" + @")
                             {
-                                obj." + p.Name + ".Add(" + ReusableTypeConvert(p.DataTypeName) + @");
+                                if(!string.IsNullOrWhiteSpace(parts[i])) { obj." + p.Name + ".Add(" + ReusableTypeConvert(p.DataTypeName) + @"); }
+                                i++;
                             }
                         }");
                     }
                     else
                     {
-                        builder.Append(" { obj." + p.Name + " = " + ReusableTypeConvert(p.DataTypeName) + "; }");
+                        builder.Append(" { obj." + p.Name + " = " + ReusableTypeConvert(p.DataTypeName) + @"; }");
 
                     }
                 }
@@ -320,24 +321,26 @@ namespace Cogs.Publishers
                     if (!p.MaxCardinality.Equals("1"))
                     {
                         builder.Append(@"
+                        if (parts[i].Contains(""" + p.Name + @"""))
                         {
-                            while (string.IsNullOrWhiteSpace(parts[i]) || " + ReusableTypeConvert(p.DataTypeName) + @")
+                            while (string.IsNullOrWhiteSpace(parts[i])" + @")
                             {
-                                " + name + "." + p.Name + ".Add(" + ReusableTypeConvert(p.DataTypeName) + @");
+                                if(!string.IsNullOrWhiteSpace(parts[i])) { " + name + "." + p.Name + ".Add(" + ReusableTypeConvert(p.DataTypeName) + @"); }
                             }
                         }");
                     }
                     else
                     {
                         builder.Append(@"
-                        if (parts[i].Contains(""" + p.Name + "\")) { " + name + "." + p.Name + " = " + ReusableTypeConvert(p.DataTypeName) + "; }");
+                        if (parts[i].Contains(""" + p.Name + "\")) { " + name + "." + p.Name + " = " + ReusableTypeConvert(p.DataTypeName) + @"; }");
                     }
                 }
                 builder.Append(@"
-                    }
+                    i++;
                 }
             }
-            thisObj = false;");
+        }
+        thisObj = false;");
             }
             return builder.ToString();
         }
