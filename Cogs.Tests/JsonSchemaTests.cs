@@ -63,5 +63,39 @@ namespace Cogs.Tests
             Assert.Empty(validate6);
             Assert.Empty(validate7);
         }
+
+        [Fact]
+        public void JsonSchema_Multiple_Properties_Same_Numeric_Type_Multiplicity_1()
+        {
+            var model = new CogsModel();
+
+            var type = new Model.ItemType();
+            type.Name = "Reusable1";
+            type.Description = "Description One";
+
+            var property1 = new Model.Property();
+            property1.Name = "Property1";
+            property1.Description = "Description One";
+            property1.DataType = new Model.DataType { Name = "int" };
+            property1.MinCardinality = "0";
+            property1.MaxCardinality = "1";
+            type.Properties.Add(property1);
+
+            var property2 = new Model.Property();
+            property2.Name = "Property2";
+            property2.Description = "Description Two";
+            property2.DataType = new Model.DataType { Name = "int" };
+            property2.MinCardinality = "0";
+            property2.MaxCardinality = "1";
+            type.Properties.Add(property2);
+
+
+            model.ItemTypes.Add(type);
+
+            var jsonPublisher = new JsonPublisher();
+            jsonPublisher.TargetDirectory = @"c:\out\test-cogs";
+            jsonPublisher.Publish(model);
+
+        }
     }
 }
