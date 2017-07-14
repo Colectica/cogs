@@ -21,51 +21,6 @@ namespace Cogs.Publishers
         {
             if(value is List<JsonSchema> schema)
             {
-                var prop_integer = new JObject();
-                var prop_int_npint = new JObject();
-                var prop_int_negativeint = new JObject();
-                var prop_num_long = new JObject();
-                var prop_num_int = new JObject();
-                var prop_num_nonnegativeint = new JObject();
-                var prop_num_ulong = new JObject();
-                var prop_num_pveint = new JObject();
-                //Integer
-                prop_integer.Add(new JProperty("type", "integer"));
-                //nonpositive Integer
-                prop_int_npint.Add(new JProperty("type", "integer"));
-                prop_int_npint.Add(new JProperty("maximum", 0));
-                prop_int_npint.Add(new JProperty("exclusiveMaximum", false));
-                //negatvie integer
-                prop_int_negativeint.Add(new JProperty("type", "integer"));
-                prop_int_negativeint.Add(new JProperty("maximum", 0));
-                prop_int_negativeint.Add(new JProperty("exclusiveMaximum", true));
-                //long 
-                prop_num_long.Add(new JProperty("type", "integer"));
-                prop_num_long.Add(new JProperty("minimum", -9223372036854775808));
-                prop_num_long.Add(new JProperty("maximum", 9223372036854775808));
-                prop_num_long.Add(new JProperty("exclusiveMinimum", false));
-                prop_num_long.Add(new JProperty("exclusiveMaximum", false));
-                //int 
-                prop_num_int.Add(new JProperty("type", "integer"));
-                prop_num_int.Add(new JProperty("minimum", -2147483648));
-                prop_num_int.Add(new JProperty("maximum", 2147483648));
-                prop_num_int.Add(new JProperty("exclusiveMinimum", false));
-                prop_num_int.Add(new JProperty("exclusiveMaximum", false));
-                //non negative integer
-                prop_num_nonnegativeint.Add(new JProperty("type", "integer"));
-                prop_num_nonnegativeint.Add(new JProperty("minimum", 0));
-                prop_num_nonnegativeint.Add(new JProperty("exlusiveMinimum", false));
-                //unsigned long 
-                prop_num_ulong.Add(new JProperty("type", "integer"));
-                prop_num_ulong.Add(new JProperty("minimum", 0));
-                prop_num_ulong.Add(new JProperty("maximum", 18446744073709551615));
-                prop_num_ulong.Add(new JProperty("exclusiveMinimum", false));
-                prop_num_ulong.Add(new JProperty("exclusiveMaximum", false));
-                //positive integer
-                prop_num_pveint.Add(new JProperty("type", "integer"));
-                prop_num_pveint.Add(new JProperty("minimum", 0));
-                prop_num_pveint.Add(new JProperty("exlusiveMinimum", true));
-
                 var obj2 = new JObject();
                 foreach (var prop in schema)
                 {
@@ -112,28 +67,28 @@ namespace Cogs.Publishers
                                         switch (inner_prop.original_type.ToLower())
                                         {
                                             case "nonpositiveinteger":
-                                                temp = prop_int_npint;
+                                                temp = CreateNonPositiveInteger();
                                                 break;
                                             case "negativeinteger":
-                                                temp = prop_int_negativeint;
+                                                temp = CreateNegativeInteger();
                                                 break;
                                             case "int":
-                                                temp = prop_num_int;
+                                                temp = CreateInt();
                                                 break;
                                             case "nonnegativeinteger":
-                                                temp = prop_num_nonnegativeint;
+                                                temp = CreateNonNegativeInteger();
                                                 break;
                                             case "positiveinteger":
-                                                temp = prop_num_pveint;
+                                                temp = CreatePositiveInteger();
                                                 break;
                                             case "unsignedlong":
-                                                temp = prop_num_ulong;
+                                                temp = CreateUnsignedLong();
                                                 break;
                                             case "long":
-                                                temp = prop_num_long;
+                                                temp = CreateLong();
                                                 break;
                                             case "integer":
-                                                temp = prop_integer;
+                                                temp = CreateInteger();
                                                 break;
                                             default:
                                                 temp = null;
@@ -177,6 +132,81 @@ namespace Cogs.Publishers
                 }
                 obj2.WriteTo(writer);
             }
+        }
+        //Integer
+        private JObject CreateInteger()
+        {
+            var prop_integer = new JObject();
+            prop_integer.Add(new JProperty("type", "integer"));
+            return prop_integer;
+        }
+        //nonpositive Integer
+        private JObject CreateNonPositiveInteger()
+        {
+            var prop_int_npint = new JObject();
+            prop_int_npint.Add(new JProperty("type", "integer"));
+            prop_int_npint.Add(new JProperty("maximum", 0));
+            prop_int_npint.Add(new JProperty("exclusiveMaximum", false));
+            return prop_int_npint;
+        }
+        //negatvie integer
+        private JObject CreateNegativeInteger()
+        {
+            var prop_int_negativeint = new JObject();
+            prop_int_negativeint.Add(new JProperty("type", "integer"));
+            prop_int_negativeint.Add(new JProperty("maximum", 0));
+            prop_int_negativeint.Add(new JProperty("exclusiveMaximum", true));
+            return prop_int_negativeint;
+        }
+        //long 
+        private JObject CreateLong()
+        {
+            var prop_num_long = new JObject();
+            prop_num_long.Add(new JProperty("type", "integer"));
+            prop_num_long.Add(new JProperty("minimum", -9223372036854775808));
+            prop_num_long.Add(new JProperty("maximum", 9223372036854775808));
+            prop_num_long.Add(new JProperty("exclusiveMinimum", false));
+            prop_num_long.Add(new JProperty("exclusiveMaximum", false));
+            return prop_num_long;
+        }
+        //int 
+        private JObject CreateInt()
+        {
+            var prop_num_int = new JObject();
+            prop_num_int.Add(new JProperty("type", "integer"));
+            prop_num_int.Add(new JProperty("minimum", -2147483648));
+            prop_num_int.Add(new JProperty("maximum", 2147483648));
+            prop_num_int.Add(new JProperty("exclusiveMinimum", false));
+            prop_num_int.Add(new JProperty("exclusiveMaximum", false));
+            return prop_num_int;
+        }
+        //non negative integer
+        private JObject CreateNonNegativeInteger()
+        {
+            var prop_num_nonnegativeint = new JObject();
+            prop_num_nonnegativeint.Add(new JProperty("type", "integer"));
+            prop_num_nonnegativeint.Add(new JProperty("minimum", 0));
+            prop_num_nonnegativeint.Add(new JProperty("exlusiveMinimum", false));
+            return prop_num_nonnegativeint;
+        }
+        //unsigned long 
+        private JObject CreateUnsignedLong() {
+            var prop_num_ulong = new JObject();
+            prop_num_ulong.Add(new JProperty("type", "integer"));
+            prop_num_ulong.Add(new JProperty("minimum", 0));
+            prop_num_ulong.Add(new JProperty("maximum", 18446744073709551615));
+            prop_num_ulong.Add(new JProperty("exclusiveMinimum", false));
+            prop_num_ulong.Add(new JProperty("exclusiveMaximum", false));
+            return prop_num_ulong;
+        }
+        //positive integer
+        private JObject CreatePositiveInteger()
+        {
+            var prop_num_pveint = new JObject();
+            prop_num_pveint.Add(new JProperty("type", "integer"));
+            prop_num_pveint.Add(new JProperty("minimum", 0));
+            prop_num_pveint.Add(new JProperty("exlusiveMinimum", true));
+            return prop_num_pveint;
         }
     }
 }
