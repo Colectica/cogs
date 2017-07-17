@@ -112,7 +112,7 @@ namespace Cogs.Tests.Integration
             };
 
             hamburger.Enclosure = roll;
-            hamburger2.Enclosure = roll;
+            hamburger2.Enclosure = bread;
             hamburger.Patty.Add(meatPatty);
             hamburger.Patty.Add(meatPatty2);
             hamburger2.Patty.Add(veggiePatty);
@@ -143,7 +143,7 @@ namespace Cogs.Tests.Integration
             container4.Items.Add(animal);
             container4.Items.Add(veggiePatty);
             container4.Items.Add(veggiePatty2);
-            container4.Items.Add(roll);
+            container4.Items.Add(bread);
 
             // evaluation
             string schemaPath = Path.Combine(Path.Combine(Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), ".."), ".."), ".."), "..");
@@ -160,22 +160,21 @@ namespace Cogs.Tests.Integration
             {
                 // test serializing
                 string json = containers[i].Serialize();
-                File.WriteAllText(@"C:\Users\clement\Documents\" + i + ".json", json);
-
+                File.WriteAllText(@"C:\Users\kevin\Documents\jsonOutput\serialized" + i + ".json", json);
                 var errors = schema.Validate(json);
                 Assert.Empty(errors);
+
                 // test parsing
                 ItemContainer newContainer = new ItemContainer();
                 newContainer.Parse(json);
                 var newJson = newContainer.Serialize();
-
-                File.WriteAllText(@"C:\Users\clement\Documents\" + i + ".json", newJson);
+                File.WriteAllText(@"C:\Users\kevin\Documents\jsonOutput\parsed" + i + ".json", newJson);
                 errors = schema.Validate(newJson);
                 Assert.Empty(errors);
-                // check that outputs are the same
-                  Assert.Equal(json, newJson);
-            }
 
+                // check that outputs are the same
+                Assert.Equal(json, newJson);
+            } 
         }
     }
 }
