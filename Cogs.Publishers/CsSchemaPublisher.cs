@@ -274,7 +274,7 @@ namespace Cogs.Publishers
             else { builder.Append(name + " = new " + type + "();"); }
             builder.Append(@"
                     i++;
-                    while(this.GetType().GetProperties().Where(x => parts[i].Contains(x.Name)).ToList().Count == 0)
+                    while (this.GetType().GetProperties().Where(x => parts[i].Trim().Replace(""\"""", """").ToLower().Equals(x.Name.ToLower())).ToList().Count == 0)
                     {
                         if (parts[i].Contains(""" + type + @"""))
                         {
@@ -292,16 +292,17 @@ namespace Cogs.Publishers
                     {
                         builder.Append(@"
                         {
-                            while (string.IsNullOrWhiteSpace(parts[i])" + @")
+                            i++;
+                            while (this.GetType().GetProperties().Where(x => parts[i].Trim().Replace(""\"""", """").ToLower().Equals(x.Name.ToLower())).ToList().Count == 0)
                             {
-                                if(!string.IsNullOrWhiteSpace(parts[i])) { obj." + p.Name + ".Add(" + ReusableTypeConvert(p.DataTypeName) + @"); }
+                                if(!string.IsNullOrWhiteSpace(parts[i])) { obj." + p.Name + ".Add(" + ReusableTypeConvert(p.DataTypeName, true) + @"); }
                                 i++;
                             }
                         }");
                     }
                     else
                     {
-                        builder.Append(" { obj." + p.Name + " = " + ReusableTypeConvert(p.DataTypeName) + @"; }");
+                        builder.Append(" { obj." + p.Name + " = " + ReusableTypeConvert(p.DataTypeName, false) + @"; }");
 
                     }
                 }
@@ -315,7 +316,8 @@ namespace Cogs.Publishers
             }
             else
             {
-                builder.Append(name + " = new " + type + "();");
+                builder.Append(name + " = new " + type + @"();
+                        }");
                 foreach (var p in prop.DataType.Properties)
                 {
                     if (!p.MaxCardinality.Equals("1"))
@@ -323,34 +325,38 @@ namespace Cogs.Publishers
                         builder.Append(@"
                         if (parts[i].Contains(""" + p.Name + @"""))
                         {
-                            while (string.IsNullOrWhiteSpace(parts[i])" + @")
+                            i++;
+                            while (this.GetType().GetProperties().Where(x => parts[i].Trim().Replace(""\"""", """").ToLower().Equals(x.Name.ToLower())).ToList().Count == 0)
                             {
-                                if(!string.IsNullOrWhiteSpace(parts[i])) { " + name + "." + p.Name + ".Add(" + ReusableTypeConvert(p.DataTypeName) + @"); }
+                                if(!string.IsNullOrWhiteSpace(parts[i])) { " + name + "." + p.Name + ".Add(" + ReusableTypeConvert(p.DataTypeName, true) + @"); }
+                                i++;
                             }
                         }");
                     }
                     else
                     {
                         builder.Append(@"
-                        if (parts[i].Contains(""" + p.Name + "\")) { " + name + "." + p.Name + " = " + ReusableTypeConvert(p.DataTypeName) + @"; }");
+                        if (parts[i].Contains(""" + p.Name + "\")) { " + name + "." + p.Name + " = " + ReusableTypeConvert(p.DataTypeName, false) + @"; }");
                     }
                 }
                 builder.Append(@"
-                    i++;
+                        i++;
+                    }
                 }
             }
-        }
-        thisObj = false;");
+            thisObj = false;");
             }
             return builder.ToString();
         }
 
-        private string ReusableTypeConvert(string name)
+        private string ReusableTypeConvert(string name, bool isList)
         {
-            if (name.Equals("int")) { return "int.Parse(parts[i + 1].Trim().Replace(\"\\\"\", \"\"))"; }
-            if (name.Equals("double")) { return "double.Parse(parts[i + 1].Trim().Replace(\"\\\"\", \"\"))"; }
-            if (name.Equals("decimal")) { return "decimal.Parse(parts[i + 1].Trim().Replace(\"\\\"\", \"\"))"; }
-            return "parts[i + 1].Trim().Replace(\"\\\"\", \"\")";
+            string i = "i + 1";
+            if(isList) { i = "i"; }
+            if (name.Equals("int")) { return "int.Parse(parts[" + i + "].Trim().Replace(\"\\\"\", \"\"))"; }
+            if (name.Equals("double")) { return "double.Parse(parts[" + i + "].Trim().Replace(\"\\\"\", \"\"))"; }
+            if (name.Equals("decimal")) { return "decimal.Parse(parts[" + i + "].Trim().Replace(\"\\\"\", \"\"))"; }
+            return "parts[" + i + "].Trim().Replace(\"\\\"\", \"\")";
         }
 
         private string SimpleToJson(string origDataTypeName, string name)
@@ -685,6 +691,7 @@ namespace cogsBurger
                 { "time", "DateTimeOffset" },
                 { "date", "DateTimeOffset" },
                 { "gYearMonth", "Tuple<int, int, string>" },
+                { "gMonthDay", "Tuple<int, int, string>" },
                 { "gYear", "Tuple<int, string>" },
                 { "gYearDay", "Tuple<int, int, string>" },
                 { "gDay", "Tuple<int, string>" },

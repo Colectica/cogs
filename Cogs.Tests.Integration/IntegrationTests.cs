@@ -160,20 +160,20 @@ namespace Cogs.Tests.Integration
             {
                 // test serializing
                 string json = containers[i].Serialize();
-                File.WriteAllText(@"C:\Users\clement\Documents\" + i + ".json", json);
-
+                File.WriteAllText(@"C:\Users\kevin\Documents\jsonOutput\serialized" + i + ".json", json);
                 var errors = schema.Validate(json);
                 Assert.Empty(errors);
+
                 // test parsing
                 ItemContainer newContainer = new ItemContainer();
                 newContainer.Parse(json);
                 var newJson = newContainer.Serialize();
-
-                File.WriteAllText(@"C:\Users\clement\Documents\" + i + ".json", newJson);
+                File.WriteAllText(@"C:\Users\kevin\Documents\jsonOutput\deserialized" + i + ".json", newJson);
                 errors = schema.Validate(newJson);
                 Assert.Empty(errors);
+
                 // check that outputs are the same
-                  Assert.Equal(json, newJson);
+                Assert.Equal(json, newJson);
             }
 
         }
