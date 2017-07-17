@@ -13,18 +13,21 @@ namespace Cogs.Tests.Integration
         [Fact]
         public async void CsharpWritesValidJson()
         {
+            DateTime timedate = new DateTime(2017, 9, 2, 13, 23, 32);
             Hamburger hamburger = new Hamburger
             {
                 ID = Guid.NewGuid().ToString(),
                 Description = "Large Special",
-                HamburgerName = "Four Corners Burger"
+                HamburgerName = "Four Corners Burger",
+                Date = new DateTime(2017,9,2),
+                //DateTime = new DateTimeOffset(timedate.Ticks, new TimeSpan(1,0,0))
             };
 
             Hamburger hamburger2 = new Hamburger
             {
                 ID = Guid.NewGuid().ToString(),
                 Description = "small Special",
-                HamburgerName = "Five Corners Burger"
+                HamburgerName = "Five Corners Burger",
             };
 
             MultilingualString describe = new MultilingualString
@@ -32,15 +35,18 @@ namespace Cogs.Tests.Integration
                 Language = "eng",
                 Content = "Just a normal cow"
             };
-
+            Tuple<int,string> monthG = new Tuple<int, string>(9, "UTC");
+            Tuple<int, string> dayG = new Tuple<int, string>(6, "UTC");
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
                 Name = "Cow",
                 LingualDescription = new List<MultilingualString> { describe },
                 CountryOfOrigin = "USA",
-                Date = new DateTime(2017, 6, 9)
-
+                Date = new DateTime(2017, 6, 9),
+                Time = new DateTime(2017, 6, 9, 12, 12, 12),
+                GMonth = monthG,
+                GDay = dayG
             };
 
             List<decimal> heights = new List<decimal>();
@@ -130,7 +136,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(meatPatty);
             container.Items.Add(meatPatty2);
             //container 2
-          //  container2.TopLevelReferences.Add(hamburger); <- this references an object not in the model: add hamburger to container
+            //container2.TopLevelReferences.Add(hamburger); //<- this references an object not in the model: add hamburger to container
             container2.Items.Add(bread2);
             container2.Items.Add(meatPatty);
             //container 3
@@ -160,16 +166,16 @@ namespace Cogs.Tests.Integration
             {
                 // test serializing
                 string json = containers[i].Serialize();
-                File.WriteAllText(@"C:\Users\clement\Documents\" + i + ".json", json);
+                //File.WriteAllText(@"C:\Users\clement\Documents\" + i + ".json", json);
 
-                var errors = schema.Validate(json);
+                       var errors = schema.Validate(json);
                 Assert.Empty(errors);
                 // test parsing
                 ItemContainer newContainer = new ItemContainer();
                 newContainer.Parse(json);
                 var newJson = newContainer.Serialize();
 
-                File.WriteAllText(@"C:\Users\clement\Documents\" + i + ".json", newJson);
+                //File.WriteAllText(@"C:\Users\clement\Documents\" + i + ".json", newJ);
                 errors = schema.Validate(newJson);
                 Assert.Empty(errors);
                 // check that outputs are the same

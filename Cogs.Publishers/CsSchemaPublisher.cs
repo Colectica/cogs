@@ -581,6 +581,7 @@ namespace cogsBurger
                 { "time", "DateTimeOffset" },
                 { "date", "DateTimeOffset" },
                 { "gYearMonth", "Tuple<int, int, string>" },
+                { "gMonthDay", "Tuple<int, int, string>" },
                 { "gYear", "Tuple<int, string>" },
                 { "gYearDay", "Tuple<int, int, string>" },
                 { "gDay", "Tuple<int, string>" },
