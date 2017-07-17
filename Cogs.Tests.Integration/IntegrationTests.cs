@@ -260,7 +260,7 @@ namespace Cogs.Tests.Integration
             Assert.IsType<Roll>(container2.Items.First());
 
             Roll roll2 = container2.Items.First() as Roll;
-            Assert.Equal(roll2.SesameSeeds, roll2.SesameSeeds);
+            Assert.Equal(roll.SesameSeeds, roll2.SesameSeeds);
         }
 
 
