@@ -168,14 +168,13 @@ namespace Cogs.Tests.Integration
                 ItemContainer newContainer = new ItemContainer();
                 newContainer.Parse(json);
                 var newJson = newContainer.Serialize();
-                File.WriteAllText(@"C:\Users\kevin\Documents\jsonOutput\deserialized" + i + ".json", newJson);
+                File.WriteAllText(@"C:\Users\kevin\Documents\jsonOutput\parsed" + i + ".json", newJson);
                 errors = schema.Validate(newJson);
                 Assert.Empty(errors);
 
                 // check that outputs are the same
                 Assert.Equal(json, newJson);
-            }
-
+            } 
         }
     }
 }
