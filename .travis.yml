@@ -2,10 +2,12 @@ language: csharp
 solution: Cogs.Console.sln
 sudo: required
 dist: trusty
-dotnet: 2.0.0-preview1-005977
+osx_image: xcode8.3
+dotnet: 2.0.0-preview2-006497
 mono: none
 os:
   - linux
+  - osx
 
 branches:  
   only:
