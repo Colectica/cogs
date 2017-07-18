@@ -13,14 +13,13 @@ namespace Cogs.Tests.Integration
         [Fact]
         public async void CsharpWritesValidJson()
         {
-            DateTime timedate = new DateTime(2017, 9, 2, 13, 23, 32);
             Hamburger hamburger = new Hamburger
             {
                 ID = Guid.NewGuid().ToString(),
                 Description = "Large Special",
                 HamburgerName = "Four Corners Burger",
                 Date = new DateTime(2017,9,2),
-                //DateTime = new DateTimeOffset(timedate.Ticks, new TimeSpan(1,0,0))
+                DateTime = new DateTimeOffset(new DateTime(2017, 9, 2, 13, 23, 32), new TimeSpan(+1,0,0))
             };
 
             Hamburger hamburger2 = new Hamburger
@@ -37,6 +36,7 @@ namespace Cogs.Tests.Integration
             };
             Tuple<int,string> monthG = new Tuple<int, string>(9, "UTC");
             Tuple<int, string> dayG = new Tuple<int, string>(6, "UTC");
+            Tuple<int, int, string> mDay = new Tuple<int, int, string>(6, 9, "UTC");
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
@@ -44,9 +44,8 @@ namespace Cogs.Tests.Integration
                 LingualDescription = new List<MultilingualString> { describe },
                 CountryOfOrigin = "USA",
                 Date = new DateTime(2017, 6, 9),
-                Time = new DateTime(2017, 6, 9, 12, 12, 12),
-                GMonth = monthG,
-                GDay = dayG
+                Time = new DateTimeOffset(2017,6,9,2,32,32,new TimeSpan(+1, 0, 0)),
+                GMonthDay = mDay
             };
 
             List<decimal> heights = new List<decimal>();
