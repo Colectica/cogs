@@ -449,7 +449,35 @@ namespace Cogs.Tests.Integration
         [Fact]
         public async void SimpleTypeGDay()
         {
+            ItemContainer container = new ItemContainer();
+            MultilingualString describe = new MultilingualString
+            {
+                Content = "This is a chicen",
+                Language = "eng-us"
+            };
+            Animal animal = new Animal
+            {
+                ID = Guid.NewGuid().ToString(),
+                Name = "Chicken",
+                LingualDescription = new List<MultilingualString>() { describe },
+                GDay = new Tuple<int, string>(15, ""),
+                CountryOfOrigin = "US",
+            };
+            container.Items.Add(animal);
 
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Animal>(container2.Items.First());
+
+            Animal animal2 = container2.Items.First() as Animal;
+            Assert.Equal(animal.GDay, animal2.GDay);
         }
 
         [Fact]
