@@ -4,6 +4,8 @@ using NJsonSchema;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Cogs.Tests.Integration
@@ -182,6 +184,106 @@ namespace Cogs.Tests.Integration
                 // check that outputs are the same
                 Assert.Equal(json, newJson);
             } 
+        }
+
+        [Fact]
+        public async void SimpleTypeRoundtripGMonthYear()
+        {
+
+            ItemContainer container = new ItemContainer();
+            Cheese cheese = new Cheese
+            {
+                ID = Guid.NewGuid().ToString()
+            };
+            container.Items.Add(cheese);
+
+            cheese.YearMonth = new Tuple<int, int, string>(9, 24, "-06:00");
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Cheese>(container2.Items.First());
+
+            Cheese cheese2 = container2.Items.First() as Cheese;
+            Assert.Equal(cheese.YearMonth, cheese2.YearMonth);
+        }
+
+        [Fact]
+        public async void SimpleTypeRoundtripGMonthYearWithoutTimezone()
+        {
+
+            ItemContainer container = new ItemContainer();
+            Cheese cheese = new Cheese
+            {
+                ID = Guid.NewGuid().ToString()
+            };
+            container.Items.Add(cheese);
+
+            cheese.YearMonth = new Tuple<int, int, string>(9, 24, null);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Cheese>(container2.Items.First());
+
+            Cheese cheese2 = container2.Items.First() as Cheese;
+            Assert.Equal(cheese.YearMonth, cheese2.YearMonth);
+        }
+
+        [Fact]
+        public async void SimpleTypeBoolean()
+        {
+
+            ItemContainer container = new ItemContainer();
+            Roll roll = new Roll
+            {
+                ID = Guid.NewGuid().ToString()
+            };
+            container.Items.Add(roll);
+
+            roll.SesameSeeds = true;
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Roll>(container2.Items.First());
+
+            Roll roll2 = container2.Items.First() as Roll;
+            Assert.Equal(roll.SesameSeeds, roll2.SesameSeeds);
+        }
+
+
+
+        private async Task<JsonSchema4> GetJsonSchema()
+        {
+            // TODO build the json schema into the generated assembly as a resource
+            string schemaPath = Path.Combine(Path.Combine(Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), ".."), ".."), ".."), "..");
+            string jsonSchema = File.ReadAllText(Path.Combine(Path.Combine(schemaPath, "generated"), "jsonSchema.json"));
+
+            JsonConvert.DefaultSettings = () => new JsonSerializerSettings
+            {
+                MetadataPropertyHandling = MetadataPropertyHandling.Ignore
+            };
+            JsonSchema4 schema = await JsonSchema4.FromJsonAsync(jsonSchema);
+            return schema;
         }
     }
 }
