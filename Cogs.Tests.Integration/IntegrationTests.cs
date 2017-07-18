@@ -186,9 +186,7 @@ namespace Cogs.Tests.Integration
             ItemContainer container = new ItemContainer();
             Cheese cheese = new Cheese
             {
-                ID = Guid.NewGuid().ToString(),
-                Name = "Cheddar",
-                Description = "basic cheddar cheese"
+                ID = Guid.NewGuid().ToString()
             };
             container.Items.Add(cheese);
 
@@ -216,9 +214,7 @@ namespace Cogs.Tests.Integration
             ItemContainer container = new ItemContainer();
             Cheese cheese = new Cheese
             {
-                ID = Guid.NewGuid().ToString(),
-                Name = "Swiss",
-                Description = "has a lot of holes"
+                ID = Guid.NewGuid().ToString()
             };
             container.Items.Add(cheese);
 
