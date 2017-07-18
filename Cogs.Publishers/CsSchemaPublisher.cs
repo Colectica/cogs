@@ -194,7 +194,7 @@ namespace Cogs.Publishers
                     else
                     {
                         if (model.ItemTypes.Contains(prop.DataType) && !item.IsAbstract) { newClass.Append("$##[JsonConverter(typeof(IIdentifiableConverter))]"); }
-                        newClass.Append("$##public List<" + prop.DataTypeName + "> " + prop.Name + "{ get; set; }  = new List<" + prop.DataTypeName + ">();");
+                        newClass.Append("$##public List<" + prop.DataTypeName + "> " + prop.Name + "{ get; set; }");
                         if (origDataTypeName != null && !prop.DataTypeName.Equals("bool"))
                         {
                             if (origDataTypeName.Equals("cogsDate"))
@@ -321,6 +321,7 @@ namespace Cogs.Publishers
                     {
                         builder.Append(@"
                         {
+                            " + name + "." + p.Name + " = new List<" + p.DataTypeName + @">();
                             i++;
                             while (string.IsNullOrWhiteSpace(parts[i].Trim().Replace(""\"""", """")) || (this.GetType().GetProperties().Where(x => parts[i].Trim().Replace(""\"""", """").ToLower()
                                 .Equals(x.Name.ToLower())).ToList().Count == 0 && !""yearmonthdaydatetimeanyuricogsdate"".Contains(parts[i].Trim().Replace(""\"""", """").ToLower())))
@@ -355,6 +356,7 @@ namespace Cogs.Publishers
                         builder.Append(@"
                         if (parts[i].Contains(""" + p.Name + @"""))
                         {
+                            " + name + "." + p.Name + " = new List<" + p.DataTypeName + @">();
                             i++;
                             while (string.IsNullOrWhiteSpace(parts[i].Trim().Replace(""\"""", """")) || (this.GetType().GetProperties().Where(x => parts[i].Trim().Replace(""\"""", """").ToLower()
                                 .Equals(x.Name.ToLower())).ToList().Count == 0 && !""yearmonthdaydatetimeanyuricogsdate"".Contains(parts[i].Trim().Replace(""\"""", """").ToLower())))
@@ -392,13 +394,14 @@ namespace Cogs.Publishers
 
         private string SimpleToJson(string origDataTypeName, string name, string start, StringBuilder builder = null)
         {
+
             if (origDataTypeName.Equals("duration")) { return start + "new JProperty(\"duration\", " + name + ".Ticks)"; }
             if (origDataTypeName.Equals("dateTime"))
             {
                 if (builder != null) { builder.Append("$##[JsonProperty(\"datetime\")]"); }
-                return start + "new JProperty(\"datetime\", " + name + ".ToString(\"s\"))";
+                return start + "new JProperty(\"datetime\", " + name + ".ToString(\"s\") + \"+\" + " + name + ".Offset.ToString())";
             }
-            if (origDataTypeName.Equals("time")) { return start + "new JProperty(\"time\", " + name + ".ToString(\"u\").Split(' ')[1])"; }
+            if (origDataTypeName.Equals("time")) { return start + "new JProperty(\"time\", " + name + ".ToString(\"T\") + \"+\" + " + name + ".Offset.ToString())"; }
             if (origDataTypeName.Equals("date")) { return start + "new JProperty(\"date\", " + name + ".ToString(\"u\").Split(' ')[0])"; }
             if (origDataTypeName.Equals("gYearMonth"))
             {
@@ -673,39 +676,25 @@ namespace cogsBurger
                 if (objectType == typeof(TimeSpan))
                 {
                     JToken prop = JToken.Load(reader);
-                    return new TimeSpan(Int32.Parse(prop.ToString()));
+                    string[] values = prop.ToString().Split(new char[] { ':' });
+                    return new TimeSpan(Int32.Parse(values[0]), Int32.Parse(values[1]), Int32.Parse(values[2]));
                 }
                 if (objectType == typeof(DateTimeOffset))
                 {
                     JToken prop = JToken.Load(reader);
-                    string[] values = prop.ToString().Split(new char[] { ' ', '/', ':', });
-                    if (values.Length > 5)
+                    string[] values = prop.ToString().Split(new char[] { ' ', '/', ':', '-', '+', 'T', 'Z' });
+                    if (values.Length > 8)
                     {
-                        int hourInUni = 0;
-                        if(values[6].Equals(""PM""))
-                        {
-                            if(values[3].Equals(""12""))
-                            {
-                                hourInUni = 12;
-                            }
-                            else
-                            {
-                                hourInUni = Int32.Parse(values[3])+12;   
-                            }
-                        }
-                        else
-                        {
-                            hourInUni = Int32.Parse(values[3]);
-                        }
-                        return new DateTimeOffset(Int32.Parse(values[2]), Int32.Parse(values[0]), Int32.Parse(values[1]),
-                            hourInUni, Int32.Parse(values[4]), Int32.Parse(values[5]), new TimeSpan());
+                        return new DateTimeOffset(Int32.Parse(values[0]), Int32.Parse(values[1]), Int32.Parse(values[2]),
+                            Int32.Parse(values[3]), Int32.Parse(values[4]), Int32.Parse(values[5]), 
+                            new TimeSpan(Int32.Parse(values[6]), Int32.Parse(values[7]), Int32.Parse(values[8])));
                     }
-                    if (values.Length == 1)
+                    if (values.Length == 3 && prop.ToString().Contains(""-""))
                     {
-                        values = prop.ToString().Split(new char[] { '-' });
                         return new DateTimeOffset(Int32.Parse(values[0]), Int32.Parse(values[1]), Int32.Parse(values[2]), 0, 0, 0, new TimeSpan());
                     }
-                    return new DateTimeOffset(2017, 1, 1, Int32.Parse(values[0]), Int32.Parse(values[1]), Int32.Parse(values[2].Substring(0, values[2].Length-1)), new TimeSpan());
+                    return new DateTimeOffset(1, 1, 1, Int32.Parse(values[0]), Int32.Parse(values[1]), Int32.Parse(values[2]),
+                        new TimeSpan(Int32.Parse(values[4]), Int32.Parse(values[5]), Int32.Parse(values[6])));
                 }
                 if (objectType == typeof(Uri))
                 {
