@@ -104,7 +104,7 @@ namespace Cogs.Publishers
                         }
                         else if (prop.MinLength != null)
                         {
-                            newClass.Append("$##[StringLength(" + Int32.MaxValue + ", MinimumLength = " + prop.MinLength + ")]");
+                            newClass.Append("$##[StringLength(" + int.MaxValue + ", MinimumLength = " + prop.MinLength + ")]");
                         }
                         if (prop.DataTypeName.Equals("string"))
                         {
@@ -148,7 +148,7 @@ namespace Cogs.Publishers
                     }
                     if (model.ReusableDataTypes.Contains(item)) { start = "json.Add("; }
                     // if there can be at most one, create an instance variable
-                    if (!prop.MaxCardinality.Equals("n") && Int32.Parse(prop.MaxCardinality) == 1)
+                    if (!prop.MaxCardinality.Equals("n") && int.Parse(prop.MaxCardinality) == 1)
                     {
                         if (model.ItemTypes.Contains(prop.DataType) && !item.IsAbstract) { newClass.Append("$##[JsonConverter(typeof(IIdentifiableConverter))]"); }
                         newClass.Append("$##public " + prop.DataTypeName + " " + prop.Name + " { get; set; }");
@@ -677,7 +677,8 @@ namespace cogsBurger
                 {
                     JToken prop = JToken.Load(reader);
                     string[] values = prop.ToString().Split(new char[] { ':' });
-                    return new TimeSpan(Int32.Parse(values[0]), Int32.Parse(values[1]), Int32.Parse(values[2]));
+                    if (values.Length == 1) { return new TimeSpan(int.Parse(values[0])); }
+                    return new TimeSpan(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]));
                 }
                 if (objectType == typeof(DateTimeOffset))
                 {
@@ -685,16 +686,16 @@ namespace cogsBurger
                     string[] values = prop.ToString().Split(new char[] { ' ', '/', ':', '-', '+', 'T', 'Z' });
                     if (values.Length > 8)
                     {
-                        return new DateTimeOffset(Int32.Parse(values[0]), Int32.Parse(values[1]), Int32.Parse(values[2]),
-                            Int32.Parse(values[3]), Int32.Parse(values[4]), Int32.Parse(values[5]), 
-                            new TimeSpan(Int32.Parse(values[6]), Int32.Parse(values[7]), Int32.Parse(values[8])));
+                        return new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]),
+                            int.Parse(values[3]), int.Parse(values[4]), int.Parse(values[5]), 
+                            new TimeSpan(int.Parse(values[6]), int.Parse(values[7]), int.Parse(values[8])));
                     }
                     if (values.Length == 3 && prop.ToString().Contains(""-""))
                     {
-                        return new DateTimeOffset(Int32.Parse(values[0]), Int32.Parse(values[1]), Int32.Parse(values[2]), 0, 0, 0, new TimeSpan());
+                        return new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]), 0, 0, 0, new TimeSpan());
                     }
-                    return new DateTimeOffset(1, 1, 1, Int32.Parse(values[0]), Int32.Parse(values[1]), Int32.Parse(values[2]),
-                        new TimeSpan(Int32.Parse(values[4]), Int32.Parse(values[5]), Int32.Parse(values[6])));
+                    return new DateTimeOffset(1, 1, 1, int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]),
+                        new TimeSpan(int.Parse(values[4]), int.Parse(values[5]), int.Parse(values[6])));
                 }
                 if (objectType == typeof(Uri))
                 {
@@ -704,22 +705,22 @@ namespace cogsBurger
                 JObject obj = JObject.Load(reader);
                 if (objectType == typeof(Tuple<int, int, string>))
                 {
-                    int a = Int32.Parse(((JProperty)obj.First).First.ToString());
-                    int b = Int32.Parse(((JProperty)obj.First).Next.First.ToString());
-                    if (((JProperty)obj.First).Next.First.ToString().Equals(((JProperty)obj.Last).Value.ToString()))
+                    int a = int.Parse(((JProperty)obj.First).First.ToString());
+                    int b = int.Parse(((JProperty)obj.First).Next.First.ToString());
+                    if (((JProperty) obj.First).Next.First.ToString().Equals(((JProperty) obj.Last).Value.ToString()))
                     {
                         return new Tuple<int, int, string>(a, b, null);
                     }
-                    return new Tuple<int, int, string>(a, b, ((JProperty)obj.Last).Value.ToString());
+                    return new Tuple<int, int, string>(a, b, ((JProperty) obj.Last).Value.ToString());
                 }
                 if (objectType == typeof(Tuple<int, string>))
                 {
-                    int a = Int32.Parse(((JProperty)obj.First).First.ToString());
-                    if (((JProperty)obj.First).First.ToString().Equals(((JProperty)obj.Last).Value.ToString()))
+                    int a = int.Parse(((JProperty)obj.First).First.ToString());
+                    if (((JProperty) obj.First).First.ToString().Equals(((JProperty) obj.Last).Value.ToString()))
                     {
                         return new Tuple<int, string>(a, null);
                     }
-                    return new Tuple<int, string>(a, ((JProperty)obj.Last).Value.ToString());
+                    return new Tuple<int, string>(a, ((JProperty) obj.Last).Value.ToString());
                 }
                 if (objectType == typeof(CogsDate))
                 {
@@ -737,7 +738,7 @@ namespace cogsBurger
             {
                 ifs.Append("$###if (t.Equals(\"" + item.Name + "\")) { return list.Cast<" + item.Name + ">().ToList(); }");
             }
-            File.WriteAllText(Path.Combine(TargetDirectory, "IIdentifiableConverter.cs"), clss.Replace("!!!", projName).Replace("???", ifs.ToString()
+            File.WriteAllText(Path.Combine(TargetDirectory, "JsonConverter.cs"), clss.Replace("!!!", projName).Replace("???", ifs.ToString()
                 .Replace("$", Environment.NewLine).Replace("#", "    ")));
         }
 
