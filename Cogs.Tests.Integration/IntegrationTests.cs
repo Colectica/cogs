@@ -170,7 +170,7 @@ namespace Cogs.Tests.Integration
                 ItemContainer newContainer = new ItemContainer();
                 newContainer.Parse(json);
                 var newJson = newContainer.Serialize();
-                File.WriteAllText(Path.Combine(outPath, "parsed" + i), newJson);
+                File.WriteAllText(Path.Combine(outPath, "parsed" + i + ".json"), newJson);
                 errors = schema.Validate(newJson);
                 Assert.Empty(errors);
 
@@ -246,9 +246,7 @@ namespace Cogs.Tests.Integration
             ItemContainer container = new ItemContainer();
             Roll roll = new Roll
             {
-                ID = Guid.NewGuid().ToString(),
-                Name = "cinnamon roll",
-                Description = "sweet and sticky roll with cinnamon sugar"
+                ID = Guid.NewGuid().ToString()
             };
             container.Items.Add(roll);
 
