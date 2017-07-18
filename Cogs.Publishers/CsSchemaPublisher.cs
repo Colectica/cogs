@@ -394,7 +394,8 @@ namespace Cogs.Publishers
 
         private string SimpleToJson(string origDataTypeName, string name, string start, StringBuilder builder = null)
         {
-            if (origDataTypeName.Equals("duration")) { return start + "new JProperty(\"duration\", " + name + ".ToString(\"c\"))"; }
+
+            if (origDataTypeName.Equals("duration")) { return start + "new JProperty(\"duration\", " + name + ".Ticks)"; }
             if (origDataTypeName.Equals("dateTime"))
             {
                 if (builder != null) { builder.Append("$##[JsonProperty(\"datetime\")]"); }

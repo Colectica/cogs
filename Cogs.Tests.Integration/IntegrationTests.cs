@@ -190,7 +190,7 @@ namespace Cogs.Tests.Integration
             } 
         }
 
-        [Fact]
+        [Fact]//PASS
         public async void SimpleTypeRoundtripGMonthYear()
         {
 
@@ -210,6 +210,8 @@ namespace Cogs.Tests.Integration
             ItemContainer container2 = new ItemContainer();
             container2.Parse(json);
 
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
             Assert.NotEmpty(container2.Items);
             Assert.IsType<Bread>(container2.Items.First());
 
@@ -217,7 +219,7 @@ namespace Cogs.Tests.Integration
             Assert.Equal(bread.Gyearmonth, bread2.Gyearmonth);
         }
 
-        [Fact]
+        [Fact]//PASS
         public async void SimpleTypeRoundtripGMonthYearWithoutTimezone()
         {
 
@@ -237,6 +239,8 @@ namespace Cogs.Tests.Integration
             ItemContainer container2 = new ItemContainer();
             container2.Parse(json);
 
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
             Assert.NotEmpty(container2.Items);
             Assert.IsType<Bread>(container2.Items.First());
 
@@ -244,7 +248,7 @@ namespace Cogs.Tests.Integration
             Assert.Equal(bread.Gyearmonth, bread2.Gyearmonth);
         }
 
-        [Fact]
+        [Fact]//PASS
         public async void SimpleTypeBoolean()
         {
 
@@ -265,6 +269,8 @@ namespace Cogs.Tests.Integration
             ItemContainer container2 = new ItemContainer();
             container2.Parse(json);
 
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
             Assert.NotEmpty(container2.Items);
             Assert.IsType<Roll>(container2.Items.First());
 
@@ -272,7 +278,7 @@ namespace Cogs.Tests.Integration
             Assert.Equal(roll.SesameSeeds, roll2.SesameSeeds);
         }
 
-        [Fact]//not working
+        [Fact]//not working -tojson change to .ticks instead of millisecond, Name and CountryofOrigin cannot be null
         public async void SimpleTypeDuration()
         {
             ItemContainer container = new ItemContainer();
@@ -292,13 +298,15 @@ namespace Cogs.Tests.Integration
             container2.Parse(json);
 
             Assert.NotEmpty(container2.Items);
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
             Assert.IsType<Animal>(container2.Items.First());
 
             Animal animal2 = container2.Items.First() as Animal;
             Assert.Equal(animal.Duration, animal2.Duration);
         }
 
-        [Fact]
+        [Fact]//PASS
         public async void SimpleTypeDate()
         {
             ItemContainer container = new ItemContainer();
@@ -316,6 +324,9 @@ namespace Cogs.Tests.Integration
 
             ItemContainer container2 = new ItemContainer();
             container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
             Assert.IsType<Animal>(container2.Items.First());
@@ -344,6 +355,9 @@ namespace Cogs.Tests.Integration
             ItemContainer container2 = new ItemContainer();
             container2.Parse(json);
 
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
             Assert.NotEmpty(container2.Items);
             Assert.IsType<Hamburger>(container2.Items.First());
 
@@ -351,7 +365,7 @@ namespace Cogs.Tests.Integration
             Assert.Equal(hamburger.DateTime, hamburger2.DateTime);
         }
 
-        [Fact]//test fail when timespan is added
+        [Fact]//test fail when timespan is added 
         public async void SimpleTypeTime()
         {
             ItemContainer container = new ItemContainer();
@@ -370,6 +384,9 @@ namespace Cogs.Tests.Integration
             ItemContainer container2 = new ItemContainer();
             container2.Parse(json);
 
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
             Assert.NotEmpty(container2.Items);
             Assert.IsType<Animal>(container2.Items.First());
 
@@ -383,7 +400,7 @@ namespace Cogs.Tests.Integration
 
         }
 
-        [Fact]
+        [Fact]//PASS
         public async void SimpleTypeGMonthDay()
         {
             ItemContainer container = new ItemContainer();
@@ -401,6 +418,9 @@ namespace Cogs.Tests.Integration
 
             ItemContainer container2 = new ItemContainer();
             container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
             Assert.IsType<Animal>(container2.Items.First());
@@ -429,6 +449,9 @@ namespace Cogs.Tests.Integration
             ItemContainer container2 = new ItemContainer();
             container2.Parse(json);
 
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
             Assert.NotEmpty(container2.Items);
             Assert.IsType<Animal>(container2.Items.First());
 
@@ -436,7 +459,7 @@ namespace Cogs.Tests.Integration
             Assert.Equal(animal.GDay, animal2.GDay);
         }
 
-        [Fact]
+        [Fact]//PASS
         public async void SimpleTypeGMonth()
         {
             ItemContainer container = new ItemContainer();
@@ -454,6 +477,9 @@ namespace Cogs.Tests.Integration
 
             ItemContainer container2 = new ItemContainer();
             container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
             Assert.IsType<Animal>(container2.Items.First());
