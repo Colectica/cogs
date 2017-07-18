@@ -151,26 +151,31 @@ namespace Cogs.DataAnnotations
             {
                 case CogsDateType.DateTime:
                     {
+						if (DateTime == default(DateTimeOffset)) { return null; }
                         return DateTime.DateTime.ToString();
                     }
                 case CogsDateType.Date:
                     {
+						if (Date == default(DateTimeOffset)) { return null; }
                         return Date.Date.ToString();
                     }
                 case CogsDateType.GYearMonth:
                     {
+						if (GYearMonth == null) { return null; }
                         return GYearMonth.Item1 + "-" + GYearMonth.Item2;
                     }
                 case CogsDateType.GYear:
                     {
+						if (GYear == null) { return null; }
                         return GYear.ToString();
                     }
                 case CogsDateType.Duration:
                     {
+						if (Duration == default(TimeSpan)) { return null; }
                         return Duration.Duration().ToString();
                     }
             }
-            throw new InvalidOperationException();
+            return null;
         }
     }
 }
