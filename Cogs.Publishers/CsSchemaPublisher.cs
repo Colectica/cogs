@@ -104,7 +104,7 @@ namespace Cogs.Publishers
                         }
                         else if (prop.MinLength != null)
                         {
-                            newClass.Append("$##[StringLength(" + Int32.MaxValue + ", MinimumLength = " + prop.MinLength + ")]");
+                            newClass.Append("$##[StringLength(" + int.MaxValue + ", MinimumLength = " + prop.MinLength + ")]");
                         }
                         if (prop.DataTypeName.Equals("string"))
                         {
@@ -148,7 +148,7 @@ namespace Cogs.Publishers
                     }
                     if (model.ReusableDataTypes.Contains(item)) { start = "json.Add("; }
                     // if there can be at most one, create an instance variable
-                    if (!prop.MaxCardinality.Equals("n") && Int32.Parse(prop.MaxCardinality) == 1)
+                    if (!prop.MaxCardinality.Equals("n") && int.Parse(prop.MaxCardinality) == 1)
                     {
                         if (model.ItemTypes.Contains(prop.DataType) && !item.IsAbstract) { newClass.Append("$##[JsonConverter(typeof(IIdentifiableConverter))]"); }
                         newClass.Append("$##public " + prop.DataTypeName + " " + prop.Name + " { get; set; }");
@@ -687,7 +687,7 @@ namespace cogsBurger
                     if (values.Length > 8)
                     {
                         return new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]),
-                            Int32.Parse(values[3]), int.Parse(values[4]), int.Parse(values[5]), 
+                            int.Parse(values[3]), int.Parse(values[4]), int.Parse(values[5]), 
                             new TimeSpan(int.Parse(values[6]), int.Parse(values[7]), int.Parse(values[8])));
                     }
                     if (values.Length == 3 && prop.ToString().Contains(""-""))
