@@ -120,9 +120,12 @@ namespace Cogs.Tests.Integration
 
             hamburger.Enclosure = roll;
             hamburger2.Enclosure = bread;
-            hamburger.Patty.Add(meatPatty);
-            hamburger.Patty.Add(meatPatty2);
-            hamburger2.Patty.Add(veggiePatty);
+            hamburger.Patty = new List<Protein>
+            {
+                meatPatty,
+                meatPatty2
+            };
+            hamburger2.Patty = new List<Protein> { veggiePatty };
 
             ItemContainer container = new ItemContainer();
             ItemContainer container2 = new ItemContainer();
