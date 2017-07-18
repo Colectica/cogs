@@ -194,8 +194,6 @@ namespace Cogs.Tests.Integration
             Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
-                Name = "Bread1",
-                Description = "Kind of bread",
                 Gyearmonth = new Tuple<int, int, string>(9, 24, "-06:00")
             };
             container.Items.Add(bread);
@@ -223,8 +221,6 @@ namespace Cogs.Tests.Integration
             Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
-                Name = "Bread1",
-                Description = "Kind of bread",
                 Gyearmonth = new Tuple<int, int, string>(9, 24, "")
             };
             container.Items.Add(bread);
@@ -252,8 +248,6 @@ namespace Cogs.Tests.Integration
             Roll roll = new Roll
             {
                 ID = Guid.NewGuid().ToString(),
-                Name = "Roll1",
-                Description = "this is a roll",
                 SesameSeeds = true
             };
             container.Items.Add(roll);
@@ -278,18 +272,10 @@ namespace Cogs.Tests.Integration
         public async void SimpleTypeDuration()
         {
             ItemContainer container = new ItemContainer();
-            MultilingualString describe = new MultilingualString
-            {
-                Content = "This is a chicen",
-                Language = "eng-us"
-            };
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                Name = "Chicken",
-                LingualDescription = new List<MultilingualString>() { describe },
-                Duration = new TimeSpan(10000000),
-                CountryOfOrigin = "US",
+                Duration = new TimeSpan(10000000)
             };
             container.Items.Add(animal);
 
@@ -312,18 +298,10 @@ namespace Cogs.Tests.Integration
         public async void SimpleTypeDate()
         {
             ItemContainer container = new ItemContainer();
-            MultilingualString describe = new MultilingualString
-            {
-                Content = "This is a chicen",
-                Language = "eng-us"
-            };
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                Name = "Chicken",
-                LingualDescription = new List<MultilingualString>() { describe },
-                Date = new DateTime(2017, 9, 2),
-                CountryOfOrigin = "US",
+                Date = new DateTime(2017, 9, 2)
             };
             container.Items.Add(animal);
 
@@ -349,9 +327,6 @@ namespace Cogs.Tests.Integration
             Hamburger hamburger = new Hamburger
             {
                 ID = Guid.NewGuid().ToString(),
-                Description = "Large Special",
-                HamburgerName = "Four Corners Burger",
-                Date = new DateTime(2017, 9, 2),
                 DateTime = new DateTimeOffset(new DateTime(2017, 9, 2, 13, 23, 32), new TimeSpan(+1, 0, 0))
             };
             container.Items.Add(hamburger);
@@ -376,18 +351,10 @@ namespace Cogs.Tests.Integration
         public async void SimpleTypeTime()
         {
             ItemContainer container = new ItemContainer();
-            MultilingualString describe = new MultilingualString
-            {
-                Content = "This is a chicen",
-                Language = "eng-us"
-            };
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                Name = "Cow",
-                LingualDescription = new List<MultilingualString> { describe },
-                CountryOfOrigin = "USA",
-                Time = new DateTimeOffset(2017, 6, 9, 2, 32, 32, new TimeSpan()),
+                Time = new DateTimeOffset(2017, 6, 9, 2, 32, 32, new TimeSpan())
             };
             container.Items.Add(animal);
 
@@ -416,18 +383,10 @@ namespace Cogs.Tests.Integration
         public async void SimpleTypeGMonthDay()
         {
             ItemContainer container = new ItemContainer();
-            MultilingualString describe = new MultilingualString
-            {
-                Content = "This is a chicen",
-                Language = "eng-us"
-            };
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                Name = "Chicken",
-                LingualDescription = new List<MultilingualString>() { describe },
-                GMonthDay = new Tuple<int, int, string> ( 9, 3, "utc"),
-                CountryOfOrigin = "US",
+                GMonthDay = new Tuple<int, int, string> ( 9, 3, "utc")
             };
             container.Items.Add(animal);
 
@@ -450,18 +409,11 @@ namespace Cogs.Tests.Integration
         public async void SimpleTypeGDay()
         {
             ItemContainer container = new ItemContainer();
-            MultilingualString describe = new MultilingualString
-            {
-                Content = "This is a chicen",
-                Language = "eng-us"
-            };
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                Name = "Chicken",
-                LingualDescription = new List<MultilingualString>() { describe },
-                GDay = new Tuple<int, string>(15, ""),
-                CountryOfOrigin = "US",
+                GDay = new Tuple<int, string>(15, "")
+
             };
             container.Items.Add(animal);
 
@@ -484,18 +436,10 @@ namespace Cogs.Tests.Integration
         public async void SimpleTypeGMonth()
         {
             ItemContainer container = new ItemContainer();
-            MultilingualString describe = new MultilingualString
-            {
-                Content = "This is a chicen",
-                Language = "eng-us"
-            };
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                Name = "Chicken",
-                LingualDescription = new List<MultilingualString>() { describe },
-                GMonth = new Tuple<int, string>(2, ""),
-                CountryOfOrigin = "US",
+                GMonth = new Tuple<int, string>(2, "")
             };
             container.Items.Add(animal);
 
