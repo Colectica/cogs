@@ -681,15 +681,31 @@ namespace cogsBurger
                     string[] values = prop.ToString().Split(new char[] { ' ', '/', ':', });
                     if (values.Length > 5)
                     {
-                        return new DateTimeOffset(Int32.Parse(values[2]), Int32.Parse(values[1]), Int32.Parse(values[0]),
-                            Int32.Parse(values[3]), Int32.Parse(values[4]), Int32.Parse(values[5]), new TimeSpan());
+                        int hourInUni = 0;
+                        if(values[6].Equals(""PM""))
+                        {
+                            if(values[3].Equals(""12""))
+                            {
+                                hourInUni = 12;
+                            }
+                            else
+                            {
+                                hourInUni = Int32.Parse(values[3])+12;   
+                            }
+                        }
+                        else
+                        {
+                            hourInUni = Int32.Parse(values[3]);
+                        }
+                        return new DateTimeOffset(Int32.Parse(values[2]), Int32.Parse(values[0]), Int32.Parse(values[1]),
+                            hourInUni, Int32.Parse(values[4]), Int32.Parse(values[5]), new TimeSpan());
                     }
                     if (values.Length == 1)
                     {
                         values = prop.ToString().Split(new char[] { '-' });
                         return new DateTimeOffset(Int32.Parse(values[0]), Int32.Parse(values[1]), Int32.Parse(values[2]), 0, 0, 0, new TimeSpan());
                     }
-                    return new DateTimeOffset(0, 0, 0, Int32.Parse(values[0]), Int32.Parse(values[1]), Int32.Parse(values[2]), new TimeSpan());
+                    return new DateTimeOffset(2017, 1, 1, Int32.Parse(values[0]), Int32.Parse(values[1]), Int32.Parse(values[2].Substring(0, values[2].Length-1)), new TimeSpan());
                 }
                 if (objectType == typeof(Uri))
                 {
