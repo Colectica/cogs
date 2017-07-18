@@ -137,7 +137,6 @@ namespace Cogs.Tests.Integration
             container.Items.Add(meatPatty);
             container.Items.Add(meatPatty2);
             //container 2
-            //container2.TopLevelReferences.Add(hamburger); //<- this references an object not in the model: add hamburger to container
             container2.Items.Add(bread2);
             container2.Items.Add(meatPatty);
             //container 3
@@ -145,8 +144,8 @@ namespace Cogs.Tests.Integration
             container3.Items.Add(condiment2);
 
             //container 4
-            container4.TopLevelReferences.Add(hamburger2); // <- this references an object not in the model: add hamburger to container
-            container4.Items.Add(hamburger2); // now hamburger2 is part of model and can be referenced
+            container4.TopLevelReferences.Add(hamburger2);
+            container4.Items.Add(hamburger2);
             container4.Items.Add(animal);
             container4.Items.Add(veggiePatty);
             container4.Items.Add(veggiePatty2);
@@ -155,7 +154,8 @@ namespace Cogs.Tests.Integration
             // evaluation
             string schemaPath = Path.Combine(Path.Combine(Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), ".."), ".."), ".."), "..");
             string jsonSchema = File.ReadAllText(Path.Combine(Path.Combine(schemaPath, "generated"), "jsonSchema.json"));
-
+            var outPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "out");
+            Directory.CreateDirectory(outPath);
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings
             {
                 MetadataPropertyHandling = MetadataPropertyHandling.Ignore
@@ -167,7 +167,8 @@ namespace Cogs.Tests.Integration
             {
                 // test serializing
                 string json = containers[i].Serialize();
-                File.WriteAllText(@"C:\Users\clement\Documents" + i + ".json", json);
+                File.WriteAllText(Path.Combine(outPath, "serialized" + i + ".json"), json);
+
                 var errors = schema.Validate(json);
 
                 Assert.Empty(errors);
@@ -176,7 +177,7 @@ namespace Cogs.Tests.Integration
                 ItemContainer newContainer = new ItemContainer();
                 newContainer.Parse(json);
                 var newJson = newContainer.Serialize();
-                File.WriteAllText(@"C:\Users\clement\Documents" + i + ".json", newJson);
+                File.WriteAllText(Path.Combine(outPath, "parsed" + i + ".json"), newJson);
 
                 errors = schema.Validate(newJson);
                 Assert.Empty(errors);

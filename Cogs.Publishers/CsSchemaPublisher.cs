@@ -87,7 +87,7 @@ namespace Cogs.Publishers
                     {
                         origDataTypeName = prop.DataTypeName;
                         prop.DataTypeName = Translator[prop.DataTypeName];
-                        first = true;
+                        if (!prop.DataTypeName.Equals("bool")) { first = true; }
                     }
                     // create documentation for property
                     newClass.Append("$##/// <summary>$##/// " + prop.Description + "$##/// <summary>");
@@ -139,29 +139,33 @@ namespace Cogs.Publishers
                             newClass.Append("$##[ExclusiveRange(" + prop.MinExclusive + ", " + prop.MaxExclusive + ")]");
                         }
                     }
-                    if (!first && !model.ReusableDataTypes.Contains(prop.DataType)) { toJsonProperties.Append(","); }
+                    if (!first && model.Identification.Contains(prop)) { toJsonProperties.Append(","); }
                     var start = "((JObject)json.First).Add(";
-                    if (origDataTypeName != null && !"boolintstringulong".Contains(prop.DataTypeName)) { newClass.Append("$##[JsonConverter(typeof(SimpleTypeConverter))]"); }
+                    if (origDataTypeName != null && !"boolintstringulong".Contains(prop.DataTypeName))
+                    {
+                        newClass.Append("$##[JsonConverter(typeof(SimpleTypeConverter))]");
+                        SimpleToJson(origDataTypeName, prop.Name, start, newClass);
+                    }
                     if (model.ReusableDataTypes.Contains(item)) { start = "json.Add("; }
                     // if there can be at most one, create an instance variable
                     if (!prop.MaxCardinality.Equals("n") && Int32.Parse(prop.MaxCardinality) == 1)
                     {
                         if (model.ItemTypes.Contains(prop.DataType) && !item.IsAbstract) { newClass.Append("$##[JsonConverter(typeof(IIdentifiableConverter))]"); }
                         newClass.Append("$##public " + prop.DataTypeName + " " + prop.Name + " { get; set; }");
-                        if (origDataTypeName != null)
+                        if (origDataTypeName != null && !prop.DataTypeName.Equals("bool"))
                         {
-                            if (prop.DataTypeName.Equals("DateTimeOffset") || prop.DataTypeName.Equals("TimeSpan"))
+                            if (origDataTypeName.Equals("cogsDate"))
+                            {
+                                reusableToJson.Append("$###if (" + prop.Name + ".GetValue() != null)");
+                                initializeReferences.Append("$###if (" + prop.Name + ".GetValue() != null)$###{$####" + prop.Name + 
+                                    " = new CogsDate(" + prop.Name + ".UsedType, dict[" + prop.Name + ".GYear.Item2]);$###}");
+                            }
+                            else if (prop.DataTypeName.Equals("DateTimeOffset") || prop.DataTypeName.Equals("TimeSpan"))
                             {
                                 reusableToJson.Append("$###if (" + prop.Name + " != default(" + prop.DataTypeName + "))");
                             }
                             else { reusableToJson.Append("$###if (" + prop.Name + " != null)"); }
-                            reusableToJson.Append("$###{$####" + start + SimpleToJson(origDataTypeName, prop.Name) + ");$###}");
-                            if (origDataTypeName.Equals("cogsDate"))
-                            {
-                                initializeReferences.Append("$###if (" + prop.Name + ".UsedType != null) { " + prop.Name + ".SetValue(" + prop.Name +
-                                    ".UsedType, dict[" + prop.Name + ".Gyear[1]]; }");
-                            }
-                            first = true;
+                            reusableToJson.Append("$###{$####" + SimpleToJson(origDataTypeName, prop.Name, start) + ");$###}");
                         }
                         else if (model.ReusableDataTypes.Contains(prop.DataType))
                         {
@@ -169,18 +173,21 @@ namespace Cogs.Publishers
                             reusableToJson.Append(start + "new JProperty(\"" + prop.Name + "\", " + prop.Name + ".ToJson())); }");
                             initializeReferences.Append(InitializeReusable(prop, false));
                         }
-                        else if (!model.ItemTypes.Contains(prop.DataType))
+                        else if (model.Identification.Contains(prop))
                         {
                             toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", " + prop.Name + ")");
                             first = false;
                         }
+                        else if(!model.ItemTypes.Contains(prop.DataType))
+                        {
+                            reusableToJson.Append("$###if ( " + prop.Name + " != null) $###{$####" + start + "new JProperty(\"" + prop.Name + "\", " + prop.Name + "));$###}");
+                        }
                         else
                         {
-                            toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", new JObject(new JProperty(\"@type\", \"ref\"), " +
-                            "$#####new JProperty(\"value\", new JArray($######\"" + prop.DataTypeName + "\", $######" + prop.Name + ".ID))))");
-                            initializeReferences.Append("$###if (" + prop.Name + ".ReferenceId != null) { " + prop.Name + " = (" + prop.DataTypeName +
+                            reusableToJson.Append("$###if ( " + prop.Name + " != null) $###{$####" + start + "new JProperty(\"" + prop.Name +  "\", new JObject(" +
+                                "new JProperty(\"@type\", \"ref\"), $#####new JProperty(\"value\", new JArray($######\"" + prop.DataTypeName + "\", $######" + prop.Name + ".ID)))));$###}");
+                            initializeReferences.Append("$###if (" + prop.Name + " != null) { " + prop.Name + " = (" + prop.DataTypeName +
                                 ")dict[" + prop.Name + ".ReferenceId]; }");
-                            first = false;
                         }
                     }
                     // otherwise, create a list object to allow multiple
@@ -188,7 +195,20 @@ namespace Cogs.Publishers
                     {
                         if (model.ItemTypes.Contains(prop.DataType) && !item.IsAbstract) { newClass.Append("$##[JsonConverter(typeof(IIdentifiableConverter))]"); }
                         newClass.Append("$##public List<" + prop.DataTypeName + "> " + prop.Name + "{ get; set; }  = new List<" + prop.DataTypeName + ">();");
-                        if (model.ReusableDataTypes.Contains(prop.DataType))
+                        if (origDataTypeName != null && !prop.DataTypeName.Equals("bool"))
+                        {
+                            if (origDataTypeName.Equals("cogsDate"))
+                            {
+                                reusableToJson.Append("$###if (" + prop.Name + ".GetValue() != null)");
+                                initializeReferences.Append("$###if (" + prop.Name + ".GetValue() != null)$###{$####" + prop.Name +
+                                    " = new List<CogsDate>();$####for(int i = 0; i < " + prop.Name + ".Count; i++)$####{$#####" + prop.Name + "[i] = new CogsDate(" +
+                                    prop.Name + "[i].UsedType, dict[" + prop.Name + "[i].GYear.Item2]);$###}");
+                            }
+                            else { reusableToJson.Append("$###if (" + prop.Name + " != null)"); }
+                            reusableToJson.Append("$###{$####" + start + "new JProperty(\"" + prop.Name + "\", new JArray($#####from item in " + prop.Name +
+                                "select " + SimpleToJson(origDataTypeName, prop.Name, start) + ");$###}");
+                        }
+                        else if (model.ReusableDataTypes.Contains(prop.DataType))
                         {
                             if (prop.DataTypeName.Equals("DateTimeOffset") || prop.DataTypeName.Equals("TimeSpan"))
                             {
@@ -199,20 +219,24 @@ namespace Cogs.Publishers
                                 "$######select new JObject($#######new JProperty(\"" + prop.DataTypeName + "\", item.ToJson()))))); $###}");
                             initializeReferences.Append(InitializeReusable(prop, true));
                         }
-                        else if (!model.ItemTypes.Contains(prop.DataType))
+                        else if (model.Identification.Contains(prop))
                         {
                             toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
                                 "$######select item))");
                             first = false;
                         }
+                        else if (!model.ItemTypes.Contains(prop.DataType))
+                        {
+                            reusableToJson.Append("$###if ( " + prop.Name + " != null) $###{$####" + start + "new JProperty(\"" + prop.Name + "\", " +
+                                "new JArray($#####from item in " + prop.Name + "$#####select item)));$###}");
+                        }
                         else
                         {
-                            toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
-                                "$######select new JObject(new JProperty(\"@type\", \"ref\"), " +
-                            "$#######new JProperty(\"value\", new JArray($########item.GetType().Name.ToString(), $########item.ID)))))");
+                            reusableToJson.Append("$###if (" + prop.Name + " != null)$###{$####" + start + "new JProperty(\"" + prop.Name + 
+                                "\", $#####new JArray($######from item in " + prop.Name + "$######select new JObject(new JProperty(\"@type\", \"ref\"), " +
+                            "$#######new JProperty(\"value\", new JArray($########item.GetType().Name.ToString(), $########item.ID))))));$###}");
                             initializeReferences.Append("$###if (" + prop.Name + " != null)$###{$####for (int i = 0; i < " + prop.Name + ".Count; i++)" +
                                 "$####{$#####dynamic temp = dict[" + prop.Name + "[i].ReferenceId];$#####" + prop.Name + "[i] = temp;$####}$###}");
-                            first = false;
                         }
                     }
                 }
@@ -247,8 +271,12 @@ namespace Cogs.Publishers
                         "$###base.InitializeReferences(dict, json);");
                 }
                 else { newClass.Append("$##public virtual void InitializeReferences(Dictionary<string, IIdentifiable> dict, string json)$##{"); }
-                newClass.Append("$###string[] parts = json.Split(new string[] { \":\", \"{\", \"}\", \"[\", \"]\", \",\", Environment.NewLine }, " +
-                    "StringSplitOptions.None);$###bool thisObj = false;" + initializeReferences.ToString() + "$##}$#}$}$");
+                if (initializeReferences.ToString().Contains("thisObj")) 
+                {
+                    newClass.Append("$###string[] parts = json.Split(new string[] { \":\", \"{\", \"}\", \"[\", \"]\", \",\", Environment.NewLine }, " +
+                    "StringSplitOptions.None);$###bool thisObj = false;");
+                }
+                newClass.Append(initializeReferences.ToString() + "$##}$#}$}$");
                 // write class to out folder
                 File.WriteAllText(Path.Combine(TargetDirectory, item.Name + ".cs"), newClass.ToString().
                     Replace("$###((JObject)json.First).Add();", "").Replace("#", "    ").Replace("$", Environment.NewLine).Replace("@", "$"));
@@ -274,7 +302,8 @@ namespace Cogs.Publishers
             else { builder.Append(name + " = new " + type + "();"); }
             builder.Append(@"
                     i++;
-                    while (this.GetType().GetProperties().Where(x => parts[i].Trim().Replace(""\"""", """").ToLower().Equals(x.Name.ToLower())).ToList().Count == 0)
+                    while (string.IsNullOrWhiteSpace(parts[i].Trim().Replace(""\"""", """")) || (this.GetType().GetProperties().Where(x => parts[i].Trim().Replace(""\"""", """").ToLower()
+                        .Equals(x.Name.ToLower())).ToList().Count == 0 && !""yearmonthdaydatetimeanyuricogsdate"".Contains(parts[i].Trim().Replace(""\"""", """").ToLower())))
                     {
                         if (parts[i].Contains(""" + type + @"""))
                         {
@@ -293,7 +322,8 @@ namespace Cogs.Publishers
                         builder.Append(@"
                         {
                             i++;
-                            while (this.GetType().GetProperties().Where(x => parts[i].Trim().Replace(""\"""", """").ToLower().Equals(x.Name.ToLower())).ToList().Count == 0)
+                            while (string.IsNullOrWhiteSpace(parts[i].Trim().Replace(""\"""", """")) || (this.GetType().GetProperties().Where(x => parts[i].Trim().Replace(""\"""", """").ToLower()
+                                .Equals(x.Name.ToLower())).ToList().Count == 0 && !""yearmonthdaydatetimeanyuricogsdate"".Contains(parts[i].Trim().Replace(""\"""", """").ToLower())))
                             {
                                 if(!string.IsNullOrWhiteSpace(parts[i])) { obj." + p.Name + ".Add(" + ReusableTypeConvert(p.DataTypeName, true) + @"); }
                                 i++;
@@ -326,7 +356,8 @@ namespace Cogs.Publishers
                         if (parts[i].Contains(""" + p.Name + @"""))
                         {
                             i++;
-                            while (this.GetType().GetProperties().Where(x => parts[i].Trim().Replace(""\"""", """").ToLower().Equals(x.Name.ToLower())).ToList().Count == 0)
+                            while (string.IsNullOrWhiteSpace(parts[i].Trim().Replace(""\"""", """")) || (this.GetType().GetProperties().Where(x => parts[i].Trim().Replace(""\"""", """").ToLower()
+                                .Equals(x.Name.ToLower())).ToList().Count == 0 && !""yearmonthdaydatetimeanyuricogsdate"".Contains(parts[i].Trim().Replace(""\"""", """").ToLower())))
                             {
                                 if(!string.IsNullOrWhiteSpace(parts[i])) { " + name + "." + p.Name + ".Add(" + ReusableTypeConvert(p.DataTypeName, true) + @"); }
                                 i++;
@@ -359,44 +390,60 @@ namespace Cogs.Publishers
             return "parts[" + i + "].Trim().Replace(\"\\\"\", \"\")";
         }
 
-        private string SimpleToJson(string origDataTypeName, string name)
+        private string SimpleToJson(string origDataTypeName, string name, string start, StringBuilder builder = null)
         {
-            if (origDataTypeName.Equals("duration")) { return "new JProperty(\"duration\", " + name + ".Milliseconds)"; }
-            if (origDataTypeName.Equals("dateTime")) { return "new JProperty(\"datetime\", " + name + ".ToString(\"s\"))"; }
-            if (origDataTypeName.Equals("time")) { return "new JProperty(\"time\", " + name + ".ToString(\"u\").Split(' ')[1])"; }
-            if (origDataTypeName.Equals("date")) { return "new JProperty(\"date\", " + name + ".ToString(\"u\").Split(' ')[0])"; }
+            if (origDataTypeName.Equals("duration")) { return start + "new JProperty(\"duration\", " + name + ".Milliseconds)"; }
+            if (origDataTypeName.Equals("dateTime"))
+            {
+                if (builder != null) { builder.Append("$##[JsonProperty(\"datetime\")]"); }
+                return start + "new JProperty(\"datetime\", " + name + ".ToString(\"s\"))";
+            }
+            if (origDataTypeName.Equals("time")) { return start + "new JProperty(\"time\", " + name + ".ToString(\"u\").Split(' ')[1])"; }
+            if (origDataTypeName.Equals("date")) { return start + "new JProperty(\"date\", " + name + ".ToString(\"u\").Split(' ')[0])"; }
             if (origDataTypeName.Equals("gYearMonth"))
             {
-                return "new JProperty(\"GYearMonth\", new JObject($#####new JProperty(\"year\", " + name + ".Item1),$#####new " +
-                    "JProperty(\"month\", " + name + ".Item2),$#####new JProperty(\"timezone\", " + name + ".Item3)))";
+                if (builder != null) { builder.Append("$##[JsonProperty(\"YearMonth\")]"); }
+                return "var ym = new JProperty(\"YearMonth\", new JObject($#####new JProperty(\"year\", " + name + ".Item1),$#####new " +
+                    "JProperty(\"month\", " + name + ".Item2)));$####if (" + name + ".Item3 != null) { ((JObject)ym.First).Add(new JProperty(\"timezone\", " + name + 
+                    ".Item3)); }$####" + start + "ym";
             }
             if (origDataTypeName.Equals("gYear"))
             {
-                return "new JProperty(\"year\", new JObject($#####new JProperty(\"year\", " + name + ".Item1),$#####new JProperty(\"timezone\", " + name + ".Item2)))";
+                if (builder != null) { builder.Append("$##[JsonProperty(\"year\")]"); }
+                return "var y = new JProperty(\"year\", new JObject($#####new JProperty(\"year\", " + name + ".Item1)));$####if (" + name + ".Item2 != null) " +
+                    "{ ((JObject)y.First).Add(new JProperty(\"timezone\", " + name + ".Item2)); }$####" + start + "y";
             }
             if (origDataTypeName.Equals("gMonthDay"))
             {
-                return "new JProperty(\"gMonthDay\", new JObject($#####new JProperty(\"month\", " + name + ".Item1),$#####new " +
-                    "JProperty(\"day\", " + name + ".Item2),$#####new JProperty(\"timezone\", " + name + ".Item3)))";
+                if (builder != null) { builder.Append("$##[JsonProperty(\"MonthDay\")]"); }
+                return "var md = new JProperty(\"MonthDay\", new JObject($#####new JProperty(\"month\", " + name + ".Item1),$#####new " +
+                    "JProperty(\"day\", " + name + ".Item2)));$####if (" + name + ".Item3 != null) { ((JObject)md.First).Add(new JProperty(\"timezone\", " + name + 
+                    ".Item3)); }$####" + start + "md"; 
             }
             if (origDataTypeName.Equals("gDay"))
             {
-                return "new JProperty(\"day\", new JObject($#####new JProperty(\"day\", " + name + ".Item1), " +
-                    "$#####new JProperty(\"timezone\", " + name + ".Item2)))";
+                if (builder != null) { builder.Append("$##[JsonProperty(\"day\")]"); }
+                return "var d = new JProperty(\"day\", new JObject($#####new JProperty(\"day\", " + name + ".Item1)));$####if (" + name + ".Item2 != null) " +
+                    "{ ((JObject)d.First).Add(new JProperty(\"timezone\", " + name + ".Item2)); }$####" + start + "d"; 
             }
             if (origDataTypeName.Equals("gMonth"))
             {
-                return "new JProperty(\"month\", new JObject($#####new JProperty(\"month\", " + name + ".Item1), " +
-                    "$#####new JProperty(\"timezone\", " + name + ".Item2)))";
+                if (builder != null) { builder.Append("$##[JsonProperty(\"month\")]"); }
+                return "var m = new JProperty(\"month\", new JObject($#####new JProperty(\"month\", " + name + ".Item1)));$####if (" + name + ".Item2 != null) " +
+                    "{ ((JObject)m.First).Add(new JProperty(\"timezone\", " + name + ".Item2)); }$####" + start + "m";
             }
-            if (origDataTypeName.Equals("anyUri")) { return "new JProperty(\"anyuri\", " + name + ")"; }
+            if (origDataTypeName.Equals("anyUri"))
+            {
+                if (builder != null) { builder.Append("$##[JsonProperty(\"anyuri\")]"); }
+                return start + "new JProperty(\"anyuri\", " + name + ")";
+            }
             if (origDataTypeName.Equals("cogsDate"))
             {
-                return "new JProperty(\"cogsdate\", new JObject($#####new JProperty(\"dateTime\", " + name +
-                    ".DateTime),$#####new JProperty(\"date\", " + name + ".date),$#####new JProperty(\"gYearMonth\", " + name +
-                    ".GYearMonth),$#####new JProperty(\"gYear\", " + name + ".GYear),$#####new JProperty(\"Duration\", " + name + ".Duration)))";
+                if (builder != null) { builder.Append("$##[JsonProperty(\"cogsdate\")]"); }
+                return start + "new JProperty(\"cogsDate\", new JObject($#####new JProperty(" + name + ".UsedType.ToString(), " + name +
+                    ".GetValue())))";
             }
-            return "new JProperty(\"" + name + "\", " + name + ")";
+            return start + "new JProperty(\"" + name + "\", " + name + ")";
         }
 
 
@@ -440,13 +487,17 @@ namespace !!!
 
         public string Serialize()
         {
-            JObject builder = new JObject {new JProperty(""TopLevelReference"", new JArray(
+            JObject builder = new JObject();
+            if (TopLevelReferences.Count > 0)
+            {
+                builder.Add(new JProperty(""TopLevelReference"", new JArray(
                 from obj in TopLevelReferences
                 select new JObject(
                     new JProperty(""$type"", ""ref""),
                     new JProperty(""value"", new JArray(
                         obj.GetType().ToString(),
-                        obj.ID)))))};
+                        obj.ID))))));
+            }
             foreach(var item in Assembly.GetExecutingAssembly().GetTypes())
             {
                 var elements = Items.Where(x => x.GetType().Equals(item)).ToList();
@@ -666,11 +717,19 @@ namespace cogsBurger
                 {
                     int a = Int32.Parse(((JProperty)obj.First).First.ToString());
                     int b = Int32.Parse(((JProperty)obj.First).Next.First.ToString());
+                    if (((JProperty)obj.First).Next.First.ToString().Equals(((JProperty)obj.Last).Value.ToString()))
+                    {
+                        return new Tuple<int, int, string>(a, b, null);
+                    }
                     return new Tuple<int, int, string>(a, b, ((JProperty)obj.Last).Value.ToString());
                 }
                 if (objectType == typeof(Tuple<int, string>))
                 {
                     int a = Int32.Parse(((JProperty)obj.First).First.ToString());
+                    if (((JProperty)obj.First).First.ToString().Equals(((JProperty)obj.Last).Value.ToString()))
+                    {
+                        return new Tuple<int, string>(a, null);
+                    }
                     return new Tuple<int, string>(a, ((JProperty)obj.Last).Value.ToString());
                 }
                 if (objectType == typeof(CogsDate))
