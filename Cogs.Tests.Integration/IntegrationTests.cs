@@ -339,7 +339,7 @@ namespace Cogs.Tests.Integration
         public async void SimpleTypeDateTime()
         {
             ItemContainer container = new ItemContainer();
-            Hamburger hamburger = new Hamburger
+            Animal hamburger = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
                 DateTime = new DateTimeOffset(new DateTime(2017, 9, 2, 13, 23, 32), new TimeSpan(+1, 0, 0))
@@ -359,9 +359,9 @@ namespace Cogs.Tests.Integration
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
-            Assert.IsType<Hamburger>(container2.Items.First());
+            Assert.IsType<Animal>(container2.Items.First());
 
-            Hamburger hamburger2 = container2.Items.First() as Hamburger;
+            Animal hamburger2 = container2.Items.First() as Animal;
             Assert.Equal(hamburger.DateTime, hamburger2.DateTime);
         }
 
