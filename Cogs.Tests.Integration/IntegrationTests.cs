@@ -861,6 +861,13 @@ namespace Cogs.Tests.Integration
             Assert.NotNull(sirloin.SubComponents);
         }
 
+        [Fact]
+        public void ListsInItemsAreInitialized()
+        {
+            Animal cow = new Animal();
+            Assert.NotNull(cow.Times);
+        }
+
         private async Task<JsonSchema4> GetJsonSchema()
         {
             // TODO build the json schema into the generated assembly as a resource
