@@ -152,27 +152,29 @@ namespace Cogs.DataAnnotations
                 case CogsDateType.DateTime:
                     {
 						if (DateTime == default(DateTimeOffset)) { return null; }
-                        return DateTime.DateTime.ToString();
+                        return DateTime.ToString("s") + "+" +  DateTime.Offset.ToString();
                     }
                 case CogsDateType.Date:
                     {
 						if (Date == default(DateTimeOffset)) { return null; }
-                        return Date.Date.ToString();
+                        return Date.ToString("u").Split(' ')[0];
                     }
                 case CogsDateType.GYearMonth:
                     {
 						if (GYearMonth == null) { return null; }
+						if(GYearMonth.Item3 != null) { return GYearMonth.Item1 + "-" + GYearMonth.Item2 + " " + GYearMonth.Item3; }
                         return GYearMonth.Item1 + "-" + GYearMonth.Item2;
                     }
                 case CogsDateType.GYear:
                     {
 						if (GYear == null) { return null; }
-                        return GYear.ToString();
+						if(GYear.Item2 != null) { return GYear.Item1 + " " + GYear.Item2; }
+                        return GYear.Item1.ToString();
                     }
                 case CogsDateType.Duration:
                     {
 						if (Duration == default(TimeSpan)) { return null; }
-                        return Duration.Duration().ToString();
+                        return Duration.Ticks.ToString();
                     }
             }
             return null;
