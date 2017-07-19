@@ -629,27 +629,6 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void TopLevelReferenceRoundTrip()
-        {
-            ItemContainer container = new ItemContainer();
-            Hamburger hamburger = new Hamburger
-            {
-                ID = Guid.NewGuid().ToString(),
-            };
-            container.TopLevelReferences.Add(hamburger);
-            JsonSchema4 schema = await GetJsonSchema();
-            string json = container.Serialize();
-            var errors = schema.Validate(json);
-            Assert.Empty(errors);
-
-            ItemContainer container2 = new ItemContainer();
-            container2.Parse(json);
-
-            string json2 = container2.Serialize();
-            Assert.Equal(json, json2);
-        }
-
-        [Fact]
         public async void SimpleTypeAnyURI()
         {
 
@@ -664,7 +643,37 @@ namespace Cogs.Tests.Integration
         [Fact]
         public async void SimpleTypeCogsDate()
         {
+            ItemContainer container = new ItemContainer();
+            VeggiePatty patty = new VeggiePatty
+            {
+                ID = Guid.NewGuid().ToString(),
+                Cogsdate =new DataAnnotations.CogsDate
+                {
+                    Date = new DateTime(2017, 9, 2),
+                    DateTime = new DateTimeOffset(new DateTime(2017, 9, 2, 13, 23, 32), new TimeSpan(+1, 0, 0)),
+                    GYearMonth = new Tuple<int, int, string>(2017, 9, "utc"),
+                    GYear = new Tuple<int, string>(2017, "utc")
 
+                }
+            };
+            container.Items.Add(patty);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<VeggiePatty>(container2.Items.First());
+
+            VeggiePatty patty2 = container2.Items.First() as VeggiePatty;
+            Assert.Equal(patty.Cogsdate, patty2.Cogsdate);
         }
 
         private async Task<JsonSchema4> GetJsonSchema()
