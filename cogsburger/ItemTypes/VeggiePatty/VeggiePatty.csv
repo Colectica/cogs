@@ -1,2 +1,4 @@
 Name,DataType,MinCardinality,MaxCardinality,Description,MinLength,MaxLength,Enumeration,Pattern,MinInclusive,MinExclusive,MaxInclusive,MaxExclusive,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
 VegetableUsed,string,0,n,The vegetables used in the patty,,,,,,,,,,,
+DateTime,dateTime,0,1,The date,,,,,,,,,,,
+GYear,gYear,0,1,The year,,,,,,,,,,,
