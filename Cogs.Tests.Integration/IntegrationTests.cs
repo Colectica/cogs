@@ -397,7 +397,30 @@ namespace Cogs.Tests.Integration
         [Fact]
         public async void SimpleTypeGyear()
         {
+            ItemContainer container = new ItemContainer();
+            VeggiePatty patty = new VeggiePatty
+            {
+                ID = Guid.NewGuid().ToString(),
+                GYear = new Tuple<int, string>(9, "utc")
+            };
+            container.Items.Add(patty);
 
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<VeggiePatty>(container2.Items.First());
+
+            VeggiePatty patty2 = container2.Items.First() as VeggiePatty;
+            Assert.Equal(patty.GYear, patty2.GYear);
         }
 
         [Fact]//PASS
