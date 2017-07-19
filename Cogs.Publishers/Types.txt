@@ -162,6 +162,7 @@ namespace Cogs.DataAnnotations
                 case CogsDateType.GYearMonth:
                     {
 						if (GYearMonth == null) { return null; }
+						if(GYearMonth.Item3 != null) { return GYearMonth.Item1 + "-" + GYearMonth.Item2 + " " + GYearMonth.Item3; }
                         return GYearMonth.Item1 + "-" + GYearMonth.Item2;
                     }
                 case CogsDateType.GYear:

@@ -20,8 +20,8 @@ namespace Cogs.Tests.Integration
                 ID = Guid.NewGuid().ToString(),
                 Description = "Large Special",
                 HamburgerName = "Four Corners Burger",
-                Date = new DateTime(2017,9,2),
-                DateTime = new DateTimeOffset(new DateTime(2017, 9, 2, 13, 23, 32), new TimeSpan(+1,0,0))
+                Date = new DateTime(2017, 9, 2),
+                DateTime = new DateTimeOffset(new DateTime(2017, 9, 2, 13, 23, 32), new TimeSpan(+1, 0, 0))
             };
 
             Hamburger hamburger2 = new Hamburger
@@ -36,7 +36,7 @@ namespace Cogs.Tests.Integration
                 Language = "eng",
                 Content = "Just a normal cow"
             };
-            Tuple<int,string> monthG = new Tuple<int, string>(9, "UTC");
+            Tuple<int, string> monthG = new Tuple<int, string>(9, "UTC");
             Tuple<int, string> dayG = new Tuple<int, string>(6, "UTC");
             Tuple<int, int, string> mDay = new Tuple<int, int, string>(6, 9, "UTC");
             Animal animal = new Animal
@@ -46,14 +46,14 @@ namespace Cogs.Tests.Integration
                 LingualDescription = new List<MultilingualString> { describe },
                 CountryOfOrigin = "USA",
                 Date = new DateTime(2017, 6, 9),
-                Time = new DateTimeOffset(2017,6,9,2,32,32,new TimeSpan(+1, 0, 0)),
+                Time = new DateTimeOffset(2017, 6, 9, 2, 32, 32, new TimeSpan(+1, 0, 0)),
                 GMonthDay = mDay
             };
 
             List<decimal> heights = new List<decimal>();
             heights.Add(5);
             heights.Add(5);
-            Tuple<int, int, string> GYM = new Tuple<int, int, string> (2017, 06, "utc");
+            Tuple<int, int, string> GYM = new Tuple<int, int, string>(2017, 06, "utc");
 
             Bread bread = new Bread
             {
@@ -187,7 +187,7 @@ namespace Cogs.Tests.Integration
 
                 // check that outputs are the same
                 Assert.Equal(json, newJson);
-            } 
+            }
         }
 
         [Fact]//PASS
@@ -397,7 +397,30 @@ namespace Cogs.Tests.Integration
         [Fact]
         public async void SimpleTypeGyear()
         {
+            ItemContainer container = new ItemContainer();
+            VeggiePatty patty = new VeggiePatty
+            {
+                ID = Guid.NewGuid().ToString(),
+                GYear = new Tuple<int, string>(9, "utc")
+            };
+            container.Items.Add(patty);
 
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<VeggiePatty>(container2.Items.First());
+
+            VeggiePatty patty2 = container2.Items.First() as VeggiePatty;
+            Assert.Equal(patty.GYear, patty2.GYear);
         }
 
         [Fact]//PASS
@@ -407,7 +430,7 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                GMonthDay = new Tuple<int, int, string> ( 9, 3, "utc")
+                GMonthDay = new Tuple<int, int, string>(9, 3, "utc")
             };
             container.Items.Add(animal);
 
@@ -428,7 +451,7 @@ namespace Cogs.Tests.Integration
             Animal animal2 = container2.Items.First() as Animal;
             Assert.Equal(animal.GMonthDay, animal2.GMonthDay);
         }
-        
+
         [Fact]
         public async void SimpleTypeGDay()
         {
@@ -503,8 +526,69 @@ namespace Cogs.Tests.Integration
         [Fact]
         public async void SimpleTypeCogsDate()
         {
+            ItemContainer container = new ItemContainer();
+            Animal animal = new Animal
+            {
+                ID = Guid.NewGuid().ToString(),
+                CDate = new DataAnnotations.CogsDate(new Tuple<int, int, string>(2017, 7, "utc"))
+            };
+            container.Items.Add(animal);
 
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Animal>(container2.Items.First());
+
+            Animal animal2 = container2.Items.First() as Animal;
+            Assert.Equal(animal.CDate, animal2.CDate);
         }
+
+        [Fact]
+        public async void ReusableToItemToSimple()
+        {
+            ItemContainer container = new ItemContainer();
+            Animal animal = new Animal
+            {
+                ID = Guid.NewGuid().ToString(),
+                GDay = new Tuple<int, string>(23, "utc")
+            };
+            container.Items.Add(animal);
+            Bread bread = new Bread
+            {
+                ID = Guid.NewGuid().ToString(),
+                Size = new Dimensions
+                {
+                    Creature = animal
+                }
+            };
+            container.Items.Add(bread);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+
+            Bread bread2 = container2.Items[1] as Bread;
+            Assert.Equal(bread.Size.Creature.GDay, bread2.Size.Creature.GDay);
+        }
+
 
         private async Task<JsonSchema4> GetJsonSchema()
         {
