@@ -423,6 +423,35 @@ namespace Cogs.Tests.Integration
             Assert.Equal(patty.GYear, patty2.GYear);
         }
 
+        [Fact]
+        public async void SimpleTypeGyearWithoutTimeZone()
+        {
+            ItemContainer container = new ItemContainer();
+            VeggiePatty patty = new VeggiePatty
+            {
+                ID = Guid.NewGuid().ToString(),
+                GYear = new Tuple<int, string>(9, null)
+            };
+            container.Items.Add(patty);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<VeggiePatty>(container2.Items.First());
+
+            VeggiePatty patty2 = container2.Items.First() as VeggiePatty;
+            Assert.Equal(patty.GYear, patty2.GYear);
+        }
+
         [Fact]//PASS
         public async void SimpleTypeGMonthDay()
         {
@@ -451,7 +480,36 @@ namespace Cogs.Tests.Integration
             Animal animal2 = container2.Items.First() as Animal;
             Assert.Equal(animal.GMonthDay, animal2.GMonthDay);
         }
-        
+
+        [Fact]//PASS
+        public async void SimpleTypeGMonthDayWithoutTimeZone()
+        {
+            ItemContainer container = new ItemContainer();
+            Animal animal = new Animal
+            {
+                ID = Guid.NewGuid().ToString(),
+                GMonthDay = new Tuple<int, int, string>(9, 3, null)
+            };
+            container.Items.Add(animal);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Animal>(container2.Items.First());
+
+            Animal animal2 = container2.Items.First() as Animal;
+            Assert.Equal(animal.GMonthDay, animal2.GMonthDay);
+        }
+
         [Fact]
         public async void SimpleTypeGDay()
         {
@@ -459,7 +517,37 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                GDay = new Tuple<int, string>(15, "")
+                GDay = new Tuple<int, string>(15, "utc")
+
+            };
+            container.Items.Add(animal);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Animal>(container2.Items.First());
+
+            Animal animal2 = container2.Items.First() as Animal;
+            Assert.Equal(animal.GDay, animal2.GDay);
+        }
+
+        [Fact]
+        public async void SimpleTypeGDayWithoutTimeZone()
+        {
+            ItemContainer container = new ItemContainer();
+            Animal animal = new Animal
+            {
+                ID = Guid.NewGuid().ToString(),
+                GDay = new Tuple<int, string>(15, null)
 
             };
             container.Items.Add(animal);
@@ -489,7 +577,7 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                GMonth = new Tuple<int, string>(2, "")
+                GMonth = new Tuple<int, string>(2, "utc")
             };
             container.Items.Add(animal);
 
@@ -509,6 +597,56 @@ namespace Cogs.Tests.Integration
 
             Animal animal2 = container2.Items.First() as Animal;
             Assert.Equal(animal.GMonth, animal2.GMonth);
+        }
+
+        [Fact]//PASS
+        public async void SimpleTypeGMonthWihtoutTimeZone()
+        {
+            ItemContainer container = new ItemContainer();
+            Animal animal = new Animal
+            {
+                ID = Guid.NewGuid().ToString(),
+                GMonth = new Tuple<int, string>(2, null)
+            };
+            container.Items.Add(animal);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Animal>(container2.Items.First());
+
+            Animal animal2 = container2.Items.First() as Animal;
+            Assert.Equal(animal.GMonth, animal2.GMonth);
+        }
+
+        [Fact]
+        public async void TopLevelReferenceRoundTrip()
+        {
+            ItemContainer container = new ItemContainer();
+            Hamburger hamburger = new Hamburger
+            {
+                ID = Guid.NewGuid().ToString(),
+            };
+            container.TopLevelReferences.Add(hamburger);
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
         }
 
         [Fact]
