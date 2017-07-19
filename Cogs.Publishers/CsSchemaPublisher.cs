@@ -700,7 +700,7 @@ namespace cogsBurger
                 var current = obj.First;
                 while (current != null)
                 {
-                    values.Add(Translate(current.First.First, objectType.GetGenericArguments()[0]));
+                    values.Add(Translate(current, objectType.GetGenericArguments()[0]));
                     current = current.Next;
                 }
                 return values;
@@ -729,8 +729,7 @@ namespace cogsBurger
                 {
                     return new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]), 0, 0, 0, new TimeSpan());
                 }
-                return new DateTimeOffset(1, 1, 1, int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]),
-                    new TimeSpan(int.Parse(values[4]), int.Parse(values[5]), int.Parse(values[6])));
+                return new DateTimeOffset(1, 1, 1, int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]), new TimeSpan());
             }
             if (objectType == typeof(Uri))
             {
