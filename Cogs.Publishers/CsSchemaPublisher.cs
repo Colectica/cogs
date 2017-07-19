@@ -87,7 +87,7 @@ namespace Cogs.Publishers
                     {
                         origDataTypeName = prop.DataTypeName;
                         prop.DataTypeName = Translator[prop.DataTypeName];
-                        if (!prop.DataTypeName.Equals("bool")) { first = true; }
+                        if (!"boolintdoubleulong".Contains(prop.DataTypeName)) { first = true; }
                     }
                     // create documentation for property
                     newClass.Append("$##/// <summary>$##/// " + prop.Description + "$##/// <summary>");
@@ -139,7 +139,7 @@ namespace Cogs.Publishers
                             newClass.Append("$##[ExclusiveRange(" + prop.MinExclusive + ", " + prop.MaxExclusive + ")]");
                         }
                     }
-                    if (!first && model.Identification.Contains(prop)) { toJsonProperties.Append(","); }
+                    if (!first && (model.Identification.Contains(prop) || "boolintdoubleulong".Contains(prop.DataTypeName))) { toJsonProperties.Append(","); }
                     var start = "((JObject)json.First).Add(";
                     if (origDataTypeName != null && !"boolintstringulong".Contains(prop.DataTypeName))
                     {
@@ -152,7 +152,12 @@ namespace Cogs.Publishers
                     {
                         if (model.ItemTypes.Contains(prop.DataType) && !item.IsAbstract) { newClass.Append("$##[JsonConverter(typeof(IIdentifiableConverter))]"); }
                         newClass.Append("$##public " + prop.DataTypeName + " " + prop.Name + " { get; set; }");
-                        if (origDataTypeName != null && !prop.DataTypeName.Equals("bool"))
+                        if("boolintdoubleulong".Contains(prop.DataTypeName) || model.Identification.Contains(prop))
+                        {
+                            toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", " + prop.Name + ")");
+                            first = false;
+                        }
+                        else if (origDataTypeName != null)
                         {
                             if (prop.DataTypeName.Equals("CogsDate"))
                             {
@@ -171,11 +176,6 @@ namespace Cogs.Publishers
                             reusableToJson.Append(start + "new JProperty(\"" + prop.Name + "\", " + prop.Name + ".ToJson())); }");
                             initializeReferences.Append(InitializeReusable(prop, false, model));
                         }
-                        else if (model.Identification.Contains(prop))
-                        {
-                            toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", " + prop.Name + ")");
-                            first = false;
-                        }
                         else if(!model.ItemTypes.Contains(prop.DataType))
                         {
                             reusableToJson.Append("$###if ( " + prop.Name + " != null) $###{$####" + start + "new JProperty(\"" + prop.Name + "\", " + prop.Name + "));$###}");
@@ -193,19 +193,21 @@ namespace Cogs.Publishers
                     {
                         if (model.ItemTypes.Contains(prop.DataType) && !item.IsAbstract) { newClass.Append("$##[JsonConverter(typeof(IIdentifiableConverter))]"); }
                         newClass.Append("$##public List<" + prop.DataTypeName + "> " + prop.Name + "{ get; set; }");
-                        if (origDataTypeName != null && !prop.DataTypeName.Equals("bool"))
+                        if ("boolintdoubleulong".Contains(prop.DataTypeName) || model.Identification.Contains(prop))
+                        {
+                            toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
+                                "$######select item))");
+                            first = false;
+                        }
+                        else if (origDataTypeName != null && !prop.DataTypeName.Equals("bool"))
                         {
                             if (prop.DataTypeName.Equals("CogsDate"))
                             {
                                 reusableToJson.Append("$###if (" + prop.Name + ".GetValue() != null)");
                             }
-                            else if(prop.DataTypeName.Equals("DateTimeOffset") || prop.DataTypeName.Equals("TimeSpan"))
-                            {
-                                reusableToJson.Append("$###if (" + prop.Name + " != default(" + prop.DataTypeName + "))");
-                            }
-                            else { reusableToJson.Append("$###if (" + prop.Name + " != null)"); }
+                            else { reusableToJson.Append("$###if (" + prop.Name + " != null && " + prop.Name + ".Count > 0)"); }
                             reusableToJson.Append("$###{$####" + start + "new JProperty(\"" + prop.Name + "\", new JArray($#####from item in " + prop.Name +
-                                "select " + SimpleToJson(origDataTypeName, prop.Name, start) + ");$###}");
+                                " select new JObject(" + SimpleToJson(origDataTypeName, "item", "") + "))));$###}");
                         }
                         else if (model.ReusableDataTypes.Contains(prop.DataType))
                         {
@@ -217,12 +219,6 @@ namespace Cogs.Publishers
                             reusableToJson.Append("$###{$####" + start + "new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
                                 "$######select new JObject($#######new JProperty(\"" + prop.DataTypeName + "\", item.ToJson()))))); $###}");
                             initializeReferences.Append(InitializeReusable(prop, true, model));
-                        }
-                        else if (model.Identification.Contains(prop))
-                        {
-                            toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
-                                "$######select item))");
-                            first = false;
                         }
                         else if (!model.ItemTypes.Contains(prop.DataType))
                         {
@@ -670,85 +666,92 @@ namespace cogsBurger
             if (typeof(IEnumerable).IsAssignableFrom(objectType) && !objectType.ToString().ToLower().Equals(""string""))
             {
                 JArray obj = JArray.Load(reader);
+                IList values = (IList)Activator.CreateInstance(objectType);
+                var current = obj.First;
+                while (current != null)
+                {
+                    values.Add(Translate(current.First.First, objectType.GetGenericArguments()[0]));
+                    current = current.Next;
+                }
+                return values;
             }
-            else
+            else { return Translate(JToken.Load(reader), objectType);  }
+        }
+
+        private object Translate(JToken prop, Type objectType)
+        {
+            if (objectType == typeof(TimeSpan))
             {
-                if (objectType == typeof(TimeSpan))
+                string[] values = prop.ToString().Split(new char[] { ':' });
+                if (values.Length == 1) { return new TimeSpan(int.Parse(values[0])); }
+                return new TimeSpan(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]));
+            }
+            if (objectType == typeof(DateTimeOffset))
+            {
+                string[] values = prop.ToString().Split(new char[] { ' ', '/', ':', '-', '+', 'T', 'Z' });
+                if (values.Length > 8)
                 {
-                    JToken prop = JToken.Load(reader);
-                    string[] values = prop.ToString().Split(new char[] { ':' });
-                    if (values.Length == 1) { return new TimeSpan(int.Parse(values[0])); }
-                    return new TimeSpan(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]));
+                    return new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]),
+                        int.Parse(values[3]), int.Parse(values[4]), int.Parse(values[5]), 
+                        new TimeSpan(int.Parse(values[6]), int.Parse(values[7]), int.Parse(values[8])));
                 }
-                if (objectType == typeof(DateTimeOffset))
+                if (values.Length == 3 && prop.ToString().Contains(""-""))
                 {
-                    JToken prop = JToken.Load(reader);
-                    string[] values = prop.ToString().Split(new char[] { ' ', '/', ':', '-', '+', 'T', 'Z' });
-                    if (values.Length > 8)
-                    {
-                        return new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]),
-                            int.Parse(values[3]), int.Parse(values[4]), int.Parse(values[5]), 
-                            new TimeSpan(int.Parse(values[6]), int.Parse(values[7]), int.Parse(values[8])));
-                    }
-                    if (values.Length == 3 && prop.ToString().Contains(""-""))
-                    {
-                        return new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]), 0, 0, 0, new TimeSpan());
-                    }
-                    return new DateTimeOffset(1, 1, 1, int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]),
-                        new TimeSpan(int.Parse(values[4]), int.Parse(values[5]), int.Parse(values[6])));
+                    return new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]), 0, 0, 0, new TimeSpan());
                 }
-                if (objectType == typeof(Uri))
+                return new DateTimeOffset(1, 1, 1, int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]),
+                    new TimeSpan(int.Parse(values[4]), int.Parse(values[5]), int.Parse(values[6])));
+            }
+            if (objectType == typeof(Uri))
+            {
+                return new Uri(prop.ToString());
+            }
+            JObject obj = (JObject)prop;
+            if (objectType == typeof(Tuple<int, int, string>))
+            {
+                int a = int.Parse(((JProperty)obj.First).First.ToString());
+                int b = int.Parse(((JProperty)obj.First).Next.First.ToString());
+                if (((JProperty) obj.First).Next.First.ToString().Equals(((JProperty) obj.Last).Value.ToString()))
                 {
-                    JToken prop = JToken.Load(reader);
-                    return new Uri(prop.ToString());
+                    return new Tuple<int, int, string>(a, b, null);
                 }
-                JObject obj = JObject.Load(reader);
-                if (objectType == typeof(Tuple<int, int, string>))
+                return new Tuple<int, int, string>(a, b, ((JProperty) obj.Last).Value.ToString());
+            }
+            if (objectType == typeof(Tuple<int, string>))
+            {
+                int a = int.Parse(((JProperty)obj.First).First.ToString());
+                if (((JProperty) obj.First).First.ToString().Equals(((JProperty) obj.Last).Value.ToString()))
                 {
-                    int a = int.Parse(((JProperty)obj.First).First.ToString());
-                    int b = int.Parse(((JProperty)obj.First).Next.First.ToString());
-                    if (((JProperty) obj.First).Next.First.ToString().Equals(((JProperty) obj.Last).Value.ToString()))
-                    {
-                        return new Tuple<int, int, string>(a, b, null);
-                    }
-                    return new Tuple<int, int, string>(a, b, ((JProperty) obj.Last).Value.ToString());
+                    return new Tuple<int, string>(a, null);
                 }
-                if (objectType == typeof(Tuple<int, string>))
+                return new Tuple<int, string>(a, ((JProperty) obj.Last).Value.ToString());
+            }
+            if (objectType == typeof(CogsDate))
+            {
+                string[] values = obj.First.First.ToString().Split(new char[] { ' ', '/', ':', '-', '+', 'T', 'Z' });
+                if (((JProperty)obj.First).Name.Equals(""Duration"")) { return new CogsDate(new TimeSpan(int.Parse(values[0]))); }
+                if (values.Length == 1) { return new CogsDate(new Tuple<int, string>(int.Parse(values[0]), null)); }
+                if (values.Length == 2)
                 {
-                    int a = int.Parse(((JProperty)obj.First).First.ToString());
-                    if (((JProperty) obj.First).First.ToString().Equals(((JProperty) obj.Last).Value.ToString()))
+                    if (obj.First.First.ToString().Contains(""-""))
                     {
-                        return new Tuple<int, string>(a, null);
+                        return new CogsDate(new Tuple<int, int, string>(int.Parse(values[0]), int.Parse(values[1]), null));
                     }
-                    return new Tuple<int, string>(a, ((JProperty) obj.Last).Value.ToString());
+                    return new CogsDate(new Tuple<int, string>(int.Parse(values[0]), values[1]));
                 }
-                if (objectType == typeof(CogsDate))
+                if (values.Length == 3)
                 {
-                    string[] values = obj.First.First.ToString().Split(new char[] { ' ', '/', ':', '-', '+', 'T', 'Z' });
-                    if (((JProperty)obj.First).Name.Equals(""Duration"")) { return new CogsDate(new TimeSpan(int.Parse(values[0]))); }
-                    if (values.Length == 1) { return new CogsDate(new Tuple<int, string>(int.Parse(values[0]), null)); }
-                    if (values.Length == 2)
+                    if (int.TryParse(values[2], out int i))
                     {
-                        if (obj.First.First.ToString().Contains(""-""))
-                        {
-                            return new CogsDate(new Tuple<int, int, string>(int.Parse(values[0]), int.Parse(values[1]), null));
-                        }
-                        return new CogsDate(new Tuple<int, string>(int.Parse(values[0]), values[1]));
+                        return new CogsDate(new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), i, 0, 0, 0, new TimeSpan()), true);
                     }
-                    if (values.Length == 3)
-                    {
-                        if (int.TryParse(values[2], out int i))
-                        {
-                            return new CogsDate(new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), i, 0, 0, 0, new TimeSpan()), true);
-                        }
-                        return new CogsDate(new Tuple<int, int, string>(int.Parse(values[0]), int.Parse(values[1]), values[2]));
-                    }
-                    if (values.Length > 8)
-                    {
-                        return new CogsDate(new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]),
-                            int.Parse(values[3]), int.Parse(values[4]), int.Parse(values[5]),
-                            new TimeSpan(int.Parse(values[6]), int.Parse(values[7]), int.Parse(values[8]))));
-                    }
+                    return new CogsDate(new Tuple<int, int, string>(int.Parse(values[0]), int.Parse(values[1]), values[2]));
+                }
+                if (values.Length > 8)
+                {
+                    return new CogsDate(new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]),
+                        int.Parse(values[3]), int.Parse(values[4]), int.Parse(values[5]),
+                        new TimeSpan(int.Parse(values[6]), int.Parse(values[7]), int.Parse(values[8]))));
                 }
             }
             return null;
