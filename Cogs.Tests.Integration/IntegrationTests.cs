@@ -379,7 +379,7 @@ namespace Cogs.Tests.Integration
             JsonSchema4 schema = await GetJsonSchema();
             string json = container.Serialize();
             var errors = schema.Validate(json);
-            Assert.Empty(errors);
+            Assert.Empty(errors); // this is validating online at http://www.jsonschemavalidator.net/
 
             ItemContainer container2 = new ItemContainer();
             container2.Parse(json);
@@ -631,7 +631,30 @@ namespace Cogs.Tests.Integration
         [Fact]
         public async void SimpleTypeAnyURI()
         {
+            ItemContainer container = new ItemContainer();
+            Animal animal = new Animal
+            {
+                ID = Guid.NewGuid().ToString(),
+                CDate = new DataAnnotations.CogsDate(new TimeSpan(1562))
+            };
+            container.Items.Add(animal);
 
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Animal>(container2.Items.First());
+
+            Animal animal2 = container2.Items.First() as Animal;
+            Assert.Equal(animal.CDate.GetValue(), animal2.CDate.GetValue());
         }
 
         [Fact]
@@ -875,7 +898,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleList()
+        public async void SimpleListTimes()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -884,7 +907,7 @@ namespace Cogs.Tests.Integration
                 Times = new List<DateTimeOffset>
                 {
                     new DateTimeOffset(2017, 6, 9, 2, 32, 32, new TimeSpan()),
-                    new DateTimeOffset(1996, 8, 23, 4, 32, 3, new TimeSpan(+3, 0, 0))
+                    new DateTimeOffset(1996, 8, 23, 4, 32, 3, new TimeSpan())
                 }
             };
             container.Items.Add(animal);
@@ -892,7 +915,7 @@ namespace Cogs.Tests.Integration
             JsonSchema4 schema = await GetJsonSchema();
             string json = container.Serialize();
             var errors = schema.Validate(json);
-            Assert.Empty(errors);
+            Assert.Empty(errors); // this is validating online at http://www.jsonschemavalidator.net/
 
             ItemContainer container2 = new ItemContainer();
             container2.Parse(json);
