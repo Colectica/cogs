@@ -1,0 +1,1 @@
+A part is a component part of a system.
