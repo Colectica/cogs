@@ -724,8 +724,31 @@ namespace cogsBurger
                 }
                 if (objectType == typeof(CogsDate))
                 {
-                    string[] values = obj.First.First.ToString().Split(new char[] { '-', ' ' });
-                    if (values.Length == 3) { return new CogsDate(new Tuple<int, int, string>(int.Parse(values[0]), int.Parse(values[1]), values[2])); }
+                    string[] values = obj.First.First.ToString().Split(new char[] { ' ', '/', ':', '-', '+', 'T', 'Z' });
+                    if (((JProperty)obj.First).Name.Equals(""Duration"")) { return new CogsDate(new TimeSpan(int.Parse(values[0]))); }
+                    if (values.Length == 1) { return new CogsDate(new Tuple<int, string>(int.Parse(values[0]), null)); }
+                    if (values.Length == 2)
+                    {
+                        if (obj.First.First.ToString().Contains(""-""))
+                        {
+                            return new CogsDate(new Tuple<int, int, string>(int.Parse(values[0]), int.Parse(values[1]), null));
+                        }
+                        return new CogsDate(new Tuple<int, string>(int.Parse(values[0]), values[1]));
+                    }
+                    if (values.Length == 3)
+                    {
+                        if (int.TryParse(values[2], out int i))
+                        {
+                            return new CogsDate(new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), i, 0, 0, 0, new TimeSpan()), true);
+                        }
+                        return new CogsDate(new Tuple<int, int, string>(int.Parse(values[0]), int.Parse(values[1]), values[2]));
+                    }
+                    if (values.Length > 8)
+                    {
+                        return new CogsDate(new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]),
+                            int.Parse(values[3]), int.Parse(values[4]), int.Parse(values[5]),
+                            new TimeSpan(int.Parse(values[6]), int.Parse(values[7]), int.Parse(values[8]))));
+                    }
                 }
             }
             return null;
