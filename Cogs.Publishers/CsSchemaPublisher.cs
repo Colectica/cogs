@@ -144,7 +144,7 @@ namespace Cogs.Publishers
                     if (origDataTypeName != null && !"boolintstringulong".Contains(prop.DataTypeName))
                     {
                         newClass.Append("$##[JsonConverter(typeof(SimpleTypeConverter))]");
-                        SimpleToJson(origDataTypeName, prop.Name, start, newClass);
+                        SimpleToJson(origDataTypeName, prop.Name, start, false, newClass);
                     }
                     if (model.ReusableDataTypes.Contains(item)) { start = "json.Add("; }
                     // if there can be at most one, create an instance variable
@@ -168,7 +168,7 @@ namespace Cogs.Publishers
                                 reusableToJson.Append("$###if (" + prop.Name + " != default(" + prop.DataTypeName + "))");
                             }
                             else { reusableToJson.Append("$###if (" + prop.Name + " != null)"); }
-                            reusableToJson.Append("$###{$####" + SimpleToJson(origDataTypeName, prop.Name, start) + ");$###}");
+                            reusableToJson.Append("$###{$####" + SimpleToJson(origDataTypeName, prop.Name, start, false) + ");$###}");
                         }
                         else if (model.ReusableDataTypes.Contains(prop.DataType))
                         {
@@ -192,7 +192,7 @@ namespace Cogs.Publishers
                     else
                     {
                         if (model.ItemTypes.Contains(prop.DataType) && !item.IsAbstract) { newClass.Append("$##[JsonConverter(typeof(IIdentifiableConverter))]"); }
-                        newClass.Append("$##public List<" + prop.DataTypeName + "> " + prop.Name + "{ get; set; }");
+                        newClass.Append("$##public List<" + prop.DataTypeName + "> " + prop.Name + "{ get; set; } = new List<" + prop.DataTypeName + ">();");
                         if ("boolintdoubleulong".Contains(prop.DataTypeName) || model.Identification.Contains(prop))
                         {
                             toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
@@ -207,23 +207,19 @@ namespace Cogs.Publishers
                             }
                             else { reusableToJson.Append("$###if (" + prop.Name + " != null && " + prop.Name + ".Count > 0)"); }
                             reusableToJson.Append("$###{$####" + start + "new JProperty(\"" + prop.Name + "\", new JArray($#####from item in " + prop.Name +
-                                " select new JObject(" + SimpleToJson(origDataTypeName, "item", "") + "))));$###}");
+                                " select " + SimpleToJson(origDataTypeName, "item", "", true) + ")));$###}");
                         }
                         else if (model.ReusableDataTypes.Contains(prop.DataType))
                         {
-                            if (prop.DataTypeName.Equals("DateTimeOffset") || prop.DataTypeName.Equals("TimeSpan"))
-                            {
-                                reusableToJson.Append("$###if (" + prop.Name + " != default(" + prop.DataTypeName + "))");
-                            }
-                            else { reusableToJson.Append("$###if (" + prop.Name + " != null)"); }
-                            reusableToJson.Append("$###{$####" + start + "new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
-                                "$######select new JObject($#######new JProperty(\"" + prop.DataTypeName + "\", item.ToJson()))))); $###}");
+                            reusableToJson.Append("$###if (" + prop.Name + " != null && " + prop.Name + ".Count > 0)$###{$####" + start + "new JProperty(\"" + 
+                                prop.Name + "\", $#####new JArray($######from item in " + prop.Name + "$######select new JObject($#######new JProperty(\"" + 
+                                prop.DataTypeName + "\", item.ToJson()))))); $###}");
                             initializeReferences.Append(InitializeReusable(prop, true, model));
                         }
                         else if (!model.ItemTypes.Contains(prop.DataType))
                         {
-                            reusableToJson.Append("$###if ( " + prop.Name + " != null) $###{$####" + start + "new JProperty(\"" + prop.Name + "\", " +
-                                "new JArray($#####from item in " + prop.Name + "$#####select item)));$###}");
+                            reusableToJson.Append("$###if ( " + prop.Name + " != null && " + prop.Name + ".Count > 0) $###{$####" + start + "new JProperty(\"" + 
+                                prop.Name + "\", new JArray($#####from item in " + prop.Name + "$#####select item)));$###}");
                         }
                         else
                         {
@@ -388,29 +384,50 @@ namespace Cogs.Publishers
             return "parts[" + i + "].Trim().Replace(\"\\\"\", \"\")";
         }
 
-        private string SimpleToJson(string origDataTypeName, string name, string start, StringBuilder builder = null)
-        {
-
-            if (origDataTypeName.Equals("duration")) { return start + "new JProperty(\"duration\", " + name + ".Ticks)"; }
+        private string SimpleToJson(string origDataTypeName, string name, string start, bool isList, StringBuilder builder = null)
+        { 
+            if (origDataTypeName.Equals("duration"))
+            {
+                if (!isList) { return start + "new JProperty(\"duration\", " + name + ".Ticks)"; }
+                return name + ".Ticks";
+            }
             if (origDataTypeName.Equals("dateTime"))
             {
                 if (builder != null) { builder.Append("$##[JsonProperty(\"datetime\")]"); }
-                return start + "new JProperty(\"datetime\", " + name + ".ToString(\"s\") + \"+\" + " + name + ".Offset.ToString())";
+                if (!isList) { return start + "new JProperty(\"datetime\", " + name + ".ToString(\"s\") + \"+\" + " + name + ".Offset.ToString())"; }
+                return name + ".ToString(\"s\") + \"+\" + " + name + ".Offset.ToString()";
             }
-            if (origDataTypeName.Equals("time")) { return start + "new JProperty(\"time\", " + name + ".ToString(\"T\") + \"+\" + " + name + ".Offset.ToString())"; }
-            if (origDataTypeName.Equals("date")) { return start + "new JProperty(\"date\", " + name + ".ToString(\"u\").Split(' ')[0])"; }
+            if (origDataTypeName.Equals("time"))
+            {
+                if (!isList) { return start + "new JProperty(\"Time\", " + name + ".ToString(\"u\").Split(' ')[1])"; }
+                return name + ".ToString(\"u\").Split(' ')[1]";
+            }
+            if (origDataTypeName.Equals("date"))
+            {
+                if (!isList) { return start + "new JProperty(\"date\", " + name + ".ToString(\"u\").Split(' ')[0])"; }
+                return name + ".ToString(\"u\").Split(' ')[0]";
+            }
             if (origDataTypeName.Equals("gYearMonth"))
             {
                 if (builder != null) { builder.Append("$##[JsonProperty(\"YearMonth\")]"); }
-                return "var ym = new JProperty(\"YearMonth\", new JObject($#####new JProperty(\"year\", " + name + ".Item1),$#####new " +
-                    "JProperty(\"month\", " + name + ".Item2)));$####if (" + name + ".Item3 != null) { ((JObject)ym.First).Add(new JProperty(\"timezone\", " + name + 
+                if (!isList)
+                {
+                    return "var ym = new JProperty(\"YearMonth\", new JObject($#####new JProperty(\"year\", " + name + ".Item1),$#####new " +
+                    "JProperty(\"month\", " + name + ".Item2)));$####if (" + name + ".Item3 != null) { ((JObject)ym.First).Add(new JProperty(\"timezone\", " + name +
                     ".Item3)); }$####" + start + "ym";
+                }
+                return "new JObject($#####new JProperty(\"year\", " + name + ".Item1),$#####new " +
+                    "JProperty(\"month\", " + name + ".Item2)))";
             }
             if (origDataTypeName.Equals("gYear"))
             {
                 if (builder != null) { builder.Append("$##[JsonProperty(\"year\")]"); }
-                return "var y = new JProperty(\"year\", new JObject($#####new JProperty(\"year\", " + name + ".Item1)));$####if (" + name + ".Item2 != null) " +
+                if (!isList)
+                {
+                    return "var y = new JProperty(\"year\", new JObject($#####new JProperty(\"year\", " + name + ".Item1)));$####if (" + name + ".Item2 != null) " +
                     "{ ((JObject)y.First).Add(new JProperty(\"timezone\", " + name + ".Item2)); }$####" + start + "y";
+                }
+                return "new JObject($#####new JProperty(\"year\", " + name + ".Item1)))";
             }
             if (origDataTypeName.Equals("gMonthDay"))
             {
@@ -422,27 +439,40 @@ namespace Cogs.Publishers
             if (origDataTypeName.Equals("gDay"))
             {
                 if (builder != null) { builder.Append("$##[JsonProperty(\"day\")]"); }
-                return "var d = new JProperty(\"day\", new JObject($#####new JProperty(\"day\", " + name + ".Item1)));$####if (" + name + ".Item2 != null) " +
-                    "{ ((JObject)d.First).Add(new JProperty(\"timezone\", " + name + ".Item2)); }$####" + start + "d"; 
+                if (!isList)
+                {
+                    return "var d = new JProperty(\"day\", new JObject($#####new JProperty(\"day\", " + name + ".Item1)));$####if (" + name + ".Item2 != null) " +
+                    "{ ((JObject)d.First).Add(new JProperty(\"timezone\", " + name + ".Item2)); }$####" + start + "d";
+                }
+                return "new JObject($#####new JProperty(\"day\", " + name + ".Item1)))";
             }
             if (origDataTypeName.Equals("gMonth"))
             {
                 if (builder != null) { builder.Append("$##[JsonProperty(\"month\")]"); }
-                return "var m = new JProperty(\"month\", new JObject($#####new JProperty(\"month\", " + name + ".Item1)));$####if (" + name + ".Item2 != null) " +
+                if (!isList)
+                {
+                    return "var m = new JProperty(\"month\", new JObject($#####new JProperty(\"month\", " + name + ".Item1)));$####if (" + name + ".Item2 != null) " +
                     "{ ((JObject)m.First).Add(new JProperty(\"timezone\", " + name + ".Item2)); }$####" + start + "m";
+                }
+                return "new JObject($#####new JProperty(\"month\", " + name + ".Item1)))";
             }
             if (origDataTypeName.Equals("anyUri"))
             {
                 if (builder != null) { builder.Append("$##[JsonProperty(\"anyuri\")]"); }
-                return start + "new JProperty(\"anyuri\", " + name + ")";
+                if (!isList) { return start + "new JProperty(\"anyuri\", " + name + ")"; }
             }
             if (origDataTypeName.Equals("cogsDate"))
             {
                 if (builder != null) { builder.Append("$##[JsonProperty(\"cogsdate\")]"); }
-                return start + "new JProperty(\"cogsDate\", new JObject($#####new JProperty(" + name + ".UsedType.ToString(), " + name +
+                if (!isList)
+                {
+                    return start + "new JProperty(\"cogsDate\", new JObject($#####new JProperty(" + name + ".UsedType.ToString(), " + name +
                     ".GetValue())))";
+                }
+                return "new JObject($#####new JProperty(" + name + ".UsedType.ToString(), " + name + ".GetValue())";
             }
-            return start + "new JProperty(\"" + name + "\", " + name + ")";
+            if (!isList) { return start + "new JProperty(\"" + name + "\", " + name + ")"; }
+            return name;
         }
 
 
