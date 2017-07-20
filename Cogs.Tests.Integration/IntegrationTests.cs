@@ -866,9 +866,9 @@ namespace Cogs.Tests.Integration
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
-            Assert.IsType<Animal>(container2.Items[1]);
+            Assert.IsType<Animal>(container2.Items.First());
 
-            Animal animal2 = container2.Items[1] as Animal;
+            Animal animal2 = container2.Items.First() as Animal;
             Assert.NotEmpty(animal2.MeatPieces);
             Assert.NotNull(animal2.MeatPieces[0]);
             Assert.NotEmpty(animal2.MeatPieces[0].SubComponents);
