@@ -2,3 +2,4 @@ Name,DataType,MinCardinality,MaxCardinality,Description,MinLength,MaxLength,Enum
 VegetableUsed,string,0,n,The vegetables used in the patty,,,,,,,,,,,
 DateTime,dateTime,0,1,The date,,,,,,,,,,,
 GYear,gYear,0,1,The year,,,,,,,,,,,
+Cogsdate,cogsDate,0,1,Cogsdate,,,,,,,,,,,
