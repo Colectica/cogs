@@ -95,6 +95,10 @@ namespace Cogs.Publishers
                     {
                         temp.Reference = "#/simpleType/" + prop.DataType.Name;
                     }
+                    else if (IsItemType(prop.DataType.Name))
+                    {
+                        temp.Reference = "#/properties/" + prop.DataType.Name;
+                    }
                     else
                     {
                         if (TypeBelongToInt(prop.DataType.Name))
