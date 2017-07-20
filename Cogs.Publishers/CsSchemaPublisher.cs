@@ -183,10 +183,18 @@ namespace Cogs.Publishers
                         }
                         else
                         {
-                            reusableToJson.Append("$###if ( " + prop.Name + " != null) $###{$####" + start + "new JProperty(\"" + prop.Name +  "\", new JObject(" +
-                                "new JProperty(\"@type\", \"ref\"), $#####new JProperty(\"value\", new JArray($######\"" + prop.DataTypeName + "\", $######" + prop.Name + ".ID)))));$###}");
-                            initializeReferences.Append("$###if (" + prop.Name + " != null) { " + prop.Name + " = (" + prop.DataTypeName +
-                                ")dict[" + prop.Name + ".ReferenceId]; }");
+                            if (model.ReusableDataTypes.Contains(item))
+                            {
+                                reusableToJson.Append("$###if ( " + prop.Name + " != null) $###{$####" + start + "new JProperty(\"" + prop.Name + "\", new JObject($#####" +
+                                "new JProperty(\""+ prop.DataTypeName + "\", new JObject($######new JProperty(\"ID\", " + prop.Name + ".ID))))));$###}");
+                            }
+                            else
+                            {
+                                reusableToJson.Append("$###if ( " + prop.Name + " != null) $###{$####" + start + "new JProperty(\"" + prop.Name + "\", new JObject(" +
+                               "new JProperty(\"@type\", \"ref\"), $#####new JProperty(\"value\", new JArray($######\"" + prop.DataTypeName + "\", $######" + prop.Name + ".ID)))));$###}");
+                                initializeReferences.Append("$###if (" + prop.Name + " != null) { " + prop.Name + " = (" + prop.DataTypeName +
+                                    ")dict[" + prop.Name + ".ReferenceId]; }");
+                            }
                         }
                     }
                     // otherwise, create a list object to allow multiple
@@ -224,11 +232,20 @@ namespace Cogs.Publishers
                         }
                         else
                         {
-                            reusableToJson.Append("$###if (" + prop.Name + " != null)$###{$####" + start + "new JProperty(\"" + prop.Name + 
+                            if (model.ReusableDataTypes.Contains(item))
+                            {
+                                reusableToJson.Append("$###if (" + prop.Name + " != null)$###{$####" + start + "new JProperty(\"" + prop.Name +
+                                "\", $#####new JArray($######from item in " + prop.Name + "$######select new JObject(new JProperty(\"" + prop.DataTypeName + 
+                                "\", new JObject($######new JProperty(\"ID\", item.ID)))))));$###}");
+                            }
+                            else
+                            {
+                                reusableToJson.Append("$###if (" + prop.Name + " != null)$###{$####" + start + "new JProperty(\"" + prop.Name +
                                 "\", $#####new JArray($######from item in " + prop.Name + "$######select new JObject(new JProperty(\"@type\", \"ref\"), " +
-                            "$#######new JProperty(\"value\", new JArray($########item.GetType().Name.ToString(), $########item.ID))))));$###}");
-                            initializeReferences.Append("$###if (" + prop.Name + " != null)$###{$####for (int i = 0; i < " + prop.Name + ".Count; i++)" +
-                                "$####{$#####dynamic temp = dict[" + prop.Name + "[i].ReferenceId];$#####" + prop.Name + "[i] = temp;$####}$###}");
+                                "$#######new JProperty(\"value\", new JArray($########item.GetType().Name.ToString(), $########item.ID))))));$###}");
+                                initializeReferences.Append("$###if (" + prop.Name + " != null)$###{$####for (int i = 0; i < " + prop.Name + ".Count; i++)" +
+                                    "$####{$#####dynamic temp = dict[" + prop.Name + "[i].ReferenceId];$#####" + prop.Name + "[i] = temp;$####}$###}");
+                            }
                         }
                     }
                 }
@@ -384,7 +401,7 @@ namespace Cogs.Publishers
             if (name.Equals("int")) { return "int.Parse(parts[" + i + "].Trim().Replace(\"\\\"\", \"\"))"; }
             if (name.Equals("double")) { return "double.Parse(parts[" + i + "].Trim().Replace(\"\\\"\", \"\"))"; }
             if (name.Equals("decimal")) { return "decimal.Parse(parts[" + i + "].Trim().Replace(\"\\\"\", \"\"))"; }
-            if (model.ItemTypes.Where(x => x.Name == name).ToList().Count > 0) { return "(" + name + ")dict[parts[i + 11].Trim().Replace(\"\\\"\", \"\")]"; }
+            if (model.ItemTypes.Where(x => x.Name == name).ToList().Count > 0) { return "(" + name + ")dict[parts[i + 7].Trim().Replace(\"\\\"\", \"\")]"; }
             return "parts[" + i + "].Trim().Replace(\"\\\"\", \"\")";
         }
 
@@ -648,7 +665,9 @@ namespace cogsBurger
                 var props = obj.Children();
                 if (single != null)
                 {
-                    var id = props.ElementAt(1).First.Last.ToString();
+                    string id = null;
+                    try { id = props.ElementAt(0).First.Last.ToString(); }
+                    catch (Exception) { id = props.ElementAt(1).First.Last.ToString(); }
                     single.ReferenceId = id;
                 }
                 else
