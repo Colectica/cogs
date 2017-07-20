@@ -97,7 +97,7 @@ namespace Cogs.Publishers
                     }
                     else if (IsItemType(prop.DataType.Name))
                     {
-                        temp.Reference = "#/properties/" + prop.DataType.Name;
+                        temp.Reference = "#/definitions/Reference";
                     }
                     else
                     {
