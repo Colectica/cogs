@@ -452,6 +452,44 @@ namespace Cogs.Tests.Integration
             Assert.Equal(patty.GYear, patty2.GYear);
         }
 
+        [Fact]
+        public async void SimpleTypeGyearList()
+        {
+            ItemContainer container = new ItemContainer();
+            Cheese cheese = new Cheese
+            {
+                ID = Guid.NewGuid().ToString(),
+                Years = new List<Tuple<int, string>>()
+                {
+                    new Tuple<int, string>(2017, "utc"),
+                    new Tuple<int, string>(1996, null)
+                }
+            };
+            container.Items.Add(cheese);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Cheese>(container2.Items.First());
+
+            Cheese cheese2 = container2.Items.First() as Cheese;
+            Assert.Equal(cheese.Years.Count, cheese2.Years.Count);
+            for (int i = 0; i < cheese.Years.Count; i++)
+            {
+                Assert.Equal(cheese.Years[i].Item1, cheese2.Years[i].Item1);
+                Assert.Equal(cheese.Years[i].Item2, cheese2.Years[i].Item2);
+            }
+        }
+
         [Fact]//PASS
         public async void SimpleTypeGMonthDay()
         {
@@ -667,36 +705,6 @@ namespace Cogs.Tests.Integration
         public async void SimpleTypeCogsDateDateTime()
         {
             ItemContainer container = new ItemContainer();
-//            VeggiePatty patty = new VeggiePatty
-//            {
-//                ID = Guid.NewGuid().ToString(),
-//                Cogsdate =new DataAnnotations.CogsDate
-//                {
-//                    Date = new DateTime(2017, 9, 2),
-//                    DateTime = new DateTimeOffset(new DateTime(2017, 9, 2, 13, 23, 32), new TimeSpan(+1, 0, 0)),
-//                    GYearMonth = new Tuple<int, int, string>(2017, 9, "utc"),
-//                    GYear = new Tuple<int, string>(2017, "utc")
-
-//                }
-//            };
-//            container.Items.Add(patty);
-
-//            JsonSchema4 schema = await GetJsonSchema();
-//            string json = container.Serialize();
-//            var errors = schema.Validate(json);
-//            Assert.Empty(errors);
-
-//            ItemContainer container2 = new ItemContainer();
-//            container2.Parse(json);
-
-//            string json2 = container2.Serialize();
-//            Assert.Equal(json, json2);
-
-//            Assert.NotEmpty(container2.Items);
-//            Assert.IsType<VeggiePatty>(container2.Items.First());
-
-//            VeggiePatty patty2 = container2.Items.First() as VeggiePatty;
-//            Assert.Equal(patty.Cogsdate, patty2.Cogsdate);
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
@@ -1013,9 +1021,9 @@ namespace Cogs.Tests.Integration
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
-            Assert.IsType<Animal>(container2.Items[1]);
+            Assert.IsType<Animal>(container2.Items.First());
 
-            Animal animal2 = container2.Items[1] as Animal;
+            Animal animal2 = container2.Items.First() as Animal;
             Assert.NotEmpty(animal2.MeatPieces);
             Assert.NotNull(animal2.MeatPieces[0]);
             Assert.NotEmpty(animal2.MeatPieces[0].SubComponents);

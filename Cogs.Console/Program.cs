@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Xml;
 
 namespace Cogs.Console
 {
@@ -81,7 +82,17 @@ namespace Cogs.Console
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
                     var targetNamespace = namespaceUri.Value() ?? "cogs:default";
-                    var prefix = namespaceUri.Value() ?? "cogs";
+                    var prefix = namespaceUriPrefix.Value() ?? "cogs";
+
+                    try
+                    {
+                        XmlConvert.VerifyName(prefix);
+                    }
+                    catch(XmlException xmlEx)
+                    {
+                        CogsError xmlPrefixError = new CogsError(ErrorLevel.Error, "Invalid xml prefix string", xmlEx);
+                        HandleErrors(new List<CogsError>() { xmlPrefixError });
+                    }
 
                     // read cogs directory and validate the contents
                     var directoryReader = new CogsDirectoryReader();                    
