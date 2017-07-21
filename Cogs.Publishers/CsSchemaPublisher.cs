@@ -207,13 +207,9 @@ namespace Cogs.Publishers
                         {
                             newClass.Append("$##[JsonConverter(typeof(SimpleTypeConverter))]");
                             SimpleToJson(origDataTypeName, prop.Name, "", true, newClass);
-                            if (prop.DataTypeName.Equals("CogsDate"))
-                            {
-                                reusableToJson.Append("$###if (" + prop.Name + ".GetValue() != null)");
-                            }
-                            else { reusableToJson.Append("$###if (" + prop.Name + " != null && " + prop.Name + ".Count > 0)"); }
+                            reusableToJson.Append("$###if (" + prop.Name + " != null && " + prop.Name + ".Count > 0)");
                             reusableToJson.Append("$###{$####var prop = new JProperty(\"" + prop.Name + "\", new JArray());$####foreach (var item in " +
-                                prop.Name + ")$####{$#####" + SimpleToJson(origDataTypeName, prop.Name, "", true) + "$####}$####" + start + "prop);$###}");
+                                prop.Name + ")$####{" + SimpleToJson(origDataTypeName, prop.Name, "", true) + "$####}$####" + start + "prop);$###}");
                         }
                         else if (model.ReusableDataTypes.Contains(prop.DataType))
                         {
@@ -561,12 +557,11 @@ namespace Cogs.Publishers
                     ".GetValue())))";
                 }
                 if (builder != null) { builder.Append("$##[JsonProperty(\"" + name + "\")]"); }
-                return "$#####((JArray)prop.First).Add(new JObject($#####new JProperty(item.UsedType.ToString(), item.GetValue());";
+                return "$#####((JArray)prop.First).Add(new JObject($######new JProperty(item.GetUsedType(), item.GetValue())));";
             }
             if (!isList) { return start + "new JProperty(\"" + name + "\", " + name + ")"; }
             return "$#####((JArray)prop.First).Add(item);";
         }
-
 
 
         // creates a file call IIdentifiable.cs which holds the IIdentifiable interface from which all item types descend

@@ -906,6 +906,45 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
+        public async void SimpleTypeCogsDateList()
+        {
+            ItemContainer container = new ItemContainer();
+            Condiment condiment = new Condiment
+            {
+                ID = Guid.NewGuid().ToString(),
+                Dates = new List<DataAnnotations.CogsDate>
+                {
+                    new DataAnnotations.CogsDate(new TimeSpan(1562)),
+                    new DataAnnotations.CogsDate(new Tuple<int, string>(2017, "utc")),
+                    new DataAnnotations.CogsDate(new DateTimeOffset(new DateTime(1996, 8, 23, 4, 37, 4),
+                        new TimeSpan(+3, 0, 0)), false)
+                }
+            };
+            container.Items.Add(condiment);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Condiment>(container2.Items.First());
+
+            Condiment condiment2 = container2.Items.First() as Condiment;
+            Assert.Equal(condiment.Dates.Count, condiment2.Dates.Count);
+            for (int i = 0; i < condiment.Dates.Count; i++)
+            {
+                Assert.Equal(condiment.Dates[i].GetValue(), condiment2.Dates[i].GetValue());
+            }
+        }
+
+        [Fact]
         public async void SimpleListTimes()
         {
             ItemContainer container = new ItemContainer();
@@ -915,7 +954,7 @@ namespace Cogs.Tests.Integration
                 Times = new List<DateTimeOffset>
                 {
                     new DateTimeOffset(2017, 6, 9, 2, 32, 32, new TimeSpan()),
-                    new DateTimeOffset(1996, 8, 23, 4, 32, 3, new TimeSpan())
+                    new DateTimeOffset(1996, 8, 23, 4, 32, 3, new TimeSpan()),
                 }
             };
             container.Items.Add(animal);
