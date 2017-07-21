@@ -303,18 +303,18 @@ namespace Cogs.Publishers
             StringBuilder builder = new StringBuilder(@"
                 else if (parts[i].Contains(""" + name + @""") && thisObj)
                 {
-                    int counter = 1;
                     ");
             if (main != null)
             {
                 builder.Append(name + " = new List<" + type + @">();
-                    Initialize" + name + "(" + name + @", parts, i, counter);
+                    Initialize" + name + "(" + name + @", parts, i);
                 }");
                 InitializeReusableList(prop, model, main, name, type);
             }
             else
             {
                 builder.Append(name + " = new " + type + @"();
+                    int counter = 1;
                     i++;
                     while (i < parts.Length && counter > 0)
                     {
@@ -359,32 +359,27 @@ namespace Cogs.Publishers
         private void InitializeReusableList(Property prop, CogsModel model, StringBuilder main, string name, string type)
         {
             StringBuilder subs = new StringBuilder();
-            main.Append("$##private Tuple<int, int> Initialize" + name + "(List<" + type + "> list, string[] parts, int i, int counter)$##{$###" + type + @" obj = null;
-            i++;
-            while (i < parts.Length && counter > 0)
+            main.Append("$##private int Initialize" + name + "(List<" + type + "> list, string[] parts, int i)$##{$###" + type + @" obj = null;
+            bool open = true;
+            i += 3;
+            while (i < parts.Length && open)
             {
                 var line = parts[i].Trim().Replace(""\"""", """");
-                if (line.Equals(""{"")) { counter++; }
-                else if (line.Equals(""}"")) { counter--; }
+                if (line.Equals(""]"")) { open = false; }
                 else if (line.Equals(""" + type + @"""))
                 {
-                    if (obj != null) { " + name + @".Add(obj); }
+                    if (obj != null) { list.Add(obj); }
                     obj = new " + type + @"();
                 }");
             foreach (var p in prop.DataType.Properties)
             {
-                if (p.DataTypeName.Equals("cogsDate")) { main.Append("$#####else if (line.Equals(\"cogsDate\"))"); }
-                else { main.Append("$#####else if (line.Equals(\"" + p.Name + "\"))"); }
+                if (p.DataTypeName.Equals("cogsDate")) { main.Append("$####else if (line.Equals(\"cogsDate\"))"); }
+                else { main.Append("$####else if (line.Equals(\"" + p.Name + "\"))"); }
                 if (!p.MaxCardinality.Equals("1"))
                 {
                     if (p.DataTypeName.Equals(type))
                     {
-                        main.Append(@"
-                {
-                    Tuple<int, int> val = Initialize" + name + "(obj." + p.Name + @", parts, i, counter);
-                    i = val.Item1;
-                    counter = val.Item2;
-                }");
+                        main.Append(" { i = Initialize" + name + "(obj." + p.Name + @", parts, i); }");
                     }
                     else if (model.ReusableDataTypes.Contains(prop.DataType))
                     {
@@ -412,7 +407,7 @@ namespace Cogs.Publishers
                 }
                 else { main.Append(" " + InitializeObject(p, model, false, "obj", " = ")); }
             }
-            main.Append("$####i++;$###}$###if (obj != null) { list.Add(obj); }$###return new Tuple<int, int>(i, counter);$##}" + subs);
+            main.Append("$####i++;$###}$###if (obj != null) { list.Add(obj); }$###return i;$##}" + subs);
         }
 
 
