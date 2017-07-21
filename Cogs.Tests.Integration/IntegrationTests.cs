@@ -1033,6 +1033,63 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
+        public async void NestedReusableItemLists()
+        {
+            ItemContainer container = new ItemContainer();
+            Animal animal = new Animal
+            {
+                ID = Guid.NewGuid().ToString()
+            };
+            container.Items.Add(animal);
+
+            Part sirloin = new Part()
+            {
+                PartName = "Sirloin",
+                SubComponents = new List<Part>()
+                {
+                    new Part()
+                    {
+                        PartName = "Tenderloin",
+                        SubComponents = new List<Part>()
+                        {
+                            new Part()
+                            {
+                                PartName = "marbled wagyu"
+                            },
+                            new Part()
+                            {
+                                PartName = "blood"
+                            }
+                        }
+                    }
+                }
+            };
+            animal.MeatPieces.Add(sirloin);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Animal>(container2.Items.First());
+
+            Animal animal2 = container2.Items.First() as Animal;
+            Assert.NotEmpty(animal2.MeatPieces);
+            Assert.NotNull(animal2.MeatPieces[0]);
+            Assert.NotEmpty(animal2.MeatPieces[0].SubComponents);
+            Assert.NotNull(animal2.MeatPieces[0].SubComponents[0]);
+            Assert.NotEmpty(animal2.MeatPieces[0].SubComponents[0].SubComponents);
+            Assert.NotNull(animal2.MeatPieces[0].SubComponents[0].SubComponents[0]);
+        }
+
+        [Fact]
         public void ListsInReusableItemsAreInitialized()
         {
             Part sirloin = new Part();            
