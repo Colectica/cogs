@@ -22,6 +22,10 @@ namespace Cogs.Model
             this.dto = cogsDtoModel;
             this.model = new CogsModel();
 
+            // Copy information about articles.
+            model.ArticlesPath = dto.ArticlesPath;
+            model.ArticleTocEntries.AddRange(dto.ArticleTocEntries);
+
             // First pass: create object stubs.
             foreach (var id in dto.Identification)
             {
@@ -224,7 +228,13 @@ namespace Cogs.Model
         {
             property.Name = dto.Name;
             property.DataTypeName = dto.DataType;
+
             property.MinCardinality = dto.MinCardinality;
+            if (string.IsNullOrWhiteSpace(property.MinCardinality))
+            {
+                property.MinCardinality = "0";
+            }
+
             property.MaxCardinality = dto.MaxCardinality;
             property.Description = dto.Description;
 
