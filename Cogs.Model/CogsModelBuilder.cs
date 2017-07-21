@@ -228,7 +228,13 @@ namespace Cogs.Model
         {
             property.Name = dto.Name;
             property.DataTypeName = dto.DataType;
+
             property.MinCardinality = dto.MinCardinality;
+            if (string.IsNullOrWhiteSpace(property.MinCardinality))
+            {
+                property.MinCardinality = "0";
+            }
+
             property.MaxCardinality = dto.MaxCardinality;
             property.Description = dto.Description;
 
