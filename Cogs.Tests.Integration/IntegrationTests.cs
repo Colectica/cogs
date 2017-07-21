@@ -1087,7 +1087,6 @@ namespace Cogs.Tests.Integration
                 Assert.Equal(animal.LingualDescription[0].Content, animal2.LingualDescription[0].Content);
                 Assert.Equal(animal.LingualDescription[0].Language, animal2.LingualDescription[0].Language);
             }
-            //Assert.Equal(animal.LingualDescription, animal2.LingualDescription);
         }
 
         [Fact]
@@ -1189,6 +1188,74 @@ namespace Cogs.Tests.Integration
             for (int i = 0; i < bread.Gday.Count; i++)
             {
                 Assert.Equal(bread.Gday[i], bread2.Gday[i]);
+            }
+        }
+
+        [Fact]
+        public async void ListOfSimpleTypeGMonthDay()
+        {
+            ItemContainer container = new ItemContainer();
+            Tuple<int, int, string> day1 = new Tuple<int, int, string>(1, 2, "utc");
+            Tuple<int, int, string> day2 = new Tuple<int, int, string>(9, 12, "utc");
+            Tuple<int, int, string> day3 = new Tuple<int, int, string>(12, 23, "utc");
+            Bread bread = new Bread
+            {
+                ID = Guid.NewGuid().ToString(),
+                GMonthDay = new List<Tuple<int, int, string>>() { day1, day2, day3 }
+            };
+            container.Items.Add(bread);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Bread>(container2.Items.First());
+
+            Bread bread2 = container2.Items.First() as Bread;
+            for (int i = 0; i < bread.Gday.Count; i++)
+            {
+                Assert.Equal(bread.Gday[i], bread2.Gday[i]);
+            }
+        }
+
+        [Fact]
+        public async void ListOfSimpleTypeGYearMonth()
+        {
+            ItemContainer container = new ItemContainer();
+            Tuple<int, int, string> ym1 = new Tuple<int, int, string>(1996, 2, "utc");
+            Tuple<int, int, string> ym2 = new Tuple<int, int, string>(2002, 9, "utc");
+            Tuple<int, int, string> ym3 = new Tuple<int, int, string>(2017, 12, "utc");
+            Roll roll = new Roll
+            {
+                ID = Guid.NewGuid().ToString(),
+                GYearMonth = new List<Tuple<int, int, string>>() { ym1, ym2, ym3 }
+            };
+            container.Items.Add(roll);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Roll>(container2.Items.First());
+
+            Roll roll2 = container2.Items.First() as Roll;
+            for(int i = 0; i < roll.GYearMonth.Count; i++)
+            {
+                Assert.Equal(roll.GYearMonth[i], roll2.GYearMonth[i]);
             }
         }
 
