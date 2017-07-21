@@ -427,7 +427,7 @@ namespace Cogs.Publishers
                     return "var y = new JProperty(\"year\", new JObject($#####new JProperty(\"year\", " + name + ".Item1)));$####if (" + name + ".Item2 != null) " +
                     "{ ((JObject)y.First).Add(new JProperty(\"timezone\", " + name + ".Item2)); }$####" + start + "y";
                 }
-                return "new JObject($#####new JProperty(\"year\", " + name + ".Item1)))";
+                return "new JObject($#####new JProperty(\"year\", " + name + ".Item1))";
             }
             if (origDataTypeName.Equals("gMonthDay"))
             {
@@ -444,7 +444,7 @@ namespace Cogs.Publishers
                     return "var d = new JProperty(\"day\", new JObject($#####new JProperty(\"day\", " + name + ".Item1)));$####if (" + name + ".Item2 != null) " +
                     "{ ((JObject)d.First).Add(new JProperty(\"timezone\", " + name + ".Item2)); }$####" + start + "d";
                 }
-                return "new JObject($#####new JProperty(\"day\", " + name + ".Item1)))";
+                return "new JObject($#####new JProperty(\"day\", " + name + ".Item1))";
             }
             if (origDataTypeName.Equals("gMonth"))
             {
@@ -454,7 +454,7 @@ namespace Cogs.Publishers
                     return "var m = new JProperty(\"month\", new JObject($#####new JProperty(\"month\", " + name + ".Item1)));$####if (" + name + ".Item2 != null) " +
                     "{ ((JObject)m.First).Add(new JProperty(\"timezone\", " + name + ".Item2)); }$####" + start + "m";
                 }
-                return "new JObject($#####new JProperty(\"month\", " + name + ".Item1)))";
+                return "new JObject($#####new JProperty(\"month\", " + name + ".Item1))";
             }
             if (origDataTypeName.Equals("anyUri"))
             {
