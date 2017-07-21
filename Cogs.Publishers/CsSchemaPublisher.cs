@@ -71,9 +71,7 @@ namespace Cogs.Publishers
                 var toJsonProperties = new StringBuilder();
                 var initializeReferences = new StringBuilder();
                 var reusableToJson = new StringBuilder();
-                var helpers = new StringBuilder("$##private bool Loop(string name)$##{$###if (string.IsNullOrWhiteSpace(name) || (this.GetType().GetProperties().Where(x => name." +
-                    "ToLower().Equals(x.Name.ToLower())).ToList().Count == 0 $####&& !name.Equals(\"year\") && !name.Equals(\"yearmonth\") && !name.Equals(\"monthday\") && !name.Equals(\"day\") && " +
-                    "!name.Equals(\"date\") && $####!name.Equals(\"datetime\") && !name.Equals(\"time\") && !name.Equals(\"anyuri\") && !name.Equals(\"cogsdate\")))$###{$####return true;$###}$###return false;$##}");
+                var helpers = new StringBuilder();
                 // add abstract to class title if relevant
                 if (item.IsAbstract) { newClass.Append("abstract "); }
                 newClass.Append("class " + item.Name);
@@ -270,7 +268,7 @@ namespace Cogs.Publishers
                     else { newClass.Append("$##public virtual void InitializeReferences(Dictionary<string, IIdentifiable> dict, string json)$##{"); }
                     if (initializeReferences.ToString().Contains("thisObj"))
                     {
-                        newClass.Append("$###string[] parts = json.Split(new string[] { \":\", \"{\", \"}\", \"[\", \"]\", \",\", Environment.NewLine }, " +
+                        newClass.Append("$###string[] parts = json.Split(new string[] { \":\", \"[\", \"]\", \",\", Environment.NewLine }, " +
                         "StringSplitOptions.None);$###bool thisObj = false;$###int reusablesInitialized = 0;$###for (int i = 0; i < parts.Length; i ++)$###{$####" +
                         "if (reusablesInitialized == " + item.Properties.Where(x => model.ReusableDataTypes.Contains(x.DataType)).ToList().Count + ") { return; }$####" +
                         "else if (parts[i].Contains(ID)) { thisObj = true; }" + initializeReferences.ToString() + "$###}$##}" + helpers.ToString() + "$#}$}$");
@@ -309,11 +307,12 @@ namespace Cogs.Publishers
             StringBuilder builder = new StringBuilder(@"
                 else if (parts[i].Contains(""" + name + @""") && thisObj)
                 {
+                    int counter = 1;
                     ");
             if (main != null)
             {
                 builder.Append(name + " = new List<" + type + @">();
-                    Initialize" + name + "(" + name + @", parts, i);
+                    Initialize" + name + "(" + name + @", parts, i, counter);
                 }");
                 InitializeReusableList(prop, model, main, name, type);
             }
@@ -321,30 +320,32 @@ namespace Cogs.Publishers
             {
                 builder.Append(name + " = new " + type + @"();
                     i++;
-                    while (i < parts.Length && Loop(parts[i].Trim().Replace(""\"""", """").ToLower()))
+                    while (i < parts.Length && counter > 0)
                     {
-                        ");
+                        var line = parts[i].Trim().Replace(""\"""", """");
+                        if (line.Equals(""{"")) { counter++; }
+                        else if (line.Equals(""}"")) { counter--; }");
                 foreach (var p in prop.DataType.Properties)
                 {
+                    if (p.DataTypeName.Equals("cogsDate")) { builder.Append("$######else if (line.Equals(\"cogsDate\"))"); }
+                    else { builder.Append("$######else if (line.Equals(\"" + p.Name + "\"))"); }
                     if (!p.MaxCardinality.Equals("1"))
                     {
                         builder.Append(@"
-                        if (parts[i].Contains(""" + p.Name + @"""))
                         {
                             " + name + "." + p.Name + " = new List<" + p.DataTypeName + @">();
                             i++;
-                            while (i < parts.Length && Loop(parts[i].Trim().Replace(""\"""", """").ToLower()))
+                            while (i < parts.Length && counter > 0)
                             {
-                                if(!string.IsNullOrWhiteSpace(parts[i])) { " + name + "." + p.Name + ".Add(" + ReusableTypeConvert(p.DataTypeName, true, model) + @"); }
+                                line = parts[i].Trim().Replace(""\"""", """");
+                                if (line.Equals(""{"")) { counter++; }
+                                else if (line.Equals(""}"")) { counter--; }
+                                else if (!string.IsNullOrWhiteSpace(line)) " + InitializeObject(p, model, true, name, ".Add(") + @"
                                 i++;
                             }
                         }");
                     }
-                    else
-                    {
-                        builder.Append(@"
-                        if (parts[i].Contains(""" + p.Name + "\")) { " + name + "." + p.Name + " = " + ReusableTypeConvert(p.DataTypeName, false, model) + @"; }");
-                    }
+                    else { builder.Append(InitializeObject(p, model, false, name, " = ")); }
                 }
                 builder.Append(@"
                         i++;
@@ -359,25 +360,36 @@ namespace Cogs.Publishers
         private void InitializeReusableList(Property prop, CogsModel model, StringBuilder main, string name, string type)
         {
             StringBuilder subs = new StringBuilder();
-            main.Append("$##private int Initialize" + name + "(List<" + type + "> list, string[] parts, int i)$##{$###" + type + @" obj = null;
+            main.Append("$##private Tuple<int, int> Initialize" + name + "(List<" + type + "> list, string[] parts, int i, int counter)$##{$###" + type + @" obj = null;
             i++;
-            while (i < parts.Length && Loop(parts[i].Trim().Replace(""\"""", """").ToLower()))
+            while (i < parts.Length && counter > 0)
             {
                 var line = parts[i].Trim().Replace(""\"""", """");
-                if (line.Equals(""" + type + @"""))
+                if (line.Equals(""{"")) { counter++; }
+                else if (line.Equals(""}"")) { counter--; }
+                else if (line.Equals(""" + type + @"""))
                 {
-                    if(obj != null) { " + name + @".Add(obj); }
+                    if (obj != null) { " + name + @".Add(obj); }
                     obj = new " + type + @"();
                 }");
             foreach (var p in prop.DataType.Properties)
             {
-                main.Append("$####else if (line.Equals(\"" + p.Name + "\"))");
+                if (p.DataTypeName.Equals("cogsDate")) { main.Append("$#####else if (line.Equals(\"cogsDate\"))"); }
+                else { main.Append("$#####else if (line.Equals(\"" + p.Name + "\"))"); }
                 if (!p.MaxCardinality.Equals("1"))
                 {
-                    if (p.DataTypeName.Equals(type)) { main.Append(" { i = Initialize" + name + "(obj." + p.Name + ", parts, i); }"); }
+                    if (p.DataTypeName.Equals(type))
+                    {
+                        main.Append(@"
+                {
+                    Tuple<int, int> val = Initialize" + name + "(obj." + p.Name + @", parts, i, counter);
+                    i = val.Item1;
+                    counter = val.Item2;
+                }");
+                    }
                     else if (model.ReusableDataTypes.Contains(prop.DataType))
                     {
-                        main.Append(" { i = Initialize" + p.Name + "(obj." + p.Name + ", parts, i); }");
+                        main.Append(" { i = Initialize" + p.Name + "(obj." + p.Name + ", parts, i, int counter); }");
                         InitializeReusableList(p, model, subs, p.Name, p.DataTypeName);
                     }
                     else
@@ -385,17 +397,39 @@ namespace Cogs.Publishers
                         main.Append(@"
                         {
                             i++;
-                            while (i < parts.Length && Loop(parts[i].Trim().Replace(""\"""", """").ToLower()))
+                            while (i < parts.Length && counter > 0)
                             {
-                                if(!string.IsNullOrWhiteSpace(parts[i])) { obj." + p.Name + ".Add(" + ReusableTypeConvert(p.DataTypeName, true, model) + @"); }
+                                line = parts[i].Trim().Replace(""\"""", """");
+                                if (line.Equals(""{"")) { counter++; }
+                                else if (line.Equals(""}"")) { counter--; }
+                                else if (!string.IsNullOrWhiteSpace(line)) " + InitializeObject(p, model, true, "obj", ".Add(") + @"
                                 i++;
                             }
                         }");
                     }
                 }
-                else { main.Append(" { obj." + p.Name + " = " + ReusableTypeConvert(p.DataTypeName, false, model) + @"; }"); }
+                else { main.Append(" " + InitializeObject(p, model, false, "obj", " = ")); }
             }
-            main.Append("$####i++;$###}$###if (obj != null) { list.Add(obj); }$###return i;$##}" + subs);
+            main.Append("$####i++;$###}$###if (obj != null) { list.Add(obj); }$###return new Tuple<int, int>(i, counter);$##}" + subs);
+        }
+
+
+        private string InitializeObject(Property p, CogsModel model, bool isList, string name, string operation)
+        {
+            if (p.DataTypeName.Equals("cogsDate"))
+            {
+                return @"
+                        {
+                            if (parts[i + 2].Trim().Replace(""\"""", """").Equals(""datetime""))
+                            {
+                                " + name + "." + p.Name + @" = new CogsDate(parts[i + 2].Trim().Replace(""\"""", """"), (parts[i + 3] + "":"" + parts[i + 4] + "":"" + parts[i + 5] +
+                                   "":"" + parts[i + 6] + "":"" + parts[i + 7]).Trim().Replace(""\"""", """"));
+                            }
+                            else { " + name + "." + p.Name + @" = new CogsDate(parts[i + 2].Trim().Replace(""\"""", """"), parts[i + 3].Trim().Replace(""\"""", """")); }
+                        }";
+            }
+            if (operation.Equals(".Add(")) { return "{ " + name + "." + p.Name + operation + ReusableTypeConvert(p.DataTypeName, isList, model) + @"); }"; }
+            return "{ " + name + "." + p.Name + operation + ReusableTypeConvert(p.DataTypeName, isList, model) + @"; }";
         }
 
 
@@ -406,7 +440,7 @@ namespace Cogs.Publishers
             if (name.Equals("int")) { return "int.Parse(parts[" + i + "].Trim().Replace(\"\\\"\", \"\"))"; }
             if (name.Equals("double")) { return "double.Parse(parts[" + i + "].Trim().Replace(\"\\\"\", \"\"))"; }
             if (name.Equals("decimal")) { return "decimal.Parse(parts[" + i + "].Trim().Replace(\"\\\"\", \"\"))"; }
-            if (model.ItemTypes.Where(x => x.Name == name).ToList().Count > 0) { return "(" + name + ")dict[parts[i + 7].Trim().Replace(\"\\\"\", \"\")]"; }
+            if (model.ItemTypes.Where(x => x.Name == name).ToList().Count > 0) { return "(" + name + ")dict[parts[i + 5].Trim().Replace(\"\\\"\", \"\")]"; }
             return "parts[" + i + "].Trim().Replace(\"\\\"\", \"\")";
         }
 
@@ -516,7 +550,7 @@ namespace Cogs.Publishers
                 if (!isList)
                 {
                     if (builder != null) { builder.Append("$##[JsonProperty(\"cogsdate\")]"); }
-                    return start + "new JProperty(\"cogsDate\", new JObject($#####new JProperty(" + name + ".UsedType.ToString(), " + name +
+                    return start + "new JProperty(\"cogsDate\", new JObject($#####new JProperty(" + name + ".GetUsedType(), " + name +
                     ".GetValue())))";
                 }
                 if (builder != null) { builder.Append("$##[JsonProperty(\"" + name + "\")]"); }
@@ -811,7 +845,7 @@ namespace cogsBurger
             if (objectType == typeof(CogsDate))
             {
                 string[] values = obj.First.First.ToString().Split(new char[] { ' ', '/', ':', '-', '+', 'T', 'Z' });
-                if (((JProperty)obj.First).Name.Equals(""Duration"")) { return new CogsDate(new TimeSpan(int.Parse(values[0]))); }
+                if (((JProperty)obj.First).Name.Equals(""duration"")) { return new CogsDate(new TimeSpan(int.Parse(values[0]))); }
                 if (values.Length == 1) { return new CogsDate(new Tuple<int, string>(int.Parse(values[0]), null)); }
                 if (values.Length == 2)
                 {

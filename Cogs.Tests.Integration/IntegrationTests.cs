@@ -980,6 +980,38 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
+        public async void ReusabletoSimple()
+        {
+            ItemContainer container = new ItemContainer();
+            Bread bread = new Bread
+            {
+                ID = Guid.NewGuid().ToString(),
+                Size = new Dimensions
+                {
+                    CogsDate = new DataAnnotations.CogsDate(new TimeSpan(10000000))
+                }
+            };
+            container.Items.Add(bread);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Bread>(container2.Items.First());
+
+            Bread bread2 = container2.Items.First() as Bread;
+            Assert.Equal(bread.Size.CogsDate.GetValue(), bread2.Size.CogsDate.GetValue());
+        }
+
+        [Fact]
         public async void NestedReusableItem()
         {
             ItemContainer container = new ItemContainer();
