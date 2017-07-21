@@ -7,6 +7,7 @@ using NJsonSchema;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Text;
 using Xunit;
 
@@ -39,30 +40,32 @@ namespace Cogs.Tests
             var schemaData = File.ReadAllText(Path.Combine(outputPath, "jsonSchema" + ".json"));
             var schema = await JsonSchema4.FromJsonAsync(schemaData);
 
-            var p = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "Cogs.Tests.Console");
-            var jsondata1 = File.ReadAllText(Path.Combine(p, "testing1_reference_reusable.json"));
-            var jsondata2 = File.ReadAllText(Path.Combine(p, "testing2_reference_Object.json"));
-            var jsondata3 = File.ReadAllText(Path.Combine(p, "test3_SimpleType.json"));
-            var jsondata4 = File.ReadAllText(Path.Combine(p, "test4_invalid_json.json"));
-            var jsondata5 = File.ReadAllText(Path.Combine(p, "ToDo.json"));
-            var jsondata6 = File.ReadAllText(Path.Combine(p, "jsonOut.json"));
-            var jsondata7 = File.ReadAllText(Path.Combine(p, "testing5_more.json"));
-
-            var validate1 = schema.Validate(jsondata1);
-            var validate2 = schema.Validate(jsondata2);
-            var validate3 = schema.Validate(jsondata3);
-            var validate4 = schema.Validate(jsondata4);
-            var validate5 = schema.Validate(jsondata5);
-            var validate6 = schema.Validate(jsondata6);
-            var validate7 = schema.Validate(jsondata7);
-
-            Assert.Empty(validate1);
-            Assert.Empty(validate2);
-            Assert.Empty(validate3);
-            Assert.NotEmpty(validate4);
-            Assert.Empty(validate5);
-            Assert.Empty(validate6);
-            Assert.Empty(validate7);
+            string[] tests = new string[]
+            {
+                "testing1_reference_reusable.json",
+                "testing2_reference_Object.json",
+                "test3_SimpleType.json",
+                "test4_invalid_json.json",
+                "ToDo.json",
+                "jsonOut.json",
+                "testing5_more.json"
+            };
+            foreach (var test in tests)
+            {
+                using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Cogs.Tests." + test))
+                {
+                    StringBuilder lines = new StringBuilder();
+                    using (StreamReader reader = new StreamReader(stream))
+                    {
+                        string line;
+                        while ((line = reader.ReadLine()) != null)
+                        {
+                            lines.Append(line);
+                        }
+                    }
+                    Assert.Empty(schema.Validate(lines.ToString()));
+                }
+            }
         }
 
         [Fact]
