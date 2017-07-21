@@ -16,6 +16,7 @@ namespace Cogs.Publishers
     {
         private string outputDirectory;
         private CogsModel cogsModel;
+        private string sourcePath;
 
         public void Build(CogsModel cogsModel, string outputDirectory)
         {
@@ -23,6 +24,7 @@ namespace Cogs.Publishers
             this.outputDirectory = outputDirectory;
 
             CreateSphinxSkeleton();
+            CopyArticles();
             BuildTopIndex();
             BuildItemTypePages();
             BuildReusableTypePages();
@@ -42,7 +44,7 @@ namespace Cogs.Publishers
             File.WriteAllText(makefileFileName, makefileContents);
 
             // source directory
-            string sourcePath = Path.Combine(outputDirectory, "source");
+            sourcePath = Path.Combine(outputDirectory, "source");
             Directory.CreateDirectory(sourcePath);
 
             // source/conf.py
@@ -51,13 +53,49 @@ namespace Cogs.Publishers
             File.WriteAllText(confDotPyFileName, confDotPyContent);
         }
 
+        private void CopyArticles()
+        {
+            if (string.IsNullOrWhiteSpace(cogsModel.ArticlesPath) ||
+                !Directory.Exists(cogsModel.ArticlesPath))
+            {
+                return;
+            }
+
+            // TODO Make this work on Unix, too.
+            Process proc = new Process();
+            proc.StartInfo.UseShellExecute = false;
+            proc.StartInfo.FileName = @"C:\WINDOWS\system32\xcopy.exe";
+            proc.StartInfo.Arguments = $"{cogsModel.ArticlesPath} {sourcePath} /E /I";
+            proc.Start();
+            proc.WaitForExit();
+        }
+
         private void BuildTopIndex()
         {
             var builder = new StringBuilder();
 
+            // Title
             builder.AppendLine("Example Title");
             builder.AppendLine("=============");
             builder.AppendLine();
+
+            // Articles TOCs
+            if (cogsModel.ArticleTocEntries.Count > 0)
+            {
+                builder.AppendLine(".. toctree::");
+                builder.AppendLine("   :maxdepth: 1");
+                builder.AppendLine("   :caption: Getting Started");
+                builder.AppendLine();
+
+                foreach (string entry in cogsModel.ArticleTocEntries)
+                {
+                    builder.AppendLine($"   {entry}");
+                }
+
+                builder.AppendLine();
+            }
+            
+            // Topics TOC
             builder.AppendLine(".. toctree::");
             builder.AppendLine("   :maxdepth: 1");
             builder.AppendLine("   :caption: Topics");
@@ -67,10 +105,12 @@ namespace Cogs.Publishers
             {
                 builder.AppendLine($"   topics/{view.Name}/index");
             }
+            builder.AppendLine();
 
+            // ItemTypes and ReusableTypes TOC
             builder.AppendLine(".. toctree::");
             builder.AppendLine("   :maxdepth: 1");
-            builder.AppendLine("   :caption: Full Contents");
+            builder.AppendLine("   :caption: Items and Fields");
             builder.AppendLine();
             builder.AppendLine("   item-types/index");
             builder.AppendLine("   reusable-types/index");

@@ -520,8 +520,9 @@ namespace Cogs.Publishers
                     "{ ((JObject)d.First).Add(new JProperty(\"timezone\", " + name + ".Item2)); }$####" + start + "d";
                 }
                 if (builder != null) { builder.Append("$##[JsonProperty(\"" + name + "\")]"); }
-                return "$#####if (item.item2 != null) {((JArray)prop.First).Add(new JObject(new JProperty(\"day\", item.Item1), new JProperty(\"timezone\", item.item2))); }" +
-                    "$#####else { ((JArray)prop.First).Add( ((JArray)prop.First).Add(new JObject(new JProperty(\"day\", item.Item1))); }";
+                return "$#####if (item.Item2 != null) {((JArray)prop.First).Add(new JObject(new JProperty(\"day\", item.Item1), new JProperty(\"timezone\", item.Item2))); }" +
+                    "$#####else { ((JArray)prop.First).Add(new JObject(new JProperty(\"day\", item.Item1))); }";
+
             }
             if (origDataTypeName.ToLower().Equals("gmonth"))
             {
@@ -532,8 +533,8 @@ namespace Cogs.Publishers
                     "{ ((JObject)m.First).Add(new JProperty(\"timezone\", " + name + ".Item2)); }$####" + start + "m";
                 }
                 if (builder != null) { builder.Append("$##[JsonProperty(\"" + name + "\")]"); }
-                return "$#####if (item.item2 != null) { ((JArray)prop.First).Add(new JObject(new JProperty(\"month\", item.Item1), new JProperty(\"timezone\", item.item2))); }" +
-                    "$#####else { ((JArray)prop.First).Add( ((JArray)prop.First).Add(new JObject(new JProperty(\"month\", item.Item1))); }";
+                return "$#####if (item.Item2 != null) { ((JArray)prop.First).Add(new JObject(new JProperty(\"month\", item.Item1), new JProperty(\"timezone\", item.Item2))); }" +
+                    "$#####else { ((JArray)prop.First).Add(new JObject(new JProperty(\"month\", item.Item1))); }";
             }
             if (origDataTypeName.ToLower().Equals("anyuri"))
             {

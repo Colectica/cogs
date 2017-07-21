@@ -365,7 +365,7 @@ namespace Cogs.Tests.Integration
             Assert.Equal(hamburger.DateTime, hamburger2.DateTime);
         }
 
-        [Fact]//test fail when timespan is added 
+        [Fact]
         public async void SimpleTypeTime()
         {
             ItemContainer container = new ItemContainer();
@@ -1076,6 +1076,152 @@ namespace Cogs.Tests.Integration
         {
             Animal cow = new Animal();
             Assert.NotNull(cow.Times);
+        }
+
+        [Fact]
+        public async void ListOfReusableType()
+        {
+            ItemContainer container = new ItemContainer();
+            MultilingualString describe1 = new MultilingualString
+            {
+                Content = "This is in english UK",
+                Language = "eng-uk"
+            };
+            MultilingualString describe2 = new MultilingualString
+            {
+                Content = "This is in english US",
+                Language = "eng-sub"
+            };
+            Animal animal = new Animal
+            {
+                ID = Guid.NewGuid().ToString(),
+                LingualDescription = new List<MultilingualString>() {describe1, describe2 }
+            };
+            container.Items.Add(animal);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Animal>(container2.Items.First());
+
+            Animal animal2 = container2.Items[0] as Animal;
+            for(int i = 0; i < animal.LingualDescription.Count; i++)
+            {
+                Assert.Equal(animal.LingualDescription[0].Content, animal2.LingualDescription[0].Content);
+                Assert.Equal(animal.LingualDescription[0].Language, animal2.LingualDescription[0].Language);
+            }
+            //Assert.Equal(animal.LingualDescription, animal2.LingualDescription);
+        }
+
+        [Fact]
+        public async void ListOfSimpleTypeGyear()
+        {
+            ItemContainer container = new ItemContainer();
+            Tuple<int, string> year1 = new Tuple<int, string>(1997, "utc");
+            Tuple<int, string> year2 = new Tuple<int, string>(2002, "utc");
+            Tuple<int, string> year3 = new Tuple<int, string>(2017, "utc");
+            Bread bread = new Bread
+            {
+                ID = Guid.NewGuid().ToString(),
+                Gyear = new List<Tuple<int, string>>() { year1, year2, year3 }
+            };
+            container.Items.Add(bread);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Bread>(container2.Items.First());
+
+            Bread bread2 = container2.Items.First() as Bread;
+            for(int i = 0; i <  bread.Gyear.Count;i++)
+            {
+                Assert.Equal(bread.Gyear[i], bread2.Gyear[i]);
+            }
+        }
+
+        [Fact]
+        public async void ListOfSimpleTypeGMonth()
+        {
+            ItemContainer container = new ItemContainer();
+            Tuple<int, string> month1 = new Tuple<int, string>(6, "utc");
+            Tuple<int, string> month2 = new Tuple<int, string>(9, "utc");
+            Tuple<int, string> month3 = new Tuple<int, string>(17, "utc");
+            Bread bread = new Bread
+            {
+                ID = Guid.NewGuid().ToString(),
+                Gmonth = new List<Tuple<int, string>>() { month1, month2, month3 }
+            };
+            container.Items.Add(bread);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Bread>(container2.Items.First());
+
+            Bread bread2 = container2.Items.First() as Bread;
+            for (int i = 0; i < bread.Gmonth.Count; i++)
+            {
+                Assert.Equal(bread.Gmonth[i], bread2.Gmonth[i]);
+            }
+        }
+
+        [Fact]
+        public async void ListOfSimpleTypeGDay()
+        {
+            ItemContainer container = new ItemContainer();
+            Tuple<int, string> day1 = new Tuple<int, string>(1, "utc");
+            Tuple<int, string> day2 = new Tuple<int, string>(9, "utc");
+            Tuple<int, string> day3 = new Tuple<int, string>(12, "utc");
+            Bread bread = new Bread
+            {
+                ID = Guid.NewGuid().ToString(),
+                Gday = new List<Tuple<int, string>>() { day1, day2, day3 }
+            };
+            container.Items.Add(bread);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Bread>(container2.Items.First());
+
+            Bread bread2 = container2.Items.First() as Bread;
+            for (int i = 0; i < bread.Gday.Count; i++)
+            {
+                Assert.Equal(bread.Gday[i], bread2.Gday[i]);
+            }
         }
 
         private async Task<JsonSchema4> GetJsonSchema()
