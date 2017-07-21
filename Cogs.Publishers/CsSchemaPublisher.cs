@@ -71,7 +71,9 @@ namespace Cogs.Publishers
                 var toJsonProperties = new StringBuilder();
                 var initializeReferences = new StringBuilder();
                 var reusableToJson = new StringBuilder();
-                var helpers = new StringBuilder();
+                var helpers = new StringBuilder("$##private bool Loop(string name)$##{$###if (string.IsNullOrWhiteSpace(name) || (this.GetType().GetProperties().Where(x => name." +
+                    "ToLower().Equals(x.Name.ToLower())).ToList().Count == 0 $####&& !name.Equals(\"year\") && !name.Equals(\"yearmonth\") && !name.Equals(\"monthday\") && !name.Equals(\"day\") && " +
+                    "!name.Equals(\"date\") && $####!name.Equals(\"datetime\") && !name.Equals(\"time\") && !name.Equals(\"anyuri\") && !name.Equals(\"cogsdate\")))$###{$####return true;$###}$###return false;$##}");
                 // add abstract to class title if relevant
                 if (item.IsAbstract) { newClass.Append("abstract "); }
                 newClass.Append("class " + item.Name);
@@ -88,7 +90,7 @@ namespace Cogs.Publishers
                     {
                         origDataTypeName = prop.DataTypeName;
                         prop.DataTypeName = Translator[prop.DataTypeName];
-                        if (!"boolintdoubleulong".Contains(prop.DataTypeName)) { first = true; }
+                        if (!Isboolintdoubleulong(prop.DataTypeName)) { first = true; }
                     }
                     // create documentation for property
                     newClass.Append("$##/// <summary>$##/// " + prop.Description + "$##/// <summary>");
@@ -140,14 +142,14 @@ namespace Cogs.Publishers
                             newClass.Append("$##[ExclusiveRange(" + prop.MinExclusive + ", " + prop.MaxExclusive + ")]");
                         }
                     }
-                    if (!first && (model.Identification.Contains(prop) || "boolintdoubleulong".Contains(prop.DataTypeName))) { toJsonProperties.Append(","); }
+                    if (!first && (model.Identification.Contains(prop) || Isboolintdoubleulong(prop.DataTypeName))) { toJsonProperties.Append(","); }
                     var start = "((JObject)json.First).Add(";
                     if (model.ReusableDataTypes.Contains(item)) { start = "json.Add("; }
                     if (model.ItemTypes.Contains(prop.DataType) && !item.IsAbstract) { newClass.Append("$##[JsonConverter(typeof(IIdentifiableConverter))]"); }
                     // if there can be at most one, create an instance variable
                     if (!prop.MaxCardinality.Equals("n") && int.Parse(prop.MaxCardinality) == 1)
                     {
-                        if ("boolintdoubleulong".Contains(prop.DataTypeName) || model.Identification.Contains(prop))
+                        if (Isboolintdoubleulong(prop.DataTypeName) || model.Identification.Contains(prop))
                         {
                             toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", " + prop.Name + ")");
                             first = false;
@@ -197,7 +199,7 @@ namespace Cogs.Publishers
                     // otherwise, create a list object to allow multiple
                     else
                     {
-                        if ("boolintdoubleulong".Contains(prop.DataTypeName) || model.Identification.Contains(prop))
+                        if (Isboolintdoubleulong(prop.DataTypeName) || model.Identification.Contains(prop))
                         {
                             toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
                                 "$######select item))");
@@ -291,6 +293,15 @@ namespace Cogs.Publishers
                     Replace("$###((JObject)json.First).Add();", "").Replace("#", "    ").Replace("$", Environment.NewLine).Replace("@", "$"));
             }
         }
+
+
+        private bool Isboolintdoubleulong(string name)
+        {
+            if (name.Equals("bool") || name.Equals("int") || name.Equals("double") || name.Equals("ulong") || name.Equals("long")) { return true; }
+            return false;
+        }
+
+
         private string InitializeReusable(Property prop, CogsModel model, StringBuilder main = null)
         {
             var name = prop.Name;
@@ -310,8 +321,7 @@ namespace Cogs.Publishers
             {
                 builder.Append(name + " = new " + type + @"();
                     i++;
-                    while (i < parts.Length && (string.IsNullOrWhiteSpace(parts[i].Trim().Replace(""\"""", """")) || (this.GetType().GetProperties().Where(x => parts[i].Trim().Replace(""\"""", """").
-                    ToLower().Equals(x.Name.ToLower())).ToList().Count == 0 && !""yearmonthdaydatetimeanyuricogsdate"".Contains(parts[i].Trim().Replace(""\"""", """").ToLower()))))
+                    while (i < parts.Length && Loop(parts[i].Trim().Replace(""\"""", """").ToLower()))
                     {
                         ");
                 foreach (var p in prop.DataType.Properties)
@@ -323,8 +333,7 @@ namespace Cogs.Publishers
                         {
                             " + name + "." + p.Name + " = new List<" + p.DataTypeName + @">();
                             i++;
-                            while (i < parts.Length && (string.IsNullOrWhiteSpace(parts[i].Trim().Replace(""\"""", """")) || (this.GetType().GetProperties().Where(x => parts[i].Trim().Replace(""\"""", """").
-                                ToLower().Equals(x.Name.ToLower())).ToList().Count == 0 && !""yearmonthdaydatetimeanyuricogsdate"".Contains(parts[i].Trim().Replace(""\"""", """").ToLower()))))
+                            while (i < parts.Length && Loop(parts[i].Trim().Replace(""\"""", """").ToLower()))
                             {
                                 if(!string.IsNullOrWhiteSpace(parts[i])) { " + name + "." + p.Name + ".Add(" + ReusableTypeConvert(p.DataTypeName, true, model) + @"); }
                                 i++;
@@ -352,8 +361,7 @@ namespace Cogs.Publishers
             StringBuilder subs = new StringBuilder();
             main.Append("$##private int Initialize" + name + "(List<" + type + "> list, string[] parts, int i)$##{$###" + type + @" obj = null;
             i++;
-            while (i < parts.Length && (string.IsNullOrWhiteSpace(parts[i].Trim().Replace(""\"""", """")) || (this.GetType().GetProperties().Where(x => parts[i].Trim().Replace(""\"""", """").
-                ToLower().Equals(x.Name.ToLower())).ToList().Count == 0 && !""yearmonthdaydatetimeanyuricogsdate"".Contains(parts[i].Trim().Replace(""\"""", """").ToLower()))))
+            while (i < parts.Length && Loop(parts[i].Trim().Replace(""\"""", """").ToLower()))
             {
                 var line = parts[i].Trim().Replace(""\"""", """");
                 if (line.Equals(""" + type + @"""))
@@ -377,8 +385,7 @@ namespace Cogs.Publishers
                         main.Append(@"
                         {
                             i++;
-                            while (i < parts.Length && (string.IsNullOrWhiteSpace(parts[i].Trim().Replace(""\"""", """")) || (this.GetType().GetProperties().Where(x => parts[i].Trim().Replace(""\"""", """").
-                                ToLower().Equals(x.Name.ToLower())).ToList().Count == 0 && !""yearmonthdaydatetimeanyuricogsdate"".Contains(parts[i].Trim().Replace(""\"""", """").ToLower()))))
+                            while (i < parts.Length && Loop(parts[i].Trim().Replace(""\"""", """").ToLower()))
                             {
                                 if(!string.IsNullOrWhiteSpace(parts[i])) { obj." + p.Name + ".Add(" + ReusableTypeConvert(p.DataTypeName, true, model) + @"); }
                                 i++;
@@ -689,8 +696,8 @@ namespace cogsBurger
                 if (single != null)
                 {
                     string id = null;
-                    try { id = props.ElementAt(0).First.Last.ToString(); }
-                    catch (Exception) { id = props.ElementAt(1).First.Last.ToString(); }
+                    if (props.ElementAt(0).First.ToString().Equals(""ref"")) { id = props.ElementAt(1).First.Last.ToString(); }
+                    else { id = props.ElementAt(0).First.Last.ToString(); }
                     single.ReferenceId = id;
                 }
                 else
