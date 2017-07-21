@@ -268,7 +268,7 @@ namespace Cogs.Publishers
                     else { newClass.Append("$##public virtual void InitializeReferences(Dictionary<string, IIdentifiable> dict, string json)$##{"); }
                     if (initializeReferences.ToString().Contains("thisObj"))
                     {
-                        newClass.Append("$###string[] parts = json.Split(new string[] { \":\", \"[\", \"]\", \",\", Environment.NewLine }, " +
+                        newClass.Append("$###string[] parts = json.Split(new string[] { \":\", \",\", Environment.NewLine }, " +
                         "StringSplitOptions.None);$###bool thisObj = false;$###int reusablesInitialized = 0;$###for (int i = 0; i < parts.Length; i ++)$###{$####" +
                         "if (reusablesInitialized == " + item.Properties.Where(x => model.ReusableDataTypes.Contains(x.DataType)).ToList().Count + ") { return; }$####" +
                         "else if (parts[i].Contains(ID)) { thisObj = true; }" + initializeReferences.ToString() + "$###}$##}" + helpers.ToString() + "$#}$}$");
@@ -334,12 +334,15 @@ namespace Cogs.Publishers
                         builder.Append(@"
                         {
                             " + name + "." + p.Name + " = new List<" + p.DataTypeName + @">();
-                            i++;
-                            while (i < parts.Length && counter > 0)
+                            i += 2;
+                            int array = 1;
+                            while (i < parts.Length && counter > 0 && array > 0)
                             {
                                 line = parts[i].Trim().Replace(""\"""", """");
                                 if (line.Equals(""{"")) { counter++; }
                                 else if (line.Equals(""}"")) { counter--; }
+                                else if (line.Equals(""["")) { array++; }
+                                else if (line.Equals(""]"")) { array--; }
                                 else if (!string.IsNullOrWhiteSpace(line)) " + InitializeObject(p, model, true, name, ".Add(") + @"
                                 i++;
                             }
@@ -396,12 +399,15 @@ namespace Cogs.Publishers
                     {
                         main.Append(@"
                         {
-                            i++;
-                            while (i < parts.Length && counter > 0)
+                            i += 2;
+                            int array = 1;
+                            while (i < parts.Length && counter > 0 && array > 0)
                             {
                                 line = parts[i].Trim().Replace(""\"""", """");
                                 if (line.Equals(""{"")) { counter++; }
                                 else if (line.Equals(""}"")) { counter--; }
+                                else if (line.Equals(""["")) { array++; }
+                                else if (line.Equals(""]"")) { array--; }
                                 else if (!string.IsNullOrWhiteSpace(line)) " + InitializeObject(p, model, true, "obj", ".Add(") + @"
                                 i++;
                             }
