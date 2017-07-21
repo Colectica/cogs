@@ -954,7 +954,7 @@ namespace Cogs.Tests.Integration
                 Times = new List<DateTimeOffset>
                 {
                     new DateTimeOffset(2017, 6, 9, 2, 32, 32, new TimeSpan()),
-                    new DateTimeOffset(1996, 8, 23, 4, 32, 3, new TimeSpan()),
+                    new DateTimeOffset(1996, 8, 23, 4, 32, 3, new TimeSpan())
                 }
             };
             container.Items.Add(animal);

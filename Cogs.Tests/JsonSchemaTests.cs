@@ -17,7 +17,7 @@ namespace Cogs.Tests
         [Fact]
         public async System.Threading.Tasks.Task asyncJsonSchemaTestAsync()
         {
-            string path = @"C:\Users\clement\Documents\GitHub\cogs\cogsburger";
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "cogsburger"); 
 
             string subdir = Path.GetFileNameWithoutExtension(Path.GetTempFileName());
             string outputPath = Path.Combine(Path.GetTempPath(), subdir);
@@ -39,13 +39,14 @@ namespace Cogs.Tests
             var schemaData = File.ReadAllText(Path.Combine(outputPath, "jsonSchema" + ".json"));
             var schema = await JsonSchema4.FromJsonAsync(schemaData);
 
-            var jsondata1 = File.ReadAllText(@"C:\Users\clement\Documents\GitHub\cogs\Cogs.Tests.Console\testing1_reference_reusable.json");
-            var jsondata2 = File.ReadAllText(@"C:\Users\clement\Documents\GitHub\cogs\Cogs.Tests.Console\testing2_reference_Object.json");
-            var jsondata3 = File.ReadAllText(@"C:\Users\clement\Documents\GitHub\cogs\Cogs.Tests.Console\test3_SimpleType.json");
-            var jsondata4 = File.ReadAllText(@"C:\Users\clement\Documents\GitHub\cogs\Cogs.Tests.Console\test4_invalid_json.json");
-            var jsondata5 = File.ReadAllText(@"C:\Users\clement\Documents\GitHub\cogs\Cogs.Tests.Console\ToDo.json");
-            var jsondata6 = File.ReadAllText(@"C:\Users\clement\Documents\GitHub\cogs\Cogs.Tests.Console\jsonOut.json");
-            var jsondata7 = File.ReadAllText(@"C:\Users\clement\Documents\GitHub\cogs\Cogs.Tests.Console\testing5_more.json");
+            var p = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "Cogs.Tests.Console");
+            var jsondata1 = File.ReadAllText(Path.Combine(p, "testing1_reference_reusable.json"));
+            var jsondata2 = File.ReadAllText(Path.Combine(p, "testing2_reference_Object.json"));
+            var jsondata3 = File.ReadAllText(Path.Combine(p, "test3_SimpleType.json"));
+            var jsondata4 = File.ReadAllText(Path.Combine(p, "test4_invalid_json.json"));
+            var jsondata5 = File.ReadAllText(Path.Combine(p, "ToDo.json"));
+            var jsondata6 = File.ReadAllText(Path.Combine(p, "jsonOut.json"));
+            var jsondata7 = File.ReadAllText(Path.Combine(p, "testing5_more.json"));
 
             var validate1 = schema.Validate(jsondata1);
             var validate2 = schema.Validate(jsondata2);

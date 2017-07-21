@@ -14,8 +14,7 @@ namespace Cogs.Tests
         [Fact]
         public void CsForHamburgersTest()
         {
-            string path = Path.Combine(Path.Combine(Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), ".."), ".."), ".."), "..");
-            path = Path.Combine(path, "cogsburger");
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "cogsburger");
 
             string subdir = Path.GetFileNameWithoutExtension(Path.GetTempFileName());
             string outputPath = Path.Combine(Path.GetTempPath(), subdir);
