@@ -6,7 +6,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NJsonSchema" Version="9.4.2" />
+    <None Remove="test3_SimpleType.json" />
+    <None Remove="test4_invalid_json.json" />
+    <None Remove="testing1_reference_reusable.json" />
+    <None Remove="testing2_reference_Object.json" />
+    <None Remove="testing5_more.json" />
+    <None Remove="ToDo.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NJsonSchema" Version="9.4.3" />
   </ItemGroup>
 
   <ItemGroup>

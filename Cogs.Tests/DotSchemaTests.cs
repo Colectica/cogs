@@ -12,8 +12,7 @@ namespace Cogs.Tests
         [Fact]
         public void SvgForHamburgersTest()
         {
-            string path = Path.Combine(Path.Combine(Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), ".."), ".."), ".."), "..");
-            path = Path.Combine(path, "cogsburger");
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "cogsburger");
 
             string dotLoc = null;
             if (File.Exists("dot.exe")) { dotLoc = Path.GetFullPath("dot.exe"); }

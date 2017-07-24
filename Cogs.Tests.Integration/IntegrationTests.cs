@@ -906,6 +906,45 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
+        public async void SimpleTypeCogsDateList()
+        {
+            ItemContainer container = new ItemContainer();
+            Condiment condiment = new Condiment
+            {
+                ID = Guid.NewGuid().ToString(),
+                Dates = new List<DataAnnotations.CogsDate>
+                {
+                    new DataAnnotations.CogsDate(new TimeSpan(1562)),
+                    new DataAnnotations.CogsDate(new Tuple<int, string>(2017, "utc")),
+                    new DataAnnotations.CogsDate(new DateTimeOffset(new DateTime(1996, 8, 23, 4, 37, 4),
+                        new TimeSpan(+3, 0, 0)), false)
+                }
+            };
+            container.Items.Add(condiment);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Condiment>(container2.Items.First());
+
+            Condiment condiment2 = container2.Items.First() as Condiment;
+            Assert.Equal(condiment.Dates.Count, condiment2.Dates.Count);
+            for (int i = 0; i < condiment.Dates.Count; i++)
+            {
+                Assert.Equal(condiment.Dates[i].GetValue(), condiment2.Dates[i].GetValue());
+            }
+        }
+
+        [Fact]
         public async void SimpleListTimes()
         {
             ItemContainer container = new ItemContainer();
@@ -980,6 +1019,38 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
+        public async void ReusabletoSimple()
+        {
+            ItemContainer container = new ItemContainer();
+            Bread bread = new Bread
+            {
+                ID = Guid.NewGuid().ToString(),
+                Size = new Dimensions
+                {
+                    CogsDate = new DataAnnotations.CogsDate(new TimeSpan(10000000))
+                }
+            };
+            container.Items.Add(bread);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Bread>(container2.Items.First());
+
+            Bread bread2 = container2.Items.First() as Bread;
+            Assert.Equal(bread.Size.CogsDate.GetValue(), bread2.Size.CogsDate.GetValue());
+        }
+
+        [Fact]
         public async void NestedReusableItem()
         {
             ItemContainer container = new ItemContainer();
@@ -1002,6 +1073,63 @@ namespace Cogs.Tests.Integration
                             new Part()
                             {
                                 PartName = "marbled wagyu"
+                            }
+                        }
+                    }
+                }
+            };
+            animal.MeatPieces.Add(sirloin);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Animal>(container2.Items.First());
+
+            Animal animal2 = container2.Items.First() as Animal;
+            Assert.NotEmpty(animal2.MeatPieces);
+            Assert.NotNull(animal2.MeatPieces[0]);
+            Assert.NotEmpty(animal2.MeatPieces[0].SubComponents);
+            Assert.NotNull(animal2.MeatPieces[0].SubComponents[0]);
+            Assert.NotEmpty(animal2.MeatPieces[0].SubComponents[0].SubComponents);
+            Assert.NotNull(animal2.MeatPieces[0].SubComponents[0].SubComponents[0]);
+        }
+
+        [Fact]
+        public async void NestedReusableItemLists()
+        {
+            ItemContainer container = new ItemContainer();
+            Animal animal = new Animal
+            {
+                ID = Guid.NewGuid().ToString()
+            };
+            container.Items.Add(animal);
+
+            Part sirloin = new Part()
+            {
+                PartName = "Sirloin",
+                SubComponents = new List<Part>()
+                {
+                    new Part()
+                    {
+                        PartName = "Tenderloin",
+                        SubComponents = new List<Part>()
+                        {
+                            new Part()
+                            {
+                                PartName = "marbled wagyu"
+                            },
+                            new Part()
+                            {
+                                PartName = "blood"
                             }
                         }
                     }
