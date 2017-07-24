@@ -25,6 +25,7 @@
     <EmbeddedResource Include="testing2_reference_Object.json" />
     <EmbeddedResource Include="testing5_more.json" />
     <EmbeddedResource Include="ToDo.json" />
+    <EmbeddedResource Include="testing6_more.json" />
   </ItemGroup>
 
   <ItemGroup>
