@@ -31,7 +31,7 @@ namespace Cogs.Publishers
                 obj.Add(new JProperty("dateTime", 
                     new JObject(
                         new JProperty("type", "string"), 
-                        new JProperty("pattern", @"^[0-9][0-9][0-9][0-9]-(0?[1-9]|1[0-2])-(0?[1-9]|[12][0-9]|3[01])([A-Z])(00|0[0-9]|1[0-9]|2[0-3]):([0-9]|[0-5][0-9]):([0-9]|[0-5][0-9])(\+)(00|0[0-9]|1[0-9]|2[0-3]):([0-9]|[0-5][0-9]):([0-9]|[0-5][0-9])$"))));
+                        new JProperty("format", "date-time"))));
 
                 obj.Add(new JProperty("time", 
                     new JObject(
