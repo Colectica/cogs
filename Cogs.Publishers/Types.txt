@@ -195,7 +195,7 @@ namespace Cogs.DataAnnotations
             return null;  
         }
 
-        public string GetValue()
+        public object GetValue()
         {
             switch (UsedType)
             {
@@ -224,7 +224,7 @@ namespace Cogs.DataAnnotations
                 case CogsDateType.Duration:
                     {
 						if (Duration == default(TimeSpan)) { return null; }
-                        return Duration.Ticks.ToString();
+                        return Duration.Ticks;
                     }
             }
             return null;
