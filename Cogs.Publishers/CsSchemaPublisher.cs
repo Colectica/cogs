@@ -538,10 +538,10 @@ namespace Cogs.Publishers
                 if (!isList)
                 {
                     if (builder != null) { builder.Append("$##[JsonProperty(\"anyuri\")]"); }
-                    return start + "new JProperty(\"anyuri\", " + name + ")";
+                    return start + "new JProperty(\"anyURI\", " + name + ")";
                 }
                 if (builder != null) { builder.Append("$##[JsonProperty(\"" + name + "\")]"); }
-                return "$#####((JArray)prop.First).Add(new JObject(new JProperty(\"anyuri\", item)));";
+                return "$#####((JArray)prop.First).Add(item);";
             }
             if (origDataTypeName.ToLower().Equals("cogsdate"))
             {
