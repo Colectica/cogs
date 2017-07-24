@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="jsonOut.json" />
     <None Remove="normativeXMI.xsd" />
     <None Remove="test3_SimpleType.json" />
     <None Remove="test4_invalid_json.json" />
@@ -18,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="jsonOut.json" />
     <EmbeddedResource Include="normativeXMI.xsd" />
     <EmbeddedResource Include="test3_SimpleType.json" />
     <EmbeddedResource Include="test4_invalid_json.json" />

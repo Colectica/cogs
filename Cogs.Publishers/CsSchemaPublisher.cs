@@ -541,7 +541,7 @@ namespace Cogs.Publishers
                     return start + "new JProperty(\"anyuri\", " + name + ")";
                 }
                 if (builder != null) { builder.Append("$##[JsonProperty(\"" + name + "\")]"); }
-                return "$#####((JArray)prop.First).Add(new JObject(new JPropert(\"anyuri\", item))); }";
+                return "$#####((JArray)prop.First).Add(new JObject(new JProperty(\"anyuri\", item)));";
             }
             if (origDataTypeName.ToLower().Equals("cogsdate"))
             {
