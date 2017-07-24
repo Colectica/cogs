@@ -48,7 +48,7 @@ namespace Cogs.Tests
                 "test4_invalid_json.json",
                 "ToDo.json",
                 "testing5_more.json",
-                "testing6_more.json"
+                "jsonOut.json"
             };
             foreach (var test in tests)
             {
