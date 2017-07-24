@@ -2,6 +2,7 @@
 using Cogs.Model;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using Xunit;
@@ -13,7 +14,7 @@ namespace Cogs.Tests
         [Fact]
         public void LoadHamburgerModelTest()
         {
-            string path = "..\\..\\..\\..\\cogsburger";
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "cogsburger");
             var directoryReader = new CogsDirectoryReader();
             var cogsDtoModel = directoryReader.Load(path);
 

@@ -113,6 +113,43 @@ namespace Cogs.DataAnnotations
             }
         }
 
+        public CogsDate(string type, string value) : this()
+        {
+            if (type.Equals("datetime"))
+            {
+                string[] values = value.Split('-', 'T', ':', '+');
+                DateTime = new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]),
+                        int.Parse(values[3]), int.Parse(values[4]), int.Parse(values[5]),
+                        new TimeSpan(int.Parse(values[6]), int.Parse(values[7]), int.Parse(values[8])));
+                UsedType = CogsDateType.DateTime;
+            }
+            else if (type.Equals("date"))
+            {
+                string[] values = value.Split('-');
+                Date = new DateTime(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]));
+                UsedType = CogsDateType.Date;
+            }
+            else if (type.Equals("YearMonth"))
+            {
+                string[] vals = value.Split('-', ' ');
+                if (vals.Length == 3) { GYearMonth = new Tuple<int, int, string>(int.Parse(vals[0]), int.Parse(vals[1]), vals[2]); }
+                else { GYearMonth = new Tuple<int, int, string>(int.Parse(vals[0]), int.Parse(vals[1]), null); }
+                UsedType = CogsDateType.GYearMonth;
+            }
+            else if (type.Equals("year"))
+            {
+                string[] vals = value.Split(' ');
+                if (vals.Length == 2) { GYear = new Tuple<int, string>(int.Parse(vals[0]), vals[1]); }
+                else { GYear = new Tuple<int, string>(int.Parse(vals[1]), null); }
+                UsedType = CogsDateType.GYear;
+            }
+            else if (type.Equals("duration"))
+            {
+                Duration = new TimeSpan(int.Parse(value));
+                UsedType = CogsDateType.Duration;
+            }
+        }
+
         public CogsDate(DateTimeOffset item, bool isDate = false) : this()
         {
             if (isDate)
@@ -143,6 +180,19 @@ namespace Cogs.DataAnnotations
         {
             Duration = item;
             UsedType = CogsDateType.Duration;
+        }
+
+        public string GetUsedType()
+        {
+            switch (UsedType)
+            {
+                case CogsDateType.Date: { return "date"; }
+                case CogsDateType.DateTime: { return "datetime"; }
+                case CogsDateType.Duration: { return "duration"; }
+                case CogsDateType.GYear: { return "year"; }
+                case CogsDateType.GYearMonth: { return "YearMonth"; }
+            }
+            return null;  
         }
 
         public string GetValue()
