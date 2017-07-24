@@ -959,7 +959,7 @@ namespace Cogs.Tests.Integration
             Condiment condiment = new Condiment
             {
                 ID = Guid.NewGuid().ToString(),
-                Uri = new Uri("http://www.colectica.com/")
+                anyURI = new Uri("http://www.colectica.com/")
             };
             container.Items.Add(condiment);
 
@@ -978,7 +978,7 @@ namespace Cogs.Tests.Integration
             Assert.IsType<Condiment>(container2.Items.First());
 
             Condiment condiment2 = container2.Items.First() as Condiment;
-            Assert.Equal(condiment.Uri, condiment2.Uri);
+            Assert.Equal(condiment.anyURI, condiment2.anyURI);
         }
 
         [Fact]
