@@ -63,7 +63,8 @@ namespace Cogs.Tests
                             lines.Append(line);
                         }
                     }
-                    Assert.Empty(schema.Validate(lines.ToString()));
+                    if (!test.Contains("invalid")) { Assert.Empty(schema.Validate(lines.ToString())); }
+                    else { Assert.NotEmpty(schema.Validate(lines.ToString())); }
                 }
             }
         }

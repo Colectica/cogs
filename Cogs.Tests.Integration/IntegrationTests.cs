@@ -190,8 +190,8 @@ namespace Cogs.Tests.Integration
             }
         }
 
-        [Fact]//PASS
-        public async void SimpleTypeRoundtripGMonthYear()
+        [Fact]
+        public async void SimpleTypeGMonthYear()
         {
 
             ItemContainer container = new ItemContainer();
@@ -219,15 +219,15 @@ namespace Cogs.Tests.Integration
             Assert.Equal(bread.Gyearmonth, bread2.Gyearmonth);
         }
 
-        [Fact]//PASS
-        public async void SimpleTypeRoundtripGMonthYearWithoutTimezone()
+        [Fact]
+        public async void SimpleTypeGMonthYearWithoutTimezone()
         {
 
             ItemContainer container = new ItemContainer();
             Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
-                Gyearmonth = new Tuple<int, int, string>(9, 24, "")
+                Gyearmonth = new Tuple<int, int, string>(9, 24, null)
             };
             container.Items.Add(bread);
 
@@ -248,7 +248,42 @@ namespace Cogs.Tests.Integration
             Assert.Equal(bread.Gyearmonth, bread2.Gyearmonth);
         }
 
-        [Fact]//PASS
+        [Fact]
+        public async void SimpleTypeGMonthYearList()
+        {
+
+            ItemContainer container = new ItemContainer();
+            Bread bread = new Bread
+            {
+                ID = Guid.NewGuid().ToString(),
+                GYearMonthList = new List<Tuple<int, int, string>>()
+                {
+                    new Tuple<int, int, string>(9, 24, null),
+                    new Tuple<int, int, string>(12, 93, "utc")
+                }
+            };
+            container.Items.Add(bread);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Bread>(container2.Items.First());
+
+            Bread bread2 = container2.Items.First() as Bread;
+            Assert.Equal(bread.GYearMonthList.Count, bread2.GYearMonthList.Count);
+            Assert.Equal(bread.GYearMonthList[0], bread2.GYearMonthList[0]);
+            Assert.Equal(bread.GYearMonthList[1], bread2.GYearMonthList[1]);
+        }
+
+        [Fact]
         public async void SimpleTypeBoolean()
         {
 
@@ -278,7 +313,7 @@ namespace Cogs.Tests.Integration
             Assert.Equal(roll.SesameSeeds, roll2.SesameSeeds);
         }
 
-        [Fact]//not working -tojson change to .ticks instead of millisecond, Name and CountryofOrigin cannot be null
+        [Fact]
         public async void SimpleTypeDuration()
         {
             ItemContainer container = new ItemContainer();
@@ -306,7 +341,41 @@ namespace Cogs.Tests.Integration
             Assert.Equal(animal.Duration, animal2.Duration);
         }
 
-        [Fact]//PASS
+        [Fact]
+        public async void SimpleTypeDurationList()
+        {
+            ItemContainer container = new ItemContainer();
+            Animal animal = new Animal
+            {
+                ID = Guid.NewGuid().ToString(),
+                Durations = new List<TimeSpan>()
+                {
+                    new TimeSpan(10000000),
+                    new TimeSpan(0)
+                }
+            };
+            container.Items.Add(animal);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            Assert.NotEmpty(container2.Items);
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+            Assert.IsType<Animal>(container2.Items.First());
+
+            Animal animal2 = container2.Items.First() as Animal;
+            Assert.Equal(animal.Durations.Count, animal2.Durations.Count);
+            Assert.Equal(animal.Durations[0], animal.Durations[0]);
+            Assert.Equal(animal.Durations[1], animal.Durations[1]);
+        }
+
+        [Fact]
         public async void SimpleTypeDate()
         {
             ItemContainer container = new ItemContainer();
@@ -335,17 +404,21 @@ namespace Cogs.Tests.Integration
             Assert.Equal(animal.Date.Date, animal2.Date.Date);
         }
 
-        [Fact]//not working 
-        public async void SimpleTypeDateTime()
+        [Fact]
+        public async void SimpleTypeDateList()
         {
             ItemContainer container = new ItemContainer();
-            Animal hamburger = new Animal
+            Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                DateTime = new DateTimeOffset(new DateTime(2017, 9, 2, 13, 23, 32), new TimeSpan(+1, 0, 0))
+                Dates = new List<DateTimeOffset>()
+                {
+                    new DateTime(2017, 9, 2),
+                    new DateTime(1,1,1),
+                    new DateTime(1562, 8, 23, 5, 12, 46)
+                }
             };
-            container.Items.Add(hamburger);
-            container.TopLevelReferences.Add(hamburger);
+            container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
             string json = container.Serialize();
@@ -361,8 +434,76 @@ namespace Cogs.Tests.Integration
             Assert.NotEmpty(container2.Items);
             Assert.IsType<Animal>(container2.Items.First());
 
-            Animal hamburger2 = container2.Items.First() as Animal;
-            Assert.Equal(hamburger.DateTime, hamburger2.DateTime);
+            Animal animal2 = container2.Items.First() as Animal;
+            Assert.Equal(animal.Dates.Count, animal2.Dates.Count);
+            for (int i = 0; i < animal.Dates.Count; i++)
+            {
+                Assert.Equal(animal.Dates[i].Date, animal2.Dates[i].Date);
+            }
+        }
+
+        [Fact]
+        public async void SimpleTypeDateTime()
+        {
+            ItemContainer container = new ItemContainer();
+            Animal animal = new Animal
+            {
+                ID = Guid.NewGuid().ToString(),
+                DateTime = new DateTimeOffset(new DateTime(2017, 9, 2, 13, 23, 32), new TimeSpan(+1, 0, 0))
+            };
+            container.Items.Add(animal);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Animal>(container2.Items.First());
+
+            Animal animal2 = container2.Items.First() as Animal;
+            Assert.Equal(animal.DateTime, animal2.DateTime);
+        }
+
+        [Fact]
+        public async void SimpleTypeDateTimeList()
+        {
+            ItemContainer container = new ItemContainer();
+            Animal animal = new Animal
+            {
+                ID = Guid.NewGuid().ToString(),
+                DateTimes = new List<DateTimeOffset>()
+                {
+                    new DateTimeOffset(new DateTime(2017, 9, 2, 13, 23, 32), new TimeSpan(+1, 0, 0)),
+                    new DateTimeOffset(1,1,1,0,0,0, new TimeSpan())
+                }
+            };
+            container.Items.Add(animal);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Animal>(container2.Items.First());
+
+            Animal animal2 = container2.Items.First() as Animal;
+            Assert.Equal(animal.DateTimes.Count, animal2.DateTimes.Count);
+            Assert.Equal(animal.DateTimes[0], animal2.DateTimes[0]);
+            Assert.Equal(animal.DateTimes[1], animal2.DateTimes[1]);
         }
 
         [Fact]
@@ -392,6 +533,43 @@ namespace Cogs.Tests.Integration
 
             Animal animal2 = container2.Items.First() as Animal;
             Assert.Equal(animal.Time.TimeOfDay, animal2.Time.TimeOfDay);
+        }
+
+        [Fact]
+        public async void SimpleTypeTimeList()
+        {
+            ItemContainer container = new ItemContainer();
+            Animal animal = new Animal
+            {
+                ID = Guid.NewGuid().ToString(),
+                Times = new List<DateTimeOffset>
+                {
+                    new DateTimeOffset(2017, 6, 9, 2, 32, 32, new TimeSpan()),
+                    new DateTimeOffset(1996, 8, 23, 4, 32, 3, new TimeSpan())
+                }
+            };
+            container.Items.Add(animal);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors); // this is validating online at http://www.jsonschemavalidator.net/
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Animal>(container2.Items.First());
+
+            Animal animal2 = container2.Items.First() as Animal;
+            Assert.Equal(animal.Times.Count, animal2.Times.Count);
+            for (int i = 0; i < animal.Times.Count; i++)
+            {
+                Assert.Equal(animal.Times[i].TimeOfDay, animal2.Times[i].TimeOfDay);
+            }
         }
 
         [Fact]
@@ -490,7 +668,7 @@ namespace Cogs.Tests.Integration
             }
         }
 
-        [Fact]//PASS
+        [Fact]
         public async void SimpleTypeGMonthDay()
         {
             ItemContainer container = new ItemContainer();
@@ -519,7 +697,7 @@ namespace Cogs.Tests.Integration
             Assert.Equal(animal.GMonthDay, animal2.GMonthDay);
         }
 
-        [Fact]//PASS
+        [Fact]
         public async void SimpleTypeGMonthDayWithoutTimeZone()
         {
             ItemContainer container = new ItemContainer();
@@ -546,6 +724,42 @@ namespace Cogs.Tests.Integration
 
             Animal animal2 = container2.Items.First() as Animal;
             Assert.Equal(animal.GMonthDay, animal2.GMonthDay);
+        }
+
+        [Fact]
+        public async void SimpleTypeGMonthDayList()
+        {
+            ItemContainer container = new ItemContainer();
+            Animal animal = new Animal
+            {
+                ID = Guid.NewGuid().ToString(),
+                GMonthDays = new List<Tuple<int, int, string>>()
+                {
+                    new Tuple<int, int, string>(9, 3, null),
+                    new Tuple<int, int, string>(0, 0, "utc")
+                }
+                
+            };
+            container.Items.Add(animal);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Animal>(container2.Items.First());
+
+            Animal animal2 = container2.Items.First() as Animal;
+            Assert.Equal(animal.GMonthDays.Count, animal2.GMonthDays.Count);
+            Assert.Equal(animal.GMonthDays[0], animal2.GMonthDays[0]);
+            Assert.Equal(animal.GMonthDays[1], animal2.GMonthDays[1]);
         }
 
         [Fact]
@@ -608,7 +822,44 @@ namespace Cogs.Tests.Integration
             Assert.Equal(animal.GDay, animal2.GDay);
         }
 
-        [Fact]//PASS
+        [Fact]
+        public async void SimpleTypeGDayList()
+        {
+            ItemContainer container = new ItemContainer();
+            Animal animal = new Animal
+            {
+                ID = Guid.NewGuid().ToString(),
+                GDays = new List<Tuple<int, string>>()
+                {
+                    new Tuple<int, string>(15, null),
+                    new Tuple<int, string>(0, "utc")
+                }
+                
+
+            };
+            container.Items.Add(animal);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Animal>(container2.Items.First());
+
+            Animal animal2 = container2.Items.First() as Animal;
+            Assert.Equal(animal.GDays.Count, animal2.GDays.Count);
+            Assert.Equal(animal.GDays[0], animal2.GDays[0]);
+            Assert.Equal(animal.GDays[1], animal2.GDays[1]);
+        }
+
+        [Fact]
         public async void SimpleTypeGMonth()
         {
             ItemContainer container = new ItemContainer();
@@ -637,7 +888,7 @@ namespace Cogs.Tests.Integration
             Assert.Equal(animal.GMonth, animal2.GMonth);
         }
 
-        [Fact]//PASS
+        [Fact]
         public async void SimpleTypeGMonthWihtoutTimeZone()
         {
             ItemContainer container = new ItemContainer();
@@ -667,13 +918,17 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeAnyURI()
+        public async void SimpleTypeGMonthList()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                CDate = new DataAnnotations.CogsDate(new TimeSpan(1562))
+                GMonths = new List<Tuple<int, string>>()
+                {
+                     new Tuple<int, string>(2, null),
+                     new Tuple<int, string>(8, "utc")
+                }
             };
             container.Items.Add(animal);
 
@@ -692,7 +947,73 @@ namespace Cogs.Tests.Integration
             Assert.IsType<Animal>(container2.Items.First());
 
             Animal animal2 = container2.Items.First() as Animal;
-            Assert.Equal(animal.CDate.GetValue(), animal2.CDate.GetValue());
+            Assert.Equal(animal.GMonths.Count, animal2.GMonths.Count);
+            Assert.Equal(animal.GMonths[0], animal2.GMonths[0]);
+            Assert.Equal(animal.GMonths[1], animal2.GMonths[1]);
+        }
+
+        [Fact]
+        public async void SimpleTypeAnyURI()
+        {
+            ItemContainer container = new ItemContainer();
+            Condiment condiment = new Condiment
+            {
+                ID = Guid.NewGuid().ToString(),
+                Uri = new Uri("http://www.colectica.com/")
+            };
+            container.Items.Add(condiment);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Condiment>(container2.Items.First());
+
+            Condiment condiment2 = container2.Items.First() as Condiment;
+            Assert.Equal(condiment.Uri, condiment2.Uri);
+        }
+
+        [Fact]
+        public async void SimpleTypeAnyURIList()
+        {
+            ItemContainer container = new ItemContainer();
+            Condiment condiment = new Condiment
+            {
+                ID = Guid.NewGuid().ToString(),
+                Uris = new List<Uri>
+                {
+                    new Uri("http://www.colectica.com/"),
+                    new Uri("https://github.com/Colectica/cogs")
+                }
+            };
+            container.Items.Add(condiment);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Condiment>(container2.Items.First());
+
+            Condiment condiment2 = container2.Items.First() as Condiment;
+            Assert.Equal(condiment.Uris.Count, condiment2.Uris.Count);
+            Assert.Equal(condiment.Uris[0], condiment2.Uris[0]);
+            Assert.Equal(condiment.Uris[1], condiment2.Uris[1]);
         }
 
         [Fact]
@@ -917,7 +1238,11 @@ namespace Cogs.Tests.Integration
                     new DataAnnotations.CogsDate(new TimeSpan(1562)),
                     new DataAnnotations.CogsDate(new Tuple<int, string>(2017, "utc")),
                     new DataAnnotations.CogsDate(new DateTimeOffset(new DateTime(1996, 8, 23, 4, 37, 4),
-                        new TimeSpan(+3, 0, 0)), false)
+                        new TimeSpan(+3, 0, 0)), false),
+                    new DataAnnotations.CogsDate(new DateTime(2017, 9, 2), true),
+                    new DataAnnotations.CogsDate(new Tuple<int, int, string>(2017, 7, "utc")),
+                    new DataAnnotations.CogsDate(new Tuple<int, int, string>(2017, 7, null)),
+                    new DataAnnotations.CogsDate(new Tuple<int, string>(2017, null))
                 }
             };
             container.Items.Add(condiment);
@@ -941,43 +1266,6 @@ namespace Cogs.Tests.Integration
             for (int i = 0; i < condiment.Dates.Count; i++)
             {
                 Assert.Equal(condiment.Dates[i].GetValue(), condiment2.Dates[i].GetValue());
-            }
-        }
-
-        [Fact]
-        public async void SimpleListTimes()
-        {
-            ItemContainer container = new ItemContainer();
-            Animal animal = new Animal
-            {
-                ID = Guid.NewGuid().ToString(),
-                Times = new List<DateTimeOffset>
-                {
-                    new DateTimeOffset(2017, 6, 9, 2, 32, 32, new TimeSpan()),
-                    new DateTimeOffset(1996, 8, 23, 4, 32, 3, new TimeSpan())
-                }
-            };
-            container.Items.Add(animal);
-
-            JsonSchema4 schema = await GetJsonSchema();
-            string json = container.Serialize();
-            var errors = schema.Validate(json);
-            Assert.Empty(errors); // this is validating online at http://www.jsonschemavalidator.net/
-
-            ItemContainer container2 = new ItemContainer();
-            container2.Parse(json);
-
-            string json2 = container2.Serialize();
-            Assert.Equal(json, json2);
-
-            Assert.NotEmpty(container2.Items);
-            Assert.IsType<Animal>(container2.Items.First());
-
-            Animal animal2 = container2.Items.First() as Animal;
-            Assert.Equal(animal.Times.Count, animal2.Times.Count);
-            for (int i = 0; i < animal.Times.Count; i++)
-            {
-                Assert.Equal(animal.Times[i].TimeOfDay, animal2.Times[i].TimeOfDay);
             }
         }
 
