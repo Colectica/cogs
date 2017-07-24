@@ -29,10 +29,6 @@ namespace Cogs.Publishers
         /// boolean to determine whether to output normative xmi. If false, outputs xmi 2.5.1
         /// </summary>
         public bool Normative { get; set; }
-        /// <summary>
-        /// path to dot.exe file
-        /// </summary>
-        public string DotLocation { get; set; }
 
         // list of all IDs created. Used to ensure no duplicates
         private List<string> IdList = new List<string>();
@@ -76,7 +72,6 @@ namespace Cogs.Publishers
                 DotSchemaPublisher publisher = new DotSchemaPublisher();
                 publisher.TargetDirectory = TargetDirectory;
                 publisher.Overwrite = Overwrite;
-                publisher.DotLocation = DotLocation;
                 publisher.Format = "svg";
                 publisher.Output = "all";
                 publisher.Inheritance = true;

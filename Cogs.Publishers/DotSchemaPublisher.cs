@@ -25,7 +25,7 @@ namespace Cogs.Publishers
         /// <summary>
         /// path to dot.exe file
         /// </summary>
-        public string DotLocation { get; set; }
+        private string DotLocation { get; set; }
         /// <summary>
         /// boolean to determine whether to replace existing or not
         /// </summary>
@@ -43,6 +43,10 @@ namespace Cogs.Publishers
         /// bool to determine whether to allow inheritance or not in graph(s)
         /// </summary>
         public bool Inheritance { get; set; }
+        /// <summary>
+        /// bool to determine whether to allow reusable types and their properties in graphs or not
+        /// </summary>
+        public bool ShowReusables { get; set; }
 
         private List<ItemType> ClassList { get; set; }
         private List<DataType> ReusableList { get; set; }
@@ -60,7 +64,17 @@ namespace Cogs.Publishers
             // TODO: if Overwrite is false and Directory.Exists(TargetDirectory)) throw an error and exit
 
             Directory.CreateDirectory(TargetDirectory);
-
+            if (File.Exists("dot.exe")) { DotLocation = Path.GetFullPath("dot.exe"); }
+            else
+            {
+                var values = Environment.GetEnvironmentVariable("PATH");
+                foreach (var exe in values.Split(Path.PathSeparator))
+                {
+                    var fullPath = Path.Combine(exe, "dot.exe");
+                    if (File.Exists(fullPath)) { DotLocation = exe; }
+                }
+            }
+            if (DotLocation == null) { throw new InvalidOperationException(); }
             // create list of all class names so you know if a class is being referenced
             ClassList = model.ItemTypes;
             // create list of all reusable types so you know if a reusable type is being referenced and can get information about it
@@ -184,7 +198,10 @@ namespace Cogs.Publishers
                 {
                     if (ReusableList.Contains(property.DataType))
                     {
-                        return MakeCluster(item, property.DataType);
+                        if (ShowReusables)
+                        {
+                            return MakeCluster(item, property.DataType);
+                        }
                     }
                     else
                     {
@@ -269,15 +286,13 @@ namespace Cogs.Publishers
                 previousOutput = item.Name.Length;
                 var arrows = "";
                 bool ifCluster = false;
-                if (item.Properties.Where(x => ReusableList.Contains(x.DataType)).ToList().Count > 0) ifCluster = true;
+                if (item.Properties.Where(x => ReusableList.Contains(x.DataType)).ToList().Count > 0 && ShowReusables) { ifCluster = true; }
                 foreach(var clss in model.ItemTypes.Concat(model.ReusableDataTypes))
                 {
                     if (clss.ExtendsTypeName.Equals(item.Name) && Inheritance)
                     {
                         if (ifCluster) { arrows += clss.Name + " -> " + item.Name + "Properties" + "[arrowhead=\"empty\" lhead = cluster" + item.Name + "] "; }
                         else arrows += clss.Name + " -> " + item.Name + "[arrowhead=\"empty\"] ";
-
-
                     }
                     foreach (var property in clss.Properties)
                     {

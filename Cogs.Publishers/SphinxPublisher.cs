@@ -14,7 +14,6 @@ namespace Cogs.Publishers
     {
         public string TargetDirectory { get; set; }
         public bool Overwrite { get; set; }
-        public string DotLocation { get; set; }
 
         public void Publish(CogsModel model)
         {
@@ -35,11 +34,11 @@ namespace Cogs.Publishers
             var builder = new DotSchemaPublisher
             {
                 TargetDirectory = Path.Combine(Path.Combine(TargetDirectory, "source"), "images"),
-                DotLocation = DotLocation,
                 Overwrite = Overwrite,
                 Format = "svg",
                 Output = "single",
-                Inheritance = false
+                Inheritance = false,
+                ShowReusables = true
             };
             builder.Publish(model);
             // create documentation
