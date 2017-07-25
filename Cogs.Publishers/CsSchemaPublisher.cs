@@ -73,6 +73,7 @@ namespace Cogs.Publishers
                 var initializeReusables = new StringBuilder();
                 var reusableToJson = new StringBuilder();
                 var helpers = new StringBuilder();
+                int reusablesInitialized = item.Properties.Where(x => model.ReusableDataTypes.Contains(x.DataType)).ToList().Count;
                 // add abstract to class title if relevant
                 if (item.IsAbstract) { newClass.Append("abstract "); }
                 newClass.Append("class " + item.Name);
@@ -158,13 +159,20 @@ namespace Cogs.Publishers
                             newClass.Append("$##[JsonConverter(typeof(SimpleTypeConverter))]");
                             if (prop.DataTypeName.Equals("CogsDate"))
                             {
+                                reusablesInitialized++;
                                 reusableToJson.Append("$###if (" + prop.Name + ".GetValue() != null)");
+                                initializeReferences.Append("$####else if (line.Equals(\"" + prop.Name + "\") && thisObj && " + prop.Name + 
+                                    @".GetUsedType().Equals(""datetime""))$####{$#####string[] start = parts[i + 3].Trim().Replace(""\"""", """")." + 
+                                    "Split('-', 'T');$#####" + prop.Name + @" = new CogsDate(new DateTimeOffset(int.Parse(start[0]), " + 
+                                    "int.Parse(start[1]), int.Parse(start[2]), int.Parse(start[3]), $######int.Parse(parts[i + 4]), int.Parse(parts[i + 5]" +
+                                    @".Split('+')[0]), new TimeSpan(int.Parse(parts[i + 5].Split('+')[1]), $#######int.Parse(parts[i + 6].Replace(""\"""", """")), 0)));$####}");
                             }
                             else if (prop.DataTypeName.Equals("DateTimeOffset") || prop.DataTypeName.Equals("TimeSpan"))
                             {
                                 reusableToJson.Append("$###if (" + prop.Name + " != default(" + prop.DataTypeName + "))");
                                 if (origDataTypeName.Equals("dateTime"))
                                 {
+                                    reusablesInitialized++;
                                     initializeReferences.Append("$####else if (line.Equals(\"" + prop.Name + "\") && thisObj) " +
                                         @"$####{$#####string[] start = parts[i + 1].Trim().Replace(""\"""", """").Split('-', 'T');$#####" + 
                                         prop.Name + @" = new DateTimeOffset(int.Parse(start[0]), int.Parse(start[1]), int.Parse(start[2]), int.Parse(start[3]),
@@ -215,6 +223,7 @@ namespace Cogs.Publishers
                         {
                             if (origDataTypeName.Equals("dateTime"))
                             {
+                                reusablesInitialized++;
                                 initializeReferences.Append("$####else if (line.Equals(\"" + prop.Name + "\") && thisObj) $####{" +
                                     "$#####" + prop.Name + " = new List<" + prop.DataTypeName + ">();$#####i++;$#####while (i < parts.Length)$#####{" +
                                     "$#######if (parts[i].Trim().Replace(\"\\\"\", \"\").Equals(\"]\")) { break; }$######string[] start = parts[i + 1].Trim()" +
@@ -222,6 +231,23 @@ namespace Cogs.Publishers
                                     "int.Parse(start[1]), int.Parse(start[2]), int.Parse(start[3]), $#######int.Parse(parts[i + 2]), " +
                                     "int.Parse(parts[i + 3].Split('+')[0]), $#######new TimeSpan(int.Parse(parts[i + 3].Split('+')[1]), " +
                                     "int.Parse(parts[i + 4].Replace(\"\\\"\", \"\")), 0)));$######i += 5;$#####}$####}");
+                            }
+                            else if (origDataTypeName.Equals("cogsDate"))
+                            {
+                                reusablesInitialized++;
+                                initializeReferences.Append("$####else if (line.Equals(\"" + prop.Name + "\") && thisObj && " + prop.Name +
+                                    ".Where(x => x.GetUsedType().Equals(\"datetime\")).ToList().Count > 0) $####{" +
+                                    "$#####List<int> indices = new List<int>();$#####for (int j = 0; j < " + prop.Name + ".Count; j++) " +
+                                    "{ if (" + prop.Name + "[j].GetUsedType().Equals(\"datetime\")) { indices.Add(j); } }$#####int done = 0;" +
+                                    "$#####i++;$#####while (i < parts.Length && done < indices.Count)$#####{" +
+                                    "$######if (parts[i].Trim().Replace(\"\\\"\", \"\").Equals(\"]\")) { break; }" +
+                                    "$######else if (parts[i].Trim().Replace(\"\\\"\", \"\").Equals(\"datetime\"))$######{$#######" +
+                                    "string[] start = parts[i + 1].Trim().Replace(\"\\\"\", \"\").Split('-', 'T');$#######" + prop.Name + 
+                                    "[indices[done]] = new CogsDate(new DateTimeOffset(int.Parse(start[0]), " +
+                                    "int.Parse(start[1]), int.Parse(start[2]), int.Parse(start[3]), $########int.Parse(parts[i + 2]), " +
+                                    "int.Parse(parts[i + 3].Split('+')[0]), $########new TimeSpan(int.Parse(parts[i + 3].Split('+')[1]), " +
+                                    "int.Parse(parts[i + 4].Replace(\"\\\"\", \"\")), 0)));$#######i += 4;$#######done++;$#######}$######i++;" +
+                                    "$#####}$#####reusablesInitialized++;$####}");
                             }
                             newClass.Append("$##[JsonConverter(typeof(SimpleTypeConverter))]");
                             reusableToJson.Append("$###if (" + prop.Name + " != null && " + prop.Name + ".Count > 0)");
@@ -285,8 +311,7 @@ namespace Cogs.Publishers
                         newClass.AppendLine("            string[] parts = json.Split(new string[] { \":\", \",\", Environment.NewLine }, StringSplitOptions.None);");
                         if (initializeReferences.ToString().Contains("thisObj")) { newClass.AppendLine("            bool thisObj = false;"); }
                         newClass.AppendLine("###int reusablesInitialized = 0;$###for (int i = 0; i < parts.Length; i ++)$###{$####" +
-                        "var line = parts[i].Trim().Replace(\"\\\"\", \"\");$####if (reusablesInitialized == " +
-                        item.Properties.Where(x => model.ReusableDataTypes.Contains(x.DataType)).ToList().Count + ") { return; }");
+                        "var line = parts[i].Trim().Replace(\"\\\"\", \"\");$####if (reusablesInitialized == " + reusablesInitialized + ") { return; }");
                         if (initializeReferences.ToString().Contains("thisObj")) { newClass.AppendLine("                else if (line.Equals(ID)) { thisObj = true; }"); }
                         newClass.AppendLine(initializeReferences.ToString() + "$###}" + initializeReusables.ToString() + "$##}" + helpers.ToString() + "$#}$}$");
                     }
@@ -807,7 +832,7 @@ namespace cogsBurger
                 string[] values = prop.ToString().Split(new char[] { ' ', '/', ':', '-', '+', 'T', 'Z' });
                 if (values.Length == 7)
                 {
-                    return new DateTimeOffset(int.Parse(values[2]), int.Parse(values[1]), int.Parse(values[0]),
+                    return new DateTimeOffset(int.Parse(values[2]), int.Parse(values[0]), int.Parse(values[1]),
                         int.Parse(values[3]), int.Parse(values[4]), int.Parse(values[5]), new TimeSpan());
                 }
                 if (values.Length == 3 && prop.ToString().Contains(""-""))
@@ -861,11 +886,10 @@ namespace cogsBurger
                     }
                     return new CogsDate(new Tuple<int, int, string>(int.Parse(values[0]), int.Parse(values[1]), values[2]));
                 }
-                if (values.Length > 8)
+                if (values.Length == 7)
                 {
-                    return new CogsDate(new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]),
-                        int.Parse(values[3]), int.Parse(values[4]), int.Parse(values[5]),
-                        new TimeSpan(int.Parse(values[6]), int.Parse(values[7]), int.Parse(values[8]))));
+                    return new CogsDate(new DateTimeOffset(int.Parse(values[2]), int.Parse(values[0]), int.Parse(values[1]),
+                        int.Parse(values[3]), int.Parse(values[4]), int.Parse(values[5]), new TimeSpan()));
                 }
             }
             return null;
