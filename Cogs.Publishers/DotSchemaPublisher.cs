@@ -10,6 +10,7 @@ using System.Xml.Linq;
 using System.Xml;
 using System.Diagnostics;
 using System.Reflection;
+using Cogs.Common;
 
 namespace Cogs.Publishers
 {
@@ -25,7 +26,7 @@ namespace Cogs.Publishers
         /// <summary>
         /// path to dot.exe file
         /// </summary>
-        private string DotLocation { get; set; }
+        public string DotLocation { get; set; }
         /// <summary>
         /// boolean to determine whether to replace existing or not
         /// </summary>
@@ -51,7 +52,7 @@ namespace Cogs.Publishers
         private List<ItemType> ClassList { get; set; }
         private List<DataType> ReusableList { get; set; }
 
-        public void Publish(CogsModel model)
+        public object Publish(CogsModel model)
         {
             if (TargetDirectory == null)
             {
@@ -62,19 +63,22 @@ namespace Cogs.Publishers
                 Directory.Delete(TargetDirectory, true);
             }
             // TODO: if Overwrite is false and Directory.Exists(TargetDirectory)) throw an error and exit
-
             Directory.CreateDirectory(TargetDirectory);
-            if (File.Exists("dot.exe")) { DotLocation = Path.GetFullPath("dot.exe"); }
-            else
+
+            if (DotLocation == null)
             {
-                var values = Environment.GetEnvironmentVariable("PATH");
-                foreach (var exe in values.Split(Path.PathSeparator))
+                if (File.Exists("dot.exe")) { DotLocation = Path.GetFullPath("dot.exe"); }
+                else
                 {
-                    var fullPath = Path.Combine(exe, "dot.exe");
-                    if (File.Exists(fullPath)) { DotLocation = exe; }
+                    var values = Environment.GetEnvironmentVariable("PATH");
+                    foreach (var exe in values.Split(Path.PathSeparator))
+                    {
+                        var fullPath = Path.Combine(exe, "dot.exe");
+                        if (File.Exists(fullPath)) { DotLocation = exe; }
+                    }
                 }
+                if (DotLocation == null) { return new CogsError(ErrorLevel.Error, "Could not find dot file: please specify path"); }
             }
-            if (DotLocation == null) { throw new InvalidOperationException(); }
             // create list of all class names so you know if a class is being referenced
             ClassList = model.ItemTypes;
             // create list of all reusable types so you know if a reusable type is being referenced and can get information about it
@@ -84,6 +88,7 @@ namespace Cogs.Publishers
             if (Output.Equals("all")) { MakeGraphAll(model, header); }
             else if (Output.Equals("topic")) { MakeGraphTopic(model, header); }
             else { MakeGraphSingle(model, header); }
+            return null;
         }
 
         private string MakeItem(DataType item)

@@ -202,7 +202,7 @@ namespace Cogs.DataAnnotations
                 case CogsDateType.DateTime:
                     {
 						if (DateTime == default(DateTimeOffset)) { return null; }
-                        return DateTime.ToString("s") + "+" +  DateTime.Offset.ToString();
+                        return DateTime.ToString("yyyy-MM-dd\\THH:mm:ss.FFFFFFFK");
                     }
                 case CogsDateType.Date:
                     {

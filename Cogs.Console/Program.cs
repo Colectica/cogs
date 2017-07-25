@@ -132,6 +132,8 @@ namespace Cogs.Console
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
                 var targetArgument = command.Argument("[targetLocation]", "Directory where the UML schema is generated.");
 
+                var dotOption = command.Option("-l|--location", "Directory where the dot.exe file is located. " +
+                                            "Only used if not using normative and not necessary for windows.", CommandOptionType.SingleValue);
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
                                            CommandOptionType.NoValue);
@@ -141,6 +143,7 @@ namespace Cogs.Console
 
                 command.OnExecute(() =>
                 {
+                    var dot = dotOption.Value() ?? null;
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
@@ -154,6 +157,7 @@ namespace Cogs.Console
 
                     UmlSchemaPublisher publisher = new UmlSchemaPublisher
                     {
+                        DotLocation = dot,
                         TargetDirectory = target,
                         Overwrite = overwrite,
                         Normative = normative
@@ -176,34 +180,34 @@ namespace Cogs.Console
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
                 var targetArgument = command.Argument("[targetLocation]", "Directory where the dot schema is generated.");
 
+                var dotOption = command.Option("-l|--location", "Directory where the dot.exe file is located. " +
+                                            "Only used if not using normative and not necessary for windows.", CommandOptionType.SingleValue);
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
                                            CommandOptionType.NoValue);
                 var outputFormat = command.Option("-f|--format", "Specifies format for output file. Defaults to svg", CommandOptionType.SingleValue);
                 var outputAll = command.Option("-a|--all",
-                                           "generate one graph containing all objects. Connot be used with -t",
+                                           "generate one graph containing all objects. Connot be used with -s",
                                            CommandOptionType.NoValue);
-                var outputTopic = command.Option("-t|--topic",
-                                           "generate a graph for every topic in model. Cannot be used with -a",
+                var outputSingle = command.Option("-s|--single",
+                                           "generate a graph for every single item (incoming links and outgoing links). Cannot be used with -a",
                                            CommandOptionType.NoValue);
-                var reusableArgument = command.Option("-r|--reusable", "show reusable type properties as part of item(s) in graph", CommandOptionType.NoValue);
                 var inheritanceArgument = command.Option("-i|--inheritance",
                                             "allow inheritance in the graph(s)", CommandOptionType.NoValue);
 
                 command.OnExecute(() =>
                 {
+                    var dot = dotOption.Value() ?? null;
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
                     string format = outputFormat.Value() ?? "svg";
-                    bool reusable = false;
-                    if (reusableArgument.HasValue()) { reusable = true; }
                     bool all = outputAll.HasValue();
-                    bool topic = outputTopic.HasValue();
-                    if (all && topic) { throw new ArgumentException(); }
-                    string output = "single";
-                    if (all) { output = "all"; }
-                    else if (topic) { output = "topic"; }
+                    bool single = outputSingle.HasValue();
+                    if (all && single) throw new ArgumentException();
+                    string output = "topic";
+                    if (all) output = "all";
+                    else if (single) output = "single";
                     bool inheritance = inheritanceArgument.HasValue();
 
                     var directoryReader = new CogsDirectoryReader();
@@ -214,12 +218,12 @@ namespace Cogs.Console
 
                     DotSchemaPublisher publisher = new DotSchemaPublisher
                     {
+                        DotLocation = dot,
                         TargetDirectory = target,
                         Overwrite = overwrite,
                         Format = format,
                         Output = output,
-                        Inheritance = inheritance,
-                        ShowReusables = reusable
+                        Inheritance = inheritance
                     };
                     publisher.Publish(cogsModel);
 
@@ -276,6 +280,8 @@ namespace Cogs.Console
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
                 var targetArgument = command.Argument("[targetLocation]", "Directory where the sphinx documentation is generated.");
 
+                var dotOption = command.Option("-l|--location", "Directory where the dot.exe file is located. " +
+                                            "Only used if not using normative and not necessary for windows.", CommandOptionType.SingleValue);
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
                                            CommandOptionType.NoValue);
@@ -286,6 +292,7 @@ namespace Cogs.Console
                 {
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
+                    var dot = dotOption.Value() ?? null;
                     bool overwrite = overwriteOption.HasValue();
 
                     var directoryReader = new CogsDirectoryReader();
@@ -297,13 +304,11 @@ namespace Cogs.Console
                     SphinxPublisher publisher = new SphinxPublisher
                     {
                         TargetDirectory = target,
-                        Overwrite = overwrite
+                        Overwrite = overwrite,
+                        DotLocation = dot
                     };
 
                     publisher.Publish(cogsModel);
-
-
-
                     return 0;
                 });
 

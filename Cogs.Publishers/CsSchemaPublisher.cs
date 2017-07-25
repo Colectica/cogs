@@ -450,7 +450,7 @@ namespace Cogs.Publishers
             {
                 if (!isList)
                 {
-                    return start + "new JProperty(\"" + name + "\", " + name + ".ToString(\"s\") + \"+\" + " + name + ".Offset.ToString())";
+                    return start + "new JProperty(\"" + name + "\", " + name + ".ToString(\"yyyy-MM-dd\\\\THH:mm:ss.FFFFFFFK\"))";
                 }
                 return "((JArray)prop.First).Add(item.ToString(\"s\") + \"+\" + item.Offset.ToString());";
             }
@@ -628,6 +628,7 @@ namespace !!!
                     foreach (KeyValuePair<string, JToken> instance in (JObject)type.Value)
                     {
                         IIdentifiable obj = null;
+                        JsonSerializerSettings settings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
                         ???
                         if (obj == null) { throw new InvalidOperationException(); }
                         obj.ReferenceId = instance.Key;
@@ -648,7 +649,8 @@ namespace !!!
             string start = "";
             foreach(var item in model.ItemTypes)
             {
-                ifs.Append("$######" + start + "if (clss.Equals(\"" + item.Name + "\")) { obj = JsonConvert.DeserializeObject<" + item.Name + ">(instance.Value.ToString()); }");
+                ifs.Append("$######" + start + "if (clss.Equals(\"" + item.Name + "\")) { obj = JsonConvert.DeserializeObject<" + item.Name + 
+                    ">(instance.Value.ToString(), settings); }");
                 start = "else ";
             }
             File.WriteAllText(Path.Combine(TargetDirectory, "ItemContainer.cs"), clss.Replace("!!!", projName).Replace("???", ifs.ToString()
