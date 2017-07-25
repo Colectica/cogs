@@ -70,6 +70,7 @@ namespace Cogs.Publishers
                 newClass.Append("$#public ");
                 var toJsonProperties = new StringBuilder();
                 var initializeReferences = new StringBuilder();
+                var initializeReusables = new StringBuilder();
                 var reusableToJson = new StringBuilder();
                 var helpers = new StringBuilder();
                 // add abstract to class title if relevant
@@ -162,6 +163,14 @@ namespace Cogs.Publishers
                             else if (prop.DataTypeName.Equals("DateTimeOffset") || prop.DataTypeName.Equals("TimeSpan"))
                             {
                                 reusableToJson.Append("$###if (" + prop.Name + " != default(" + prop.DataTypeName + "))");
+                                if (origDataTypeName.Equals("dateTime"))
+                                {
+                                    initializeReferences.Append("$####else if (line.Equals(\"" + prop.Name + "\") && thisObj) " +
+                                        @"$####{$#####string[] start = parts[i + 1].Trim().Replace(""\"""", """").Split('-', 'T');$#####" + 
+                                        prop.Name + @" = new DateTimeOffset(int.Parse(start[0]), int.Parse(start[1]), int.Parse(start[2]), int.Parse(start[3]),
+                        int.Parse(parts[i + 2]), int.Parse(parts[i + 3].Split('+')[0]),
+                        new TimeSpan(int.Parse(parts[i + 3].Split('+')[1]), int.Parse(parts[i + 4].Replace(""\"""", """")), 0));$####}");
+                                }
                             }
                             else { reusableToJson.Append("$###if (" + prop.Name + " != null)"); }
                             reusableToJson.Append("$###{$####" + SimpleToJson(origDataTypeName, prop.Name, start, false) + ");$###}");
@@ -187,7 +196,7 @@ namespace Cogs.Publishers
                             {
                                 reusableToJson.Append("$###if ( " + prop.Name + " != null) $###{$####" + start + "new JProperty(\"" + prop.Name + "\", new JObject(" +
                                "new JProperty(\"@type\", \"ref\"), $#####new JProperty(\"value\", new JArray($######\"" + prop.DataTypeName + "\", $######" + prop.Name + ".ID)))));$###}");
-                                initializeReferences.Append("$###if (" + prop.Name + " != null) { " + prop.Name + " = (" + prop.DataTypeName +
+                                initializeReusables.Append("$###if (" + prop.Name + " != null) { " + prop.Name + " = (" + prop.DataTypeName +
                                     ")dict[" + prop.Name + ".ReferenceId]; }");
                             }
                         }
@@ -204,6 +213,16 @@ namespace Cogs.Publishers
                         }
                         else if (origDataTypeName != null)
                         {
+                            if (origDataTypeName.Equals("dateTime"))
+                            {
+                                initializeReferences.Append("$####else if (line.Equals(\"" + prop.Name + "\") && thisObj) $####{" +
+                                    "$#####" + prop.Name + " = new List<" + prop.DataTypeName + ">();$#####i++;$#####while (i < parts.Length)$#####{" +
+                                    "$#######if (parts[i].Trim().Replace(\"\\\"\", \"\").Equals(\"]\")) { break; }$######string[] start = parts[i + 1].Trim()" +
+                                    ".Replace(\"\\\"\", \"\").Split('-', 'T');$######" + prop.Name + ".Add(new DateTimeOffset(int.Parse(start[0]), " +
+                                    "int.Parse(start[1]), int.Parse(start[2]), int.Parse(start[3]), $#######int.Parse(parts[i + 2]), " +
+                                    "int.Parse(parts[i + 3].Split('+')[0]), $#######new TimeSpan(int.Parse(parts[i + 3].Split('+')[1]), " +
+                                    "int.Parse(parts[i + 4].Replace(\"\\\"\", \"\")), 0)));$######i += 5;$#####}$####}");
+                            }
                             newClass.Append("$##[JsonConverter(typeof(SimpleTypeConverter))]");
                             reusableToJson.Append("$###if (" + prop.Name + " != null && " + prop.Name + ".Count > 0)");
                             reusableToJson.Append("$###{$####var prop = new JProperty(\"" + prop.Name + "\", new JArray());$####foreach (var item in " +
@@ -234,8 +253,8 @@ namespace Cogs.Publishers
                                 reusableToJson.Append("$###if (" + prop.Name + " != null)$###{$####" + start + "new JProperty(\"" + prop.Name +
                                 "\", $#####new JArray($######from item in " + prop.Name + "$######select new JObject(new JProperty(\"@type\", \"ref\"), " +
                                 "$#######new JProperty(\"value\", new JArray($########item.GetType().Name.ToString(), $########item.ID))))));$###}");
-                                initializeReferences.Append("$###if (" + prop.Name + " != null)$###{$####for (int i = 0; i < " + prop.Name + ".Count; i++)" +
-                                    "$####{$#####dynamic temp = dict[" + prop.Name + "[i].ReferenceId];$#####" + prop.Name + "[i] = temp;$####}$###}");
+                                initializeReusables.Append("$###if (" + prop.Name + " != null)$###{$####for (int j = 0; j < " + prop.Name + ".Count; j++)" +
+                                    "$####{$#####dynamic temp = dict[" + prop.Name + "[j].ReferenceId];$#####" + prop.Name + "[j] = temp;$####}$###}");
                             }
                         }
                         newClass.Append("$##public List<" + prop.DataTypeName + "> " + prop.Name + "{ get; set; } = new List<" + prop.DataTypeName + ">();");
@@ -260,12 +279,16 @@ namespace Cogs.Publishers
                             "$###base.InitializeReferences(dict, json);");
                     }
                     else { newClass.Append("$##public virtual void InitializeReferences(Dictionary<string, IIdentifiable> dict, string json)$##{"); }
-                    if (initializeReferences.ToString().Contains("thisObj"))
+                    if (initializeReferences.ToString().Contains("parts[i"))
                     {
-                        newClass.Append("$###string[] parts = json.Split(new string[] { \":\", \",\", Environment.NewLine }, " +
-                        "StringSplitOptions.None);$###bool thisObj = false;$###int reusablesInitialized = 0;$###for (int i = 0; i < parts.Length; i ++)$###{$####" +
-                        "if (reusablesInitialized == " + item.Properties.Where(x => model.ReusableDataTypes.Contains(x.DataType)).ToList().Count + ") { return; }$####" +
-                        "else if (parts[i].Contains(ID)) { thisObj = true; }" + initializeReferences.ToString() + "$###}$##}" + helpers.ToString() + "$#}$}$");
+                        newClass.AppendLine();
+                        newClass.AppendLine("            string[] parts = json.Split(new string[] { \":\", \",\", Environment.NewLine }, StringSplitOptions.None);");
+                        if (initializeReferences.ToString().Contains("thisObj")) { newClass.AppendLine("            bool thisObj = false;"); }
+                        newClass.AppendLine("###int reusablesInitialized = 0;$###for (int i = 0; i < parts.Length; i ++)$###{$####" +
+                        "var line = parts[i].Trim().Replace(\"\\\"\", \"\");$####if (reusablesInitialized == " +
+                        item.Properties.Where(x => model.ReusableDataTypes.Contains(x.DataType)).ToList().Count + ") { return; }");
+                        if (initializeReferences.ToString().Contains("thisObj")) { newClass.AppendLine("                else if (line.Equals(ID)) { thisObj = true; }"); }
+                        newClass.AppendLine(initializeReferences.ToString() + "$###}" + initializeReusables.ToString() + "$##}" + helpers.ToString() + "$#}$}$");
                     }
                     else { newClass.Append(initializeReferences.ToString() + "$##}$#}$}$"); }
                 }
@@ -299,7 +322,7 @@ namespace Cogs.Publishers
             var name = prop.Name;
             var type = prop.DataTypeName;
             StringBuilder builder = new StringBuilder(@"
-                else if (parts[i].Contains(""" + name + @""") && thisObj)
+                else if (line.Equals(""" + name + @""") && thisObj)
                 {
                     ");
             if (main != null)
@@ -316,7 +339,7 @@ namespace Cogs.Publishers
                     i++;
                     while (i < parts.Length && counter > 0)
                     {
-                        var line = parts[i].Trim().Replace(""\"""", """");
+                        line = parts[i].Trim().Replace(""\"""", """");
                         if (line.Equals(""{"")) { counter++; }
                         else if (line.Equals(""}"")) { counter--; }");
                 foreach (var p in prop.DataType.Properties)
@@ -443,7 +466,7 @@ namespace Cogs.Publishers
         { 
             if (origDataTypeName.ToLower().Equals("duration"))
             {
-                if (!isList) { return start + "new JProperty(\"duration\", " + name + ".Ticks)"; }
+                if (!isList) { return start + "new JProperty(\"" + name + "\", " + name + ".Ticks)"; }
                 return "((JArray)prop.First).Add(item.Ticks);";
             }
             if (origDataTypeName.ToLower().Equals("datetime"))
@@ -452,7 +475,7 @@ namespace Cogs.Publishers
                 {
                     return start + "new JProperty(\"" + name + "\", " + name + ".ToString(\"yyyy-MM-dd\\\\THH:mm:ss.FFFFFFFK\"))";
                 }
-                return "((JArray)prop.First).Add(item.ToString(\"s\") + \"+\" + item.Offset.ToString());";
+                return "((JArray)prop.First).Add(item.ToString(\"yyyy-MM-dd\\\\THH:mm:ss.FFFFFFFK\"));";
             }
             if (origDataTypeName.ToLower().Equals("time"))
             {
@@ -627,9 +650,7 @@ namespace !!!
                     var clss = type.Key;
                     foreach (KeyValuePair<string, JToken> instance in (JObject)type.Value)
                     {
-                        IIdentifiable obj = null;
-                        JsonSerializerSettings settings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
-                        ???
+                        IIdentifiable obj = null;???
                         if (obj == null) { throw new InvalidOperationException(); }
                         obj.ReferenceId = instance.Key;
                         Items.Add(obj);
@@ -650,7 +671,7 @@ namespace !!!
             foreach(var item in model.ItemTypes)
             {
                 ifs.Append("$######" + start + "if (clss.Equals(\"" + item.Name + "\")) { obj = JsonConvert.DeserializeObject<" + item.Name + 
-                    ">(instance.Value.ToString(), settings); }");
+                    ">(instance.Value.ToString()); }");
                 start = "else ";
             }
             File.WriteAllText(Path.Combine(TargetDirectory, "ItemContainer.cs"), clss.Replace("!!!", projName).Replace("???", ifs.ToString()
@@ -770,7 +791,7 @@ namespace cogsBurger
                 }
                 return values;
             }
-            else { return Translate(JToken.Load(reader), objectType);  }
+            else { return Translate(JToken.Load(reader), objectType); }
         }
 
         private object Translate(JToken prop, Type objectType)
@@ -784,11 +805,10 @@ namespace cogsBurger
             if (objectType == typeof(DateTimeOffset))
             {
                 string[] values = prop.ToString().Split(new char[] { ' ', '/', ':', '-', '+', 'T', 'Z' });
-                if (values.Length > 8)
+                if (values.Length == 7)
                 {
-                    return new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]),
-                        int.Parse(values[3]), int.Parse(values[4]), int.Parse(values[5]), 
-                        new TimeSpan(int.Parse(values[6]), int.Parse(values[7]), int.Parse(values[8])));
+                    return new DateTimeOffset(int.Parse(values[2]), int.Parse(values[1]), int.Parse(values[0]),
+                        int.Parse(values[3]), int.Parse(values[4]), int.Parse(values[5]), new TimeSpan());
                 }
                 if (values.Length == 3 && prop.ToString().Contains(""-""))
                 {
