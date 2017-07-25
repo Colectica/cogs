@@ -553,7 +553,7 @@ namespace Cogs.Tests.Integration
             JsonSchema4 schema = await GetJsonSchema();
             string json = container.Serialize();
             var errors = schema.Validate(json);
-            Assert.Empty(errors); // this is validating online at http://www.jsonschemavalidator.net/
+            Assert.Empty(errors);
 
             ItemContainer container2 = new ItemContainer();
             container2.Parse(json);
