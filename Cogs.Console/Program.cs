@@ -131,8 +131,9 @@ namespace Cogs.Console
 
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
                 var targetArgument = command.Argument("[targetLocation]", "Directory where the UML schema is generated.");
-                var dotArgument = command.Argument("[dotLocation]", "Directory where the dot.exe file is located (only needed if not using normative).");
 
+                var dotOption = command.Option("-l|--location", "Directory where the dot.exe file is located. " +
+                                            "Only used if not using normative and not necessary for windows.", CommandOptionType.SingleValue);
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
                                            CommandOptionType.NoValue);
@@ -142,7 +143,7 @@ namespace Cogs.Console
 
                 command.OnExecute(() =>
                 {
-                    var dot = dotArgument.Value ?? Environment.CurrentDirectory;
+                    var dot = dotOption.Value() ?? null;
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
@@ -178,8 +179,9 @@ namespace Cogs.Console
 
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
                 var targetArgument = command.Argument("[targetLocation]", "Directory where the dot schema is generated.");
-                var dotArgument = command.Argument("[dotLocation]", "Directory where the dot.exe file is located.");
 
+                var dotOption = command.Option("-l|--location", "Directory where the dot.exe file is located. " +
+                                            "Only used if not using normative and not necessary for windows.", CommandOptionType.SingleValue);
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
                                            CommandOptionType.NoValue);
@@ -195,7 +197,7 @@ namespace Cogs.Console
 
                 command.OnExecute(() =>
                 {
-                    var dot = dotArgument.Value ?? Environment.CurrentDirectory;
+                    var dot = dotOption.Value() ?? null;
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
@@ -277,8 +279,9 @@ namespace Cogs.Console
 
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
                 var targetArgument = command.Argument("[targetLocation]", "Directory where the sphinx documentation is generated.");
-                var dotArgument = command.Argument("[dotLocation]", "Directory where the dot.exe file is located.");
 
+                var dotOption = command.Option("-l|--location", "Directory where the dot.exe file is located. " +
+                                            "Only used if not using normative and not necessary for windows.", CommandOptionType.SingleValue);
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
                                            CommandOptionType.NoValue);
@@ -289,7 +292,7 @@ namespace Cogs.Console
                 {
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
-                    var dot = dotArgument.Value ?? Environment.CurrentDirectory;
+                    var dot = dotOption.Value() ?? null;
                     bool overwrite = overwriteOption.HasValue();
 
                     var directoryReader = new CogsDirectoryReader();
@@ -306,9 +309,6 @@ namespace Cogs.Console
                     };
 
                     publisher.Publish(cogsModel);
-
-
-
                     return 0;
                 });
 

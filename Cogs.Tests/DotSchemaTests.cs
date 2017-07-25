@@ -14,19 +14,6 @@ namespace Cogs.Tests
         {
             string path = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "cogsburger");
 
-            string dotLoc = null;
-            if (File.Exists("dot.exe")) { dotLoc = Path.GetFullPath("dot.exe"); }
-            else
-            {
-                var values = Environment.GetEnvironmentVariable("PATH");
-                foreach (var exe in values.Split(Path.PathSeparator))
-                {
-                    var fullPath = Path.Combine(exe, "dot.exe");
-                    if (File.Exists(fullPath)) { dotLoc = exe; }
-                }
-            }
-            if (dotLoc == null) { throw new InvalidOperationException(); }
-
             string subdir = Path.GetFileNameWithoutExtension(Path.GetTempFileName());
             string outputPath = Path.Combine(Path.GetTempPath(), subdir);
 
@@ -41,7 +28,6 @@ namespace Cogs.Tests
                 var publisher = new DotSchemaPublisher
                 {
                     TargetDirectory = outputPath,
-                    DotLocation = dotLoc,
                     Output = choices[i],
                     Format = "svg"
                 };
