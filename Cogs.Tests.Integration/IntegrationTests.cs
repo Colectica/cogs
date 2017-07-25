@@ -959,7 +959,7 @@ namespace Cogs.Tests.Integration
             Condiment condiment = new Condiment
             {
                 ID = Guid.NewGuid().ToString(),
-                anyURI = new Uri("http://www.colectica.com/")
+                AnyURI = new Uri("http://www.colectica.com/")
             };
             container.Items.Add(condiment);
 
@@ -978,7 +978,7 @@ namespace Cogs.Tests.Integration
             Assert.IsType<Condiment>(container2.Items.First());
 
             Condiment condiment2 = container2.Items.First() as Condiment;
-            Assert.Equal(condiment.anyURI, condiment2.anyURI);
+            Assert.Equal(condiment.AnyURI, condiment2.AnyURI);
         }
 
         [Fact]
@@ -1339,6 +1339,41 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
+        public async void ReusabletoSimpleList()
+        {
+            ItemContainer container = new ItemContainer();
+            Bread bread = new Bread
+            {
+                ID = Guid.NewGuid().ToString(),
+                GYearMonthList = new List<Tuple<int, int, string>>()
+                {
+                    new Tuple<int, int, string>(2017, 7 , null),
+                    new Tuple<int, int, string>(1996, 8, "utc")
+                }
+            };
+            container.Items.Add(bread);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Bread>(container2.Items.First());
+
+            Bread bread2 = container2.Items.First() as Bread;
+            Assert.Equal(bread.GYearMonthList.Count, bread2.GYearMonthList.Count);
+            Assert.Equal(bread.GYearMonthList[0], bread2.GYearMonthList[0]);
+            Assert.Equal(bread.GYearMonthList[1], bread2.GYearMonthList[1]);
+        }
+
+        [Fact]
         public async void NestedReusableItem()
         {
             ItemContainer container = new ItemContainer();
@@ -1678,8 +1713,8 @@ namespace Cogs.Tests.Integration
         private async Task<JsonSchema4> GetJsonSchema()
         {
             // TODO build the json schema into the generated assembly as a resource
-            string schemaPath = Path.Combine(Path.Combine(Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), ".."), ".."), ".."), "..");
-            string jsonSchema = File.ReadAllText(Path.Combine(Path.Combine(schemaPath, "generated"), "jsonSchema.json"));
+            string schemaPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "generated", "jsonSchema.json");
+            string jsonSchema = File.ReadAllText(schemaPath);
 
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings
             {

@@ -35,11 +35,12 @@ namespace Cogs.Publishers
             var builder = new DotSchemaPublisher
             {
                 TargetDirectory = Path.Combine(Path.Combine(TargetDirectory, "source"), "images"),
-                DotLocation = DotLocation,
                 Overwrite = Overwrite,
                 Format = "svg",
                 Output = "single",
-                Inheritance = false
+                Inheritance = false,
+                ShowReusables = true,
+                DotLocation = DotLocation
             };
             builder.Publish(model);
             // create documentation

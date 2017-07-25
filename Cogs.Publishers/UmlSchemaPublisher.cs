@@ -30,7 +30,7 @@ namespace Cogs.Publishers
         /// </summary>
         public bool Normative { get; set; }
         /// <summary>
-        /// path to dot.exe file
+        /// string that specifies path to dot executable file
         /// </summary>
         public string DotLocation { get; set; }
 
@@ -73,13 +73,15 @@ namespace Cogs.Publishers
             if (!Normative)
             {
                 // run svg publisher to create svg file to use for positioning
-                DotSchemaPublisher publisher = new DotSchemaPublisher();
-                publisher.TargetDirectory = TargetDirectory;
-                publisher.Overwrite = Overwrite;
-                publisher.DotLocation = DotLocation;
-                publisher.Format = "svg";
-                publisher.Output = "all";
-                publisher.Inheritance = true;
+                DotSchemaPublisher publisher = new DotSchemaPublisher
+                {
+                    TargetDirectory = TargetDirectory,
+                    Overwrite = Overwrite,
+                    Format = "svg",
+                    Output = "all",
+                    Inheritance = true,
+                    DotLocation = DotLocation
+                };
                 publisher.Publish(model);
 
                 // read created svg file

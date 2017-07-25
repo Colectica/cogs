@@ -26,23 +26,10 @@ namespace Cogs.Tests
             var modelBuilder = new CogsModelBuilder();
             var cogsModel = modelBuilder.Build(cogsDtoModel);
 
-            string dotLoc = null;
-            if(File.Exists("dot.exe")) { dotLoc = Path.GetFullPath("dot.exe"); }
-            else
-            {
-                var values = Environment.GetEnvironmentVariable("PATH");
-                foreach (var exe in values.Split(Path.PathSeparator))
-                {
-                    var fullPath = Path.Combine(exe, "dot.exe");
-                    if(File.Exists(fullPath)) { dotLoc = exe; }
-                }
-            }
-            if (dotLoc == null) { throw new InvalidOperationException(); }
             // test both normative and not normative outputs
             var publisher = new UmlSchemaPublisher
             {
                 TargetDirectory = outputPath,
-                DotLocation = dotLoc,
                 Normative = false
             };
             publisher.Publish(cogsModel);
@@ -52,7 +39,6 @@ namespace Cogs.Tests
             publisher = new UmlSchemaPublisher
             {
                 TargetDirectory = outputPath,
-                DotLocation = dotLoc,
                 Normative = true
             };
             publisher.Publish(cogsModel);
