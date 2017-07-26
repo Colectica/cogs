@@ -981,6 +981,54 @@ namespace Cogs.Tests.Integration
             Assert.Equal(condiment.AnyURI, condiment2.AnyURI);
         }
 
+
+        [Fact]
+        public void DateTimeOffsetSerialization()
+        {
+            string format = @"yyyy-MM-dd\THH:mm:ss.FFFFFFFK";
+
+            DateTimeOffset offset1 = new DateTimeOffset(2017, 12, 12, 5, 33, 45, 899, new TimeSpan(-4, -30, 0));
+
+            string offsetFormat1 = offset1.ToString(format);
+            string json1 = JsonConvert.SerializeObject(offset1);
+
+            Assert.Equal("\"" + offsetFormat1 + "\"", json1);
+
+            DateTimeOffset offset2 = JsonConvert.DeserializeObject<DateTimeOffset>(json1);
+
+            Assert.Equal(offset1, offset2);
+        }
+
+        [Fact]
+        public async void SimpleTypeString()
+        {
+            ItemContainer container = new ItemContainer();
+            Condiment condiment = new Condiment
+            {
+                ID = Guid.NewGuid().ToString(),
+                Description = @"My
+                                Description"
+            };
+            container.Items.Add(condiment);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = container.Serialize();
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = new ItemContainer();
+            container2.Parse(json);
+
+            string json2 = container2.Serialize();
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Condiment>(container2.Items.First());
+
+            Condiment condiment2 = container2.Items.First() as Condiment;
+            Assert.Equal(condiment.Description, condiment2.Description);
+        }
+
         [Fact]
         public async void SimpleTypeAnyURIList()
         {
