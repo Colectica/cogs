@@ -68,6 +68,7 @@ namespace Cogs.Publishers
             {
                 // add class description using '$' for newline and '#' for tabs
                 var newClass = new StringBuilder("using System;");
+                newClass.AppendLine();
                 newClass.AppendLine("using System.Linq;");
                 newClass.AppendLine("using Newtonsoft.Json;");
                 newClass.AppendLine("using Newtonsoft.Json.Linq;");
@@ -802,21 +803,33 @@ namespace Cogs.Publishers
             return "{Environment.NewLine}                    ((JArray)prop.First).Add(item);";
         }
 
-// -------------------------------
+
         // creates a file called IIdentifiable.cs which holds the IIdentifiable interface from which all item types descend
         private void CreateIIdentifiable(CogsModel model, string projName)
         {
-            StringBuilder builder = new StringBuilder("using System;$using Newtonsoft.Json.Linq;$using System.Collections.Generic;$$namespace " +
-                    projName + "${$#/// <summary>$#/// IIdentifiable class which all object Inherit from. Used to Serialize to Json $#/// <summary>");
-            builder.Append("$#public interface IIdentifiable$#{");
+            StringBuilder builder = new StringBuilder("using System;");
+            builder.AppendLine();
+            builder.AppendLine("using Newtonsoft.Json.Linq;");
+            builder.AppendLine("using System.Collections.Generic;");
+            builder.AppendLine();
+            builder.AppendLine($"namespace {projName}");
+            builder.AppendLine("{");
+            builder.AppendLine("    /// <summary>");
+            builder.AppendLine("    /// IIdentifiable class which all object Inherit from. Used to Serialize to Json");
+            builder.AppendLine("    /// <summary>");
+            builder.AppendLine("    public interface IIdentifiable");
+            builder.AppendLine("    {");
             foreach (var prop in model.Identification)
             {
-                builder.Append("$##" + prop.DataTypeName + " " + prop.Name + " { get; set; }");
+                builder.AppendLine($"        {prop.DataTypeName} {prop.Name} {{ get; set; }}");
             }
-            builder.Append("$##JProperty ToJson();$##string ReferenceId { get; set; }$##void InitializeReferences(Dictionary<string, IIdentifiable> dict, string json);$#}$}");
-            File.WriteAllText(Path.Combine(TargetDirectory, "IIdentifiable.cs"), builder.ToString().Replace("#", "    ").Replace("$", Environment.NewLine));
+            builder.AppendLine("        JProperty ToJson();");
+            builder.AppendLine("        string ReferenceId { get; set; }");
+            builder.AppendLine("        void InitializeReferences(Dictionary<string, IIdentifiable> dict, string json);");
+            builder.AppendLine("    }");
+            builder.AppendLine("}");
+            File.WriteAllText(Path.Combine(TargetDirectory, "IIdentifiable.cs"), builder.ToString());
         }
-
 
 
         // Creates the ItemContainer Class
@@ -838,7 +851,6 @@ namespace !!!
     {
         public List<IIdentifiable> Items { get; } = new List<IIdentifiable>();
         public List<IIdentifiable> TopLevelReferences { get; } = new List<IIdentifiable>();
-
 
         public string Serialize()
         {
@@ -892,7 +904,8 @@ namespace !!!
                     var clss = type.Key;
                     foreach (KeyValuePair<string, JToken> instance in (JObject)type.Value)
                     {
-                        IIdentifiable obj = null;???
+                        IIdentifiable obj = null;
+???
                         if (obj == null) { throw new InvalidOperationException(); }
                         obj.ReferenceId = instance.Key;
                         Items.Add(obj);
@@ -912,12 +925,11 @@ namespace !!!
             string start = "";
             foreach(var item in model.ItemTypes)
             {
-                ifs.Append("$######" + start + "if (clss.Equals(\"" + item.Name + "\")) { obj = JsonConvert.DeserializeObject<" + item.Name + 
-                    ">(instance.Value.ToString()); }");
+                ifs.AppendLine($"                        {start}if (clss.Equals(\"{item.Name}\")) {{ obj = " +
+                    $"JsonConvert.DeserializeObject<{item.Name}>(instance.Value.ToString()); }}");
                 start = "else ";
             }
-            File.WriteAllText(Path.Combine(TargetDirectory, "ItemContainer.cs"), clss.Replace("!!!", projName).Replace("???", ifs.ToString()
-                .Replace("#", "    ").Replace("$", Environment.NewLine)));
+            File.WriteAllText(Path.Combine(TargetDirectory, "ItemContainer.cs"), clss.Replace("!!!", projName).Replace("???", ifs.ToString()));
         }
 
 
@@ -988,7 +1000,9 @@ namespace cogsBurger
                 }
             }
             if (single != null) { return single; }
-            var t = objectType.GetGenericArguments()[0].Name;???
+            var t = objectType.GetGenericArguments()[0].Name;
+
+???
             return new InvalidOperationException();
         }
 
@@ -1116,10 +1130,9 @@ namespace cogsBurger
             StringBuilder ifs = new StringBuilder();
             foreach (var item in model.ItemTypes)
             {
-                ifs.Append("$###if (t.Equals(\"" + item.Name + "\")) { return list.Cast<" + item.Name + ">().ToList(); }");
+                ifs.AppendLine($"            if (t.Equals(\"{item.Name}\")) {{ return list.Cast<{item.Name}>().ToList(); }}");
             }
-            File.WriteAllText(Path.Combine(TargetDirectory, "JsonConverter.cs"), clss.Replace("!!!", projName).Replace("???", ifs.ToString()
-                .Replace("$", Environment.NewLine).Replace("#", "    ")));
+            File.WriteAllText(Path.Combine(TargetDirectory, "JsonConverter.cs"), clss.Replace("!!!", projName).Replace("???", ifs.ToString()));
         }
 
 
