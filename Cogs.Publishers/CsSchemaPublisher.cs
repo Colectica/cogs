@@ -52,7 +52,8 @@ namespace Cogs.Publishers
                     new XElement("AssemblyName", projName), new XElement("RootNamespace", projName)),
                 new XElement("ItemGroup", new XElement("PackageReference", new XAttribute("Include", "System.ComponentModel.Annotations"),
                     new XAttribute("Version", "4.4.0-preview2-25405-01")),
-                    new XElement("PackageReference", new XAttribute("Include", "Microsoft.CSharp"), new XAttribute("Version", "4.4.0-preview2-25405-01")),
+                    new XElement("PackageReference", new XAttribute("Include", "Microsoft.CSharp"), 
+                    new XAttribute("Version", "4.4.0-preview2-25405-01")),
                     new XElement("PackageReference", new XAttribute("Include", "Newtonsoft.Json"), new XAttribute("Version", "10.0.3")))));
             XmlWriterSettings xws = new XmlWriterSettings { OmitXmlDeclaration = true };
             using (XmlWriter xw = XmlWriter.Create(Path.Combine(TargetDirectory, projName + ".csproj"), xws))
@@ -61,13 +62,25 @@ namespace Cogs.Publishers
             }
             CreateJsonConverter(model, projName);
             // copy types file
-            this.GetType().GetTypeInfo().Assembly.GetManifestResourceStream("Cogs.Publishers.Types.txt").CopyTo(new FileStream(Path.Combine(TargetDirectory, "Types.cs"), FileMode.Create));
+            this.GetType().GetTypeInfo().Assembly.GetManifestResourceStream("Cogs.Publishers.Types.txt").CopyTo(
+                new FileStream(Path.Combine(TargetDirectory, "Types.cs"), FileMode.Create));
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
                 // add class description using '$' for newline and '#' for tabs
-                var newClass = new StringBuilder("using System;$using System.Linq;$using Newtonsoft.Json;$using Newtonsoft.Json.Linq;$using Cogs.DataAnnotations;$using System.Collections.Generic;$" +
-                    "using System.ComponentModel.DataAnnotations;$$namespace " + projName + "${$#/// <summary>$#/// " + item.Description + "$#/// <summary>");
-                newClass.Append("$#public ");
+                var newClass = new StringBuilder("using System;");
+                newClass.AppendLine("using System.Linq;");
+                newClass.AppendLine("using Newtonsoft.Json;");
+                newClass.AppendLine("using Newtonsoft.Json.Linq;");
+                newClass.AppendLine("using Cogs.DataAnnotations;");
+                newClass.AppendLine("using System.Collections.Generic;");
+                newClass.AppendLine("using System.ComponentModel.DataAnnotations;");
+                newClass.AppendLine();
+                newClass.AppendLine($"namespace {projName}");
+                newClass.AppendLine("{");
+                newClass.AppendLine("    /// <summary>");
+                newClass.AppendLine($"    /// {item.Description}");
+                newClass.AppendLine("    /// <summary>");
+                newClass.Append("    public ");
                 var toJsonProperties = new StringBuilder();
                 var initializeReferences = new StringBuilder();
                 var initializeReusables = new StringBuilder();
@@ -78,9 +91,19 @@ namespace Cogs.Publishers
                 if (item.IsAbstract) { newClass.Append("abstract "); }
                 newClass.Append("class " + item.Name);
                 // allow inheritance when relevant
-                if (!String.IsNullOrWhiteSpace(item.ExtendsTypeName)) newClass.Append(" : " + item.ExtendsTypeName + "$#{$##public new string ReferenceId { set; get; }");
-                else if (!model.ReusableDataTypes.Contains(item)) { newClass.Append(" : IIdentifiable$#{$##public string ReferenceId { set; get; }"); }
-                else { newClass.Append("$#{"); }
+                if (!String.IsNullOrWhiteSpace(item.ExtendsTypeName))
+                {
+                    newClass.AppendLine($" : {item.ExtendsTypeName}");
+                    newClass.AppendLine("    {");
+                    newClass.AppendLine("        public new string ReferenceId { set; get; }");
+                }
+                else if (!model.ReusableDataTypes.Contains(item))
+                {
+                    newClass.AppendLine(" : IIdentifiable");
+                    newClass.AppendLine("    {");
+                    newClass.AppendLine("        public string ReferenceId { set; get; }");
+                }
+                else { newClass.AppendLine("    {"); }
                 bool first = true;
                 foreach (var prop in item.Properties)
                 {
@@ -93,41 +116,43 @@ namespace Cogs.Publishers
                         if (!Isboolintdoubleulong(prop.DataTypeName)) { first = true; }
                     }
                     // create documentation for property
-                    newClass.Append("$##/// <summary>$##/// " + prop.Description + "$##/// <summary>");
+                    newClass.AppendLine("        /// <summary");
+                    newClass.AppendLine($"        /// {prop.Description}");
+                    newClass.AppendLine("        /// <summary");
                     // create constraints
                     if (prop.DataTypeName.Equals("string") || prop.DataTypeName.Equals("Uri"))
                     {
                         if (prop.MinLength != null && prop.MaxLength != null)
                         {
-                            newClass.Append("$##[StringLength(" + prop.MaxLength + ", MinimumLength = " + prop.MinLength + ")]");
+                            newClass.AppendLine($"        [StringLength({prop.MaxLength}, MinimumLength = {prop.MinLength})]");
                         }
                         else if (prop.MaxLength != null)
                         {
-                            newClass.Append("$##[StringLength(" + prop.MaxLength + ")]");
+                            newClass.AppendLine($"        [StringLength({prop.MaxLength})]");
                         }
                         else if (prop.MinLength != null)
                         {
-                            newClass.Append("$##[StringLength(" + int.MaxValue + ", MinimumLength = " + prop.MinLength + ")]");
+                            newClass.AppendLine($"        [StringLength({int.MaxValue}, MinimumLength = {prop.MinLength})]");
                         }
                         if (prop.DataTypeName.Equals("string"))
                         {
                             // work with Enum and pattern
                             if (prop.Enumeration.Count > 0)
                             {
-                                newClass.Append("$##[StringValidation(new string[] {");
+                                newClass.AppendLine("        [StringValidation(new string[] {");
                                 bool useComma = false;
                                 foreach (var option in prop.Enumeration)
                                 {
                                     if (useComma) { newClass.Append(", "); }
-                                    newClass.Append("$###\"" + option + "\"");
+                                    newClass.AppendLine($"            \"{option}\"");
                                     useComma = true;
                                 }
-                                if (!string.IsNullOrWhiteSpace(prop.Pattern)) { newClass.Append("$##}, " + prop.Pattern + ")]"); }
-                                else { newClass.Append("$##})]"); }
+                                if (!string.IsNullOrWhiteSpace(prop.Pattern)) { newClass.AppendLine($"        }}, {prop.Pattern})]"); }
+                                else { newClass.AppendLine("        })]"); }
                             }
                             else if (!string.IsNullOrWhiteSpace(prop.Pattern))
                             {
-                                newClass.Append("$##[StringValidation(null, \"" + prop.Pattern + "\")]");
+                                newClass.AppendLine($"        [StringValidation(null, \"{prop.Pattern}\")]");
                             }
                         }
                     }
@@ -135,209 +160,363 @@ namespace Cogs.Publishers
                     {
                         if (prop.MinInclusive != null || prop.MaxInclusive != null)
                         {
-                            newClass.Append("$##[Range(" + prop.MinInclusive + ", " + prop.MaxInclusive + ")]");
+                            newClass.AppendLine($"        [Range({prop.MinInclusive}, {prop.MaxInclusive})]");
                         }
                         if (prop.MinExclusive != null || prop.MaxExclusive != null)
                         {
-                            newClass.Append("$##[ExclusiveRange(" + prop.MinExclusive + ", " + prop.MaxExclusive + ")]");
+                            newClass.AppendLine($"        [ExclusiveRange({prop.MinInclusive}, {prop.MaxInclusive})]");
                         }
                     }
-                    if (!first && (model.Identification.Contains(prop) || Isboolintdoubleulong(prop.DataTypeName))) { toJsonProperties.Append(","); }
+                    if (!first && (model.Identification.Contains(prop) || Isboolintdoubleulong(prop.DataTypeName)))
+                    {
+                        toJsonProperties.AppendLine(",");
+                    }
                     var start = "((JObject)json.First).Add(";
                     if (model.ReusableDataTypes.Contains(item)) { start = "json.Add("; }
-                    if (model.ItemTypes.Contains(prop.DataType) && !item.IsAbstract) { newClass.Append("$##[JsonConverter(typeof(IIdentifiableConverter))]"); }
+                    if (model.ItemTypes.Contains(prop.DataType) && !item.IsAbstract)
+                    {
+                        newClass.AppendLine("        [JsonConverter(typeof(IIdentifiableConverter))]");
+                    }
                     // if there can be at most one, create an instance variable
                     if (!prop.MaxCardinality.Equals("n") && int.Parse(prop.MaxCardinality) == 1)
                     {
                         if (Isboolintdoubleulong(prop.DataTypeName) || model.Identification.Contains(prop))
                         {
-                            toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", " + prop.Name + ")");
+                            toJsonProperties.AppendLine();
+                            toJsonProperties.Append($"                new JProperty(\"{prop.Name}\", {prop.Name})");
                             first = false;
                         }
                         else if (origDataTypeName != null)
                         {
-                            newClass.Append("$##[JsonConverter(typeof(SimpleTypeConverter))]");
+                            newClass.AppendLine("        [JsonConverter(typeof(SimpleTypeConverter))]");
                             if (prop.DataTypeName.Equals("CogsDate"))
                             {
                                 reusablesInitialized++;
-                                reusableToJson.Append("$###if (" + prop.Name + ".GetValue() != null)");
-                                initializeReferences.Append("$####else if (line.Equals(\"" + prop.Name + "\") && thisObj && " + prop.Name + 
-                                    @".GetUsedType().Equals(""datetime""))$####{$#####string[] start = parts[i + 3].Trim().Replace(""\"""", """")." + 
-                                    "Split('-', 'T');$#####" + prop.Name + @" = new CogsDate(new DateTimeOffset(int.Parse(start[0]), " + 
-                                    "int.Parse(start[1]), int.Parse(start[2]), int.Parse(start[3]), $######int.Parse(parts[i + 4]), int.Parse(parts[i + 5]" +
-                                    @".Split('+')[0]), new TimeSpan(int.Parse(parts[i + 5].Split('+')[1]), $#######int.Parse(parts[i + 6].Replace(""\"""", """")), 0)));$####}");
+                                reusableToJson.AppendLine($"            if ({prop.Name}.GetValue() != null)");
+                                initializeReferences.AppendLine($"                else if (line.Equals(\"{prop.Name}\") && thisObj && " +
+                                    $"{prop.Name}.GetUsedType().Equals(\"datetime\"))");
+                                initializeReferences.AppendLine("                {");
+                                initializeReferences.AppendLine($"                    string[] start = parts[i + 3].Trim().Replace" +
+                                    $"(\"\\\"\", \"\").Split('-', 'T');");
+                                initializeReferences.AppendLine($"                   {prop.Name} = new CogsDate(new DateTimeOffset(" +
+                                    $"int.Parse(start[0]), int.Parse(start[1]), int.Parse(start[2]), int.Parse(start[3]), ");
+                                initializeReferences.AppendLine("                        int.Parse(parts[i + 4]), int.Parse(parts[i + 5]" +
+                                    ".Split('+')[0]), new TimeSpan(int.Parse(parts[i + 5].Split('+')[1]), ");
+                                initializeReferences.AppendLine($"                       int.Parse(parts[i + 6].Replace(\"\\\"\", \"\")), 0)));");
+                                initializeReferences.AppendLine("                }");
                             }
                             else if (prop.DataTypeName.Equals("DateTimeOffset") || prop.DataTypeName.Equals("TimeSpan"))
                             {
-                                reusableToJson.Append("$###if (" + prop.Name + " != default(" + prop.DataTypeName + "))");
+                                reusableToJson.AppendLine($"            if ({prop.Name} != default({prop.DataTypeName}))");
                                 if (origDataTypeName.Equals("dateTime"))
                                 {
                                     reusablesInitialized++;
-                                    initializeReferences.Append("$####else if (line.Equals(\"" + prop.Name + "\") && thisObj) " +
-                                        @"$####{$#####string[] start = parts[i + 1].Trim().Replace(""\"""", """").Split('-', 'T');$#####" + 
-                                        prop.Name + @" = new DateTimeOffset(int.Parse(start[0]), int.Parse(start[1]), int.Parse(start[2]), int.Parse(start[3]),
-                        int.Parse(parts[i + 2]), int.Parse(parts[i + 3].Split('+')[0]),
-                        new TimeSpan(int.Parse(parts[i + 3].Split('+')[1]), int.Parse(parts[i + 4].Replace(""\"""", """")), 0));$####}");
+                                    initializeReferences.AppendLine();
+                                    initializeReferences.AppendLine($"                else if (line.Equals(\"{prop.Name}\") && thisObj) ");
+                                    initializeReferences.AppendLine("                {");
+                                    initializeReferences.AppendLine($"                    string[] start = parts[i + 1].Trim().Replace" +
+                                        $"(\"\\\"\", \"\").Split('-', 'T');");
+                                    initializeReferences.AppendLine($"                   {prop.Name} = new DateTimeOffset(" +
+                                        $"int.Parse(start[0]), int.Parse(start[1]), int.Parse(start[2]), int.Parse(start[3]), ");
+                                    initializeReferences.AppendLine("                        int.Parse(parts[i + 2]), int.Parse(parts[i + 3]" +
+                                        ".Split('+')[0]), new TimeSpan(int.Parse(parts[i + 3].Split('+')[1]), ");
+                                    initializeReferences.AppendLine($"                       int.Parse(parts[i + 4].Replace(\"\\\"\", \"\")), 0));");
+                                    initializeReferences.AppendLine("                }");
                                 }
                             }
-                            else { reusableToJson.Append("$###if (" + prop.Name + " != null)"); }
-                            reusableToJson.Append("$###{$####" + SimpleToJson(origDataTypeName, prop.Name, start, false) + ");$###}");
+                            else { reusableToJson.AppendLine($"            if ({prop.Name} != null)"); }
+                            reusableToJson.AppendLine("            {");
+                            reusableToJson.AppendLine($"                {SimpleToJson(origDataTypeName, prop.Name, start, false)});");
+                            reusableToJson.AppendLine("            }");
                         }
                         else if (model.ReusableDataTypes.Contains(prop.DataType))
                         {
-                            reusableToJson.Append("$###if (" + prop.Name + " != null) { ");
-                            reusableToJson.Append(start + "new JProperty(\"" + prop.Name + "\", " + prop.Name + ".ToJson())); }");
+                            reusableToJson.AppendLine($"            if ({prop.Name} != null) {{ {start} new JProperty(\"{prop.Name}\", " +
+                                $"{prop.Name}.ToJson())); }}");
                             if (model.ItemTypes.Contains(item)) { initializeReferences.Append(InitializeReusable(prop, model)); }
                         }
                         else if(!model.ItemTypes.Contains(prop.DataType))
                         {
-                            reusableToJson.Append("$###if ( " + prop.Name + " != null) $###{$####" + start + "new JProperty(\"" + prop.Name + "\", " + prop.Name + "));$###}");
+                            reusableToJson.AppendLine($"            if ({prop.Name} != null)");
+                            reusableToJson.AppendLine("            {");
+                            reusableToJson.AppendLine($"                {start}new JProperty(\"{prop.Name}\", {prop.Name}));");
+                            reusableToJson.AppendLine("            }");
                         }
                         else
                         {
                             if (model.ReusableDataTypes.Contains(item))
                             {
-                                reusableToJson.Append("$###if ( " + prop.Name + " != null) $###{$####" + start + "new JProperty(\"" + prop.Name + "\", new JObject($#####" +
-                                "new JProperty(\""+ prop.DataTypeName + "\", new JObject($######new JProperty(\"ID\", " + prop.Name + ".ID))))));$###}");
+                                reusableToJson.AppendLine($"            if ({prop.Name} != null)");
+                                reusableToJson.AppendLine("            {");
+                                reusableToJson.AppendLine($"                {start}new JProperty(\"{prop.Name}\", new JObject(");
+                                reusableToJson.AppendLine($"                    new JProperty(\"{prop.DataTypeName}\", new JObject(");
+                                reusableToJson.AppendLine($"                        new JProperty(\"ID\", {prop.Name}.ID))))));");
+                                reusableToJson.AppendLine("            }");
                             }
                             else
                             {
-                                reusableToJson.Append("$###if ( " + prop.Name + " != null) $###{$####" + start + "new JProperty(\"" + prop.Name + "\", new JObject(" +
-                               "new JProperty(\"@type\", \"ref\"), $#####new JProperty(\"value\", new JArray($######\"" + prop.DataTypeName + "\", $######" + prop.Name + ".ID)))));$###}");
-                                initializeReusables.Append("$###if (" + prop.Name + " != null) { " + prop.Name + " = (" + prop.DataTypeName +
-                                    ")dict[" + prop.Name + ".ReferenceId]; }");
+                                reusableToJson.AppendLine($"            if ({prop.Name} != null)");
+                                reusableToJson.AppendLine("            {");
+                                reusableToJson.AppendLine($"                {start}new JProperty(\"{prop.Name}\", new JObject(" +
+                                    $"new JProperty(\"@type\", \"ref\"), ");
+                                reusableToJson.AppendLine($"                    new JProperty(\"value\", new JArray(\"{prop.DataTypeName}\",");
+                                reusableToJson.AppendLine($"                        {prop.Name}.ID)))));");
+                                reusableToJson.AppendLine("            }");
+                                initializeReusables.AppendLine($"            if ({prop.Name} != null) {{ {prop.Name} = ({prop.DataTypeName})" +
+                                    $"dict[{prop.Name}.ReferenceId]; }}");
                             }
                         }
-                        newClass.Append("$##public " + prop.DataTypeName + " " + prop.Name + " { get; set; }");
+                        newClass.AppendLine($"        public {prop.DataTypeName} {prop.Name} {{ get; set; }}");
                     }
                     // otherwise, create a list object to allow multiple
                     else
                     {
                         if (Isboolintdoubleulong(prop.DataTypeName) || model.Identification.Contains(prop))
                         {
-                            toJsonProperties.Append("$####new JProperty(\"" + prop.Name + "\", $#####new JArray($######from item in " + prop.Name +
-                                "$######select item))");
+                            toJsonProperties.AppendLine();
+                            toJsonProperties.AppendLine($"                new JProperty(\"{prop.Name}\", ");
+                            toJsonProperties.AppendLine($"                    new JArray(");
+                            toJsonProperties.AppendLine($"                        from item in {prop.Name}");
+                            toJsonProperties.Append($"                        select item))");
                             first = false;
                         }
                         else if (origDataTypeName != null)
                         {
                             if (origDataTypeName.Equals("dateTime"))
                             {
+                                initializeReferences.AppendLine();
+                                initializeReferences.AppendLine($"                else if (line.Equals(\"{prop.Name}\") && thisObj)");
+                                initializeReferences.AppendLine("                { ");
+                                initializeReferences.AppendLine($"                    {prop.Name} = new List<{prop.DataTypeName}>();");
+                                initializeReferences.AppendLine("                    i++;");
+                                initializeReferences.AppendLine("                    while (i < parts.Length)");
+                                initializeReferences.AppendLine("                    {");
+                                initializeReferences.AppendLine("                        if (parts[i].Trim().Replace(\"\\\"\", \"\")" +
+                                    ".Equals(\"]\")) { break; }");
+                                initializeReferences.AppendLine("                        string[] start = parts[i + 1].Trim()" +
+                                    ".Replace(\"\\\"\", \"\").Split('-', 'T');");
+                                initializeReferences.AppendLine($"                        {prop.Name}.Add(new DateTimeOffset(" +
+                                    "int.Parse(start[0]), int.Parse(start[1]), int.Parse(start[2]), int.Parse(start[3]), ");
+                                initializeReferences.AppendLine("                            int.Parse(parts[i + 2]), " +
+                                    "int.Parse(parts[i + 3].Split('+')[0]), ");
+                                initializeReferences.AppendLine("                            new TimeSpan(int.Parse(parts[i + 3].Split('+')[1]), " +
+                                    "int.Parse(parts[i + 4].Replace(\"\\\"\", \"\")), 0)));");
+                                initializeReferences.AppendLine("                        i += 5;");
+                                initializeReferences.AppendLine("                    }");
+                                initializeReferences.AppendLine("                }");
                                 reusablesInitialized++;
-                                initializeReferences.Append("$####else if (line.Equals(\"" + prop.Name + "\") && thisObj) $####{" +
-                                    "$#####" + prop.Name + " = new List<" + prop.DataTypeName + ">();$#####i++;$#####while (i < parts.Length)$#####{" +
-                                    "$#######if (parts[i].Trim().Replace(\"\\\"\", \"\").Equals(\"]\")) { break; }$######string[] start = parts[i + 1].Trim()" +
-                                    ".Replace(\"\\\"\", \"\").Split('-', 'T');$######" + prop.Name + ".Add(new DateTimeOffset(int.Parse(start[0]), " +
-                                    "int.Parse(start[1]), int.Parse(start[2]), int.Parse(start[3]), $#######int.Parse(parts[i + 2]), " +
-                                    "int.Parse(parts[i + 3].Split('+')[0]), $#######new TimeSpan(int.Parse(parts[i + 3].Split('+')[1]), " +
-                                    "int.Parse(parts[i + 4].Replace(\"\\\"\", \"\")), 0)));$######i += 5;$#####}$####}");
                             }
                             else if (origDataTypeName.Equals("cogsDate"))
                             {
+                                initializeReferences.AppendLine($"                else if (line.Equals(\"{prop.Name}\") && thisObj && " +
+                                    $"{prop.Name}.Where(x => x.GetUsedType().Equals(\"datetime\")).ToList().Count > 0)");
+                                initializeReferences.AppendLine("                {");
+                                initializeReferences.AppendLine("                    List<int> indices = new List<int>();");
+                                initializeReferences.AppendLine($"                    for (int j = 0; j < {prop.Name}.Count; j++) ");
+                                initializeReferences.AppendLine("                    {");
+                                initializeReferences.AppendLine($"                        if ({prop.Name}[j].GetUsedType()" +
+                                    $".Equals(\"datetime\")) {{ indices.Add(j); }}");
+                                initializeReferences.AppendLine("                    }");
+                                initializeReferences.AppendLine("                    int done = 0;");
+                                initializeReferences.AppendLine("                    i++;");
+                                initializeReferences.AppendLine("                    while (i < parts.Length && done < indices.Count)");
+                                initializeReferences.AppendLine("                    {");
+                                initializeReferences.AppendLine("                        if (parts[i].Trim().Replace(\"\\\"\", \"\")" +
+                                    ".Equals(\"]\")) { break; }");
+                                initializeReferences.AppendLine("                        else if (parts[i].Trim().Replace(\"\\\"\", \"\")" +
+                                    ".Equals(\"datetime\"))");
+                                initializeReferences.AppendLine("                        {");
+                                initializeReferences.AppendLine("                            string[] start = parts[i + 1].Trim()" +
+                                    ".Replace(\"\\\"\", \"\").Split('-', 'T');");
+                                initializeReferences.AppendLine($"                            {prop.Name}[indices[done]] = new CogsDate(" +
+                                    "new DateTimeOffset(int.Parse(start[0]), int.Parse(start[1]), int.Parse(start[2]), int.Parse(start[3]), ");
+                                initializeReferences.AppendLine("                                int.Parse(parts[i + 2]), " +
+                                    "int.Parse(parts[i + 3].Split('+')[0]), ");
+                                initializeReferences.AppendLine("                                new TimeSpan(int.Parse(parts[i + 3]" +
+                                    ".Split('+')[1]), int.Parse(parts[i + 4].Replace(\"\\\"\", \"\")), 0)));");
+                                initializeReferences.AppendLine("                            i += 4;");
+                                initializeReferences.AppendLine("                            done++;");
+                                initializeReferences.AppendLine("                        }");
+                                initializeReferences.AppendLine("                        i++;");
+                                initializeReferences.AppendLine("                    }");
+                                initializeReferences.AppendLine("                    reusablesInitialized++;");
+                                initializeReferences.AppendLine("                }");
                                 reusablesInitialized++;
-                                initializeReferences.Append("$####else if (line.Equals(\"" + prop.Name + "\") && thisObj && " + prop.Name +
-                                    ".Where(x => x.GetUsedType().Equals(\"datetime\")).ToList().Count > 0) $####{" +
-                                    "$#####List<int> indices = new List<int>();$#####for (int j = 0; j < " + prop.Name + ".Count; j++) " +
-                                    "{ if (" + prop.Name + "[j].GetUsedType().Equals(\"datetime\")) { indices.Add(j); } }$#####int done = 0;" +
-                                    "$#####i++;$#####while (i < parts.Length && done < indices.Count)$#####{" +
-                                    "$######if (parts[i].Trim().Replace(\"\\\"\", \"\").Equals(\"]\")) { break; }" +
-                                    "$######else if (parts[i].Trim().Replace(\"\\\"\", \"\").Equals(\"datetime\"))$######{$#######" +
-                                    "string[] start = parts[i + 1].Trim().Replace(\"\\\"\", \"\").Split('-', 'T');$#######" + prop.Name + 
-                                    "[indices[done]] = new CogsDate(new DateTimeOffset(int.Parse(start[0]), " +
-                                    "int.Parse(start[1]), int.Parse(start[2]), int.Parse(start[3]), $########int.Parse(parts[i + 2]), " +
-                                    "int.Parse(parts[i + 3].Split('+')[0]), $########new TimeSpan(int.Parse(parts[i + 3].Split('+')[1]), " +
-                                    "int.Parse(parts[i + 4].Replace(\"\\\"\", \"\")), 0)));$#######i += 4;$#######done++;$#######}$######i++;" +
-                                    "$#####}$#####reusablesInitialized++;$####}");
                             }
-                            newClass.Append("$##[JsonConverter(typeof(SimpleTypeConverter))]");
-                            reusableToJson.Append("$###if (" + prop.Name + " != null && " + prop.Name + ".Count > 0)");
-                            reusableToJson.Append("$###{$####var prop = new JProperty(\"" + prop.Name + "\", new JArray());$####foreach (var item in " +
-                                prop.Name + ")$####{" + SimpleToJson(origDataTypeName, prop.Name, "", true) + "$####}$####" + start + "prop);$###}");
+                            newClass.AppendLine("        [JsonConverter(typeof(SimpleTypeConverter))]");
+                            reusableToJson.AppendLine($"            if ({prop.Name} != null && {prop.Name}.Count > 0)");
+                            reusableToJson.AppendLine("            {");
+                            reusableToJson.AppendLine($"                var prop = new JProperty(\"{prop.Name}\", new JArray());");
+                            reusableToJson.AppendLine($"                foreach (var item in {prop.Name})");
+                            reusableToJson.Append("                {");
+                            reusableToJson.AppendLine($"                    {SimpleToJson(origDataTypeName, prop.Name, "", true)}");
+                            reusableToJson.AppendLine("                }");
+                            reusableToJson.AppendLine($"                {start}prop);");
+                            reusableToJson.AppendLine("            }");
                         }
                         else if (model.ReusableDataTypes.Contains(prop.DataType))
                         {
-                            reusableToJson.Append("$###if (" + prop.Name + " != null && " + prop.Name + ".Count > 0)$###{$####" + start + "new JProperty(\"" + 
-                                prop.Name + "\", $#####new JArray($######from item in " + prop.Name + "$######select new JObject($#######new JProperty(\"" + 
-                                prop.DataTypeName + "\", item.ToJson()))))); $###}");
+                            reusableToJson.AppendLine($"            if ({prop.Name} != null && {prop.Name}.Count > 0)");
+                            reusableToJson.AppendLine("            {");
+                            reusableToJson.AppendLine($"                {start}new JProperty(\"{prop.Name}\", new JArray(");
+                            reusableToJson.AppendLine($"                    from item in {prop.Name}");
+                            reusableToJson.AppendLine($"                    select new JObject(new JProperty(\"{prop.DataTypeName}\", " +
+                                $"item.ToJson())))));");
+                            reusableToJson.AppendLine("            }");
                             if (model.ItemTypes.Contains(item)) { initializeReferences.Append(InitializeReusable(prop, model, helpers)); }
                         }
                         else if (!model.ItemTypes.Contains(prop.DataType))
                         {
-                            reusableToJson.Append("$###if ( " + prop.Name + " != null && " + prop.Name + ".Count > 0) $###{$####" + start + "new JProperty(\"" + 
-                                prop.Name + "\", new JArray($#####from item in " + prop.Name + "$#####select item)));$###}");
+                            reusableToJson.AppendLine($"            if ({prop.Name} != null && {prop.Name}.Count > 0)");
+                            reusableToJson.AppendLine("            {");
+                            reusableToJson.AppendLine($"                {start}new JProperty(\"{prop.Name}\", new JArray(");
+                            reusableToJson.AppendLine($"                    from item in {prop.Name}");
+                            reusableToJson.AppendLine("                    select item)));");
+                            reusableToJson.AppendLine("            }");
                         }
                         else
                         {
                             if (model.ReusableDataTypes.Contains(item))
                             {
-                                reusableToJson.Append("$###if (" + prop.Name + " != null)$###{$####" + start + "new JProperty(\"" + prop.Name +
-                                "\", $#####new JArray($######from item in " + prop.Name + "$######select new JObject(new JProperty(\"" + prop.DataTypeName + 
-                                "\", new JObject($######new JProperty(\"ID\", item.ID)))))));$###}");
+                                reusableToJson.AppendLine($"            if ({prop.Name} != null)");
+                                reusableToJson.AppendLine("            {");
+                                reusableToJson.AppendLine($"                {start}new JProperty(\"{prop.Name}\", new JArray(");
+                                reusableToJson.AppendLine($"                    from item in {prop.Name}");
+                                reusableToJson.AppendLine($"                    select new JObject(new JProperty(\"{prop.DataTypeName}\", ");
+                                reusableToJson.AppendLine("                        new JObject(new JProperty(\"ID\", item.ID)))))));");
+                                reusableToJson.AppendLine("            }");
                             }
                             else
                             {
-                                reusableToJson.Append("$###if (" + prop.Name + " != null)$###{$####" + start + "new JProperty(\"" + prop.Name +
-                                "\", $#####new JArray($######from item in " + prop.Name + "$######select new JObject(new JProperty(\"@type\", \"ref\"), " +
-                                "$#######new JProperty(\"value\", new JArray($########item.GetType().Name.ToString(), $########item.ID))))));$###}");
-                                initializeReusables.Append("$###if (" + prop.Name + " != null)$###{$####for (int j = 0; j < " + prop.Name + ".Count; j++)" +
-                                    "$####{$#####dynamic temp = dict[" + prop.Name + "[j].ReferenceId];$#####" + prop.Name + "[j] = temp;$####}$###}");
+                                reusableToJson.AppendLine($"            if ({prop.Name} != null)");
+                                reusableToJson.AppendLine("            {");
+                                reusableToJson.AppendLine($"                {start}new JProperty(\"{prop.Name}\", new JArray(");
+                                reusableToJson.AppendLine($"                    from item in {prop.Name}");
+                                reusableToJson.AppendLine("                    select new JObject(new JProperty(\"@type\", \"ref\"), ");
+                                reusableToJson.AppendLine("                        new JProperty(\"value\", new JArray(" +
+                                    "item.GetType().Name.ToString(), item.ID))))));");
+                                reusableToJson.AppendLine("            }");
+                                initializeReusables.AppendLine($"            if ({prop.Name} != null)");
+                                initializeReusables.AppendLine("            {");
+                                initializeReusables.AppendLine($"                for (int j = 0; j < {prop.Name}.Count; j++)");
+                                initializeReusables.AppendLine("                {");
+                                initializeReusables.AppendLine($"                    dynamic temp = dict[{prop.Name}[j].ReferenceId];");
+                                initializeReusables.AppendLine($"                    {prop.Name}[j] = temp;");
+                                initializeReusables.AppendLine("                }");
+                                initializeReusables.AppendLine("            }");
                             }
                         }
-                        newClass.Append("$##public List<" + prop.DataTypeName + "> " + prop.Name + "{ get; set; } = new List<" + prop.DataTypeName + ">();");
+                        newClass.AppendLine($"        public List<{prop.DataTypeName}> {prop.Name} {{ get; set; }} = " +
+                            $"new List<{prop.DataTypeName}>();");
                     }
                 }
                 string returnType = "JProperty";
                 if (model.ItemTypes.Contains(item))
                 {
-                    newClass.Append("$##/// <summary>$##/// Used to Serialize this object to Json $##/// <summary>");
+                    newClass.AppendLine("        /// <summary>");
+                    newClass.AppendLine("        /// Used to Serialize this object to Json");
+                    newClass.AppendLine("        /// <summary>");
                     if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
                     {
-                        newClass.Append("$##public override " + returnType + " ToJson()$##{$###JProperty json = base.ToJson();$###((JObject)json.First).Add(");
+                        newClass.AppendLine($"        public override {returnType} ToJson()");
+                        newClass.AppendLine("        {");
+                        newClass.AppendLine("            JProperty json = base.ToJson();");
+                        newClass.Append("            ((JObject)json.First).Add(");
                     }
-                    else { newClass.Append("$##public virtual " + returnType + " ToJson()$##{$###JProperty json = new JProperty(ID, new JObject("); }
+                    else
+                    {
+                        newClass.AppendLine($"        public virtual {returnType} ToJson()");
+                        newClass.AppendLine("        {");
+                        newClass.Append($"            JProperty json = new JProperty(ID, new JObject(");
+                    }
                     newClass.Append(toJsonProperties.ToString());
                     if (string.IsNullOrWhiteSpace(item.ExtendsTypeName)) { newClass.Append(")"); }
-                    newClass.Append(");" + reusableToJson.ToString() + "$###return json;$##}");
-                    newClass.Append("$$##/// <summary>$##/// Used to set this object's properties from Json $##/// <summary>");
+                    newClass.Append(");" + reusableToJson.ToString());
+                    newClass.AppendLine($"            return json;");
+                    newClass.AppendLine("        }");
+                    newClass.AppendLine();
+                    newClass.AppendLine("        /// <summary>");
+                    newClass.AppendLine("        /// Used to set this object's properties from Json");
+                    newClass.AppendLine("        /// <summary>");
                     if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
                     {
-                        newClass.Append("$##public override void InitializeReferences(Dictionary<string, IIdentifiable> dict, string json)$##{" +
-                            "$###base.InitializeReferences(dict, json);");
+                        newClass.AppendLine("        public override void InitializeReferences(Dictionary<string, " +
+                            "IIdentifiable> dict, string json)");
+                        newClass.AppendLine("        {");
+                        newClass.AppendLine("            base.InitializeReferences(dict, json);");
                     }
-                    else { newClass.Append("$##public virtual void InitializeReferences(Dictionary<string, IIdentifiable> dict, string json)$##{"); }
+                    else
+                    {
+                        newClass.AppendLine($"        public virtual void InitializeReferences(Dictionary<string, " +
+                            $"IIdentifiable> dict, string json)");
+                        newClass.AppendLine("        {");
+                    }
                     if (initializeReferences.ToString().Contains("parts[i"))
                     {
-                        newClass.AppendLine();
-                        newClass.AppendLine("            string[] parts = json.Split(new string[] { \":\", \",\", Environment.NewLine }, StringSplitOptions.None);");
+                        newClass.AppendLine("            string[] parts = json.Split(new string[] { \":\", \",\", Environment.NewLine }, " +
+                            "StringSplitOptions.None);");
                         if (initializeReferences.ToString().Contains("thisObj")) { newClass.AppendLine("            bool thisObj = false;"); }
-                        newClass.AppendLine("###int reusablesInitialized = 0;$###for (int i = 0; i < parts.Length; i ++)$###{$####" +
-                        "var line = parts[i].Trim().Replace(\"\\\"\", \"\");$####if (reusablesInitialized == " + reusablesInitialized + ") { return; }");
-                        if (initializeReferences.ToString().Contains("thisObj")) { newClass.AppendLine("                else if (line.Equals(ID)) { thisObj = true; }"); }
-                        newClass.AppendLine(initializeReferences.ToString() + "$###}" + initializeReusables.ToString() + "$##}" + helpers.ToString() + "$#}$}$");
+                        newClass.AppendLine("            int reusablesInitialized = 0;");
+                        newClass.AppendLine("            for (int i = 0; i < parts.Length; i ++)");
+                        newClass.AppendLine("            {");
+                        newClass.AppendLine("                var line = parts[i].Trim().Replace(\"\\\"\", \"\");");
+                        newClass.AppendLine($"                if (reusablesInitialized == {reusablesInitialized}) {{ return; }}");
+                        if (initializeReferences.ToString().Contains("thisObj"))
+                        {
+                            newClass.AppendLine("                else if (line.Equals(ID)) { thisObj = true; }");
+                        }
+                        newClass.AppendLine(initializeReferences.ToString());
+                        newClass.AppendLine("            }");
+                        newClass.Append(initializeReusables.ToString());
+                        newClass.AppendLine("        }");
+                        newClass.Append(helpers.ToString());
                     }
-                    else { newClass.Append(initializeReferences.ToString() + "$##}$#}$}$"); }
+                    else
+                    {
+                        newClass.AppendLine(initializeReferences.ToString());
+                        newClass.AppendLine("        }");
+                    }
+                    newClass.AppendLine("    }");
+                    newClass.AppendLine("}");
+                    newClass.AppendLine();
                 }
                 else
                 {
                     returnType = "JObject";
                     if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
                     {
-                        newClass.Append("$##public override " + returnType + " ToJson()$##{$###JObject json = base.ToJson();$###((JObject)json.First).Add(");
+                        newClass.AppendLine($"        public override {returnType} ToJson()");
+                        newClass.AppendLine("        {");
+                        newClass.AppendLine("            JObject json = base.ToJson();");
+                        newClass.AppendLine("            ((JObject)json.First).Add(");
                     }
-                    else { newClass.Append("$##public virtual " + returnType + " ToJson()$##{$###JObject json = new JObject() {"); }
+                    else
+                    {
+                        newClass.AppendLine($"        public virtual {returnType} ToJson()");
+                        newClass.AppendLine("        {");
+                        newClass.AppendLine("            JObject json = new JObject() {");
+                    }
                     newClass.Append(toJsonProperties.ToString());
-                    newClass.Append("};" + reusableToJson.ToString() + "$###return json;$##}$#}$}$");
+                    newClass.Append($"}};{reusableToJson.ToString()}");
+                    newClass.AppendLine("            return json;");
+                    newClass.AppendLine("        }");
+                    newClass.AppendLine("    }");
+                    newClass.AppendLine("}");
+                    newClass.AppendLine();
                 }
                 // write class to out folder
-                File.WriteAllText(Path.Combine(TargetDirectory, item.Name + ".cs"), newClass.ToString().
-                    Replace("$###((JObject)json.First).Add();", "").Replace("#", "    ").Replace("$", Environment.NewLine).Replace("@", "$"));
+                File.WriteAllText(Path.Combine(TargetDirectory, item.Name + ".cs"), newClass.ToString()
+                    .Replace("            ((JObject)json.First).Add();", ""));
             }
         }
 
 
         private bool Isboolintdoubleulong(string name)
         {
-            if (name.Equals("bool") || name.Equals("int") || name.Equals("double") || name.Equals("ulong") || name.Equals("long")) { return true; }
+            if (name.Equals("bool") || name.Equals("int") || name.Equals("double") || name.Equals("ulong") || name.Equals("long"))
+            {
+                return true;
+            }
             return false;
         }
 
@@ -346,49 +525,52 @@ namespace Cogs.Publishers
         {
             var name = prop.Name;
             var type = prop.DataTypeName;
-            StringBuilder builder = new StringBuilder(@"
-                else if (line.Equals(""" + name + @""") && thisObj)
-                {
+            StringBuilder builder = new StringBuilder($@"                else if (line.Equals(""{name}"") && thisObj)
+                {{
                     ");
             if (main != null)
             {
-                builder.Append(name + " = new List<" + type + @">();
-                    Initialize" + name + "(" + name + @", parts, i);
-                }");
+                builder.Append($@"{name} = new List<{type}>();
+                    Initialize{name}({name}, parts, i);
+                }}");
                 InitializeReusableList(prop, model, main, name, type);
             }
             else
             {
-                builder.Append(name + " = new " + type + @"();
+                builder.Append($@"{name} = new {type}();
                     int counter = 1;
                     i++;
                     while (i < parts.Length && counter > 0)
-                    {
+                    {{
                         line = parts[i].Trim().Replace(""\"""", """");
-                        if (line.Equals(""{"")) { counter++; }
-                        else if (line.Equals(""}"")) { counter--; }");
+                        if (line.Equals(""{{"")) {{ counter++; }}
+                        else if (line.Equals(""}}"")) {{ counter--; }}");
                 foreach (var p in prop.DataType.Properties)
                 {
-                    if (p.DataTypeName.ToLower().Equals("cogsdate")) { builder.Append("$######else if (line.Equals(\"" + p.Name + "\"))"); }
-                    else { builder.Append("$######else if (line.Equals(\"" + p.Name + "\"))"); }
+                    builder.AppendLine();
+                    if (p.DataTypeName.ToLower().Equals("cogsdate"))
+                    {
+                        builder.Append($"                        else if (line.Equals(\"{p.Name}\"))");
+                    }
+                    else { builder.Append($"                        else if (line.Equals(\"{p.Name}\"))"); }
                     if (!p.MaxCardinality.Equals("1"))
                     {
-                        builder.Append(@"
-                        {
-                            " + name + "." + p.Name + " = new List<" + p.DataTypeName + @">();
+                        builder.Append($@"
+                        {{
+                            {name}.{p.Name} = new List<{p.DataTypeName}>();
                             i += 2;
                             int array = 1;
                             while (i < parts.Length && counter > 0 && array > 0)
-                            {
+                            {{
                                 line = parts[i].Trim().Replace(""\"""", """");
-                                if (line.Equals(""{"")) { counter++; }
-                                else if (line.Equals(""}"")) { counter--; }
-                                else if (line.Equals(""["")) { array++; }
-                                else if (line.Equals(""]"")) { array--; }
-                                else if (!string.IsNullOrWhiteSpace(line)) " + InitializeObject(p, model, true, name, ".Add(") + @"
+                                if (line.Equals(""{{"")) {{ counter++; }}
+                                else if (line.Equals(""}}"")) {{ counter--; }}
+                                else if (line.Equals(""["")) {{ array++; }}
+                                else if (line.Equals(""]"")) {{ array--; }}
+                                else if (!string.IsNullOrWhiteSpace(line)) { InitializeObject(p, model, true, name, ".Add(")}
                                 i++;
-                            }
-                        }");
+                            }}
+                        }}");
                     }
                     else { builder.Append(InitializeObject(p, model, false, name, " = ")); }
                 }
@@ -405,55 +587,61 @@ namespace Cogs.Publishers
         private void InitializeReusableList(Property prop, CogsModel model, StringBuilder main, string name, string type)
         {
             StringBuilder subs = new StringBuilder();
-            main.Append("$##private int Initialize" + name + "(List<" + type + "> list, string[] parts, int i)$##{$###" + type + @" obj = null;
+            main.AppendLine($@"        private int Initialize{name}(List<{type}> list, string[] parts, int i)
+        {{
+            {type} obj = null;
             bool open = true;
             i += 3;
             while (i < parts.Length && open)
-            {
+            {{
                 var line = parts[i].Trim().Replace(""\"""", """");
-                if (line.Equals(""]"")) { open = false; }
-                else if (line.Equals(""" + type + @"""))
-                {
-                    if (obj != null) { list.Add(obj); }
-                    obj = new " + type + @"();
-                }");
+                if (line.Equals(""]"")) {{ open = false; }}
+                else if (line.Equals(""{type}""))
+                {{
+                    if (obj != null) {{ list.Add(obj); }}
+                    obj = new {type}();
+                }}");
             foreach (var p in prop.DataType.Properties)
             {
-                if (p.DataTypeName.Equals("cogsDate")) { main.Append("$####else if (line.Equals(\"cogsDate\"))"); }
-                else { main.Append("$####else if (line.Equals(\"" + p.Name + "\"))"); }
+                if (p.DataTypeName.Equals("cogsDate")) { main.AppendLine("                else if (line.Equals(\"cogsDate\"))"); }
+                else { main.Append($"                else if (line.Equals(\"{p.Name}\"))"); }
                 if (!p.MaxCardinality.Equals("1"))
                 {
                     if (p.DataTypeName.Equals(type))
                     {
-                        main.Append(" { i = Initialize" + name + "(obj." + p.Name + @", parts, i); }");
+                        main.Append($" {{ i = Initialize{name}(obj.{p.Name}, parts, i); }}");
                     }
                     else if (model.ReusableDataTypes.Contains(prop.DataType))
                     {
-                        main.Append(" { i = Initialize" + p.Name + "(obj." + p.Name + ", parts, i, int counter); }");
+                        main.Append($" {{ i = Initialize{p.Name}(obj.{p.Name}, parts, i); }}");
                         InitializeReusableList(p, model, subs, p.Name, p.DataTypeName);
                     }
                     else
                     {
-                        main.Append(@"
-                        {
+                        main.Append($@"
+                        {{
                             i += 2;
                             int array = 1;
                             while (i < parts.Length && counter > 0 && array > 0)
-                            {
+                            {{
                                 line = parts[i].Trim().Replace(""\"""", """");
-                                if (line.Equals(""{"")) { counter++; }
-                                else if (line.Equals(""}"")) { counter--; }
-                                else if (line.Equals(""["")) { array++; }
-                                else if (line.Equals(""]"")) { array--; }
-                                else if (!string.IsNullOrWhiteSpace(line)) " + InitializeObject(p, model, true, "obj", ".Add(") + @"
+                                if (line.Equals(""{{"")) {{ counter++; }}
+                                else if (line.Equals(""}}"")) {{ counter--; }}
+                                else if (line.Equals(""["")) {{ array++; }}
+                                else if (line.Equals(""]"")) {{ array--; }}
+                                else if (!string.IsNullOrWhiteSpace(line)) {InitializeObject(p, model, true, "obj", ".Add(")}
                                 i++;
-                            }
-                        }");
+                            }}
+                        }}");
                     }
                 }
-                else { main.Append(" " + InitializeObject(p, model, false, "obj", " = ")); }
+                else { main.Append($" {InitializeObject(p, model, false, "obj", " = ")}"); }
             }
-            main.Append("$####i++;$###}$###if (obj != null) { list.Add(obj); }$###return i;$##}" + subs);
+            main.AppendLine("                i++;");
+            main.AppendLine("            }");
+            main.AppendLine("            if (obj != null) { list.Add(obj); }");
+            main.AppendLine("            return i;");
+            main.AppendLine($"        }}{subs}");
         }
 
 
@@ -461,18 +649,23 @@ namespace Cogs.Publishers
         {
             if (p.DataTypeName.Equals("cogsDate"))
             {
-                return @"
-                        {
+                return $@"
+                        {{
                             if (parts[i + 2].Trim().Replace(""\"""", """").Equals(""datetime""))
-                            {
-                                " + name + "." + p.Name + @" = new CogsDate(parts[i + 2].Trim().Replace(""\"""", """"), (parts[i + 3] + "":"" + parts[i + 4] + "":"" + parts[i + 5] +
-                                   "":"" + parts[i + 6] + "":"" + parts[i + 7]).Trim().Replace(""\"""", """"));
-                            }
-                            else { " + name + "." + p.Name + @" = new CogsDate(parts[i + 2].Trim().Replace(""\"""", """"), parts[i + 3].Trim().Replace(""\"""", """")); }
-                        }";
+                            {{
+                                {name}.{p.Name} = new CogsDate(parts[i + 2].Trim().Replace(""\"""", """"), (parts[i + 3] + "":"" + 
+                                    parts[i + 4] + "":"" + parts[i + 5] + "":"" + parts[i + 6] + "":"" + 
+                                    parts[i + 7]).Trim().Replace(""\"""", """"));
+                            }}
+                            else 
+                            {{ 
+                                {name}.{p.Name} = new CogsDate(parts[i + 2].Trim().Replace(""\"""", """"), 
+                                    parts[i + 3].Trim().Replace(""\"""", """")); 
+                            }}
+                        }}";
             }
-            if (operation.Equals(".Add(")) { return "{ " + name + "." + p.Name + operation + ReusableTypeConvert(p.DataTypeName, isList, model) + @"); }"; }
-            return "{ " + name + "." + p.Name + operation + ReusableTypeConvert(p.DataTypeName, isList, model) + @"; }";
+            if (operation.Equals(".Add(")) { return $"{{ {name}.{p.Name}{operation}{ReusableTypeConvert(p.DataTypeName, isList, model)}); }}"; }
+            return $"{{ {name}.{p.Name}{operation}{ReusableTypeConvert(p.DataTypeName, isList, model)}; }}";
         }
 
 
@@ -483,7 +676,10 @@ namespace Cogs.Publishers
             if (name.Equals("int")) { return "int.Parse(parts[" + i + "].Trim().Replace(\"\\\"\", \"\"))"; }
             if (name.Equals("double")) { return "double.Parse(parts[" + i + "].Trim().Replace(\"\\\"\", \"\"))"; }
             if (name.Equals("decimal")) { return "decimal.Parse(parts[" + i + "].Trim().Replace(\"\\\"\", \"\"))"; }
-            if (model.ItemTypes.Where(x => x.Name == name).ToList().Count > 0) { return "(" + name + ")dict[parts[i + 5].Trim().Replace(\"\\\"\", \"\")]"; }
+            if (model.ItemTypes.Where(x => x.Name == name).ToList().Count > 0)
+            {
+                return $"({name})dict[parts[i + 5].Trim().Replace(\"\\\"\", \"\")]";
+            }
             return "parts[" + i + "].Trim().Replace(\"\\\"\", \"\")";
         }
 
@@ -491,102 +687,123 @@ namespace Cogs.Publishers
         { 
             if (origDataTypeName.ToLower().Equals("duration"))
             {
-                if (!isList) { return start + "new JProperty(\"" + name + "\", " + name + ".Ticks)"; }
+                if (!isList) { return $"{start}new JProperty(\"{name}\", {name}.Ticks)"; }
                 return "((JArray)prop.First).Add(item.Ticks);";
             }
             if (origDataTypeName.ToLower().Equals("datetime"))
             {
                 if (!isList)
                 {
-                    return start + "new JProperty(\"" + name + "\", " + name + ".ToString(\"yyyy-MM-dd\\\\THH:mm:ss.FFFFFFFK\"))";
+                    return $"{start}new JProperty(\"{name}\", {name}.ToString(\"yyyy-MM-dd\\\\THH:mm:ss.FFFFFFFK\"))";
                 }
                 return "((JArray)prop.First).Add(item.ToString(\"yyyy-MM-dd\\\\THH:mm:ss.FFFFFFFK\"));";
             }
             if (origDataTypeName.ToLower().Equals("time"))
             {
-                if (!isList) { return start + "new JProperty(\"" + name + "\", " + name + ".ToString(\"u\").Split(' ')[1])"; }
+                if (!isList) { return $"{start}new JProperty(\"{name}\", {name}.ToString(\"u\").Split(' ')[1])"; }
                 return "((JArray)prop.First).Add(item.ToString(\"u\").Split(' ')[1]);";
             }
             if (origDataTypeName.ToLower().Equals("date"))
             {
-                if (!isList) { return start + "new JProperty(\"" + name + "\", " + name + ".ToString(\"u\").Split(' ')[0])"; }
+                if (!isList) { return $"{start}new JProperty(\"{name}\", {name}.ToString(\"u\").Split(' ')[0])"; }
                 return "((JArray)prop.First).Add(item.ToString(\"u\").Split(' ')[0]);";
             }
             if (origDataTypeName.ToLower().Equals("gyearmonth"))
             {
                 if (!isList)
                 {
-                    return "var ym = new JProperty(\"" + name + "\", new JObject($#####new JProperty(\"year\", " + name + ".Item1),$#####new " +
-                    "JProperty(\"month\", " + name + ".Item2)));$####if (" + name + ".Item3 != null) { ((JObject)ym.First).Add(new JProperty(\"timezone\", " + name +
-                    ".Item3)); }$####" + start + "ym";
+                    return $"var ym = new JProperty(\"{name}\", new JObject({Environment.NewLine}                    new JProperty(\"year\", " +
+                        $"{name}.Item1),{Environment.NewLine}                    new JProperty(\"month\", {name}.Item2)));" +
+                        $"{Environment.NewLine}                if ({name}.Item3 != null) {{ ((JObject)ym.First).Add(new " +
+                        $"JProperty(\"timezone\", {name}.Item3)); }}{Environment.NewLine}                {start}ym";
                 }
-                return "$#####if (item.Item3 != null)$#####{$######((JArray)prop.First).Add(new JObject($#######new JProperty(\"year\", item.Item1), " +
-                    "new JProperty(\"month\", item.Item2), new JProperty(\"timezone\", item.Item3)));$#####}$#####else { ((JArray)prop.First).Add(new JObject(" +
-                    "new JProperty(\"year\", item.Item1), new JProperty(\"month\", item.Item2))); }";
+                return $"{Environment.NewLine}                    if (item.Item3 != null){Environment.NewLine}                    {{" +
+                    $"{Environment.NewLine}                        ((JArray)prop.First).Add(new JObject({Environment.NewLine}        " +
+                    $"                    new JProperty(\"year\", item.Item1), new JProperty(\"month\", item.Item2), " +
+                    $"new JProperty(\"timezone\", item.Item3)));{Environment.NewLine}                    }}{Environment.NewLine}    " +
+                    $"                else {{ ((JArray)prop.First).Add(new JObject(new JProperty(\"year\", item.Item1), " +
+                    $"new JProperty(\"month\", item.Item2))); }}";
             }
             if (origDataTypeName.ToLower().Equals("gyear"))
             {
                 if (!isList)
                 {
-                    return "var y = new JProperty(\"" + name + "\", new JObject($#####new JProperty(\"year\", " + name + ".Item1)));$####if (" + name + ".Item2 != null) " +
-                    "{ ((JObject)y.First).Add(new JProperty(\"timezone\", " + name + ".Item2)); }$####" + start + "y";
+                    return $"var y = new JProperty(\"{name}\", new JObject({Environment.NewLine}                    new JProperty(\"year\", " +
+                        $"{name}.Item1)));{Environment.NewLine}                if ({name}.Item2 != null) {{ ((JObject)y.First).Add(" +
+                        $"new JProperty(\"timezone\", {name}.Item2)); }}{Environment.NewLine}                {start}y";
                 }
-                return "$#####if (item.Item2 != null)$#####{$######((JArray)prop.First).Add(new JObject($#######new JProperty(\"year\", item.Item1), " +
-                    "new JProperty(\"timezone\", item.Item2)));$#####}$#####else { ((JArray)prop.First).Add(new JObject(new JProperty(\"year\", item.Item1))); }";
+                return $"{Environment.NewLine}                    if (item.Item2 != null){Environment.NewLine}                    {{" +
+                    $"{Environment.NewLine}                        ((JArray)prop.First).Add(new JObject({Environment.NewLine}        " +
+                    $"                    new JProperty(\"year\", item.Item1), new JProperty(\"timezone\", item.Item2)));{Environment.NewLine}" +
+                    $"                    }}{Environment.NewLine}                    else {{ ((JArray)prop.First).Add(new JObject(" +
+                    $"new JProperty(\"year\", item.Item1))); }}";
             }
             if (origDataTypeName.ToLower().Equals("gmonthday"))
             {
-                if(!isList)
+                if (!isList)
                 {
-                    return "var md = new JProperty(\"" + name + "\", new JObject($#####new JProperty(\"month\", " + name + ".Item1),$#####new " +
-                    "JProperty(\"day\", " + name + ".Item2)));$####if (" + name + ".Item3 != null) { ((JObject)md.First).Add(new JProperty(\"timezone\", " + name +
-                    ".Item3)); }$####" + start + "md";
+                    return $"var ym = new JProperty(\"{name}\", new JObject({Environment.NewLine}                    new JProperty(\"month\", " +
+                        $"{name}.Item1),{Environment.NewLine}                    new JProperty(\"day\", {name}.Item2)));" +
+                        $"{Environment.NewLine}                if ({name}.Item3 != null) {{ ((JObject)ym.First).Add(new " +
+                        $"JProperty(\"timezone\", {name}.Item3)); }}{Environment.NewLine}                {start}ym";
                 }
-                return "$#####if (item.Item3 != null)$#####{$######((JArray)prop.First).Add(new JObject($#######new JProperty(\"month\", item.Item1), " +
-                    "new JProperty(\"day\", item.Item2), new JProperty(\"timezone\", item.Item3)));$#####}$#####else { ((JArray)prop.First).Add(new JObject(" +
-                    "new JProperty(\"month\", item.Item1), new JProperty(\"day\", item.Item2))); }";
+                return $"{Environment.NewLine}                    if (item.Item3 != null){Environment.NewLine}                    {{" +
+                    $"{Environment.NewLine}                        ((JArray)prop.First).Add(new JObject({Environment.NewLine}        " +
+                    $"                    new JProperty(\"month\", item.Item1), new JProperty(\"day\", item.Item2), " +
+                    $"new JProperty(\"timezone\", item.Item3)));{Environment.NewLine}                    }}{Environment.NewLine}    " +
+                    $"                else {{ ((JArray)prop.First).Add(new JObject(new JProperty(\"month\", item.Item1), " +
+                    $"new JProperty(\"day\", item.Item2))); }}";
             }
             if (origDataTypeName.ToLower().Equals("gday"))
             {
                 if (!isList)
                 {
-                    return "var d = new JProperty(\"" + name + "\", new JObject($#####new JProperty(\"day\", " + name + ".Item1)));$####if (" + name + ".Item2 != null) " +
-                    "{ ((JObject)d.First).Add(new JProperty(\"timezone\", " + name + ".Item2)); }$####" + start + "d";
+                    return $"var y = new JProperty(\"{name}\", new JObject({Environment.NewLine}                    new JProperty(\"day\", " +
+                        $"{name}.Item1)));{Environment.NewLine}                if ({name}.Item2 != null) {{ ((JObject)y.First).Add(" +
+                        $"new JProperty(\"timezone\", {name}.Item2)); }}{Environment.NewLine}                {start}y";
                 }
-                return "$#####if (item.Item2 != null) {((JArray)prop.First).Add(new JObject(new JProperty(\"day\", item.Item1), new JProperty(\"timezone\", item.Item2))); }" +
-                    "$#####else { ((JArray)prop.First).Add(new JObject(new JProperty(\"day\", item.Item1))); }";
+                return $"{Environment.NewLine}                    if (item.Item2 != null){Environment.NewLine}                    {{" +
+                    $"{Environment.NewLine}                        ((JArray)prop.First).Add(new JObject({Environment.NewLine}        " +
+                    $"                    new JProperty(\"day\", item.Item1), new JProperty(\"timezone\", item.Item2)));{Environment.NewLine}" +
+                    $"                    }}{Environment.NewLine}                    else {{ ((JArray)prop.First).Add(new JObject(" +
+                    $"new JProperty(\"day\", item.Item1))); }}";
 
             }
             if (origDataTypeName.ToLower().Equals("gmonth"))
             {
                 if (!isList)
                 {
-                    return "var m = new JProperty(\"" + name + "\", new JObject($#####new JProperty(\"month\", " + name + ".Item1)));$####if (" + name + ".Item2 != null) " +
-                    "{ ((JObject)m.First).Add(new JProperty(\"timezone\", " + name + ".Item2)); }$####" + start + "m";
+                    return $"var y = new JProperty(\"{name}\", new JObject({Environment.NewLine}                    new JProperty(\"month\", " +
+                        $"{name}.Item1)));{Environment.NewLine}                if ({name}.Item2 != null) {{ ((JObject)y.First).Add(" +
+                        $"new JProperty(\"timezone\", {name}.Item2)); }}{Environment.NewLine}                {start}y";
                 }
-                return "$#####if (item.Item2 != null) { ((JArray)prop.First).Add(new JObject(new JProperty(\"month\", item.Item1), new JProperty(\"timezone\", item.Item2))); }" +
-                    "$#####else { ((JArray)prop.First).Add(new JObject(new JProperty(\"month\", item.Item1))); }";
+                return $"{Environment.NewLine}                    if (item.Item2 != null){Environment.NewLine}                    {{" +
+                    $"{Environment.NewLine}                        ((JArray)prop.First).Add(new JObject({Environment.NewLine}        " +
+                    $"                    new JProperty(\"month\", item.Item1), new JProperty(\"timezone\", item.Item2)));{Environment.NewLine}" +
+                    $"                    }}{Environment.NewLine}                    else {{ ((JArray)prop.First).Add(new JObject(" +
+                    $"new JProperty(\"month\", item.Item1))); }}";
             }
             if (origDataTypeName.ToLower().Equals("anyuri"))
             {
-                if (!isList) { return start + "new JProperty(\"" + name + "\", " + name + ")"; }
-                return "$#####((JArray)prop.First).Add(item);";
+                if (!isList) { return $"{start}new JProperty(\"{name}\", {name})"; }
+                return $"{Environment.NewLine}                    ((JArray)prop.First).Add(item);";
             }
             if (origDataTypeName.ToLower().Equals("cogsdate"))
             {
                 if (!isList)
                 {
-                    return start + "new JProperty(\"" + name + "\", new JObject($#####new JProperty(" + name + ".GetUsedType(), " + name +
-                    ".GetValue())))";
+                    return $"{start}new JProperty(\"{name}\", new JObject({Environment.NewLine}                    new " +
+                        $"JProperty({name}.GetUsedType(), {name}.GetValue())))";
                 }
-                return "$#####((JArray)prop.First).Add(new JObject($######new JProperty(item.GetUsedType(), item.GetValue())));";
+                return $"{Environment.NewLine}                    ((JArray)prop.First).Add(new JObject({Environment.NewLine}            " +
+                    $"            new JProperty(item.GetUsedType(), item.GetValue())));";
             }
-            if (!isList) { return start + "new JProperty(\"" + name + "\", " + name + ")"; }
-            return "$#####((JArray)prop.First).Add(item);";
+            if (!isList) { return $"{start}new JProperty(\"{name}\", {name})"; }
+            return "{Environment.NewLine}                    ((JArray)prop.First).Add(item);";
         }
 
-
-        // creates a file call IIdentifiable.cs which holds the IIdentifiable interface from which all item types descend
+// -------------------------------
+        // creates a file called IIdentifiable.cs which holds the IIdentifiable interface from which all item types descend
         private void CreateIIdentifiable(CogsModel model, string projName)
         {
             StringBuilder builder = new StringBuilder("using System;$using Newtonsoft.Json.Linq;$using System.Collections.Generic;$$namespace " +
