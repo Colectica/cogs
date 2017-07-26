@@ -170,7 +170,7 @@ namespace Cogs.Publishers
                     }
                     if (!first && (model.Identification.Contains(prop) || Isboolintdoubleulong(prop.DataTypeName)))
                     {
-                        toJsonProperties.AppendLine(",");
+                        toJsonProperties.Append(",");
                     }
                     var start = "((JObject)json.First).Add(";
                     if (model.ReusableDataTypes.Contains(item)) { start = "json.Add("; }
@@ -329,11 +329,12 @@ namespace Cogs.Publishers
                                 initializeReferences.AppendLine("                        {");
                                 initializeReferences.AppendLine("                            string[] start = parts[i + 1].Trim()" +
                                     ".Replace(\"\\\"\", \"\").Split('-', 'T');");
-                                initializeReferences.AppendLine($"                            {prop.Name}[indices[done]] = new CogsDate(" +
-                                    "new DateTimeOffset(int.Parse(start[0]), int.Parse(start[1]), int.Parse(start[2]), int.Parse(start[3]), ");
-                                initializeReferences.AppendLine("                                int.Parse(parts[i + 2]), " +
+                                initializeReferences.AppendLine($"                            {prop.Name}[indices[done]] = new CogsDate(");
+                                initializeReferences.AppendLine("                                new DateTimeOffset(int.Parse(start[0]), " +
+                                    "int.Parse(start[1]), int.Parse(start[2]), int.Parse(start[3]), ");
+                                initializeReferences.AppendLine("                                    int.Parse(parts[i + 2]), " +
                                     "int.Parse(parts[i + 3].Split('+')[0]), ");
-                                initializeReferences.AppendLine("                                new TimeSpan(int.Parse(parts[i + 3]" +
+                                initializeReferences.AppendLine("                                    new TimeSpan(int.Parse(parts[i + 3]" +
                                     ".Split('+')[1]), int.Parse(parts[i + 4].Replace(\"\\\"\", \"\")), 0)));");
                                 initializeReferences.AppendLine("                            i += 4;");
                                 initializeReferences.AppendLine("                            done++;");
@@ -432,7 +433,8 @@ namespace Cogs.Publishers
                     }
                     newClass.Append(toJsonProperties.ToString());
                     if (string.IsNullOrWhiteSpace(item.ExtendsTypeName)) { newClass.Append(")"); }
-                    newClass.Append(");" + reusableToJson.ToString());
+                    newClass.AppendLine(");");
+                    newClass.AppendLine(reusableToJson.ToString());
                     newClass.AppendLine($"            return json;");
                     newClass.AppendLine("        }");
                     newClass.AppendLine();
