@@ -26,6 +26,7 @@ COGS simple type system
 
 |Data Type|Facets|Description|
 |:-:|:-:|:-:|
+|langString |maxLength, minLength, enumeration, pattern|Represents a character string and an associated language tag (defined by BCP 47).|
 |language ||Represents natural language identifiers (defined by BCP 47).|
 |int |minInclusive, minExclusive, maxInclusive, maxExclusive|Represents an integer with a minimum value of -2147483648 and maximum of 2147483647. This data type is derived from long.|
 |nonPositiveInteger |minInclusive, minExclusive, maxInclusive, maxExclusive|Represents an integer that is less than or equal to zero. A nonPositiveIntegerconsists of a negative sign (-) and sequence of decimal digits. This data type is derived from integer.|
