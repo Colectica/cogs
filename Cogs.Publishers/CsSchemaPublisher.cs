@@ -861,6 +861,7 @@ using Newtonsoft.Json;
 using System.Collections;
 using Newtonsoft.Json.Linq;
 using Cogs.DataAnnotations;
+using System.Globalization;
 using System.Collections.Generic;
 
 namespace !!!
@@ -1009,18 +1010,12 @@ namespace !!!
             }
             if (objectType == typeof(DateTimeOffset))
             {
-                string[] values = prop.ToString().Split(new char[] { ' ', '/', ':', '-', '+', 'T', 'Z' });
-                if (values.Length == 8)
+                string[] types = new string[] {""yyyy-MM-dd\\THH:mm:ss.FFFFFFFK"", ""yyyy-MM-dd"", ""HH:mm:ss.FFFFFFFK""};
+                foreach (var type in types)
                 {
-                    return new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]),
-                        int.Parse(values[3]), int.Parse(values[4]), int.Parse(values[5]),
-                        new TimeSpan(int.Parse(prop.ToString()[19] + values[6]), int.Parse(values[7]), 0));
+                    if (DateTimeOffset.TryParseExact(prop.ToString(), type, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTimeOffset dto)) 
+                    { return dto; }
                 }
-                if (values.Length == 3 && prop.ToString().Contains(""-""))
-                {
-                    return new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]), 0, 0, 0, new TimeSpan());
-                }
-                return new DateTimeOffset(1, 1, 1, int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]), new TimeSpan());
             }
             if (objectType == typeof(Uri))
             {
@@ -1061,17 +1056,18 @@ namespace !!!
                 }
                 if (values.Length == 3)
                 {
-                    if (int.TryParse(values[2], out int i))
+                    if (DateTimeOffset.TryParseExact(obj.First.First.ToString(), ""yyyy-MM-dd"", CultureInfo.InvariantCulture, 
+                            DateTimeStyles.None, out DateTimeOffset dto))
                     {
-                        return new CogsDate(new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), i, 0, 0, 0, new TimeSpan()), true);
+                         return new CogsDate(dto, true);
                     }
                     return new CogsDate(new Tuple<int, int, string>(int.Parse(values[0]), int.Parse(values[1]), values[2]));
                 }
                 if (values.Length == 8)
                 {
-                    return new CogsDate(new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]),
-                        int.Parse(values[3]), int.Parse(values[4]), int.Parse(values[5]),
-                        new TimeSpan(int.Parse(obj.First.First.ToString()[19] + values[6]), int.Parse(values[7]), 0)));
+                    DateTimeOffset.TryParseExact(obj.First.First.ToString(), ""yyyy-MM-dd\\THH:mm:ss.FFFFFFFK"",
+                            CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTimeOffset dto);
+                    return new CogsDate(dto);
                 }
             }
             return null;
