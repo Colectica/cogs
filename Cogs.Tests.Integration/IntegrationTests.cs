@@ -990,7 +990,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(condiment);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1010,7 +1010,28 @@ namespace Cogs.Tests.Integration
         [Fact]
         public async void SimpleTypeLanguage()
         {
+            ItemContainer container = new ItemContainer();
+            Cheese cheese = new Cheese
+            {
+                ID = Guid.NewGuid().ToString(),
+                Language = "en"
+            };
+            container.Items.Add(cheese);
 
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = JsonConvert.SerializeObject(container);
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
+            string json2 = JsonConvert.SerializeObject(container2);
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Cheese>(container2.Items.First());
+
+            Cheese cheese2 = container2.Items.First() as Cheese;
+            Assert.Equal(cheese.Language, cheese2.Language);
         }
 
         [Fact]

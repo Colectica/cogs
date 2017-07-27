@@ -116,9 +116,9 @@ namespace Cogs.Publishers
                         if (!Isboolintdoubleulong(prop.DataTypeName)) { first = true; }
                     }
                     // create documentation for property
-                    newClass.AppendLine("        /// <summary");
+                    newClass.AppendLine("        /// <summary>");
                     newClass.AppendLine($"        /// {prop.Description}");
-                    newClass.AppendLine("        /// <summary");
+                    newClass.AppendLine("        /// <summary>");
                     // create constraints
                     if (prop.DataTypeName.Equals("string") || prop.DataTypeName.Equals("Uri"))
                     {
@@ -188,7 +188,10 @@ namespace Cogs.Publishers
                         }
                         else if (origDataTypeName != null)
                         {
-                            newClass.AppendLine("        [JsonConverter(typeof(SimpleTypeConverter))]");
+                            if (!prop.DataTypeName.Equals("string"))
+                            {
+                                newClass.AppendLine("        [JsonConverter(typeof(SimpleTypeConverter))]");
+                            }
                             if (prop.DataTypeName.Equals("CogsDate"))
                             {
                                 reusableToJson.AppendLine($"            if ({prop.Name}.GetValue() != null)");
@@ -201,7 +204,6 @@ namespace Cogs.Publishers
                             reusableToJson.AppendLine("            {");
                             reusableToJson.AppendLine($"                {SimpleToJson(origDataTypeName, prop.Name, start, false)});");
                             reusableToJson.AppendLine("            }");
-
                         }
                         else if (model.ReusableDataTypes.Contains(prop.DataType))
                         {
@@ -256,7 +258,10 @@ namespace Cogs.Publishers
                         }
                         else if (origDataTypeName != null)
                         {
-                            newClass.AppendLine("        [JsonConverter(typeof(SimpleTypeConverter))]");
+                            if (!prop.DataTypeName.Equals("string"))
+                            {
+                                newClass.AppendLine("        [JsonConverter(typeof(SimpleTypeConverter))]");
+                            }
                             reusableToJson.AppendLine($"            if ({prop.Name} != null && {prop.Name}.Count > 0)");
                             reusableToJson.AppendLine("            {");
                             reusableToJson.AppendLine($"                var prop = new JProperty(\"{prop.Name}\", new JArray());");
