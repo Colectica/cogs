@@ -317,7 +317,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -431,7 +431,7 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                DateTime = new DateTimeOffset(new DateTime(2017, 9, 2, 13, 23, 32), new TimeSpan(+1, 0, 0))
+                DateTime = new DateTimeOffset(new DateTime(2017, 9, 2, 13, 23, 32), new TimeSpan(-1, 0, 0))
             };
             container.Items.Add(animal);
 

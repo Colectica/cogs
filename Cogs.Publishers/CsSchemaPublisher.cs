@@ -1014,7 +1014,7 @@ namespace !!!
                 {
                     return new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]),
                         int.Parse(values[3]), int.Parse(values[4]), int.Parse(values[5]),
-                        new TimeSpan(int.Parse(values[6]), int.Parse(values[7]), 0));
+                        new TimeSpan(int.Parse(prop.ToString()[19] + values[6]), int.Parse(values[7]), 0));
                 }
                 if (values.Length == 3 && prop.ToString().Contains(""-""))
                 {
@@ -1071,7 +1071,7 @@ namespace !!!
                 {
                     return new CogsDate(new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]),
                         int.Parse(values[3]), int.Parse(values[4]), int.Parse(values[5]),
-                        new TimeSpan(int.Parse(values[6]), int.Parse(values[7]), 0)));
+                        new TimeSpan(int.Parse(obj.First.First.ToString()[19] + values[6]), int.Parse(values[7]), 0)));
                 }
             }
             return null;
