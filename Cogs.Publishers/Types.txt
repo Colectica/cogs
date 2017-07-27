@@ -14,7 +14,6 @@ namespace Cogs.DataAnnotations
     [AttributeUsage(AttributeTargets.All)]
     public class ExclusiveRangeAttribute : RangeAttribute
     {
-
         public ExclusiveRangeAttribute(int minimum, int maximum) : base(minimum, maximum) { }
 
         public override bool IsValid(object value)
