@@ -3,6 +3,7 @@
 using Cogs.Common;
 using Cogs.Dto;
 using Cogs.Model;
+using Cogs.Publisher;
 using Cogs.Publishers;
 using Cogs.Validation;
 using Microsoft.Extensions.CommandLineUtils;
@@ -428,7 +429,7 @@ namespace Cogs.Console
                     var modelBuilder = new CogsModelBuilder();
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
 
-                    GraphQLPublisher publisher = new OwlPublisher
+                    OwlPublisher publisher = new OwlPublisher
                     {
                         CogsLocation = location,
                         TargetDirectory = target,
