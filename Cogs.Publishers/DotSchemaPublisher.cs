@@ -343,17 +343,22 @@ namespace Cogs.Publishers
                     else if (line.Contains("id=\"node"))
                     {
                         for (int i = 0; i < 7; i++) { newFile.Append(line[i]); }
-                        newFile.Append("ItemType");
                         var s = "";
                         for (int i = 12; i < line.Length; i++)
                         {
                             if (s.Contains("<title>"))
                             {
+                                var name = "";
                                 while (!line[i].Equals('<'))
                                 {
-                                    newFile.Append(line[i]);
+                                    name += line[i];
                                     i++;
                                 }
+                                if (ClassList.Where(x => x.Name == name).ToList().Count > 0 || ClassList.Where(x => x.Name + "Properties" == name).ToList().Count > 0)
+                                {
+                                    newFile.Append("ItemType" + name);
+                                }
+                                else { newFile.Append("ReusableType" + name); }
                                 while (i < line.Length)
                                 {
                                     s += line[i];
