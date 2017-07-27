@@ -80,7 +80,8 @@ namespace Cogs.Publishers
                     Format = "svg",
                     Output = "all",
                     Inheritance = true,
-                    DotLocation = DotLocation
+                    DotLocation = DotLocation,
+                    ShowReusables = true
                 };
                 publisher.Publish(model);
 
@@ -108,9 +109,8 @@ namespace Cogs.Publishers
             int count = model.ItemTypes.Count;
             var offset = 2.5;
             // loop through classes and reusable data types
-            foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
+            foreach (var item in model.ItemTypes)
             {
-                if (model.ReusableDataTypes.Contains(item)) break;
                 // Create class
                 var newItem = new XElement(new XElement("packagedElement", new XAttribute(xmins + "type", "uml:Class"),
                            new XAttribute(xmins + "id", CreateId(item.Name)),
@@ -118,7 +118,7 @@ namespace Cogs.Publishers
                 // add class to diagram
                 if (!Normative)
                 {
-                    var node = XElement.Parse(nodes.Descendants(ns + "title").Where(x => x.FirstNode.ToString().Contains(item.Name)).ToList()[0].NextNode.ToString());
+                    var node = XElement.Parse(nodes.Descendants(ns + "text").Where(x => x.FirstNode.ToString().Contains(item.Name)).ToList()[0].PreviousNode.ToString());
                     var left = (Double.Parse(node.Attribute("cx").Value) - Double.Parse(node.Attribute("rx").Value) + xOff) * offset;
                     var right = (Double.Parse(node.Attribute("cx").Value) + Double.Parse(node.Attribute("rx").Value) + xOff) * offset;
                     var top = (Double.Parse(node.Attribute("cy").Value) - Double.Parse(node.Attribute("ry").Value) + yOff) * offset;
