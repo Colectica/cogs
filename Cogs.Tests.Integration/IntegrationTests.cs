@@ -36,9 +36,9 @@ namespace Cogs.Tests.Integration
                 Language = "eng",
                 Content = "Just a normal cow"
             };
-            Tuple<int, string> monthG = new Tuple<int, string>(9, "UTC");
-            Tuple<int, string> dayG = new Tuple<int, string>(6, "UTC");
-            Tuple<int, int, string> mDay = new Tuple<int, int, string>(6, 9, "UTC");
+            Tuple<int, string> monthG = new Tuple<int, string>(9, "Z");
+            Tuple<int, string> dayG = new Tuple<int, string>(6, "+09:00:00");
+            Tuple<int, int, string> mDay = new Tuple<int, int, string>(6, 9, "-12:00:00");
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
@@ -198,7 +198,7 @@ namespace Cogs.Tests.Integration
             Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
-                Gyearmonth = new Tuple<int, int, string>(9, 24, "-06:00")
+                Gyearmonth = new Tuple<int, int, string>(9, 24, "-06:00:00")
             };
             container.Items.Add(bread);
 
@@ -259,7 +259,7 @@ namespace Cogs.Tests.Integration
                 GYearMonthList = new List<Tuple<int, int, string>>()
                 {
                     new Tuple<int, int, string>(9, 24, null),
-                    new Tuple<int, int, string>(12, 93, "utc")
+                    new Tuple<int, int, string>(12, 93, "+09:00:00")
                 }
             };
             container.Items.Add(bread);
@@ -579,7 +579,7 @@ namespace Cogs.Tests.Integration
             VeggiePatty patty = new VeggiePatty
             {
                 ID = Guid.NewGuid().ToString(),
-                GYear = new Tuple<int, string>(9, "utc")
+                GYear = new Tuple<int, string>(9, "Z")
             };
             container.Items.Add(patty);
 
@@ -639,7 +639,7 @@ namespace Cogs.Tests.Integration
                 ID = Guid.NewGuid().ToString(),
                 Years = new List<Tuple<int, string>>()
                 {
-                    new Tuple<int, string>(2017, "utc"),
+                    new Tuple<int, string>(2017, "+09:00:00"),
                     new Tuple<int, string>(1996, null)
                 }
             };
@@ -675,7 +675,7 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                GMonthDay = new Tuple<int, int, string>(9, 3, "utc")
+                GMonthDay = new Tuple<int, int, string>(9, 3, "Z")
             };
             container.Items.Add(animal);
 
@@ -736,7 +736,7 @@ namespace Cogs.Tests.Integration
                 GMonthDays = new List<Tuple<int, int, string>>()
                 {
                     new Tuple<int, int, string>(9, 3, null),
-                    new Tuple<int, int, string>(0, 0, "utc")
+                    new Tuple<int, int, string>(0, 0, "-09:00:00")
                 }
                 
             };
@@ -769,7 +769,7 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                GDay = new Tuple<int, string>(15, "utc")
+                GDay = new Tuple<int, string>(15, "+10:00:00")
 
             };
             container.Items.Add(animal);
@@ -832,7 +832,7 @@ namespace Cogs.Tests.Integration
                 GDays = new List<Tuple<int, string>>()
                 {
                     new Tuple<int, string>(15, null),
-                    new Tuple<int, string>(0, "utc")
+                    new Tuple<int, string>(0, "Z")
                 }
                 
 
@@ -866,7 +866,7 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                GMonth = new Tuple<int, string>(2, "utc")
+                GMonth = new Tuple<int, string>(2, "+01:00:00")
             };
             container.Items.Add(animal);
 
@@ -927,7 +927,7 @@ namespace Cogs.Tests.Integration
                 GMonths = new List<Tuple<int, string>>()
                 {
                      new Tuple<int, string>(2, null),
-                     new Tuple<int, string>(8, "utc")
+                     new Tuple<int, string>(8, "Z")
                 }
             };
             container.Items.Add(animal);
@@ -1284,11 +1284,11 @@ namespace Cogs.Tests.Integration
                 Dates = new List<DataAnnotations.CogsDate>
                 {
                     new DataAnnotations.CogsDate(new TimeSpan(1562)),
-                    new DataAnnotations.CogsDate(new Tuple<int, string>(2017, "utc")),
+                    new DataAnnotations.CogsDate(new Tuple<int, string>(2017, "+01:00:00")),
                     new DataAnnotations.CogsDate(new DateTimeOffset(new DateTime(1996, 8, 23, 4, 37, 4),
                         new TimeSpan(+3, 0, 0)), false),
                     new DataAnnotations.CogsDate(new DateTime(2017, 9, 2), true),
-                    new DataAnnotations.CogsDate(new Tuple<int, int, string>(2017, 7, "utc")),
+                    new DataAnnotations.CogsDate(new Tuple<int, int, string>(2017, 7, "+02:00:00")),
                     new DataAnnotations.CogsDate(new Tuple<int, int, string>(2017, 7, null)),
                     new DataAnnotations.CogsDate(new Tuple<int, string>(2017, null))
                 }
@@ -1396,7 +1396,7 @@ namespace Cogs.Tests.Integration
                 GYearMonthList = new List<Tuple<int, int, string>>()
                 {
                     new Tuple<int, int, string>(2017, 7 , null),
-                    new Tuple<int, int, string>(1996, 8, "utc")
+                    new Tuple<int, int, string>(1996, 8, "+01:00:00")
                 }
             };
             container.Items.Add(bread);
@@ -1592,9 +1592,9 @@ namespace Cogs.Tests.Integration
         public async void ListOfSimpleTypeGyear()
         {
             ItemContainer container = new ItemContainer();
-            Tuple<int, string> year1 = new Tuple<int, string>(1997, "utc");
-            Tuple<int, string> year2 = new Tuple<int, string>(2002, "utc");
-            Tuple<int, string> year3 = new Tuple<int, string>(2017, "utc");
+            Tuple<int, string> year1 = new Tuple<int, string>(1997, "+09:00:00");
+            Tuple<int, string> year2 = new Tuple<int, string>(2002, "+09:00:00");
+            Tuple<int, string> year3 = new Tuple<int, string>(2017, "Z");
             Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
@@ -1626,9 +1626,9 @@ namespace Cogs.Tests.Integration
         public async void ListOfSimpleTypeGMonth()
         {
             ItemContainer container = new ItemContainer();
-            Tuple<int, string> month1 = new Tuple<int, string>(6, "utc");
-            Tuple<int, string> month2 = new Tuple<int, string>(9, "utc");
-            Tuple<int, string> month3 = new Tuple<int, string>(17, "utc");
+            Tuple<int, string> month1 = new Tuple<int, string>(6, "Z");
+            Tuple<int, string> month2 = new Tuple<int, string>(9, "+09:00:00");
+            Tuple<int, string> month3 = new Tuple<int, string>(17, "+01:00:00");
             Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
@@ -1660,9 +1660,9 @@ namespace Cogs.Tests.Integration
         public async void ListOfSimpleTypeGDay()
         {
             ItemContainer container = new ItemContainer();
-            Tuple<int, string> day1 = new Tuple<int, string>(1, "utc");
-            Tuple<int, string> day2 = new Tuple<int, string>(9, "utc");
-            Tuple<int, string> day3 = new Tuple<int, string>(12, "utc");
+            Tuple<int, string> day1 = new Tuple<int, string>(1, "Z");
+            Tuple<int, string> day2 = new Tuple<int, string>(9, "+09:00:00");
+            Tuple<int, string> day3 = new Tuple<int, string>(12, "-01:00:00");
             Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
@@ -1694,9 +1694,9 @@ namespace Cogs.Tests.Integration
         public async void ListOfSimpleTypeGMonthDay()
         {
             ItemContainer container = new ItemContainer();
-            Tuple<int, int, string> day1 = new Tuple<int, int, string>(1, 2, "utc");
-            Tuple<int, int, string> day2 = new Tuple<int, int, string>(9, 12, "utc");
-            Tuple<int, int, string> day3 = new Tuple<int, int, string>(12, 23, "utc");
+            Tuple<int, int, string> day1 = new Tuple<int, int, string>(1, 2, "+09:00:00");
+            Tuple<int, int, string> day2 = new Tuple<int, int, string>(9, 12, "Z");
+            Tuple<int, int, string> day3 = new Tuple<int, int, string>(12, 23, "+00:00:00");
             Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
@@ -1728,9 +1728,9 @@ namespace Cogs.Tests.Integration
         public async void ListOfSimpleTypeGYearMonth()
         {
             ItemContainer container = new ItemContainer();
-            Tuple<int, int, string> ym1 = new Tuple<int, int, string>(1996, 2, "utc");
-            Tuple<int, int, string> ym2 = new Tuple<int, int, string>(2002, 9, "utc");
-            Tuple<int, int, string> ym3 = new Tuple<int, int, string>(2017, 12, "utc");
+            Tuple<int, int, string> ym1 = new Tuple<int, int, string>(1996, 2, "Z");
+            Tuple<int, int, string> ym2 = new Tuple<int, int, string>(2002, 9, "+03:00:00");
+            Tuple<int, int, string> ym3 = new Tuple<int, int, string>(2017, 12, "+02:00:00");
             Roll roll = new Roll
             {
                 ID = Guid.NewGuid().ToString(),

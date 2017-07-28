@@ -2,6 +2,7 @@
 // See the LICENSE file in the project root for more information.
 using Cogs.Common;
 using Cogs.Model;
+using Cogs.Publishers;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -69,10 +70,12 @@ namespace Cogs.Publisher
         {
             if (itemType != null)
             {
+                //generate class for all itemtype
                 foreach (var item in itemType)
                 {
                     StringBuilder GenClass = new StringBuilder();
                     GenClass.AppendLine(@"  <owl:Class rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + item.Name + @""">");
+                    GenClass.AppendLine(@"      <rdfs:comment>"+item.Description+"</rdfs:comment>");
                     GenClass.AppendLine(@"      <rdfs:subClassOf rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/owl#Thing""/>");
                     GenClass.AppendLine(@"  </owl:Class>");
                     res.Append(GenClass.ToString());
@@ -80,10 +83,12 @@ namespace Cogs.Publisher
             }
             else
             {
+                //generate class for all reusabletype
                 foreach (var item in reusable)
                 {
                     StringBuilder GenClass = new StringBuilder();
                     GenClass.AppendLine(@"  <owl:Class rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + item.Name + @""">");
+                    GenClass.AppendLine(@"      <rdfs:comment>" + item.Description + "</rdfs:comment>");
                     GenClass.AppendLine(@"      <rdfs:subClassOf rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/owl#Thing""/>");
                     GenClass.AppendLine(@"  </owl:Class>");
                     res.AppendLine(GenClass.ToString());
@@ -101,22 +106,24 @@ namespace Cogs.Publisher
                     {
                         StringBuilder DataProp = new StringBuilder();
                         StringBuilder ObjectProp = new StringBuilder();
-
+                        //Set dataproperty, and objectproperty
                         if (!set.Contains(prop.Name))
                         {
                             set.Add(prop.Name);
-                            if (IsItemType(prop.DataType.Name) || IsSimpleType(prop.DataType.Name) || IsReusableType(prop.DataType.Name))
+                            if (IsItemType(prop.DataType.Name) || IsReusableType(prop.DataType.Name))
                             {
                                 ObjectProp.AppendLine(@"  <owl:ObjectProperty rdf:about = ""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.Name + @""">");
+                                ObjectProp.AppendLine(@"    <rdfs:comment>" + prop.Description + "</rdfs:comment>");
                                 ObjectProp.AppendLine(@"    <rdfs:domain rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + props.Name + @"""/>");
                                 ObjectProp.AppendLine(@"    <rdfs:range rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.DataType.Name + @"""/>");
                                 ObjectProp.AppendLine(@"  </owl:ObjectProperty>");
-                            }
+                            } 
                             else
                             {
                                 DataProp.AppendLine(@"  <owl:DatatypeProperty rdf:about = ""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.Name + @""">");
+                                DataProp.AppendLine(@"    <rdfs:comment>" + prop.Description + "</rdfs:comment>");
                                 DataProp.AppendLine(@"    <rdfs:domain rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + props.Name + @"""/>");
-                                DataProp.AppendLine(@"    <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#" + prop.DataType.Name + @"""/>");
+                                DataProp.AppendLine(@"    <rdfs:range rdf:resourc  e=""http://www.w3.org/2001/XMLSchema#" + prop.DataType.Name + @"""/>");
                                 DataProp.AppendLine(@"  </owl:DatatypeProperty>");
                             }
                         }
@@ -138,70 +145,126 @@ namespace Cogs.Publisher
         {
             //anyURI
             StringBuilder GenanyURI = new StringBuilder();
-            GenanyURI.AppendLine(@"  <owl:Class rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/"+projName+@"#anyURI"">");
-            GenanyURI.AppendLine(@"      <rdfs:subClassOf rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/owl#Thing""/>");
-            GenanyURI.AppendLine(@"  </owl:Class>");
+            GenanyURI.AppendLine(@"  <owl:DatatypeProperty rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName+@"#anyURI"">");
+            GenanyURI.AppendLine(@"    <rdfs:comment>Simple Type for anyURI</rdfs:comment>");
+            GenanyURI.AppendLine(@"    <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#anyURI""/>");
+            GenanyURI.AppendLine(@"  </owl:DatatypeProperty>");
             res.Append(GenanyURI.ToString());
             //cogsDate
-            StringBuilder GenCogsDate = new StringBuilder();
-            GenCogsDate.AppendLine(@"  <owl:Class rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/"+projName+@"#cogsDate"">");
-            GenCogsDate.AppendLine(@"      <rdfs:subClassOf rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/owl#Thing""/>");
-            GenCogsDate.AppendLine(@"  </owl:Class>");
-            res.Append(GenCogsDate.ToString());
+            //StringBuilder GenCogsDate = new StringBuilder();
+            //GenCogsDate.AppendLine(@"  <owl:DatatypeProperty rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + @"#cogsDate"">");
+            //GenCogsDate.AppendLine(@"    <rdfs:comment>Simple Type for cogsDate</rdfs:comment>");
+            //GenCogsDate.AppendLine(@"    <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#""/>");
+            //GenCogsDate.AppendLine(@"  </owl:DatatypeProperty>");
+            //res.Append(GenCogsDate.ToString());
             //date
             StringBuilder GenDate = new StringBuilder();
-            GenDate.AppendLine(@"  <owl:Class rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + @"#date"">");
-            GenDate.AppendLine(@"      <rdfs:subClassOf rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/owl#Thing""/>");
-            GenDate.AppendLine(@"  </owl:Class>");
+            GenDate.AppendLine(@"  <owl:DatatypeProperty rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + @"#date"">");
+            GenDate.AppendLine(@"    <rdfs:comment>Simple Type for date</rdfs:comment>");
+            GenDate.AppendLine(@"    <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#date""/>");
+            GenDate.AppendLine(@"  </owl:DatatypeProperty>");
             res.Append(GenDate.ToString());
             //dateTime
             StringBuilder GenDateTime = new StringBuilder();
-            GenDateTime.AppendLine(@"  <owl:Class rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + @"#dateTime"">");
-            GenDateTime.AppendLine(@"      <rdfs:subClassOf rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/owl#Thing""/>");
-            GenDateTime.AppendLine(@"  </owl:Class>");
+            GenDateTime.AppendLine(@"  <owl:DatatypeProperty rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + @"#dateTime"">");
+            GenDateTime.AppendLine(@"    <rdfs:comment>Simple Type for dateTime</rdfs:comment>");
+            GenDateTime.AppendLine(@"    <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#dateTime""/>");
+            GenDateTime.AppendLine(@"  </owl:DatatypeProperty>");
             res.Append(GenDateTime.ToString());
             //duration
             StringBuilder GenDuration = new StringBuilder();
-            GenDuration.AppendLine(@"  <owl:Class rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + @"#duration"">");
-            GenDuration.AppendLine(@"      <rdfs:subClassOf rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/owl#Thing""/>");
-            GenDuration.AppendLine(@"  </owl:Class>");
+            GenDuration.AppendLine(@"  <owl:DatatypeProperty rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + @"#duration"">");
+            GenDuration.AppendLine(@"    <rdfs:comment>Simple Type for date</rdfs:comment>");
+            GenDuration.AppendLine(@"    <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#duration""/>");
+            GenDuration.AppendLine(@"  </owl:DatatypeProperty>");
             res.Append(GenDuration.ToString());
             //gDay
             StringBuilder GengDay = new StringBuilder();
-            GengDay.AppendLine(@"  <owl:Class rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + @"#gDay"">");
-            GengDay.AppendLine(@"      <rdfs:subClassOf rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/owl#Thing""/>");
-            GengDay.AppendLine(@"  </owl:Class>");
+            GengDay.AppendLine(@"  <owl:DatatypeProperty rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + @"#gDay"">");
+            GengDay.AppendLine(@"    <rdfs:comment>Simple Type for gDay</rdfs:comment>");
+            GengDay.AppendLine(@"    <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#gDay""/>");
+            GengDay.AppendLine(@"  </owl:DatatypeProperty>");
             res.Append(GengDay.ToString());
             //gMonth
             StringBuilder GengMonth = new StringBuilder();
-            GengMonth.AppendLine(@"  <owl:Class rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + @"#gMonth"">");
-            GengMonth.AppendLine(@"      <rdfs:subClassOf rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/owl#Thing""/>");
-            GengMonth.AppendLine(@"  </owl:Class>");
+            GengMonth.AppendLine(@"  <owl:DatatypeProperty rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + @"#gMonth"">");
+            GengMonth.AppendLine(@"    <rdfs:comment>Simple Type for gMonth</rdfs:comment>");
+            GengMonth.AppendLine(@"    <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#gMonth""/>");
+            GengMonth.AppendLine(@"  </owl:DatatypeProperty>");
             res.Append(GengMonth.ToString());
             //gMonthDay
             StringBuilder GengMonthDay = new StringBuilder();
-            GengMonthDay.AppendLine(@"  <owl:Class rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + @"#gMonthDay"">");
-            GengMonthDay.AppendLine(@"      <rdfs:subClassOf rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/owl#Thing""/>");
-            GengMonthDay.AppendLine(@"  </owl:Class>");
+            GengMonthDay.AppendLine(@"  <owl:DatatypeProperty rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + @"#gMonthDay"">");
+            GengMonthDay.AppendLine(@"    <rdfs:comment>Simple Type for gMonthDay</rdfs:comment>");
+            GengMonthDay.AppendLine(@"    <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#gMonthDay""/>");
+            GengMonthDay.AppendLine(@"  </owl:Data typePorperty>");
             res.Append(GengMonthDay.ToString());
             //gYear
             StringBuilder GengYear = new StringBuilder();
-            GengYear.AppendLine(@"  <owl:Class rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + @"#gYear"">");
-            GengYear.AppendLine(@"      <rdfs:subClassOf rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/owl#Thing""/>");
-            GengYear.AppendLine(@"  </owl:Class>");
+            GengYear.AppendLine(@"  <owl:DatatypeProperty rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + @"#gYear"">");
+            GengYear.AppendLine(@"    <rdfs:comment>Simple Type for gYear</rdfs:comment>");
+            GengYear.AppendLine(@"    <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#gYear""/>");
+            GengYear.AppendLine(@"  </owl:DatatypeProperty>");
             res.Append(GengYear.ToString());
             //gYearMonth
             StringBuilder GengYearMonth = new StringBuilder();
-            GengYearMonth.AppendLine(@"  <owl:Class rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + @"#gYearMonth"">");
-            GengYearMonth.AppendLine(@"      <rdfs:subClassOf rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/owl#Thing""/>");
-            GengYearMonth.AppendLine(@"  </owl:Class>");
+            GengYearMonth.AppendLine(@"  <owl:DatatypeProperty rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + @"#gYearMonth"">");
+            GengYearMonth.AppendLine(@"    <rdfs:comment>Simple Type for gYearMonth</rdfs:comment>");
+            GengYearMonth.AppendLine(@"    <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#gYearMonth""/>");
+            GengYearMonth.AppendLine(@"  </owl:DatatypeProperty>");
             res.Append(GengYearMonth.ToString());
             //time
             StringBuilder Gentime = new StringBuilder();
-            Gentime.AppendLine(@"  <owl:Class rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + @"#time"">");
-            Gentime.AppendLine(@"      <rdfs:subClassOf rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/owl#Thing""/>");
-            Gentime.AppendLine(@"  </owl:Class>");
+            Gentime.AppendLine(@"  <owl:DatatypeProperty rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + @"#time"">");
+            Gentime.AppendLine(@"    <rdfs:comment>Simple Type for time</rdfs:comment>");
+            Gentime.AppendLine(@"    <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#time""/>");
+            Gentime.AppendLine(@"  </owl:DatatypeProperty>");
             res.Append(Gentime.ToString());
+        }
+        public void addRestrictionDomain(StringBuilder res, string propname, List<OwlPropAndLink> list)
+        {
+            res.AppendLine(@"< rdfs:domain >");
+            res.AppendLine(@"   < owl:Restriction >");
+            res.AppendLine(@"       < owl:onProperty rdf:resource = ""http://www.semanticweb.org/clement/ontologies/2017/6/cogsburger#"+ propname +@""" />");
+            res.AppendLine(@"           < owl:allValuesFrom >");
+            res.AppendLine(@"           < owl:Class >");
+            res.AppendLine(@"               < owl:unionOf rdf:parseType = ""Collection"" >");
+            foreach(var prop in list)
+            {
+                if(prop.Prop_name.Equals(propname))
+                {
+                    foreach (var type in prop.link_class)
+                    {
+                        res.AppendLine(@"                   < rdf:Description rdf:about = ""http://www.semanticweb.org/clement/ontologies/2017/6/cogsburger#" +type+ @"""/>");
+                    }
+                }
+            }
+            res.AppendLine(@"           </ owl:unionOf >");
+            res.AppendLine(@"           </ owl:Class >");
+            res.AppendLine(@"       </ owl:allValuesFrom >");
+            res.AppendLine(@"   </ owl:Restriction >");
+            res.AppendLine(@"</ rdfs:domain >");
+        }
+
+        public void addRestrictionRange(StringBuilder res, string name, List<OwlRestriction> restriction)
+        {
+            foreach (var prop in restriction)
+            {
+                res.AppendLine(@"< rdfs:range >");
+                res.AppendLine(@"   < owl:Restriction >");
+                res.AppendLine(@"       < owl:onProperty rdf:resource = ""http://www.semanticweb.org/clement/ontologies/2017/6/cogsburger#" + prop.Name + @""" />");
+                if (!prop.minQC.Equals("0"))
+                {
+                    res.AppendLine(@"           < owl:minQualifiedCardinality rdf:datatype = ""http://www.w3.org/2001/XMLSchema#nonNegativeInteger"" >" + prop.minQC + @"</ owl:minQualifiedCardinality >");
+                }
+                if (!prop.maxQC.Equals("n"))
+                {
+                    res.AppendLine(@"           < owl:maxQualifiedCardinality rdf:datatype = ""http://www.w3.org/2001/XMLSchema#nonNegativeInteger"" >" + prop.maxQC + @"</ owl:maxQualifiedCardinality >");
+                }
+                res.AppendLine(@"       < owl:onClass rdf:resource = ""http://www.semanticweb.org/clement/ontologies/2017/6/cogsburger#" + prop.class_name + @""" />");
+                res.AppendLine(@"   </ owl:Restriction >");
+                res.AppendLine(@"</ rdfs:range >");
+            }
         }
 
         public Boolean IsItemType(string type)
