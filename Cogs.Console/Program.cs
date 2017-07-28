@@ -3,6 +3,7 @@
 using Cogs.Common;
 using Cogs.Dto;
 using Cogs.Model;
+using Cogs.Publisher;
 using Cogs.Publishers;
 using Cogs.Validation;
 using Microsoft.Extensions.CommandLineUtils;
@@ -403,6 +404,48 @@ namespace Cogs.Console
 
             });
 
+            app.Command("publish-Owl", (command) =>
+            {
+
+                command.Description = "Publish a Owl/RDF schema from a COGS data model";
+                command.HelpOption("-?|-h|--help");
+
+                var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
+                var targetArgument = command.Argument("[targetLocation]", "Directory where the json schema is generated.");
+
+                var overwriteOption = command.Option("-o|--overwrite",
+                                           "If the target directory exists, delete and overwrite the location",
+                                           CommandOptionType.NoValue);
+
+
+
+                command.OnExecute(() =>
+                {
+                    var location = locationArgument.Value ?? Environment.CurrentDirectory;
+                    var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
+                    bool overwrite = overwriteOption.HasValue();
+
+
+                    var directoryReader = new CogsDirectoryReader();
+                    var cogsDtoModel = directoryReader.Load(location);
+
+                    var modelBuilder = new CogsModelBuilder();
+                    var cogsModel = modelBuilder.Build(cogsDtoModel);
+
+                    OwlPublisher publisher = new OwlPublisher
+                    {
+                        CogsLocation = location,
+                        TargetDirectory = target,
+                        Overwrite = overwrite
+                    };
+
+                    publisher.Publish(cogsModel);
+
+
+                    return 0;
+                });
+
+            });
 
             app.OnExecute(() =>
             {
