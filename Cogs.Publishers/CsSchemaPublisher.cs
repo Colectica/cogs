@@ -71,6 +71,8 @@ namespace Cogs.Publishers
                 newClass.AppendLine();
                 newClass.AppendLine("using System.Linq;");
                 newClass.AppendLine("using Newtonsoft.Json;");
+                newClass.AppendLine("using System.Reflection;");
+                newClass.AppendLine("using System.Collections;");
                 newClass.AppendLine("using Newtonsoft.Json.Linq;");
                 newClass.AppendLine("using Cogs.DataAnnotations;");
                 newClass.AppendLine("using System.Collections.Generic;");
@@ -86,6 +88,7 @@ namespace Cogs.Publishers
                 var initializeReferences = new StringBuilder();
                 var reusableToJson = new StringBuilder();
                 var helpers = new StringBuilder();
+                bool initialiseReusable = false;
                 int reusablesInitialized = item.Properties.Where(x => model.ReusableDataTypes.Contains(x.DataType)).ToList().Count;
                 // add abstract to class title if relevant
                 if (item.IsAbstract) { newClass.Append("abstract "); }
@@ -207,9 +210,10 @@ namespace Cogs.Publishers
                         }
                         else if (model.ReusableDataTypes.Contains(prop.DataType))
                         {
+                            initialiseReusable = true;
                             reusableToJson.AppendLine($"            if ({prop.Name} != null) {{ {start} new JProperty(\"{prop.Name}\", " +
                                 $"{prop.Name}.ToJson())); }}");
-                            if (model.ItemTypes.Contains(item)) { initializeReferences.AppendLine(InitializeReusable(prop, model)); }
+                            newClass.AppendLine("        [JsonConverter(typeof(ReusableConverter))]");
                         }
                         else if(!model.ItemTypes.Contains(prop.DataType))
                         {
@@ -231,6 +235,7 @@ namespace Cogs.Publishers
                             }
                             else
                             {
+                                initialiseReusable = true;
                                 reusableToJson.AppendLine($"            if ({prop.Name} != null)");
                                 reusableToJson.AppendLine("            {");
                                 reusableToJson.AppendLine($"                {start}new JProperty(\"{prop.Name}\", new JObject(" +
@@ -274,6 +279,8 @@ namespace Cogs.Publishers
                         }
                         else if (model.ReusableDataTypes.Contains(prop.DataType))
                         {
+                            initialiseReusable = true;
+                            newClass.AppendLine("        [JsonConverter(typeof(ReusableConverter))]");
                             reusableToJson.AppendLine($"            if ({prop.Name} != null && {prop.Name}.Count > 0)");
                             reusableToJson.AppendLine("            {");
                             reusableToJson.AppendLine($"                {start}new JProperty(\"{prop.Name}\", new JArray(");
@@ -281,7 +288,6 @@ namespace Cogs.Publishers
                             reusableToJson.AppendLine($"                    select new JObject(new JProperty(\"{prop.DataTypeName}\", " +
                                 $"item.ToJson())))));");
                             reusableToJson.AppendLine("            }");
-                            if (model.ItemTypes.Contains(item)) { initializeReferences.AppendLine(InitializeReusable(prop, model, helpers)); }
                         }
                         else if (!model.ItemTypes.Contains(prop.DataType))
                         {
@@ -306,6 +312,7 @@ namespace Cogs.Publishers
                             }
                             else
                             {
+                                initialiseReusable = true;
                                 reusableToJson.AppendLine($"            if ({prop.Name} != null)");
                                 reusableToJson.AppendLine("            {");
                                 reusableToJson.AppendLine($"                {start}new JProperty(\"{prop.Name}\", new JArray(");
@@ -360,16 +367,84 @@ namespace Cogs.Publishers
                     if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
                     {
                         newClass.AppendLine("        public override void InitializeReferences(Dictionary<string, " +
-                            "IIdentifiable> dict, string json)");
+                            "IIdentifiable> dict)");
                         newClass.AppendLine("        {");
-                        newClass.AppendLine("            base.InitializeReferences(dict, json);");
+                        newClass.AppendLine("            base.InitializeReferences(dict);");
                     }
                     else
                     {
                         newClass.AppendLine($"        public virtual void InitializeReferences(Dictionary<string, " +
-                            $"IIdentifiable> dict, string json)");
+                            $"IIdentifiable> dict)");
                         newClass.AppendLine("        {");
                     }
+                    if (initialiseReusable)
+                    {
+                        newClass.AppendLine(@"            Stack<PropertyInfo> properties = new Stack<PropertyInfo>();
+            Dictionary<PropertyInfo, string> seen = new Dictionary<PropertyInfo, string>();
+            foreach (var property in GetType().GetProperties().ToList())
+            {
+                properties.Push(property);
+                seen.Add(property, property.Name);
+            }
+            while (properties.Count > 0)
+            {
+                var property = properties.Pop();
+                if (property.PropertyType.GetInterfaces().Contains(typeof(IIdentifiable)))
+                {
+                    object super = this;
+                    object actual = this;
+                    string propName = null;
+                    bool isNull = false;
+                    foreach (var item in seen[property].Split('.'))
+                    {
+                        object next = null;
+                        if (typeof(IEnumerable).IsAssignableFrom(actual.GetType()))
+                        {
+                            if (((IList)actual).Count > 0)
+                            {
+                                var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(actual.GetType().GetGenericArguments()[0]));
+                                foreach (var prop in ((IList)actual))
+                                {
+                                    if (prop.GetType().GetInterfaces().Contains(typeof(IIdentifiable)) && ((IIdentifiable)prop).ReferenceId != null)
+                                    {
+                                        list.Add(dict[((IIdentifiable)prop).ReferenceId]);
+                                    }
+                                }
+                                super.GetType().GetProperty(propName).SetValue(super, list);
+                            }
+                        }
+                        else { next = actual.GetType().GetProperty(item).GetValue(actual); }
+                        if (next == null)
+                        {
+                            isNull = true;
+                            break;
+                        }
+                        super = actual;
+                        actual = next;
+                        propName = item;
+                    }
+                    if (propName != null && !isNull && ((IIdentifiable)actual).ReferenceId != null)
+                    {
+                        super.GetType().GetProperty(propName).SetValue(super, dict[((IIdentifiable)actual).ReferenceId]);
+                    }
+                }
+                else
+                {
+                    foreach (var prop in property.PropertyType.GetProperties())
+                    {
+                        var type = prop.GetType();
+                        if ((!type.IsPrimitive && type != typeof(string) && type != typeof(decimal)) && !seen.Keys.Contains(prop))
+                        {
+                            properties.Push(prop);
+                            seen.Add(prop, seen[property] + ""."" + prop.Name);
+                        }
+                    }
+                }
+            }
+        }");
+                    }
+                    else { newClass.AppendLine("        }"); }
+                    /*
                     if (initializeReferences.ToString().Contains("parts"))
                     {
                         newClass.AppendLine("            string[] parts = json.Split(new string[] { \":\", \",\", Environment.NewLine }, " +
@@ -394,6 +469,7 @@ namespace Cogs.Publishers
                         newClass.AppendLine(initializeReferences.ToString());
                         newClass.AppendLine("        }");
                     }
+                    */
                     newClass.AppendLine("    }");
                     newClass.AppendLine("}");
                     newClass.AppendLine();
@@ -742,7 +818,7 @@ namespace Cogs.Publishers
             }
             builder.AppendLine("        JProperty ToJson();");
             builder.AppendLine("        string ReferenceId { get; set; }");
-            builder.AppendLine("        void InitializeReferences(Dictionary<string, IIdentifiable> dict, string json);");
+            builder.AppendLine("        void InitializeReferences(Dictionary<string, IIdentifiable> dict);");
             builder.AppendLine("    }");
             builder.AppendLine("}");
             File.WriteAllText(Path.Combine(TargetDirectory, "IIdentifiable.cs"), builder.ToString());
@@ -835,7 +911,7 @@ namespace !!!
             }
             foreach (var obj in dict.Values)
             {
-                obj.InitializeReferences(dict, builder.ToString());
+                obj.InitializeReferences(dict);
             }
         }
     }
@@ -964,6 +1040,138 @@ namespace !!!
         }
     }
 
+    class ReusableConverter : JsonConverter
+    {
+        public override bool CanConvert(Type objectType)
+        {
+            return !(objectType is IIdentifiable);
+        }
+
+        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override bool CanRead => base.CanRead;
+
+        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        {
+            object obj = Activator.CreateInstance(objectType);
+            JObject json = JObject.Load(reader);
+            foreach (JProperty child in json.Children())
+            {
+                var prop = objectType.GetProperties().Where(x => x.Name == child.Name).ToList()[0];
+                if (typeof(IEnumerable).IsAssignableFrom(prop.PropertyType))
+                {
+                    IList values = (IList)Activator.CreateInstance(prop.PropertyType);
+                    foreach (var subChild in child.First)
+                    {
+                        values.Add(GetObject(prop.PropertyType.GetGenericArguments()[0], subChild));
+                    }
+                    objectType.GetProperty(prop.Name).SetValue(obj, values);
+                }
+                else { objectType.GetProperty(prop.Name).SetValue(obj, GetObject(prop.PropertyType, child.First)); }
+            }
+            return obj;
+        }
+
+        private object GetObject(Type Type, JToken child)
+        {
+            if (Type.GetInterfaces().Contains(typeof(IIdentifiable)))
+            {
+                var item = Activator.CreateInstance(Type);
+                ((IIdentifiable)item).ReferenceId = child.First.First.First.First.ToString();
+                return item;
+            }
+            else if (Type.GetConstructor(Type.EmptyTypes) != null)
+            {
+                return Activator.CreateInstance(Type);
+            }
+            else
+            {
+                if (Type == typeof(int)) { return int.Parse(child.ToString()); }
+                else if (Type == typeof(double)) { return double.Parse(child.ToString()); }
+                else if (Type == typeof(decimal)) { return decimal.Parse(child.ToString()); }
+                else if (Type == typeof(bool)) { return bool.Parse(child.ToString()); }
+                else if (Type == typeof(long)) { return long.Parse(child.ToString()); }
+                else
+                {
+                    var item = SimpleTypeTranslator.Translate(child, Type);
+                    if (item == null) { item = Activator.CreateInstance(Type, child.ToString()); }
+                    return item;
+                }
+            }
+        }
+    }
+
+    static class SimpleTypeTranslator
+    {
+        public static object Translate(JToken prop, Type objectType)
+        {
+            if (objectType == typeof(TimeSpan)) { return TimeSpan.FromTicks(int.Parse(prop.ToString())); }
+            if (objectType == typeof(DateTimeOffset))
+            {
+                string[] types = new string[] { ""yyyy-MM-dd\\THH:mm:ss.FFFFFFFK"", ""yyyy-MM-dd"", ""HH:mm:ss.FFFFFFFK"" };
+                foreach (var type in types)
+                {
+                    if (DateTimeOffset.TryParseExact(prop.ToString(), type, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTimeOffset dto))
+                    { return dto; }
+                }
+            }
+            if (objectType == typeof(Uri))
+            {
+                return new Uri(prop.ToString());
+            }
+            JObject obj = (JObject)prop;
+            if (objectType == typeof(Tuple<int, int, string>))
+            {
+                int a = int.Parse(((JProperty)obj.First).First.ToString());
+                int b = int.Parse(((JProperty)obj.First).Next.First.ToString());
+                if (((JProperty) obj.First).Next.First.ToString().Equals(((JProperty) obj.Last).Value.ToString()))
+                {
+                    return new Tuple<int, int, string>(a, b, null);
+                }
+                return new Tuple<int, int, string>(a, b, ((JProperty) obj.Last).Value.ToString());
+            }
+            if (objectType == typeof(Tuple<int, string>))
+            {
+                int a = int.Parse(((JProperty)obj.First).First.ToString());
+                if (((JProperty) obj.First).First.ToString().Equals(((JProperty) obj.Last).Value.ToString()))
+                {
+                    return new Tuple<int, string>(a, null);
+                }
+                return new Tuple<int, string>(a, ((JProperty) obj.Last).Value.ToString());
+            }
+            if (objectType == typeof(CogsDate))
+            {
+                if (int.TryParse(obj.First.First.ToString(), out int t)) { return new CogsDate(TimeSpan.FromTicks(t)); }
+                if (DateTimeOffset.TryParseExact(obj.First.First.ToString(), ""yyyy-MM-dd"", CultureInfo.InvariantCulture,
+                            DateTimeStyles.None, out DateTimeOffset dto))
+                {
+                    return new CogsDate(dto, true);
+                }
+                if (DateTimeOffset.TryParseExact(obj.First.First.ToString(), ""yyyy-MM-dd\\THH:mm:ss.FFFFFFFK"",
+                            CultureInfo.InvariantCulture, DateTimeStyles.None, out dto))
+                {
+                    return new CogsDate(dto);
+                }
+                if (int.TryParse(obj.First.First.First.First.ToString(), out int year))
+                {
+                    if (obj.First.First.First.Next == null) { return new CogsDate(new Tuple<int, string>(year, null)); }
+                    if (int.TryParse(obj.First.First.First.Next.First.ToString(), out int month))
+                    {
+                        if (obj.First.First.First.Next.Next != null)
+                        {
+                            return new CogsDate(new Tuple<int, int, string>(year, month, obj.First.First.First.Next.Next.First.ToString()));
+                        }
+                        return new CogsDate(new Tuple<int, int, string>(year, month, null));
+                    }
+                    return new CogsDate(new Tuple<int, string>(year, obj.First.First.First.Next.First.ToString()));
+                }
+            }
+            return null;
+        }
+    }
 
 
     class SimpleTypeConverter : JsonConverter
@@ -992,85 +1200,12 @@ namespace !!!
                 var current = obj.First;
                 while (current != null)
                 {
-                    values.Add(Translate(current, objectType.GetGenericArguments()[0]));
+                    values.Add(SimpleTypeTranslator.Translate(current, objectType.GetGenericArguments()[0]));
                     current = current.Next;
                 }
                 return values;
             }
-            else { return Translate(JToken.Load(reader), objectType); }
-        }
-
-        private object Translate(JToken prop, Type objectType)
-        {
-            if (objectType == typeof(TimeSpan))
-            {
-                string[] values = prop.ToString().Split(new char[] { ':' });
-                if (values.Length == 1) { return new TimeSpan(int.Parse(values[0])); }
-                return new TimeSpan(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]));
-            }
-            if (objectType == typeof(DateTimeOffset))
-            {
-                string[] types = new string[] {""yyyy-MM-dd\\THH:mm:ss.FFFFFFFK"", ""yyyy-MM-dd"", ""HH:mm:ss.FFFFFFFK""};
-                foreach (var type in types)
-                {
-                    if (DateTimeOffset.TryParseExact(prop.ToString(), type, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTimeOffset dto)) 
-                    { return dto; }
-                }
-            }
-            if (objectType == typeof(Uri))
-            {
-                return new Uri(prop.ToString());
-            }
-            JObject obj = (JObject)prop;
-            if (objectType == typeof(Tuple<int, int, string>))
-            {
-                int a = int.Parse(((JProperty)obj.First).First.ToString());
-                int b = int.Parse(((JProperty)obj.First).Next.First.ToString());
-                if (((JProperty)obj.First).Next.First.ToString().Equals(((JProperty)obj.Last).Value.ToString()))
-                {
-                    return new Tuple<int, int, string>(a, b, null);
-                }
-                return new Tuple<int, int, string>(a, b, ((JProperty)obj.Last).Value.ToString());
-            }
-            if (objectType == typeof(Tuple<int, string>))
-            {
-                int a = int.Parse(((JProperty)obj.First).First.ToString());
-                if (((JProperty)obj.First).First.ToString().Equals(((JProperty)obj.Last).Value.ToString()))
-                {
-                    return new Tuple<int, string>(a, null);
-                }
-                return new Tuple<int, string>(a, ((JProperty)obj.Last).Value.ToString());
-            }
-            if (objectType == typeof(CogsDate))
-            {
-                string[] values = obj.First.First.ToString().Split(new char[] { ' ', '/', ':', '-', '+', 'T', 'Z' });
-                if (((JProperty)obj.First).Name.Equals(""duration"")) { return new CogsDate(new TimeSpan(int.Parse(values[0]))); }
-                if (values.Length == 1) { return new CogsDate(new Tuple<int, string>(int.Parse(values[0]), null)); }
-                if (values.Length == 2)
-                {
-                    if (obj.First.First.ToString().Contains(""-""))
-                    {
-                        return new CogsDate(new Tuple<int, int, string>(int.Parse(values[0]), int.Parse(values[1]), null));
-                    }
-                    return new CogsDate(new Tuple<int, string>(int.Parse(values[0]), values[1]));
-                }
-                if (values.Length == 3)
-                {
-                    if (DateTimeOffset.TryParseExact(obj.First.First.ToString(), ""yyyy-MM-dd"", CultureInfo.InvariantCulture, 
-                            DateTimeStyles.None, out DateTimeOffset dto))
-                    {
-                         return new CogsDate(dto, true);
-                    }
-                    return new CogsDate(new Tuple<int, int, string>(int.Parse(values[0]), int.Parse(values[1]), values[2]));
-                }
-                if (values.Length == 8)
-                {
-                    DateTimeOffset.TryParseExact(obj.First.First.ToString(), ""yyyy-MM-dd\\THH:mm:ss.FFFFFFFK"",
-                            CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTimeOffset dto);
-                    return new CogsDate(dto);
-                }
-            }
-            return null;
+            else { return SimpleTypeTranslator.Translate(JToken.Load(reader), objectType); }
         }
     }
 }";
