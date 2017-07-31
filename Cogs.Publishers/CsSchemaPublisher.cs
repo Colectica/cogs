@@ -405,7 +405,9 @@ namespace Cogs.Publishers
                                 var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(actual.GetType().GetGenericArguments()[0]));
                                 foreach (var prop in ((IList)actual))
                                 {
-                                    if (prop.GetType().GetInterfaces().Contains(typeof(IIdentifiable)) && ((IIdentifiable)prop).ReferenceId != null)
+                                    var type = prop.GetType();
+                                    if (type.Namespace.Equals(GetType().Namespace) && !type.IsPrimitive && type != typeof(string) && type != typeof(decimal) && 
+                                         !seen.Keys.Contains(prop))
                                     {
                                         list.Add(dict[((IIdentifiable)prop).ReferenceId]);
                                     }
@@ -1056,12 +1058,29 @@ namespace !!!
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
+            if (typeof(IEnumerable).IsAssignableFrom(objectType) && objectType != typeof(string))
+            {
+                JArray json = JArray.Load(reader);
+                IList values = (IList)Activator.CreateInstance(objectType);
+                foreach (JObject child in json.Children())
+                {
+                    values.Add(Evaluate((JObject)child.First.First, objectType.GetGenericArguments()[0]));
+                }
+                return values;
+            }
+            else
+            {
+                return Evaluate(JObject.Load(reader), objectType);
+            }
+        }
+
+        private object Evaluate (JObject json, Type objectType)
+        {
             object obj = Activator.CreateInstance(objectType);
-            JObject json = JObject.Load(reader);
             foreach (JProperty child in json.Children())
             {
                 var prop = objectType.GetProperties().Where(x => x.Name == child.Name).ToList()[0];
-                if (typeof(IEnumerable).IsAssignableFrom(prop.PropertyType))
+                if (typeof(IEnumerable).IsAssignableFrom(prop.PropertyType) && prop.PropertyType != typeof(string))
                 {
                     IList values = (IList)Activator.CreateInstance(prop.PropertyType);
                     foreach (var subChild in child.First)
@@ -1075,29 +1094,30 @@ namespace !!!
             return obj;
         }
 
-        private object GetObject(Type Type, JToken child)
+        private object GetObject(Type type, JToken child)
         {
-            if (Type.GetInterfaces().Contains(typeof(IIdentifiable)))
+            if (type.GetInterfaces().Contains(typeof(IIdentifiable)))
             {
-                var item = Activator.CreateInstance(Type);
+                var item = Activator.CreateInstance(type);
                 ((IIdentifiable)item).ReferenceId = child.First.First.First.First.ToString();
                 return item;
             }
-            else if (Type.GetConstructor(Type.EmptyTypes) != null)
+            else if (child.Type == JTokenType.Object && type != typeof(CogsDate))
             {
-                return Activator.CreateInstance(Type);
+                return Evaluate((JObject)child.First.First, type);
             }
             else
             {
-                if (Type == typeof(int)) { return int.Parse(child.ToString()); }
-                else if (Type == typeof(double)) { return double.Parse(child.ToString()); }
-                else if (Type == typeof(decimal)) { return decimal.Parse(child.ToString()); }
-                else if (Type == typeof(bool)) { return bool.Parse(child.ToString()); }
-                else if (Type == typeof(long)) { return long.Parse(child.ToString()); }
+                if (type == typeof(int)) { return int.Parse(child.ToString()); }
+                else if (type == typeof(double)) { return double.Parse(child.ToString()); }
+                else if (type == typeof(decimal)) { return decimal.Parse(child.ToString()); }
+                else if (type == typeof(bool)) { return bool.Parse(child.ToString()); }
+                else if (type == typeof(long)) { return long.Parse(child.ToString()); }
+                else if (type == typeof(string)) { return child.ToString(); }
                 else
                 {
-                    var item = SimpleTypeTranslator.Translate(child, Type);
-                    if (item == null) { item = Activator.CreateInstance(Type, child.ToString()); }
+                    var item = SimpleTypeTranslator.Translate(child, type);
+                    if (item == null) { item = Activator.CreateInstance(type, child.ToString()); }
                     return item;
                 }
             }

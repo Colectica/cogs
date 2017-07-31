@@ -75,80 +75,6 @@ namespace Cogs.DataAnnotations
         public enum CogsDateType { DateTime, Date, GYearMonth, GYear, Duration } 
         public CogsDateType UsedType { get; private set; }
 
-        public CogsDate(CogsDateType type, object o) : this()
-        {
-            switch (type)
-            {
-                case CogsDateType.DateTime:
-                    {
-                        DateTime = (DateTimeOffset)o;
-                        UsedType = CogsDateType.DateTime;
-                        break;
-                    }
-                case CogsDateType.Date:
-                    {
-                        Date = (DateTimeOffset)o;
-                        UsedType = CogsDateType.Date;
-                        break;
-                    }
-                case CogsDateType.GYearMonth:
-                    {
-                        GYearMonth = (Tuple<int, int, string>)o;
-                        UsedType = CogsDateType.GYearMonth;
-                        break;
-                    }
-                case CogsDateType.GYear:
-                    {
-                        GYear = (Tuple<int, string>)o;
-                        UsedType = CogsDateType.GYear;
-                        break;
-                    }
-                case CogsDateType.Duration:
-                    {
-                        Duration = (TimeSpan)o;
-                        UsedType = CogsDateType.Duration;
-                        break;
-                    }
-            }
-        }
-
-        public CogsDate(string type, string value) : this()
-        {
-            if (type.Equals("datetime"))
-            {
-                string[] values = value.Split('-', 'T', ':', '+');
-                DateTime = new DateTimeOffset(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]),
-                        int.Parse(values[3]), int.Parse(values[4]), int.Parse(values[5]),
-                        new TimeSpan(int.Parse(values[6]), int.Parse(values[7]), int.Parse(values[8])));
-                UsedType = CogsDateType.DateTime;
-            }
-            else if (type.Equals("date"))
-            {
-                string[] values = value.Split('-');
-                Date = new DateTime(int.Parse(values[0]), int.Parse(values[1]), int.Parse(values[2]));
-                UsedType = CogsDateType.Date;
-            }
-            else if (type.Equals("YearMonth"))
-            {
-                string[] vals = value.Split('-', ' ');
-                if (vals.Length == 3) { GYearMonth = new Tuple<int, int, string>(int.Parse(vals[0]), int.Parse(vals[1]), vals[2]); }
-                else { GYearMonth = new Tuple<int, int, string>(int.Parse(vals[0]), int.Parse(vals[1]), null); }
-                UsedType = CogsDateType.GYearMonth;
-            }
-            else if (type.Equals("year"))
-            {
-                string[] vals = value.Split(' ');
-                if (vals.Length == 2) { GYear = new Tuple<int, string>(int.Parse(vals[0]), vals[1]); }
-                else { GYear = new Tuple<int, string>(int.Parse(vals[1]), null); }
-                UsedType = CogsDateType.GYear;
-            }
-            else if (type.Equals("duration"))
-            {
-                Duration = new TimeSpan(int.Parse(value));
-                UsedType = CogsDateType.Duration;
-            }
-        }
-
         public CogsDate(DateTimeOffset item, bool isDate = false) : this()
         {
             if (isDate)
@@ -211,14 +137,19 @@ namespace Cogs.DataAnnotations
                 case CogsDateType.GYearMonth:
                     {
 						if (GYearMonth == null) { return null; }
-						if(GYearMonth.Item3 != null) { return GYearMonth.Item1 + "-" + GYearMonth.Item2 + " " + GYearMonth.Item3; }
-                        return GYearMonth.Item1 + "-" + GYearMonth.Item2;
+						if(GYearMonth.Item3 != null) 
+						{ 
+						return new JObject(new JProperty("year", GYearMonth.Item1), 
+							new JProperty("month", GYearMonth.Item2), new JProperty("timezone", GYearMonth.Item3)); 
+						}
+                        return new JObject(new JProperty("year", GYearMonth.Item1), 
+							new JProperty("month", GYearMonth.Item2));
                     }
                 case CogsDateType.GYear:
                     {
 						if (GYear == null) { return null; }
-						if(GYear.Item2 != null) { return GYear.Item1 + " " + GYear.Item2; }
-                        return GYear.Item1.ToString();
+						if(GYear.Item2 != null) { return new JObject(new JProperty("year", GYear.Item1), new JProperty("timezone", GYear.Item2)); }
+                        return new JObject(new JProperty("year", GYear.Item1));
                     }
                 case CogsDateType.Duration:
                     {
