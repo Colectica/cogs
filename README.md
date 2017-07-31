@@ -12,6 +12,7 @@ COGS is for domain experts and groups who value **ease of collaboration** and **
 Publishable formats include:
 
 * XML Schema
+* OWL 2 (RDF Schema)
 * OMG's UML Normative XMI 2.4.2
 * OMG's UML XMI 2.5 with diagram exchange
 * Sphinx HTML documentation and visualizations
@@ -21,7 +22,6 @@ Publishable formats include:
 
 Upcoming formats include:
 
-* OWL 2 / QL (RDF Schema)
 * Class libraries for other languages
 
 ## Platform

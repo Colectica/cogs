@@ -56,7 +56,7 @@ namespace Cogs.Publishers
                                 new JProperty("type", "integer"))), 
                             new JProperty("timezone", 
                             new JObject(
-                                new JProperty("type", "string"))))), 
+                                new JProperty("type", "string"), new JProperty("pattern", @"^(Z)|((\+|\-)(00|0[0-9]|1[0-9]|2[0-3]):([0-9]|[0-5][0-9]))$"))))), 
                         new JProperty("required", GYM))));
 
                 obj.Add(new JProperty("gYear", 
@@ -69,7 +69,7 @@ namespace Cogs.Publishers
                                 new JProperty("type", "integer"))), 
                             new JProperty("timezone", 
                             new JObject(
-                                new JProperty("type", "string"))))))));
+                                new JProperty("type", "string"), new JProperty("pattern", @"^(Z)|((\+|\-)(00|0[0-9]|1[0-9]|2[0-3]):([0-9]|[0-5][0-9]))$"))))))));
 
                 obj.Add(new JProperty("gMonthDay", 
                     new JObject(
@@ -84,7 +84,7 @@ namespace Cogs.Publishers
                                         new JProperty("type", "integer"))), 
                                 new JProperty("timezone", 
                                     new JObject(
-                                        new JProperty("type", "string"))))), 
+                                        new JProperty("type", "string"), new JProperty("pattern", @"^(Z)|((\+|\-)(00|0[0-9]|1[0-9]|2[0-3]):([0-9]|[0-5][0-9]))$"))))), 
                                 new JProperty("required", GMD))));
 
                 obj.Add(new JProperty("gDay", 
@@ -97,7 +97,7 @@ namespace Cogs.Publishers
                             new JProperty("type", "integer"))), 
                         new JProperty("timezone", 
                         new JObject(
-                            new JProperty("type", "string"))))))));
+                            new JProperty("type", "string"), new JProperty("pattern", @"^(Z)|((\+|\-)(00|0[0-9]|1[0-9]|2[0-3]):([0-9]|[0-5][0-9]))$"))))))));
 
                 obj.Add(new JProperty("gMonth", 
                     new JObject(
@@ -109,7 +109,7 @@ namespace Cogs.Publishers
                             new JProperty("type", "integer"))), 
                         new JProperty("timezone", 
                         new JObject(
-                            new JProperty("type", "string"))))))));
+                            new JProperty("type", "string"), new JProperty("pattern", @"^(Z)|((\+|\-)(00|0[0-9]|1[0-9]|2[0-3]):([0-9]|[0-5][0-9]))$"))))))));
 
                 obj.Add(new JProperty("anyURI", 
                     new JObject(
