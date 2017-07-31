@@ -2,6 +2,6 @@ Name,DataType,MinCardinality,MaxCardinality,Description,MinLength,MaxLength,Enum
 Name,string,0,1,A name for the Condiment,,,,,,,,,,,
 Description,string,0,1,A description of the Hamburger,,,,,,,,,,,
 IsSpecial,boolean,0,1,Denote if the condiment is special,,,,,,,,,,,
-Dates,cogsDate,0,n,Dates of expiration,,,,,,,,,,,
+CDates,cogsDate,0,n,Dates of expiration,,,,,,,,,,,
 AnyURI,anyURI,0,1,A URI,,,,,,,,,,,
 Uris,anyURI,0,n,A list of URIs,,,,,,,,,,,

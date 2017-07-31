@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Xml;
 using Xunit;
 
 namespace Cogs.Tests.Integration
@@ -50,9 +51,7 @@ namespace Cogs.Tests.Integration
                 GMonthDay = mDay
             };
 
-            List<decimal> heights = new List<decimal>();
-            heights.Add(5);
-            heights.Add(5);
+            List<decimal> heights = new List<decimal> { 5, 5 };
             Tuple<int, int, string> GYM = new Tuple<int, int, string>(2017, 06, "Z");
 
             Bread bread = new Bread
@@ -187,6 +186,13 @@ namespace Cogs.Tests.Integration
 
                 // check that outputs are the same
                 Assert.Equal(json, newJson);
+
+                var xml = containers[i].MakeXml();
+                XmlWriterSettings xws = new XmlWriterSettings { OmitXmlDeclaration = true };
+                using (XmlWriter xw = XmlWriter.Create(Path.Combine(outPath, i + ".xml"), xws))
+                {
+                    xml.Save(xw);
+                }
             }
         }
 
@@ -1231,7 +1237,7 @@ namespace Cogs.Tests.Integration
             Condiment condiment = new Condiment
             {
                 ID = Guid.NewGuid().ToString(),
-                Dates = new List<DataAnnotations.CogsDate>
+                CDates = new List<DataAnnotations.CogsDate>
                 {
                     new DataAnnotations.CogsDate(new TimeSpan(1562)),
                     new DataAnnotations.CogsDate(new Tuple<int, string>(2017, "+01:00")),
@@ -1259,10 +1265,10 @@ namespace Cogs.Tests.Integration
             Assert.IsType<Condiment>(container2.Items.First());
 
             Condiment condiment2 = container2.Items.First() as Condiment;
-            Assert.Equal(condiment.Dates.Count, condiment2.Dates.Count);
-            for (int i = 0; i < condiment.Dates.Count; i++)
+            Assert.Equal(condiment.CDates.Count, condiment2.CDates.Count);
+            for (int i = 0; i < condiment.CDates.Count; i++)
             {
-                Assert.Equal(condiment.Dates[i].GetValue(), condiment2.Dates[i].GetValue());
+                Assert.Equal(condiment.CDates[i].GetValue(), condiment2.CDates[i].GetValue());
             }
         }
 
