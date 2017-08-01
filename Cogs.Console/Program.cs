@@ -195,6 +195,7 @@ namespace Cogs.Console
                                            CommandOptionType.NoValue);
                 var inheritanceArgument = command.Option("-i|--inheritance",
                                             "allow inheritance in the graph(s)", CommandOptionType.NoValue);
+                var reusableArgument = command.Option("-r|--reusables", "show reusable inside items", CommandOptionType.NoValue);
 
                 command.OnExecute(() =>
                 {
@@ -209,6 +210,7 @@ namespace Cogs.Console
                     string output = "topic";
                     if (all) output = "all";
                     else if (single) output = "single";
+                    bool reusables = reusableArgument.HasValue();
                     bool inheritance = inheritanceArgument.HasValue();
 
                     var directoryReader = new CogsDirectoryReader();
@@ -224,7 +226,8 @@ namespace Cogs.Console
                         Overwrite = overwrite,
                         Format = format,
                         Output = output,
-                        Inheritance = inheritance
+                        Inheritance = inheritance,
+                        ShowReusables = reusables
                     };
                     publisher.Publish(cogsModel);
 

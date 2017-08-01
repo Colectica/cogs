@@ -83,7 +83,8 @@ namespace Cogs.Publishers
             ClassList = model.ItemTypes;
             // create list of all reusable types so you know if a reusable type is being referenced and can get information about it
             ReusableList = model.ReusableDataTypes;
-            var header = "digraph G { compound = true rankdir=LR fontsize = 8 node [fontsize = 8 shape = \"oval\" style = \"filled\" fillcolor = \"#f7b733\"] edge [ fontsize = 8 ] ";
+            var header = "digraph G { compound = true rankdir=LR fontsize = 8 node [fontsize = 8 shape = \"oval\" " +
+                "style = \"filled\" fillcolor = \"#f7b733\"] edge [ fontsize = 8 ] ";
 
             if (Output.Equals("all")) { MakeGraphAll(model, header); }
             else if (Output.Equals("topic")) { MakeGraphTopic(model, header); }
@@ -93,13 +94,14 @@ namespace Cogs.Publishers
 
         private string MakeItem(DataType item)
         {
-            return MakeNode(item, item.Name + "[ shape = \"record\"  label=\"{" + item.Name + "| ");
+            return MakeNode(item, $"{item.Name} [ shape = \"record\" label = \"{{ {item.Name} | ");
         }
 
         private string MakeCluster(DataType item, DataType reusable)
         {
             StringBuilder output = new StringBuilder();
-            StringBuilder outerClass = new StringBuilder("subgraph cluster" + item.Name + " { style = \"filled\" fillcolor = \"#4abdac\" label=\"" + item.Name + "\" ");
+            StringBuilder outerClass = new StringBuilder($"subgraph cluster{item.Name} {{ style = \"filled\" " +
+                $"fillcolor = \"#4abdac\" label = \"{item.Name}\" ");
             List<DataType> reusablesPresent = new List<DataType>();
             outerClass.Append(item.Name + "Properties [ shape = \"record\" label=\"{Properties |");
             foreach (var property in item.Properties)
@@ -112,38 +114,33 @@ namespace Cogs.Publishers
                 outerClass.Append("\\l");
                 if (ClassList.Contains(property.DataType))
                 {
-                    if (ReusableList.Contains(property.DataType))
+                    output.Append("edge[ arrowhead = \"none\" headlabel = \"0...*\" taillabel = \"0...*\"] ");
+                    output.Append(item.Name + "Properties -> " + property.DataTypeName + "[ arrowhead = \"none\" label = \"" + property.Name + "\"] ");
+                }
+                else if (ReusableList.Contains(property.DataType))
+                {
+                    // add reusableTypes within that type to reusable list as well
+                    Stack<DataType> stack = new Stack<DataType>();
+                    if (!property.DataTypeName.Equals(item.Name) && !reusablesPresent.Contains(property.DataType))
                     {
-                        // add reusableTypes within that type to reusable list as well
-                        Stack<DataType> stack = new Stack<DataType>();
-                        if(!property.DataTypeName.Equals(item.Name) && !reusablesPresent.Contains(property.DataType) && !property.IsPrimitive)
-                        {
-                            stack.Push(property.DataType);
-                            reusablesPresent.Add(property.DataType);
-                        }
-                        while(stack.Count > 0)
+                        stack.Push(property.DataType);
+                        reusablesPresent.Add(property.DataType);
+                        while (stack.Count > 0)
                         {
                             var type = stack.Pop();
                             foreach (var prop in type.Properties)
                             {
                                 // checks: item is a reusable type, item is not already seen, item isn't current item, item isn't primitive
-                                if (ReusableList.Contains(prop.DataType) && !reusablesPresent.Contains(type) && !prop.IsPrimitive &&
-                                    !type.Name.Equals(prop.DataTypeName)  && !prop.DataTypeName.Equals(item.Name))
+                                if (ReusableList.Contains(prop.DataType) && !reusablesPresent.Contains(type) &&
+                                    !type.Name.Equals(prop.DataTypeName) && !prop.DataTypeName.Equals(item.Name))
                                 {
                                     stack.Push(prop.DataType);
                                     reusablesPresent.Add(prop.DataType);
-
                                 }
                             }
                         }
                         output.Append(item.Name + "Properties -> " + item.Name + property.DataTypeName + "[ arrowhead = \"none\" label = \"" + property.Name + "\"] ");
                     }
-                    else
-                    {
-                        output.Append("edge[ arrowhead = \"none\" headlabel = \"0...*\" taillabel = \"0...*\"] ");
-                        output.Append(item.Name + "Properties -> " + property.DataTypeName + "[ arrowhead = \"none\" label = \"" + property.Name + "\"] ");
-                    }
-                    
                 }
             }
             if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName) && Inheritance)
@@ -163,17 +160,14 @@ namespace Cogs.Publishers
                         outerClass.Append("[" + property.MinCardinality + "..." + property.MaxCardinality + "] ");
                     }
                     outerClass.Append("\\l");
-                    if (ClassList.Contains(property.DataType))
+                    if (ClassList.Contains(property.DataType) && !property.IsPrimitive)
                     {
-                        if (reusablesPresent.Contains(property.DataType))
-                        {
-                            output.Append(item.Name + reused.Name + " -> " + item.Name + property.DataTypeName + "[ arrowhead = \"none\" label = \"" + property.Name + "\"] ");
-                        }
-                        else if (!property.IsPrimitive)
-                        {
-                            output.Append("edge[ arrowhead = \"none\" headlabel = \"0...*\" taillabel = \"0...*\"] ");
-                            output.Append(item.Name + reused.Name + " -> " + property.DataTypeName + "[ label = \"" + property.Name + "\"] ");
-                        }
+                        output.Append("edge[ arrowhead = \"none\" headlabel = \"0...*\" taillabel = \"0...*\"] ");
+                        output.Append(item.Name + reused.Name + " -> " + property.DataTypeName + "[ label = \"" + property.Name + "\"] ");
+                    }
+                    else if (reusablesPresent.Contains(property.DataType))
+                    {
+                        output.Append(item.Name + reused.Name + " -> " + item.Name + property.DataTypeName + "[ arrowhead = \"none\" label = \"" + property.Name + "\"] ");
                     }
                 }
                 if (!string.IsNullOrWhiteSpace(reused.ExtendsTypeName) && Inheritance)
@@ -201,18 +195,12 @@ namespace Cogs.Publishers
                 classText += "\\l";
                 if (ClassList.Contains(property.DataType))
                 {
-                    if (ReusableList.Contains(property.DataType))
-                    {
-                        if (ShowReusables)
-                        {
-                            return MakeCluster(item, property.DataType);
-                        }
-                    }
-                    else
-                    {
-                        outputText.Append("edge[ arrowhead = \"none\" headlabel = \"0...*\" taillabel = \"0...*\"] ");
-                    }
-                    outputText.Append(item.Name + " -> " + property.DataTypeName + "[ label = \"" + property.Name + "\"] ");
+                   outputText.Append("edge[ arrowhead = \"none\" headlabel = \"0...*\" taillabel = \"0...*\"] ");
+                   outputText.Append(item.Name + " -> " + property.DataTypeName + "[ label = \"" + property.Name + "\"] ");
+                }
+                if (ReusableList.Contains(property.DataType) && ShowReusables)
+                {
+                    return MakeCluster(item, property.DataType);
                 }
             }
             if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName) && Inheritance)
@@ -262,7 +250,7 @@ namespace Cogs.Publishers
                     seen.Add(item.Name);
                     if(Inheritance && !String.IsNullOrWhiteSpace(item.ExtendsTypeName))
                     {
-                        output.Append(item.Name + " -> " + item.ExtendsTypeName + " [arrowhead=\"empty\"]");
+                        output.Append($"{item.Name} -> {item.ExtendsTypeName} [ arrowhead = \"empty\"]");
                     }
                     foreach (var property in item.Properties)
                     {
@@ -290,25 +278,25 @@ namespace Cogs.Publishers
                 else { Console.Write("\rCreating Graph for " + item.Name); }
                 previousOutput = item.Name.Length;
                 var arrows = "";
-                bool ifCluster = false;
-                if (item.Properties.Where(x => ReusableList.Contains(x.DataType)).ToList().Count > 0 && ShowReusables) { ifCluster = true; }
+                bool isCluster = false;
+                if (item.Properties.Where(x => ReusableList.Contains(x.DataType)).ToList().Count > 0 && ShowReusables) { isCluster = true; }
                 foreach(var clss in model.ItemTypes.Concat(model.ReusableDataTypes))
                 {
                     if (clss.ExtendsTypeName.Equals(item.Name) && Inheritance)
                     {
-                        if (ifCluster) { arrows += clss.Name + " -> " + item.Name + "Properties" + "[arrowhead=\"empty\" lhead = cluster" + item.Name + "] "; }
-                        else arrows += clss.Name + " -> " + item.Name + "[arrowhead=\"empty\"] ";
+                        if (isCluster) { arrows += $"{clss.Name} -> {item.Name}Properties [arrowhead=\"empty\" lhead = cluster{item.Name}] "; }
+                        else arrows += $"{clss.Name} -> {item.Name} [ arrowhead=\"empty\"] ";
                     }
                     foreach (var property in clss.Properties)
                     {
                         if (property.DataTypeName.Equals(item.Name))
                         {
-                            if (clss.Name.Equals(item.Name) && ifCluster)
+                            if (clss.Name.Equals(item.Name) && isCluster)
                             {
-                                arrows += clss.Name + "Properties -> " + item.Name + "Properties [ arrowhead=\"none\" label=" + property.Name + " ] ";
+                                arrows += $"{clss.Name}Properties -> {item.Name}Properties [ arrowhead=\"none\" label = {property.Name}] ";
                             } 
-                            else if (ifCluster) arrows += clss.Name + " -> " + item.Name + "Properties [ arrowhead=\"none\" label=" + property.Name + " lhead = cluster" + item.Name + "] ";
-                            else arrows += clss.Name + " -> " + item.Name + "[ arrowhead=\"none\" label=" + property.Name + "] ";
+                            else if (isCluster) arrows += $"{clss.Name} -> {item.Name}Properties [ arrowhead=\"none\" label= {property.Name} lhead = cluster{item.Name}] ";
+                            else arrows += $"{clss.Name} -> {item.Name}[ arrowhead=\"none\" label={property.Name}] ";
                         }
                     }
                 }
@@ -352,7 +340,36 @@ namespace Cogs.Publishers
                             "<feMerge><feMergeNode/><!--this contains the offset blurred image--><feMergeNode in= \"SourceGraphic\"/>" +
                             "<!--this contains the element that the filter is applied to --></feMerge></filter>" + Environment.NewLine);
                     }
-                    else if (line.Contains("polygon") || line.Contains("ellipse"))
+                    else if (line.Contains("id=\"node"))
+                    {
+                        for (int i = 0; i < 7; i++) { newFile.Append(line[i]); }
+                        var s = "";
+                        for (int i = 12; i < line.Length; i++)
+                        {
+                            if (s.Contains("<title>"))
+                            {
+                                var name = "";
+                                while (!line[i].Equals('<'))
+                                {
+                                    name += line[i];
+                                    i++;
+                                }
+                                if (ClassList.Where(x => x.Name == name).ToList().Count > 0 || ClassList.Where(x => x.Name + "Properties" == name).ToList().Count > 0)
+                                {
+                                    newFile.Append("ItemType" + name);
+                                }
+                                else { newFile.Append("ReusableType" + name); }
+                                while (i < line.Length)
+                                {
+                                    s += line[i];
+                                    i++;
+                                }
+                            }
+                            else { s += line[i]; }
+                        }
+                        newFile.Append(s);
+                    }
+                    else if ((line.Contains("polygon") || line.Contains("ellipse")) && !line.Contains("fill=\"none\"") && !line.Contains("fill=\"black\""))
                     {
                         if(!isFirst)
                         {
