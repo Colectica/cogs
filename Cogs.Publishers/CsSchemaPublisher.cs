@@ -90,10 +90,19 @@ namespace Cogs.Publishers
                 var reusableToJson = new StringBuilder();
                 var helpers = new StringBuilder();
                 var toXml = new StringBuilder();
-                if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName)) { toXml.AppendLine("        public override XElement ToXml()"); }
-                else { toXml.AppendLine("        public virtual XElement ToXml()"); }
-                toXml.AppendLine("        {");
-                toXml.AppendLine($"            var xEl = new XElement(\"{item.Name}\");");
+                if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
+                {
+                    toXml.AppendLine("        public override XElement ToXml()");
+                    toXml.AppendLine("        {");
+                    toXml.AppendLine($"            var xEl = new XElement(\"{item.Name}\", base.ToXml());");
+                }
+                else
+                {
+                    toXml.AppendLine("        public virtual XElement ToXml()");
+                    toXml.AppendLine("        {");
+                    if (!item.IsAbstract) { toXml.AppendLine($"            var xEl = new XElement(\"{item.Name}\");"); }
+                    else { toXml.AppendLine($"            var xEl = new XElement(\"ID\", ID);"); }
+                }
                 bool initialiseReusable = false;
                 // add abstract to class title if relevant
                 if (item.IsAbstract) { newClass.Append("abstract "); }
@@ -351,7 +360,7 @@ namespace Cogs.Publishers
                         }
                         else
                         {
-                            reusableToJson.AppendLine($"            if ({prop.Name} != null)");
+                            reusableToJson.AppendLine($"            if ({prop.Name} != null && {prop.Name}.Count > 0)");
                             reusableToJson.AppendLine("            {");
                             reusableToJson.AppendLine($"                {start}new JProperty(\"{prop.Name}\", new JArray(");
                             reusableToJson.AppendLine($"                    from item in {prop.Name}");
@@ -377,17 +386,16 @@ namespace Cogs.Publishers
                                 initializeReferences.AppendLine("                }");
                                 initializeReferences.AppendLine("            }");
                             }
-                            toXml.AppendLine($"            if ({prop.Name} != null)");
+                            toXml.AppendLine($"            if ({prop.Name} != null && {prop.Name}.Count > 0)");
                             toXml.AppendLine("            {");
-                            toXml.AppendLine($"                var prop = new XElement(\"{prop.Name}\");");
                             toXml.AppendLine($"                foreach (var item in {prop.Name})");
                             toXml.AppendLine("                {");
-                            toXml.AppendLine($"                    prop.Add(new XElement(item.ToString(), ");
+                            toXml.AppendLine($"                    xEl.Add(new XElement(\"{prop.Name}\", ");
                             foreach (var part in model.Identification)
                             {
                                 toXml.AppendLine($"                        new XElement(\"{part.Name}\", item.{part.Name}), ");
                             }
-                            toXml.AppendLine($"                        new XElement(\"ItemType\", \"item.GetType()\")));");
+                            toXml.AppendLine($"                        new XElement(\"ItemType\", item.GetType().Name)));");
                             toXml.AppendLine("                }");
                             toXml.AppendLine("            }");
                         }
@@ -532,7 +540,8 @@ namespace Cogs.Publishers
                 newClass.AppendLine("        /// <summary>");
                 newClass.AppendLine("        /// Used to Serialize this object to XML");
                 newClass.AppendLine("        /// <summary>");
-                newClass.Append(toXml.ToString());
+                if (item.IsAbstract) { newClass.Append(toXml.ToString().Replace("            xEl.Add(new XElement(\"ID\", ID));", "")); }
+                else { newClass.Append(toXml.ToString()); }
                 newClass.AppendLine("            return xEl;");
                 newClass.AppendLine("        }");
                 newClass.AppendLine("    }");
@@ -563,30 +572,33 @@ namespace Cogs.Publishers
             if (origDataTypeName.ToLower().Equals("date")){ return $"{start}.Add(new XElement(\"{name}\", {name}.ToString(\"u\").Split(' ')[0]));"; }
             if (origDataTypeName.ToLower().Equals("gyearmonth"))
             {
-                return $"var ym = new XElement(\"yearmonth\");{indent}if ({name}.Item3 != null) {{ ym.Add(new XElement(" +
-                    $"\"year\", {name}.Item1), new XElement(\"month\", {name}.Item2), new XElement(\"timezone\", {name}.Item3)); }}" +
-                    $"{indent}else {{ ym.Add(new XElement(\"year\", {name}.Item1), new XElement(\"month\", {name}.Item2)); }}{indent}{start}.Add(ym);";
-            }
-            if (origDataTypeName.ToLower().Equals("gyear"))
-            {
-                return $"if ({name}.Item2 != null) {{ {start}.Add(new XElement(\"year\", {name}.Item1), new XElement(\"timezone\", {name}.Item2)); }}" +
-                    $"{indent}else {{ {start}.Add(new XElement(\"year\", {name}.Item1)); }}";
+                return $"var ym = new XElement(\"yearmonth\");{indent}if ({name}.Item3 != null){indent}{{{indent}    if (char.IsDigit({name}.Item3[0]))" +
+                    $"{{ ym.Add({name}.Item1 + \"-\" + {name}.Item2 + \"-\" + {name}.Item3); }}{indent}    else {{ ym.Add({name}.Item1 + \"-\" + {name}.Item2" +
+                    $" + {name}.Item3); }}{indent}}}{indent}else {{ ym.Add({name}.Item1 + \"- \" + {name}.Item2); }}{indent}xEl.Add(ym);";
             }
             if (origDataTypeName.ToLower().Equals("gmonthday"))
             {
-                return $"var md = new XElement(\"monthday\");{indent}if ({name}.Item3 != null) {{ md.Add(new XElement(" +
-                    $"\"month\", {name}.Item1), new XElement(\"day\", {name}.Item2), new XElement(\"timezone\", {name}.Item3)); }}" +
-                    $"{indent}else {{ md.Add(new XElement(\"month\", {name}.Item1), new XElement(\"day\", {name}.Item2)); }}{indent}{start}.Add(md);";
+                return $"var ym = new XElement(\"monthday\");{indent}if ({name}.Item3 != null){indent}{{{indent}    if (char.IsDigit({name}.Item3[0]))" +
+                    $"{{ ym.Add({name}.Item1 + \"-\" + {name}.Item2 + \"-\" + {name}.Item3); }}{indent}    else {{ ym.Add({name}.Item1 + \"-\" + {name}.Item2" +
+                    $" + {name}.Item3); }}{indent}}}{indent}else {{ ym.Add({name}.Item1 + \"- \" + {name}.Item2); }}{indent}xEl.Add(ym);";
             }
-            if (origDataTypeName.ToLower().Equals("gday"))
+            if (origDataTypeName.ToLower().Equals("gyear"))
             {
-                return $"if ({name}.Item2 != null) {{ {start}.Add(new XElement(\"day\", {name}.Item1), new XElement(\"timezone\", {name}.Item2)); }}" +
-                    $"{indent}else {{ {start}.Add(new XElement(\"day\", {name}.Item1)); }}";
+                return $"if ({name}.Item2 != null){indent}{{{indent}    if (char.IsDigit({name}.Item2[0])) {{ {start}.Add(new XElement(\"year\", " +
+                    $"{name}.Item1 + \"-\" + {name}.Item2)); }}{indent}    else {{ {start}.Add(new XElement(\"year\", {name}.Item1 + {name}.Item2)); }}{indent}}}" +
+                    $"{indent}else {{ {start}.Add(new XElement(\"year\", {name}.Item1)); }}";
             }
             if (origDataTypeName.ToLower().Equals("gmonth"))
             {
-                return $"if ({name}.Item2 != null) {{ {start}.Add(new XElement(\"month\", {name}.Item1), new XElement(\"timezone\", {name}.Item2)); }}" +
+                return $"if ({name}.Item2 != null){indent}{{{indent}    if (char.IsDigit({name}.Item2[0])) {{ {start}.Add(new XElement(\"month\", " +
+                    $"{name}.Item1 + \"-\" + {name}.Item2)); }}{indent}    else {{ {start}.Add(new XElement(\"month\", {name}.Item1 + {name}.Item2)); }}{indent}}}" +
                     $"{indent}else {{ {start}.Add(new XElement(\"month\", {name}.Item1)); }}";
+            }
+            if (origDataTypeName.ToLower().Equals("gday"))
+            {
+                return $"if ({name}.Item2 != null){indent}{{{indent}    if (char.IsDigit({name}.Item2[0])) {{ {start}.Add(new XElement(\"day\", " +
+                    $"{name}.Item1 + \"-\" + {name}.Item2)); }}{indent}    else {{ {start}.Add(new XElement(\"day\", {name}.Item1 + {name}.Item2)); }}{indent}}}" +
+                    $"{indent}else {{ {start}.Add(new XElement(\"day\", {name}.Item1)); }}";
             }
             if (origDataTypeName.ToLower().Equals("cogsdate"))
             {
