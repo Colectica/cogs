@@ -227,7 +227,7 @@ namespace Cogs.Publishers
                         {
                             initialiseReusable = true;
                             reusableToJson.AppendLine($"            if ({prop.Name} != null) {{ {start}new JProperty(\"{prop.Name}\", {prop.Name}.ToJson())); }}");
-                            toXml.AppendLine($"            if ({prop.Name} != null) {{ xEl.Add(new XElement(\"{prop.Name}\", {prop.Name}.ToXml())); }}");
+                            toXml.AppendLine($"            if ({prop.Name} != null) {{ xEl.Add({prop.Name}.ToXml()); }}");
                             newClass.AppendLine("        [JsonConverter(typeof(ReusableConverter))]");
                         }
                         else if (!model.ItemTypes.Contains(prop.DataType))
@@ -307,12 +307,12 @@ namespace Cogs.Publishers
                             reusableToJson.AppendLine("            }");
                             toXml.AppendLine($"            if ({prop.Name} != null && {prop.Name}.Count > 0)");
                             toXml.AppendLine("            {");
-                            toXml.AppendLine($"                var prop = new XElement(\"{prop.Name}\");");
                             toXml.AppendLine($"                foreach (var item in {prop.Name})");
                             toXml.AppendLine("                {");
+                            toXml.AppendLine($"                    var prop = new XElement(\"{prop.Name}\");");
                             toXml.AppendLine($"                    {SimpleToXml(origDataTypeName, "item", "prop", true)}");
+                            toXml.AppendLine("                    xEl.Add(prop);");
                             toXml.AppendLine("                }");
-                            toXml.AppendLine("                xEl.Add(prop);");
                             toXml.AppendLine("            }");
 
                         }
@@ -328,12 +328,10 @@ namespace Cogs.Publishers
                             reusableToJson.AppendLine("            }");
                             toXml.AppendLine($"            if ({prop.Name} != null && {prop.Name}.Count > 0)");
                             toXml.AppendLine("            {");
-                            toXml.AppendLine($"                var prop = new XElement(\"{prop.Name}\");");
                             toXml.AppendLine($"                foreach (var item in {prop.Name})");
                             toXml.AppendLine("                {");
-                            toXml.AppendLine($"                    prop.Add(new XElement(\"{prop.DataTypeName}\", item.ToJson()));");
+                            toXml.AppendLine($"                    xEl.Add(item.ToXml());");
                             toXml.AppendLine("                }");
-                            toXml.AppendLine("                xEl.Add(prop);");
                             toXml.AppendLine("            }");
                         }
                         else if (!model.ItemTypes.Contains(prop.DataType))
@@ -577,8 +575,8 @@ namespace Cogs.Publishers
             if (origDataTypeName.ToLower().Equals("gmonthday"))
             {
                 return $"var md = new XElement(\"monthday\");{indent}if ({name}.Item3 != null) {{ md.Add(new XElement(" +
-                    $"\"year\", {name}.Item1), new XElement(\"month\", {name}.Item2), new XElement(\"timezone\", {name}.Item3)); }}" +
-                    $"{indent}else {{ md.Add(new XElement(\"year\", {name}.Item1), new XElement(\"month\", {name}.Item2)); }}{indent}{start}.Add(md);";
+                    $"\"month\", {name}.Item1), new XElement(\"day\", {name}.Item2), new XElement(\"timezone\", {name}.Item3)); }}" +
+                    $"{indent}else {{ md.Add(new XElement(\"month\", {name}.Item1), new XElement(\"day\", {name}.Item2)); }}{indent}{start}.Add(md);";
             }
             if (origDataTypeName.ToLower().Equals("gday"))
             {
@@ -594,7 +592,7 @@ namespace Cogs.Publishers
             {
                 return $"{start}.Add(new XElement({name}.GetUsedType(), {name}.GetValue()));";
             }
-            return $"{start}.Add({name}.ToString());";
+            return $"{start}.Add(new XElement(\"{name}\", {name}));";
         }
 
         private string SimpleToJson(string origDataTypeName, string name, string start, bool isList)
