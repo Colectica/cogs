@@ -1,6 +1,11 @@
 Name,DataType,MinCardinality,MaxCardinality,Description,MinLength,MaxLength,Enumeration,Pattern,MinInclusive,MinExclusive,MaxInclusive,MaxExclusive,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
+
 Width,int,0,1,width of an item in whole mm,,,,,,,,,,,
+
 Length,double,0,1,Length of an item in inches,,,,,,,,,,,
+
 Height,decimal,0,2,Height of an item in meters,,,,,,,,,,,
+
 Creature,Animal,0,1,Animal,,,,,,,,,,,
+
 CogsDate,cogsDate,0,1,Date,,,,,,,,,,,
