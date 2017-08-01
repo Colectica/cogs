@@ -3,4 +3,4 @@ Language,language,0,1,Language of the string,,,,,,,,,,,
 Content,string,0,1,The text content in a specific language,,,,,,,,,,,
 Language,language,0,1,Language of the string,,,,,,,,,,,
 
-Content,string,0,1,The text content in a specific language,,,,,,,,,,,
+Content,string,0,1,The text content in a specific language,,,,,,,,,,

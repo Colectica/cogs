@@ -3,4 +3,4 @@ PartName,string,0,1,name of a part,,,,,,,,,,,
 SubComponents,Part,0,n,sub components,,,,,,,,,,,
 PartName,string,0,1,name of a part,,,,,,,,,,,
 
-SubComponents,Part,0,n,sub components,,,,,,,,,,,
+SubComponents,Part,0,n,sub components,,,,,,,,,,

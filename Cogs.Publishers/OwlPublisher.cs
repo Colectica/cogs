@@ -132,7 +132,6 @@ namespace Cogs.Publisher
                                 ObjectProp.AppendLine(@"    <rdfs:comment>" + prop.Description + "</rdfs:comment>");
                                 ObjectProp.AppendLine(@"    <rdfs:domain rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + props.Name + @"""/>");
                                 ObjectProp.AppendLine(@"    <rdfs:range rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.DataType.Name + @"""/>");
-                                //addRestrictionRange(ObjectProp, prop, prop.Name);   
                                 //added here
                                 ObjectProp.AppendLine(@"  </owl:ObjectProperty>");
                                
