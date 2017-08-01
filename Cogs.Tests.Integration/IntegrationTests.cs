@@ -7,6 +7,8 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Xml;
+using System.Xml.Linq;
+using System.Xml.Schema;
 using Xunit;
 
 namespace Cogs.Tests.Integration
@@ -187,12 +189,8 @@ namespace Cogs.Tests.Integration
                 // check that outputs are the same
                 Assert.Equal(json, newJson);
 
-                var xml = containers[i].MakeXml();
-                XmlWriterSettings xws = new XmlWriterSettings { OmitXmlDeclaration = true };
-                using (XmlWriter xw = XmlWriter.Create(Path.Combine(outPath, i + ".xml"), xws))
-                {
-                    xml.Save(xw);
-                }
+                // validate xml
+                XmlValidation(containers[i].MakeXml());
             }
         }
 
@@ -209,7 +207,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(bread);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -236,7 +234,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(bread);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -267,7 +265,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(bread);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -297,7 +295,7 @@ namespace Cogs.Tests.Integration
 
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -352,7 +350,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -379,7 +377,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -411,7 +409,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -473,7 +471,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -502,7 +500,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -533,7 +531,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -564,7 +562,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(patty);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -591,7 +589,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(patty);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -622,7 +620,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(cheese);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -654,7 +652,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -681,7 +679,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -713,7 +711,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -771,7 +769,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -804,7 +802,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -833,7 +831,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -860,7 +858,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -891,7 +889,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -920,7 +918,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(condiment);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -966,7 +964,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(condiment);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1053,7 +1051,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1080,7 +1078,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1134,7 +1132,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1161,7 +1159,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1188,7 +1186,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1322,7 +1320,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(bread);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1353,7 +1351,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(bread);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1456,7 +1454,7 @@ namespace Cogs.Tests.Integration
             animal.MeatPieces.Add(sirloin);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1512,7 +1510,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1546,7 +1544,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(bread);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1578,7 +1576,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(bread);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1642,7 +1640,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(bread);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1674,7 +1672,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(roll);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1704,6 +1702,33 @@ namespace Cogs.Tests.Integration
             };
             JsonSchema4 schema = await JsonSchema4.FromJsonAsync(jsonSchema);
             return schema;
+        }
+
+        private void XmlValidation(XDocument xDoc)
+        {
+            // convert XDocument to XmlDocument
+            var xml = new XmlDocument();
+            using (var xmlReader = xDoc.CreateReader())
+            {
+                xml.Load(xmlReader);
+            }
+            // create reader settings 
+            XmlReaderSettings settings = new XmlReaderSettings { ValidationType = ValidationType.Schema };
+            settings.ValidationFlags |= XmlSchemaValidationFlags.ProcessInlineSchema;
+            settings.ValidationFlags |= XmlSchemaValidationFlags.ProcessSchemaLocation;
+            settings.ValidationFlags |= XmlSchemaValidationFlags.ReportValidationWarnings;
+            settings.ValidationEventHandler += new ValidationEventHandler(ValidationCallBack);
+            // add schema
+            var fileLoc = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "Cogs.Console", "out", "schema.xsd");
+            settings.Schemas.Add("cogs:default", fileLoc);
+            XmlReader reader = XmlReader.Create(new XmlNodeReader(xml), settings);
+            while (reader.Read()) ;
+        }
+
+        private static void ValidationCallBack(object sender, ValidationEventArgs args)
+        {
+            if (args.Severity == XmlSeverityType.Error) { Assert.True(false); }
+            else if (args.Severity == XmlSeverityType.Warning) { Assert.True(false); }
         }
     }
 }
