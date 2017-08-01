@@ -70,6 +70,7 @@ namespace Cogs.Publisher
         public void PredefineSimple(StringBuilder res)
         {
             res.AppendLine(@"   <owl:AnnotationProperty rdf:about=""http://www.w3.org/2002/07/owl#minQualifiedCardinality""/>");
+            res.AppendLine(@"   <owl:AnnotationProperty rdf:about = ""http://www.w3.org/2002/07/owl#maxQualifiedCardinality""/>");
             res.AppendLine(@"   <rdfs:Datatype rdf:about=""http://www.w3.org/2001/XMLSchema#date""/>");
             res.AppendLine(@"   <rdfs:Datatype rdf:about=""http://www.w3.org/2001/XMLSchema#duration""/>");
             res.AppendLine(@"   <rdfs:Datatype rdf:about=""http://www.w3.org/2001/XMLSchema#gDay""/>");
@@ -131,7 +132,10 @@ namespace Cogs.Publisher
                                 ObjectProp.AppendLine(@"    <rdfs:comment>" + prop.Description + "</rdfs:comment>");
                                 ObjectProp.AppendLine(@"    <rdfs:domain rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + props.Name + @"""/>");
                                 ObjectProp.AppendLine(@"    <rdfs:range rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.DataType.Name + @"""/>");
+                                //addRestrictionRange(ObjectProp, prop, prop.Name);   
+                                //added here
                                 ObjectProp.AppendLine(@"  </owl:ObjectProperty>");
+                               
                             }
                             else
                             {
@@ -154,7 +158,10 @@ namespace Cogs.Publisher
                                     DataProp.AppendLine(@"      <rdfs:comment>" + prop.Description + "</rdfs:comment>");
                                     DataProp.AppendLine(@"      <rdfs:domain rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + props.Name + @"""/>");
                                     DataProp.AppendLine(@"      <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#" + prop.DataType.Name + @"""/>");
+                                    //addRestrictionRange(DataProp, prop, prop.Name);
+                                    //added here
                                     DataProp.AppendLine(@"  </owl:DatatypeProperty>");
+                                   
                                 }
                             }
 
@@ -184,14 +191,17 @@ namespace Cogs.Publisher
                             ObjectProp.AppendLine(@"    <rdfs:comment>" + prop.Description + "</rdfs:comment>");
                             ObjectProp.AppendLine(@"    <rdfs:domain rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + props.Name + @"""/>");
                             ObjectProp.AppendLine(@"    <rdfs:range rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.DataType.Name + @"""/>");
+                            //addRestrictionRange(ObjectProp, prop, prop.Name);
+                            //added here 
                             ObjectProp.AppendLine(@"  </owl:ObjectProperty>");
+                            
                         }
                         else
                         {
                             if (prop.DataType.Name.Equals("cogsDate"))
                             {
                                 DataProp.AppendLine(@"      <owl:ObjectProperty rdf:about = ""http://www.semanticweb.org/clement/ontologies/2017/6/cogsburger#CogsDate"">");
-                                DataProp.AppendLine(@"          <rdfs:domain rdf:resource = ""http://www.semanticweb.org/clement/ontologies/2017/6/cogsburger#"+ props.Name+@"""/>");
+                                DataProp.AppendLine(@"          <rdfs:domain rdf:resource = ""http://www.semanticweb.org/clement/ontologies/2017/6/cogsburger#" + props.Name + @"""/>");
                                 DataProp.AppendLine(@"          <rdfs:range>");
                                 DataProp.AppendLine(@"              <owl:Restriction>");
                                 DataProp.AppendLine(@"                  <owl:onProperty rdf:resource = ""http://www.semanticweb.org/clement/ontologies/2017/6/cogsburger#CogsDate""/>");
@@ -207,6 +217,7 @@ namespace Cogs.Publisher
                                 DataProp.AppendLine(@"      <rdfs:comment>" + prop.Description + "</rdfs:comment>");
                                 DataProp.AppendLine(@"      <rdfs:domain rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + props.Name + @"""/>");
                                 DataProp.AppendLine(@"      <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#" + prop.DataType.Name + @"""/>");
+                                //addRestrictionRange(DataProp, prop, prop.Name);
                                 DataProp.AppendLine(@"  </owl:DatatypeProperty>");
                             }
                         }
@@ -362,25 +373,22 @@ namespace Cogs.Publisher
             res.AppendLine(@"</ rdfs:domain >");
         }
 
-        public void addRestrictionRange(StringBuilder res, string name, List<OwlRestriction> restriction)
+        public void addRestrictionRange(StringBuilder res, Property prop)
         {
-            foreach (var prop in restriction)
+            res.AppendLine(@"<rdfs:range>");
+            res.AppendLine(@"   <owl:Restriction>");
+            res.AppendLine(@"       <owl:onProperty rdf:resource = ""http://www.semanticweb.org/clement/ontologies/2017/6/cogsburger#" + prop.Name + @"""/>");
+            if (!prop.MinCardinality.Equals("0"))
             {
-                res.AppendLine(@"< rdfs:range >");
-                res.AppendLine(@"   < owl:Restriction >");
-                res.AppendLine(@"       < owl:onProperty rdf:resource = ""http://www.semanticweb.org/clement/ontologies/2017/6/cogsburger#" + prop.Name + @""" />");
-                if (!prop.minQC.Equals("0"))
-                {
-                    res.AppendLine(@"           < owl:minQualifiedCardinality rdf:datatype = ""http://www.w3.org/2001/XMLSchema#nonNegativeInteger"" >" + prop.minQC + @"</ owl:minQualifiedCardinality >");
-                }
-                if (!prop.maxQC.Equals("n"))
-                {
-                    res.AppendLine(@"           < owl:maxQualifiedCardinality rdf:datatype = ""http://www.w3.org/2001/XMLSchema#nonNegativeInteger"" >" + prop.maxQC + @"</ owl:maxQualifiedCardinality >");
-                }
-                res.AppendLine(@"       < owl:onClass rdf:resource = ""http://www.semanticweb.org/clement/ontologies/2017/6/cogsburger#" + prop.class_name + @""" />");
-                res.AppendLine(@"   </ owl:Restriction >");
-                res.AppendLine(@"</ rdfs:range >");
+                res.AppendLine(@"           <owl:minQualifiedCardinality rdf:datatype = ""http://www.w3.org/2001/XMLSchema#nonNegativeInteger"">" + prop.MinCardinality + @"</owl:minQualifiedCardinality>");
             }
+            if (!prop.MinCardinality.Equals("n"))
+            {
+                res.AppendLine(@"           <owl:maxQualifiedCardinality rdf:datatype = ""http://www.w3.org/2001/XMLSchema#nonNegativeInteger"">" + prop.MaxCardinality + @"</owl:maxQualifiedCardinality>");
+            }
+            //res.AppendLine(@"       <owl:onClass rdf:resource = ""http://www.semanticweb.org/clement/ontologies/2017/6/cogsburger#" + classname + @"""/>");
+            res.AppendLine(@"   </owl:Restriction>");
+            res.AppendLine(@"</rdfs:range>");
         }
 
         public Boolean IsItemType(string type)
