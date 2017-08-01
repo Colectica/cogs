@@ -102,6 +102,7 @@ namespace Cogs.Publishers
                 itemChoices.Items.Add(elementRef);
             }
 
+            CreateCogsDataType();
 
             foreach (var dataType in CogsModel.ReusableDataTypes)
             {
@@ -134,6 +135,34 @@ namespace Cogs.Publishers
             
         }
 
+        public XmlSchemaSimpleType CreateCogsDataType()
+        {
+            XmlSchemaSimpleType simpleType = new XmlSchemaSimpleType();
+            simpleType.Name = "cogsDate";
+            simpleType.AddSchemaDocumentation("A union of dateTime, date, gYearMonth, gYear, and duration which allows for the use of a date-time combination (YYYY-MM-DDTHH:MM:SS), date (YYYYY-MM-DD), year-month (YYYY-MM), year (YYYY), and duration (PnYnMnDnHnMnS) as valid values.");
+
+            XmlSchemaSimpleTypeUnion simpleTypeUnion = new XmlSchemaSimpleTypeUnion();
+            simpleType.Content = simpleTypeUnion;
+
+            simpleTypeUnion.MemberTypes = new XmlQualifiedName[]
+            {
+                XmlSchemaSimpleType.GetBuiltInSimpleType(XmlTypeCode.DateTime).QualifiedName,
+                XmlSchemaSimpleType.GetBuiltInSimpleType(XmlTypeCode.Date).QualifiedName,
+                XmlSchemaSimpleType.GetBuiltInSimpleType(XmlTypeCode.GYearMonth).QualifiedName,
+                XmlSchemaSimpleType.GetBuiltInSimpleType(XmlTypeCode.GYear).QualifiedName,
+                XmlSchemaSimpleType.GetBuiltInSimpleType(XmlTypeCode.Duration).QualifiedName
+            };
+            /*
+            simpleTypeUnion.BaseTypes.Add(XmlSchemaSimpleType.GetBuiltInSimpleType(XmlTypeCode.DateTime));
+            simpleTypeUnion.BaseTypes.Add(XmlSchemaSimpleType.GetBuiltInSimpleType(XmlTypeCode.Date));
+            simpleTypeUnion.BaseTypes.Add(XmlSchemaSimpleType.GetBuiltInSimpleType(XmlTypeCode.GYearMonth));
+            simpleTypeUnion.BaseTypes.Add(XmlSchemaSimpleType.GetBuiltInSimpleType(XmlTypeCode.GYear));
+            simpleTypeUnion.BaseTypes.Add(XmlSchemaSimpleType.GetBuiltInSimpleType(XmlTypeCode.Duration));
+            */
+            CogsSchema.Items.Add(simpleType);
+
+            return simpleType;
+        }
 
         public XmlSchemaComplexType CreateDataType(DataType dataType)
         {
