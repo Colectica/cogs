@@ -288,7 +288,7 @@ namespace Cogs.Publishers
                             {
                                 toXml.AppendLine($"                    new XElement(ns + \"{part.Name}\", {prop.Name}.{part.Name}), ");
                             }
-                            toXml.AppendLine($"                    new XElement(ns + \"ItemType\", {prop.Name}.GetType().Name)));");
+                            toXml.AppendLine($"                    new XElement(ns + \"TypeOfObject\", {prop.Name}.GetType().Name)));");
                             toXml.AppendLine("            }");
                         }
                         newClass.AppendLine($"        public {prop.DataTypeName} {prop.Name} {{ get; set; }}");
@@ -402,7 +402,7 @@ namespace Cogs.Publishers
                             {
                                 toXml.AppendLine($"                        new XElement(ns + \"{part.Name}\", item.{part.Name}), ");
                             }
-                            toXml.AppendLine($"                        new XElement(ns + \"ItemType\", item.GetType().Name)));");
+                            toXml.AppendLine($"                        new XElement(ns + \"TypeOfObject\", item.GetType().Name)));");
                             toXml.AppendLine("                }");
                             toXml.AppendLine("            }");
                         }
@@ -812,7 +812,7 @@ namespace {projName}
             {{
                 foreach (var item in TopLevelReferences)
                 {{
-                    xDoc.Root.Add(new XElement(ns + ""TopLevelReference"", new XElement(ns + ""ID"", item.ID)));
+                    xDoc.Root.Add(new XElement(ns + ""TopLevelReference"", new XElement(ns + ""ID"", item.ID), new XElement(ns + ""TypeOfObject"", item.GetType())));
                 }}
             }}
             foreach (var item in Items)
