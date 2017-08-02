@@ -28,19 +28,16 @@ built-in DateTimeOffset type
 built-in DateTimeOffset type
 
 ## gYearMonth
-built-in tuple type containing two ints and a string
+generated GYearMonth class
 
 ## gYear
-built-in tuple type containing an int and a string
-
-## gYearDay
-built-in tuple type containing two ints and a string
+generated GYear class
 
 ## gDay
-built-in tuple type containing an int and a string
+generated GDay class
 
 ## gMonth
-built-in tuple type containing an int and a string
+generated GMonth class
 
 ## anyURI
 built-in Uri class with optional StringLength attribute
