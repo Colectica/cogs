@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.ComponentModel.DataAnnotations;
 using System.Xml.Linq;
+using Cogs.SimpleTypes;
 
 namespace Cogs.DataAnnotations
 {
@@ -69,8 +70,8 @@ namespace Cogs.DataAnnotations
     {
         public DateTimeOffset DateTime { get; set; }
         public DateTimeOffset Date { get; set; }
-        public Tuple<int, int, string> GYearMonth { get; set; }
-        public Tuple<int, string> GYear { get; set; }
+        public GYearMonth GYearMonth { get; set; }
+        public GYear GYear { get; set; }
         public TimeSpan Duration { get; set; }
         public enum CogsDateType { DateTime, Date, GYearMonth, GYear, Duration } 
         public CogsDateType UsedType { get; private set; }
@@ -89,13 +90,13 @@ namespace Cogs.DataAnnotations
             }
         }
 
-        public CogsDate(Tuple<int, int, string> item) : this()
+        public CogsDate(GYearMonth item) : this()
         {
             GYearMonth = item;
             UsedType = CogsDateType.GYearMonth;
         }
 
-        public CogsDate(Tuple<int, string> item) : this()
+        public CogsDate(GYear item) : this()
         {
             GYear = item;
             UsedType = CogsDateType.GYear;
@@ -120,6 +121,23 @@ namespace Cogs.DataAnnotations
             return null;  
         }
 
+        public override string ToString()
+        {
+            switch (UsedType)
+            {
+                case CogsDateType.Date: { return Date.ToString("u").Split(' ')[0]; }
+                case CogsDateType.DateTime: { return DateTime.ToString("yyyy-MM-dd\\THH:mm:ss.FFFFFFFK"); }
+                case CogsDateType.Duration:
+                    {
+                        return string.Format("P{00}DT{00}H{00}M{00}S", Duration.ToString("%d"), Duration.ToString("%h"), 
+                            Duration.ToString("%m"), Duration.ToString("%s"));
+                    }
+                case CogsDateType.GYear: { return GYear.ToString(); }
+                case CogsDateType.GYearMonth: { return GYearMonth.ToString(); }
+            }
+            return base.ToString();
+        }
+
         public object GetValue()
         {
             switch (UsedType)
@@ -136,20 +154,11 @@ namespace Cogs.DataAnnotations
                     }
                 case CogsDateType.GYearMonth:
                     {
-						if (GYearMonth == null) { return null; }
-						if(GYearMonth.Item3 != null) 
-						{ 
-						return new JObject(new JProperty("year", GYearMonth.Item1), 
-							new JProperty("month", GYearMonth.Item2), new JProperty("timezone", GYearMonth.Item3)); 
-						}
-                        return new JObject(new JProperty("year", GYearMonth.Item1), 
-							new JProperty("month", GYearMonth.Item2));
+                        return GYearMonth.ToJson();
                     }
                 case CogsDateType.GYear:
                     {
-						if (GYear == null) { return null; }
-						if(GYear.Item2 != null) { return new JObject(new JProperty("year", GYear.Item1), new JProperty("timezone", GYear.Item2)); }
-                        return new JObject(new JProperty("year", GYear.Item1));
+                        return GYear.ToJson();
                     }
                 case CogsDateType.Duration:
                     {
@@ -184,10 +193,10 @@ namespace Cogs.SimpleTypes
 		{
 			if (Timezone != null) 
 			{
-				if (char.IsDigit(Timezone[0])) { return Value + "+" + Timezone; }
-				return Value + Timezone; 
+				if (char.IsDigit(Timezone[0])) { return Value.ToString().PadLeft(4, '0') + "+" + Timezone; }
+				return Value.ToString().PadLeft(4, '0') + Timezone; 
 			}
-			return Value.ToString();
+			return Value.ToString().PadLeft(4, '0');
 		}
 
 		public JObject ToJson()
@@ -233,10 +242,10 @@ namespace Cogs.SimpleTypes
         {
             if (Timezone != null)
             {
-                if (char.IsDigit(Timezone[0])) { return Value + "+" + Timezone; }
-                return Value + Timezone;
+                if (char.IsDigit(Timezone[0])) { return "--" + Value.ToString().PadLeft(2, '0') + "+" + Timezone; }
+                return "--" + Value.ToString().PadLeft(2, '0') + Timezone;
             }
-            return Value.ToString();
+            return "--" + Value.ToString().PadLeft(2, '0');
         }
 
         public JObject ToJson()
@@ -282,10 +291,10 @@ namespace Cogs.SimpleTypes
         {
             if (Timezone != null)
             {
-                if (char.IsDigit(Timezone[0])) { return Value + "+" + Timezone; }
-                return Value + Timezone;
+                if (char.IsDigit(Timezone[0])) { return "---" + Value.ToString().PadLeft(2, '0') + "+" + Timezone; }
+                return "---" + Value.ToString().PadLeft(2, '0') + Timezone;
             }
-            return Value.ToString();
+            return "---" + Value.ToString().PadLeft(2, '0');
         }
 
         public JObject ToJson()
@@ -334,10 +343,10 @@ namespace Cogs.SimpleTypes
         {
             if (Timezone != null)
             {
-                if (char.IsDigit(Timezone[0])) { return Y + "-" + M + "+" + Timezone; }
-                return Y + "-" + M + Timezone;
+                if (char.IsDigit(Timezone[0])) { return Y.ToString().PadLeft(4, '0') + "-" + M.ToString().PadLeft(2, '0') + "+" + Timezone; }
+                return Y.ToString().PadLeft(4, '0') + "-" + M.ToString().PadLeft(2, '0') + Timezone;
             }
-            return Y + "-" + M;
+            return Y.ToString().PadLeft(4, '0') + "-" + M.ToString().PadLeft(2, '0');
         }
 
         public JObject ToJson()
@@ -391,10 +400,10 @@ namespace Cogs.SimpleTypes
         {
             if (Timezone != null)
             {
-                if (char.IsDigit(Timezone[0])) { return M + "-" + D + "+" + Timezone; }
-                return M + "-" + D + Timezone;
+                if (char.IsDigit(Timezone[0])) { return "--" + M.ToString().PadLeft(2, '0') + "-" + D.ToString().PadLeft(2, '0') + "+" + Timezone; }
+                return "--" + M.ToString().PadLeft(2, '0') + "-" + D.ToString().PadLeft(2, '0') + Timezone;
             }
-            return M + "-" + D;
+            return "--" + M.ToString().PadLeft(2, '0') + "-" + D.ToString().PadLeft(2, '0');
         }
 
         public JObject ToJson()

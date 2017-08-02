@@ -159,8 +159,6 @@ namespace Cogs.Tests.Integration
             // evaluation
             string schemaPath = Path.Combine(Path.Combine(Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), ".."), ".."), ".."), "..");
             string jsonSchema = File.ReadAllText(Path.Combine(Path.Combine(schemaPath, "generated"), "jsonSchema.json"));
-            var outPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "out");
-            Directory.CreateDirectory(outPath);
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings
             {
                 MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
@@ -173,7 +171,6 @@ namespace Cogs.Tests.Integration
             {
                 // test serializing
                 string json = JsonConvert.SerializeObject(containers[i]);
-                File.WriteAllText(Path.Combine(outPath, "serialized" + i + ".json"), json);
 
                 var errors = schema.Validate(json);
 
@@ -182,7 +179,6 @@ namespace Cogs.Tests.Integration
                 // test parsing
                 ItemContainer newContainer = JsonConvert.DeserializeObject<ItemContainer>(json);
                 var newJson = JsonConvert.SerializeObject(newContainer);
-                File.WriteAllText(Path.Combine(outPath, "parsed" + i + ".json"), newJson);
 
                 errors = schema.Validate(newJson);
                 Assert.Empty(errors);
@@ -1098,7 +1094,7 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                CDate = new DataAnnotations.CogsDate(new Tuple<int, int, string>(2017, 7, "Z"))
+                CDate = new DataAnnotations.CogsDate(new GYearMonth(2017, 7, "Z"))
             };
             container.Items.Add(animal);
 
@@ -1125,7 +1121,7 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                CDate = new DataAnnotations.CogsDate(new Tuple<int, int, string>(2017, 7, null))
+                CDate = new DataAnnotations.CogsDate(new GYearMonth(2017, 7, null))
             };
             container.Items.Add(animal);
 
@@ -1152,7 +1148,7 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                CDate = new DataAnnotations.CogsDate(new Tuple<int, string>(2017, "Z"))
+                CDate = new DataAnnotations.CogsDate(new GYear(2017, "Z"))
             };
             container.Items.Add(animal);
 
@@ -1179,7 +1175,7 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                CDate = new DataAnnotations.CogsDate(new Tuple<int, string>(2017, null))
+                CDate = new DataAnnotations.CogsDate(new GYear(2017, null))
             };
             container.Items.Add(animal);
 
@@ -1236,13 +1232,13 @@ namespace Cogs.Tests.Integration
                 CDates = new List<DataAnnotations.CogsDate>
                 {
                     new DataAnnotations.CogsDate(new TimeSpan(1562)),
-                    new DataAnnotations.CogsDate(new Tuple<int, string>(2017, "+01:00")),
+                    new DataAnnotations.CogsDate(new GYear(2017, "+01:00")),
                     new DataAnnotations.CogsDate(new DateTimeOffset(new DateTime(1996, 8, 23, 4, 37, 4),
                         new TimeSpan(+3, 0, 0)), false),
                     new DataAnnotations.CogsDate(new DateTime(2017, 9, 2), true),
-                    new DataAnnotations.CogsDate(new Tuple<int, int, string>(2017, 7, "+02:00")),
-                    new DataAnnotations.CogsDate(new Tuple<int, int, string>(2017, 7, null)),
-                    new DataAnnotations.CogsDate(new Tuple<int, string>(2017, null))
+                    new DataAnnotations.CogsDate(new GYearMonth(2017, 7, "+02:00")),
+                    new DataAnnotations.CogsDate(new GYearMonth(2017, 7, null)),
+                    new DataAnnotations.CogsDate(new GYear(2017, null))
                 },
                 Description = "Dates"
             };

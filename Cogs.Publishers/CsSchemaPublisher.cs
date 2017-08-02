@@ -100,42 +100,28 @@ namespace Cogs.Publishers
                 var reusableToJson = new StringBuilder();
                 var helpers = new StringBuilder();
                 var toXml = new StringBuilder();
-                if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
-                {
-                    toXml.AppendLine("        public override XElement ToXml(bool inherited = false)");
-                    toXml.AppendLine("        {");
-                    toXml.AppendLine($"            XNamespace ns = \"{TargetNamespace}\";");
-                    if (!model.ReusableDataTypes.Contains(item))
-                    {
-                        toXml.AppendLine("            XElement xEl = null;");
-                        toXml.AppendLine("            if (inherited) { xEl = new XElement(ns + \"ID\", ID); }");
-                        toXml.AppendLine($"            else {{ xEl = new XElement(ns + \"{item.Name}\", base.ToXml(true)); }}");
-                    }
-                    else { toXml.AppendLine($"            XElement xEl = new XElement(ns + \"{item.Name}\");"); }
-                }
-                else
-                {
-                    toXml.AppendLine("        public virtual XElement ToXml(bool inherited = false)");
-                    toXml.AppendLine("        {");
-                    toXml.AppendLine($"            XNamespace ns = \"{TargetNamespace}\";");
-                    if (!model.ReusableDataTypes.Contains(item))
-                    {
-                        toXml.AppendLine("            XElement xEl = null;");
-                        toXml.AppendLine("            if (inherited) { xEl = new XElement(ns + \"ID\", ID); }");
-                        toXml.AppendLine($"            else {{ xEl = new XElement(ns + \"{item.Name}\"); }}");
-                    }
-                    else { toXml.AppendLine($"            XElement xEl = new XElement(ns + \"{item.Name}\");"); }
-                }
+                string n = "";
+                if (model.ReusableDataTypes.Contains(item)) { n = "string name"; }
+                if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName)) { toXml.AppendLine($"        public override XElement ToXml({n})"); }
+                else { toXml.AppendLine($"        public virtual XElement ToXml({n})"); }
+                toXml.AppendLine("        {");
+                toXml.AppendLine($"            XNamespace ns = \"{TargetNamespace}\";");
+                if (n.Equals("")) { toXml.AppendLine($"            XElement xEl = new XElement(ns + \"{item.Name}\");"); }
+                else { toXml.AppendLine($"            XElement xEl = new XElement(ns + name);"); }
                 bool initialiseReusable = false;
                 // add abstract to class title if relevant
                 if (item.IsAbstract) { newClass.Append("abstract "); }
                 newClass.Append("class " + item.Name);
                 // allow inheritance when relevant
-                if (!String.IsNullOrWhiteSpace(item.ExtendsTypeName))
+                if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
                 {
                     newClass.AppendLine($" : {item.ExtendsTypeName}");
                     newClass.AppendLine("    {");
                     newClass.AppendLine("        public new string ReferenceId { set; get; }");
+                    toXml.AppendLine("            foreach (var el in base.ToXml().Descendants())");
+                    toXml.AppendLine("            {");
+                    toXml.AppendLine("                xEl.Add(el);");
+                    toXml.AppendLine("            }");
                 }
                 else if (!model.ReusableDataTypes.Contains(item))
                 {
@@ -252,14 +238,14 @@ namespace Cogs.Publishers
                             reusableToJson.AppendLine($"                {SimpleToJson(origDataTypeName, prop.Name, start, false)});");
                             reusableToJson.AppendLine("            }");
                             toXml.AppendLine("            {");
-                            toXml.AppendLine($"                {SimpleToXml(origDataTypeName, prop.Name, "xEl", false)}");
+                            toXml.AppendLine($"                {SimpleToXml(origDataTypeName, prop.Name, prop.Name, "xEl")}");
                             toXml.AppendLine("            }");
                         }
                         else if (model.ReusableDataTypes.Contains(prop.DataType))
                         {
                             initialiseReusable = true;
                             reusableToJson.AppendLine($"            if ({prop.Name} != null) {{ {start}new JProperty(\"{prop.Name}\", {prop.Name}.ToJson())); }}");
-                            toXml.AppendLine($"            if ({prop.Name} != null) {{ xEl.Add({prop.Name}.ToXml()); }}");
+                            toXml.AppendLine($"            if ({prop.Name} != null) {{ xEl.Add({prop.Name}.ToXml(\"{prop.Name}\")); }}");
                             newClass.AppendLine("        [JsonConverter(typeof(ReusableConverter))]");
                         }
                         else if (!model.ItemTypes.Contains(prop.DataType))
@@ -341,9 +327,7 @@ namespace Cogs.Publishers
                             toXml.AppendLine("            {");
                             toXml.AppendLine($"                foreach (var item in {prop.Name})");
                             toXml.AppendLine("                {");
-                            toXml.AppendLine($"                    var prop = new XElement(ns + \"{prop.Name}\");");
-                            toXml.AppendLine($"                    {SimpleToXml(origDataTypeName, "item", "prop", true)}");
-                            toXml.AppendLine("                    xEl.Add(prop);");
+                            toXml.AppendLine($"                    {SimpleToXml(origDataTypeName, "item", prop.Name, "xEl")}");
                             toXml.AppendLine("                }");
                             toXml.AppendLine("            }");
 
@@ -362,7 +346,7 @@ namespace Cogs.Publishers
                             toXml.AppendLine("            {");
                             toXml.AppendLine($"                foreach (var item in {prop.Name})");
                             toXml.AppendLine("                {");
-                            toXml.AppendLine($"                    xEl.Add(item.ToXml());");
+                            toXml.AppendLine($"                    xEl.Add(item.ToXml(\"{prop.Name}\"));");
                             toXml.AppendLine("                }");
                             toXml.AppendLine("            }");
                         }
@@ -563,7 +547,7 @@ namespace Cogs.Publishers
                 newClass.AppendLine("        /// <summary>");
                 newClass.AppendLine("        /// Used to Serialize this object to XML");
                 newClass.AppendLine("        /// <summary>");
-                newClass.Append(toXml.ToString().Replace("xEl.Add(new XElement(ns + \"ID\", ID));", "if (!inherited) { xEl.Add(new XElement(ns + \"ID\", ID)); }"));
+                newClass.Append(toXml.ToString());
                 newClass.AppendLine("            return xEl;");
                 newClass.AppendLine("        }");
                 newClass.AppendLine("    }");
@@ -584,21 +568,24 @@ namespace Cogs.Publishers
             return false;
         }
 
-        private object SimpleToXml(string origDataTypeName, string name, string start, bool isList)
+        private object SimpleToXml(string origDataTypeName, string name, string elname, string start)
         {
-            string indent = Environment.NewLine + "                ";
-            if (isList) { indent += "    "; }
-            if (origDataTypeName.ToLower().Equals("duration")){ return $"{start}.Add(new XElement(ns + \"{name}\", {name}.Ticks));"; }
-            if (origDataTypeName.ToLower().Equals("datetime")) { return $"{start}.Add(new XElement(ns + \"{name}\", {name}.ToString(\"yyyy-MM-dd\\\\THH:mm:ss.FFFFFFFK\")));"; }
-            if (origDataTypeName.ToLower().Equals("time")) { return $"{start}.Add(new XElement(ns + \"{name}\", {name}.ToString(\"u\").Split(' ')[1]));"; }
-            if (origDataTypeName.ToLower().Equals("date")){ return $"{start}.Add(new XElement(ns + \"{name}\", {name}.ToString(\"u\").Split(' ')[0]));"; }
-            if (origDataTypeName.ToLower().Equals("gyearmonth")) { return $"{indent}xEl.Add(new XElement(ns + \"{name}\", {name}.ToString()));"; }
-            if (origDataTypeName.ToLower().Equals("gmonthday")) { return $"{indent}xEl.Add(new XElement(ns + \"{name}\", {name}.ToString()));"; }
-            if (origDataTypeName.ToLower().Equals("gyear")) { return $"{indent}xEl.Add(new XElement(ns + \"{name}\", {name}.ToString()));"; }
-            if (origDataTypeName.ToLower().Equals("gmonth")) { return $"{indent}xEl.Add(new XElement(ns + \"{name}\", {name}.ToString()));"; }
-            if (origDataTypeName.ToLower().Equals("gday")) { return $"{indent}xEl.Add(new XElement(ns + \"{name}\", {name}.ToString()));"; }
-            if (origDataTypeName.ToLower().Equals("cogsdate")) { return $"{start}.Add(new XElement(ns + {name}.GetUsedType(), {name}.GetValue()));"; }
-            return $"{start}.Add(new XElement(ns + \"{name}\", {name}));";
+            if (origDataTypeName.ToLower().Equals("duration"))
+            {
+                
+                return $"{start}.Add(new XElement(ns + \"{elname}\", string.Format(\"P{{00}}DT{{00}}H{{00}}M{{00}}S\", {Environment.NewLine}                    " +
+                    $"{name}.ToString(\"%d\"), {name}.ToString(\"%h\"), {name}.ToString(\"%m\"), {name}.ToString(\"%s\"))));";
+            }
+            if (origDataTypeName.ToLower().Equals("datetime")) { return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.ToString(\"yyyy-MM-dd\\\\THH:mm:ss.FFFFFFFK\")));"; }
+            if (origDataTypeName.ToLower().Equals("time")) { return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.ToString(\"u\").Split(' ')[1]));"; }
+            if (origDataTypeName.ToLower().Equals("date")){ return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.ToString(\"u\").Split(' ')[0]));"; }
+            if (origDataTypeName.ToLower().Equals("gyearmonth")) { return $"xEl.Add(new XElement(ns + \"{elname}\", {name}.ToString()));"; }
+            if (origDataTypeName.ToLower().Equals("gmonthday")) { return $"xEl.Add(new XElement(ns + \"{elname}\", {name}.ToString()));"; }
+            if (origDataTypeName.ToLower().Equals("gyear")) { return $"xEl.Add(new XElement(ns + \"{elname}\", {name}.ToString()));"; }
+            if (origDataTypeName.ToLower().Equals("gmonth")) { return $"xEl.Add(new XElement(ns + \"{elname}\", {name}.ToString()));"; }
+            if (origDataTypeName.ToLower().Equals("gday")) { return $"xEl.Add(new XElement(ns + \"{elname}\", {name}.ToString()));"; }
+            if (origDataTypeName.ToLower().Equals("cogsdate")) { return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.ToString()));"; }
+            return $"{start}.Add(new XElement(ns + \"{elname}\", {name}));";
         }
 
         private string SimpleToJson(string origDataTypeName, string name, string start, bool isList)
@@ -710,7 +697,7 @@ namespace Cogs.Publishers
             builder.AppendLine("        JProperty ToJson();");
             builder.AppendLine("        string ReferenceId { get; set; }");
             builder.AppendLine("        void InitializeReferences(Dictionary<string, IIdentifiable> dict);");
-            builder.AppendLine("        XElement ToXml(bool inherited = false);");
+            builder.AppendLine("        XElement ToXml();");
             builder.AppendLine("    }");
             builder.AppendLine("}");
             File.WriteAllText(Path.Combine(TargetDirectory, "IIdentifiable.cs"), builder.ToString());
@@ -818,16 +805,15 @@ namespace {projName}
 
         public XDocument MakeXml()
         {{
-            XDocument xDoc = new XDocument(new XElement(""ItemContainer"", new XAttribute(XNamespace.Xmlns + ""{TargetNamespacePrefix}"", ""{TargetNamespace}"")));
             XNamespace ns = ""{TargetNamespace}"";
+            XDocument xDoc = new XDocument(new XElement(ns + ""ItemContainer"", new XAttribute(XNamespace.Xmlns + "
+                + $@"""{TargetNamespacePrefix}"", ""{TargetNamespace}"")));
             if (TopLevelReferences != null && TopLevelReferences.Count > 0)
             {{
-                XElement tops = new XElement(ns + ""TopLevelReferences"");
                 foreach (var item in TopLevelReferences)
                 {{
-                    tops.Add(new XElement(ns + item.GetType().ToString(), item.ID));
+                    xDoc.Root.Add(new XElement(ns + ""TopLevelReference"", new XElement(ns + ""ID"", item.ID)));
                 }}
-                xDoc.Root.Add(tops);
             }}
             foreach (var item in Items)
             {{
@@ -1089,16 +1075,16 @@ namespace !!!
                 }
                 if (int.TryParse(obj.First.First.First.First.ToString(), out int year))
                 {
-                    if (obj.First.First.First.Next == null) { return new CogsDate(new Tuple<int, string>(year, null)); }
+                    if (obj.First.First.First.Next == null) { return new CogsDate(new GYear(year, null)); }
                     if (int.TryParse(obj.First.First.First.Next.First.ToString(), out int month))
                     {
                         if (obj.First.First.First.Next.Next != null)
                         {
-                            return new CogsDate(new Tuple<int, int, string>(year, month, obj.First.First.First.Next.Next.First.ToString()));
+                            return new CogsDate(new GYearMonth(year, month, obj.First.First.First.Next.Next.First.ToString()));
                         }
-                        return new CogsDate(new Tuple<int, int, string>(year, month, null));
+                        return new CogsDate(new GYearMonth(year, month, null));
                     }
-                    return new CogsDate(new Tuple<int, string>(year, obj.First.First.First.Next.First.ToString()));
+                    return new CogsDate(new GYear(year, obj.First.First.First.Next.First.ToString()));
                 }
             }
             return null;
