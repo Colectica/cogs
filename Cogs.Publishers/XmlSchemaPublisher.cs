@@ -300,14 +300,15 @@ namespace Cogs.Publishers
             reference.Properties.AddRange(CogsModel.Identification);
 
             Property p = new Property()
-            {
-                DataType = reference,
-                DataTypeName = reference.Name,
+            {                
+                DataTypeName = "string",
                 Description = "Strongly typed name of the item which is being referenced.",
                 MinCardinality = "1",
                 MaxCardinality = "1",
                 Name = "TypeOfObject"
             };
+
+            reference.Properties.Add(p);
 
             return CreateDataType(reference);
         }
