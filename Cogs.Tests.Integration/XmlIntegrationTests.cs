@@ -8,19 +8,20 @@ using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Schema;
 using Xunit;
+using Cogs.SimpleTypes;
 
 namespace Cogs.Tests.Integration
 {
     public class XmlIntegrationTests
     {
         [Fact]
-        public async void SimpleTypeGMonthYear()
+        public async void SimpleTypeGYearMonth()
         {
             ItemContainer container = new ItemContainer();
             Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
-                Gyearmonth = new Tuple<int, int, string>(9, 24, "-06:00")
+                Gyearmonth = new GYearMonth(2009, 10, "-06:00")
             };
             container.Items.Add(bread);
             
@@ -51,7 +52,6 @@ namespace Cogs.Tests.Integration
             {
                 while (xr.Read()) { }
             }
-
             Assert.Empty(errors);
         }
 

@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.ComponentModel.DataAnnotations;
-
+using System.Xml.Linq;
 
 namespace Cogs.DataAnnotations
 {
@@ -158,6 +158,270 @@ namespace Cogs.DataAnnotations
                     }
             }
             return null;
+        }
+    }
+}
+
+namespace Cogs.SimpleTypes
+{
+	public class GYear : IComparable
+	{
+		int Value;
+		string Timezone;
+
+		public GYear(int year)
+		{
+			Value = year;
+		}
+
+		public GYear(int year, string zone)
+		{
+			Value = year;
+			Timezone = zone;
+		}
+
+		public override string ToString()
+		{
+			if (Timezone != null) 
+			{
+				if (char.IsDigit(Timezone[0])) { return Value + "+" + Timezone; }
+				return Value + Timezone; 
+			}
+			return Value.ToString();
+		}
+
+		public JObject ToJson()
+		{
+            if (Timezone != null) { return new JObject(new JProperty("year", Value), new JProperty("timezone", Timezone)); }
+            return new JObject(new JProperty("year", Value));
+        }
+
+        public int CompareTo(object obj)
+        {
+            if (obj == null || obj.GetType() != typeof(GYear)) { return -1; }
+            var other = (GYear)obj;
+            if (other.Value < Value) { return -1; }
+            if (other.Value == Value)
+            {
+                if (other.Timezone == null && Timezone == null) { return 0; }
+                if (other.Timezone == null) { return -1; }
+                if (Timezone == null) { return 1; }
+                if (other.Timezone.Equals(Timezone)) { return 0; }
+                return -1;
+            }
+            return 1;
+        }
+    }
+
+    public class GMonth : IComparable
+    {
+        int Value;
+        string Timezone;
+
+        public GMonth(int month)
+        {
+            Value = month;
+        }
+
+        public GMonth(int month, string zone)
+        {
+            Value = month;
+            Timezone = zone;
+        }
+
+        public override string ToString()
+        {
+            if (Timezone != null)
+            {
+                if (char.IsDigit(Timezone[0])) { return Value + "+" + Timezone; }
+                return Value + Timezone;
+            }
+            return Value.ToString();
+        }
+
+        public JObject ToJson()
+        {
+            if (Timezone != null) { return new JObject(new JProperty("month", Value), new JProperty("timezone", Timezone)); }
+            return new JObject(new JProperty("month", Value));
+        }
+
+        public int CompareTo(object obj)
+        {
+            if (obj == null || obj.GetType() != typeof(GMonth)) { return -1; }
+            var other = (GMonth)obj;
+            if (other.Value < Value) { return -1; }
+            if (other.Value == Value)
+            {
+                if (other.Timezone == null && Timezone == null) { return 0; }
+                if (other.Timezone == null) { return -1; }
+                if (Timezone == null) { return 1; }
+                if (other.Timezone.Equals(Timezone)) { return 0; }
+                return -1;
+            }
+            return 1;
+        }
+    }
+
+    public class GDay : IComparable
+    {
+        int Value;
+        string Timezone;
+
+        public GDay(int day)
+        {
+            Value = day;
+        }
+
+        public GDay(int day, string zone)
+        {
+            Value = day;
+            Timezone = zone;
+        }
+
+        public override string ToString()
+        {
+            if (Timezone != null)
+            {
+                if (char.IsDigit(Timezone[0])) { return Value + "+" + Timezone; }
+                return Value + Timezone;
+            }
+            return Value.ToString();
+        }
+
+        public JObject ToJson()
+        {
+            if (Timezone != null) { return new JObject(new JProperty("day", Value), new JProperty("timezone", Timezone)); }
+            return new JObject(new JProperty("day", Value));
+        }
+
+        public int CompareTo(object obj)
+        {
+            if (obj == null || obj.GetType() != typeof(GDay)) { return -1; }
+            var other = (GDay)obj;
+            if (other.Value < Value) { return -1; }
+            if (other.Value == Value)
+            {
+                if (other.Timezone == null && Timezone == null) { return 0; }
+                if (other.Timezone == null) { return -1; }
+                if (Timezone == null) { return 1; }
+                if (other.Timezone.Equals(Timezone)) { return 0; }
+                return -1;
+            }
+            return 1;
+        }
+    }
+
+    public class GYearMonth : IComparable
+    {
+        int Y;
+        int M;
+        string Timezone;
+
+        public GYearMonth(int year, int month)
+        {
+            Y = year;
+            M = month;
+        }
+
+        public GYearMonth(int year, int month, string zone)
+        {
+            Y = year;
+            M = month;
+            Timezone = zone;
+        }
+
+        public override string ToString()
+        {
+            if (Timezone != null)
+            {
+                if (char.IsDigit(Timezone[0])) { return Y + "-" + M + "+" + Timezone; }
+                return Y + "-" + M + Timezone;
+            }
+            return Y + "-" + M;
+        }
+
+        public JObject ToJson()
+        {
+            if (Timezone != null) { return new JObject(new JProperty("year", Y), new JProperty("month", M), new JProperty("timezone", Timezone)); }
+            return new JObject(new JProperty("year", Y), new JProperty("month", M));
+        }
+
+        public int CompareTo(object obj)
+        {
+            if (obj == null || obj.GetType() != typeof(GYearMonth)) { return -1; }
+            var other = (GYearMonth)obj;
+            if (other.Y < Y) { return -1; }
+            if (other.Y == Y)
+            {
+                if (other.M < M) { return -1; }
+                if (other.M == M)
+                {
+                    if (other.Timezone == null && Timezone == null) { return 0; }
+                    if (other.Timezone == null) { return -1; }
+                    if (Timezone == null) { return 1; }
+                    if (other.Timezone.Equals(Timezone)) { return 0; }
+                    return -1;
+                }
+                if (other.M > M) { return 1; }
+            }
+            return 1;
+        }
+    }
+
+    public class GMonthDay : IComparable
+    {
+        int M;
+        int D;
+        string Timezone;
+
+        public GMonthDay(int month, int day)
+        {
+            M = month;
+            D = day;
+        }
+
+        public GMonthDay(int month, int day, string zone)
+        {
+            M = month;
+            D = day;
+            Timezone = zone;
+        }
+
+        public override string ToString()
+        {
+            if (Timezone != null)
+            {
+                if (char.IsDigit(Timezone[0])) { return M + "-" + D + "+" + Timezone; }
+                return M + "-" + D + Timezone;
+            }
+            return M + "-" + D;
+        }
+
+        public JObject ToJson()
+        {
+            if (Timezone != null) { return new JObject(new JProperty("month", M), new JProperty("day", D), new JProperty("timezone", Timezone)); }
+            return new JObject(new JProperty("month", M), new JProperty("day", D));
+        }
+
+        public int CompareTo(object obj)
+        {
+            if (obj == null || obj.GetType() != typeof(GMonthDay)) { return -1; }
+            var other = (GMonthDay)obj;
+            if (other.M < M) { return -1; }
+            if (other.M == M)
+            {
+                if (other.D < D) { return -1; }
+                if (other.D == D)
+                {
+                    if (other.Timezone == null && Timezone == null) { return 0; }
+                    if (other.Timezone == null) { return -1; }
+                    if (Timezone == null) { return 1; }
+                    if (other.Timezone.Equals(Timezone)) { return 0; }
+                    return -1;
+                }
+                if (other.D > D) { return 1; }
+            }
+            return 1;
         }
     }
 }

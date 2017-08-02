@@ -20,6 +20,15 @@ namespace Cogs.Publishers
         /// </summary>
         public string TargetDirectory { get; set; }
         /// <summary>
+        /// Desired namespace for xml serialization
+        /// </summary>
+        public string TargetNamespace { get; set; }
+        /// <summary>
+        /// Desired namespace prefix for xml serialization
+        /// </summary>
+        public string TargetNamespacePrefix { get; set; }
+
+        /// <summary>
         /// boolean to determine whether to replace existing or not
         /// </summary>
         public bool Overwrite { get; set; }
@@ -72,6 +81,7 @@ namespace Cogs.Publishers
                 newClass.AppendLine("using System.Linq;");
                 newClass.AppendLine("using Newtonsoft.Json;");
                 newClass.AppendLine("using System.Xml.Linq;");
+                newClass.AppendLine("using Cogs.SimpleTypes;");
                 newClass.AppendLine("using System.Reflection;");
                 newClass.AppendLine("using System.Collections;");
                 newClass.AppendLine("using Newtonsoft.Json.Linq;");
@@ -92,16 +102,29 @@ namespace Cogs.Publishers
                 var toXml = new StringBuilder();
                 if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
                 {
-                    toXml.AppendLine("        public override XElement ToXml()");
+                    toXml.AppendLine("        public override XElement ToXml(bool inherited = false)");
                     toXml.AppendLine("        {");
-                    toXml.AppendLine($"            var xEl = new XElement(\"{item.Name}\", base.ToXml());");
+                    toXml.AppendLine($"            XNamespace ns = \"{TargetNamespace}\";");
+                    if (!model.ReusableDataTypes.Contains(item))
+                    {
+                        toXml.AppendLine("            XElement xEl = null;");
+                        toXml.AppendLine("            if (inherited) { xEl = new XElement(ns + \"ID\", ID); }");
+                        toXml.AppendLine($"            else {{ xEl = new XElement(ns + \"{item.Name}\", base.ToXml(true)); }}");
+                    }
+                    else { toXml.AppendLine($"            XElement xEl = new XElement(ns + \"{item.Name}\");"); }
                 }
                 else
                 {
-                    toXml.AppendLine("        public virtual XElement ToXml()");
+                    toXml.AppendLine("        public virtual XElement ToXml(bool inherited = false)");
                     toXml.AppendLine("        {");
-                    if (!item.IsAbstract) { toXml.AppendLine($"            var xEl = new XElement(\"{item.Name}\");"); }
-                    else { toXml.AppendLine($"            var xEl = new XElement(\"ID\", ID);"); }
+                    toXml.AppendLine($"            XNamespace ns = \"{TargetNamespace}\";");
+                    if (!model.ReusableDataTypes.Contains(item))
+                    {
+                        toXml.AppendLine("            XElement xEl = null;");
+                        toXml.AppendLine("            if (inherited) { xEl = new XElement(ns + \"ID\", ID); }");
+                        toXml.AppendLine($"            else {{ xEl = new XElement(ns + \"{item.Name}\"); }}");
+                    }
+                    else { toXml.AppendLine($"            XElement xEl = new XElement(ns + \"{item.Name}\");"); }
                 }
                 bool initialiseReusable = false;
                 // add abstract to class title if relevant
@@ -201,7 +224,7 @@ namespace Cogs.Publishers
                         {
                             toJsonProperties.AppendLine();
                             toJsonProperties.Append($"                new JProperty(\"{prop.Name}\", {prop.Name})");
-                            toXml.AppendLine($"            xEl.Add(new XElement(\"{prop.Name}\", {prop.Name}));");
+                            toXml.AppendLine($"            xEl.Add(new XElement(ns + \"{prop.Name}\", {prop.Name}));");
                             first = false;
                         }
                         else if (origDataTypeName != null)
@@ -247,7 +270,7 @@ namespace Cogs.Publishers
                             reusableToJson.AppendLine("            }");
                             toXml.AppendLine($"            if ({prop.Name} != null)");
                             toXml.AppendLine("            {");
-                            toXml.AppendLine($"                xEl.Add(new XElement(\"{prop.Name}\", {prop.Name}));");
+                            toXml.AppendLine($"                xEl.Add(new XElement(ns + \"{prop.Name}\", {prop.Name}));");
                             toXml.AppendLine("            }");
                         }
                         else
@@ -274,12 +297,12 @@ namespace Cogs.Publishers
                             }
                             toXml.AppendLine($"            if ({prop.Name} != null)");
                             toXml.AppendLine("            {");
-                            toXml.AppendLine($"                xEl.Add(new XElement(\"{prop.Name}\", ");
+                            toXml.AppendLine($"                xEl.Add(new XElement(ns + \"{prop.Name}\", ");
                             foreach (var part in model.Identification)
                             {
-                                toXml.AppendLine($"                    new XElement(\"{part.Name}\", {prop.Name}.{part.Name}), ");
+                                toXml.AppendLine($"                    new XElement(ns + \"{part.Name}\", {prop.Name}.{part.Name}), ");
                             }
-                            toXml.AppendLine($"                    new XElement(\"ItemType\", {prop.Name}.GetType().Name)));");
+                            toXml.AppendLine($"                    new XElement(ns + \"ItemType\", {prop.Name}.GetType().Name)));");
                             toXml.AppendLine("            }");
                         }
                         newClass.AppendLine($"        public {prop.DataTypeName} {prop.Name} {{ get; set; }}");
@@ -296,7 +319,7 @@ namespace Cogs.Publishers
                             toJsonProperties.Append($"                        select item))");
                             toXml.AppendLine($"            xEl.Add(");
                             toXml.AppendLine($"                from item in {prop.Name}");
-                            toXml.AppendLine($"                select new XElement(\"{prop.Name}\", item));");
+                            toXml.AppendLine($"                select new XElement(ns + \"{prop.Name}\", item));");
                             first = false;
                         }
                         else if (origDataTypeName != null)
@@ -318,7 +341,7 @@ namespace Cogs.Publishers
                             toXml.AppendLine("            {");
                             toXml.AppendLine($"                foreach (var item in {prop.Name})");
                             toXml.AppendLine("                {");
-                            toXml.AppendLine($"                    var prop = new XElement(\"{prop.Name}\");");
+                            toXml.AppendLine($"                    var prop = new XElement(ns + \"{prop.Name}\");");
                             toXml.AppendLine($"                    {SimpleToXml(origDataTypeName, "item", "prop", true)}");
                             toXml.AppendLine("                    xEl.Add(prop);");
                             toXml.AppendLine("                }");
@@ -355,7 +378,7 @@ namespace Cogs.Publishers
                             toXml.AppendLine("            {");
                             toXml.AppendLine($"                xEl.Add(");
                             toXml.AppendLine($"                    from item in {prop.Name}");
-                            toXml.AppendLine($"                    select new XElement(\"{prop.Name}\", item.ToString()));");
+                            toXml.AppendLine($"                    select new XElement(ns + \"{prop.Name}\", item.ToString()));");
                             toXml.AppendLine("            }");
                         }
                         else
@@ -390,12 +413,12 @@ namespace Cogs.Publishers
                             toXml.AppendLine("            {");
                             toXml.AppendLine($"                foreach (var item in {prop.Name})");
                             toXml.AppendLine("                {");
-                            toXml.AppendLine($"                    xEl.Add(new XElement(\"{prop.Name}\", ");
+                            toXml.AppendLine($"                    xEl.Add(new XElement(ns + \"{prop.Name}\", ");
                             foreach (var part in model.Identification)
                             {
-                                toXml.AppendLine($"                        new XElement(\"{part.Name}\", item.{part.Name}), ");
+                                toXml.AppendLine($"                        new XElement(ns + \"{part.Name}\", item.{part.Name}), ");
                             }
-                            toXml.AppendLine($"                        new XElement(\"ItemType\", item.GetType().Name)));");
+                            toXml.AppendLine($"                        new XElement(ns + \"ItemType\", item.GetType().Name)));");
                             toXml.AppendLine("                }");
                             toXml.AppendLine("            }");
                         }
@@ -540,8 +563,7 @@ namespace Cogs.Publishers
                 newClass.AppendLine("        /// <summary>");
                 newClass.AppendLine("        /// Used to Serialize this object to XML");
                 newClass.AppendLine("        /// <summary>");
-                if (item.IsAbstract) { newClass.Append(toXml.ToString().Replace("            xEl.Add(new XElement(\"ID\", ID));", "")); }
-                else { newClass.Append(toXml.ToString()); }
+                newClass.Append(toXml.ToString().Replace("xEl.Add(new XElement(ns + \"ID\", ID));", "if (!inherited) { xEl.Add(new XElement(ns + \"ID\", ID)); }"));
                 newClass.AppendLine("            return xEl;");
                 newClass.AppendLine("        }");
                 newClass.AppendLine("    }");
@@ -566,45 +588,17 @@ namespace Cogs.Publishers
         {
             string indent = Environment.NewLine + "                ";
             if (isList) { indent += "    "; }
-            if (origDataTypeName.ToLower().Equals("duration")){ return $"{start}.Add(new XElement(\"{name}\", {name}.Ticks));"; }
-            if (origDataTypeName.ToLower().Equals("datetime")) { return $"{start}.Add(new XElement(\"{name}\", {name}.ToString(\"yyyy-MM-dd\\\\THH:mm:ss.FFFFFFFK\")));"; }
-            if (origDataTypeName.ToLower().Equals("time")) { return $"{start}.Add(new XElement(\"{name}\", {name}.ToString(\"u\").Split(' ')[1]));"; }
-            if (origDataTypeName.ToLower().Equals("date")){ return $"{start}.Add(new XElement(\"{name}\", {name}.ToString(\"u\").Split(' ')[0]));"; }
-            if (origDataTypeName.ToLower().Equals("gyearmonth"))
-            {
-                return $"var ym = new XElement(\"yearmonth\");{indent}if ({name}.Item3 != null){indent}{{{indent}    if (char.IsDigit({name}.Item3[0]))" +
-                    $"{{ ym.Add({name}.Item1 + \"-\" + {name}.Item2 + \"-\" + {name}.Item3); }}{indent}    else {{ ym.Add({name}.Item1 + \"-\" + {name}.Item2" +
-                    $" + {name}.Item3); }}{indent}}}{indent}else {{ ym.Add({name}.Item1 + \"- \" + {name}.Item2); }}{indent}xEl.Add(ym);";
-            }
-            if (origDataTypeName.ToLower().Equals("gmonthday"))
-            {
-                return $"var ym = new XElement(\"monthday\");{indent}if ({name}.Item3 != null){indent}{{{indent}    if (char.IsDigit({name}.Item3[0]))" +
-                    $"{{ ym.Add({name}.Item1 + \"-\" + {name}.Item2 + \"-\" + {name}.Item3); }}{indent}    else {{ ym.Add({name}.Item1 + \"-\" + {name}.Item2" +
-                    $" + {name}.Item3); }}{indent}}}{indent}else {{ ym.Add({name}.Item1 + \"- \" + {name}.Item2); }}{indent}xEl.Add(ym);";
-            }
-            if (origDataTypeName.ToLower().Equals("gyear"))
-            {
-                return $"if ({name}.Item2 != null){indent}{{{indent}    if (char.IsDigit({name}.Item2[0])) {{ {start}.Add(new XElement(\"year\", " +
-                    $"{name}.Item1 + \"-\" + {name}.Item2)); }}{indent}    else {{ {start}.Add(new XElement(\"year\", {name}.Item1 + {name}.Item2)); }}{indent}}}" +
-                    $"{indent}else {{ {start}.Add(new XElement(\"year\", {name}.Item1)); }}";
-            }
-            if (origDataTypeName.ToLower().Equals("gmonth"))
-            {
-                return $"if ({name}.Item2 != null){indent}{{{indent}    if (char.IsDigit({name}.Item2[0])) {{ {start}.Add(new XElement(\"month\", " +
-                    $"{name}.Item1 + \"-\" + {name}.Item2)); }}{indent}    else {{ {start}.Add(new XElement(\"month\", {name}.Item1 + {name}.Item2)); }}{indent}}}" +
-                    $"{indent}else {{ {start}.Add(new XElement(\"month\", {name}.Item1)); }}";
-            }
-            if (origDataTypeName.ToLower().Equals("gday"))
-            {
-                return $"if ({name}.Item2 != null){indent}{{{indent}    if (char.IsDigit({name}.Item2[0])) {{ {start}.Add(new XElement(\"day\", " +
-                    $"{name}.Item1 + \"-\" + {name}.Item2)); }}{indent}    else {{ {start}.Add(new XElement(\"day\", {name}.Item1 + {name}.Item2)); }}{indent}}}" +
-                    $"{indent}else {{ {start}.Add(new XElement(\"day\", {name}.Item1)); }}";
-            }
-            if (origDataTypeName.ToLower().Equals("cogsdate"))
-            {
-                return $"{start}.Add(new XElement({name}.GetUsedType(), {name}.GetValue()));";
-            }
-            return $"{start}.Add(new XElement(\"{name}\", {name}));";
+            if (origDataTypeName.ToLower().Equals("duration")){ return $"{start}.Add(new XElement(ns + \"{name}\", {name}.Ticks));"; }
+            if (origDataTypeName.ToLower().Equals("datetime")) { return $"{start}.Add(new XElement(ns + \"{name}\", {name}.ToString(\"yyyy-MM-dd\\\\THH:mm:ss.FFFFFFFK\")));"; }
+            if (origDataTypeName.ToLower().Equals("time")) { return $"{start}.Add(new XElement(ns + \"{name}\", {name}.ToString(\"u\").Split(' ')[1]));"; }
+            if (origDataTypeName.ToLower().Equals("date")){ return $"{start}.Add(new XElement(ns + \"{name}\", {name}.ToString(\"u\").Split(' ')[0]));"; }
+            if (origDataTypeName.ToLower().Equals("gyearmonth")) { return $"{indent}xEl.Add(new XElement(ns + \"{name}\", {name}.ToString()));"; }
+            if (origDataTypeName.ToLower().Equals("gmonthday")) { return $"{indent}xEl.Add(new XElement(ns + \"{name}\", {name}.ToString()));"; }
+            if (origDataTypeName.ToLower().Equals("gyear")) { return $"{indent}xEl.Add(new XElement(ns + \"{name}\", {name}.ToString()));"; }
+            if (origDataTypeName.ToLower().Equals("gmonth")) { return $"{indent}xEl.Add(new XElement(ns + \"{name}\", {name}.ToString()));"; }
+            if (origDataTypeName.ToLower().Equals("gday")) { return $"{indent}xEl.Add(new XElement(ns + \"{name}\", {name}.ToString()));"; }
+            if (origDataTypeName.ToLower().Equals("cogsdate")) { return $"{start}.Add(new XElement(ns + {name}.GetUsedType(), {name}.GetValue()));"; }
+            return $"{start}.Add(new XElement(ns + \"{name}\", {name}));";
         }
 
         private string SimpleToJson(string origDataTypeName, string name, string start, bool isList)
@@ -636,81 +630,47 @@ namespace Cogs.Publishers
             {
                 if (!isList)
                 {
-                    return $"var ym = new JProperty(\"{name}\", new JObject({Environment.NewLine}                    new JProperty(\"year\", " +
-                        $"{name}.Item1),{Environment.NewLine}                    new JProperty(\"month\", {name}.Item2)));" +
-                        $"{Environment.NewLine}                if ({name}.Item3 != null) {{ ((JObject)ym.First).Add(new " +
-                        $"JProperty(\"timezone\", {name}.Item3)); }}{Environment.NewLine}                {start}ym";
+                    return $"{start}new JProperty(\"{name}\", {name}.ToJson())";
                 }
-                return $"{Environment.NewLine}                    if (item.Item3 != null){Environment.NewLine}                    {{" +
-                    $"{Environment.NewLine}                        ((JArray)prop.First).Add(new JObject({Environment.NewLine}        " +
-                    $"                    new JProperty(\"year\", item.Item1), new JProperty(\"month\", item.Item2), " +
-                    $"new JProperty(\"timezone\", item.Item3)));{Environment.NewLine}                    }}{Environment.NewLine}    " +
-                    $"                else {{ ((JArray)prop.First).Add(new JObject(new JProperty(\"year\", item.Item1), " +
-                    $"new JProperty(\"month\", item.Item2))); }}";
+                return $"((JArray)prop.First).Add(item.ToJson());";
             }
             if (origDataTypeName.ToLower().Equals("gyear"))
             {
                 if (!isList)
                 {
-                    return $"var y = new JProperty(\"{name}\", new JObject({Environment.NewLine}                    new JProperty(\"year\", " +
-                        $"{name}.Item1)));{Environment.NewLine}                if ({name}.Item2 != null) {{ ((JObject)y.First).Add(" +
-                        $"new JProperty(\"timezone\", {name}.Item2)); }}{Environment.NewLine}                {start}y";
+                    return $"{start}new JProperty(\"{name}\", {name}.ToJson())";
                 }
-                return $"{Environment.NewLine}                    if (item.Item2 != null){Environment.NewLine}                    {{" +
-                    $"{Environment.NewLine}                        ((JArray)prop.First).Add(new JObject({Environment.NewLine}        " +
-                    $"                    new JProperty(\"year\", item.Item1), new JProperty(\"timezone\", item.Item2)));{Environment.NewLine}" +
-                    $"                    }}{Environment.NewLine}                    else {{ ((JArray)prop.First).Add(new JObject(" +
-                    $"new JProperty(\"year\", item.Item1))); }}";
+                return $"((JArray)prop.First).Add(item.ToJson());";
             }
             if (origDataTypeName.ToLower().Equals("gmonthday"))
             {
                 if (!isList)
                 {
-                    return $"var ym = new JProperty(\"{name}\", new JObject({Environment.NewLine}                    new JProperty(\"month\", " +
-                        $"{name}.Item1),{Environment.NewLine}                    new JProperty(\"day\", {name}.Item2)));" +
-                        $"{Environment.NewLine}                if ({name}.Item3 != null) {{ ((JObject)ym.First).Add(new " +
-                        $"JProperty(\"timezone\", {name}.Item3)); }}{Environment.NewLine}                {start}ym";
+                    return $"{start}new JProperty(\"{name}\", {name}.ToJson())";
                 }
-                return $"{Environment.NewLine}                    if (item.Item3 != null){Environment.NewLine}                    {{" +
-                    $"{Environment.NewLine}                        ((JArray)prop.First).Add(new JObject({Environment.NewLine}        " +
-                    $"                    new JProperty(\"month\", item.Item1), new JProperty(\"day\", item.Item2), " +
-                    $"new JProperty(\"timezone\", item.Item3)));{Environment.NewLine}                    }}{Environment.NewLine}    " +
-                    $"                else {{ ((JArray)prop.First).Add(new JObject(new JProperty(\"month\", item.Item1), " +
-                    $"new JProperty(\"day\", item.Item2))); }}";
+                return $"((JArray)prop.First).Add(item.ToJson());";
             }
             if (origDataTypeName.ToLower().Equals("gday"))
             {
                 if (!isList)
                 {
-                    return $"var y = new JProperty(\"{name}\", new JObject({Environment.NewLine}                    new JProperty(\"day\", " +
-                        $"{name}.Item1)));{Environment.NewLine}                if ({name}.Item2 != null) {{ ((JObject)y.First).Add(" +
-                        $"new JProperty(\"timezone\", {name}.Item2)); }}{Environment.NewLine}                {start}y";
+                    return $"{start}new JProperty(\"{name}\", {name}.ToJson())";
                 }
-                return $"{Environment.NewLine}                    if (item.Item2 != null){Environment.NewLine}                    {{" +
-                    $"{Environment.NewLine}                        ((JArray)prop.First).Add(new JObject({Environment.NewLine}        " +
-                    $"                    new JProperty(\"day\", item.Item1), new JProperty(\"timezone\", item.Item2)));{Environment.NewLine}" +
-                    $"                    }}{Environment.NewLine}                    else {{ ((JArray)prop.First).Add(new JObject(" +
-                    $"new JProperty(\"day\", item.Item1))); }}";
+                return $"((JArray)prop.First).Add(item.ToJson());";
 
             }
             if (origDataTypeName.ToLower().Equals("gmonth"))
             {
                 if (!isList)
                 {
-                    return $"var y = new JProperty(\"{name}\", new JObject({Environment.NewLine}                    new JProperty(\"month\", " +
-                        $"{name}.Item1)));{Environment.NewLine}                if ({name}.Item2 != null) {{ ((JObject)y.First).Add(" +
-                        $"new JProperty(\"timezone\", {name}.Item2)); }}{Environment.NewLine}                {start}y";
+                    return $"{start}new JProperty(\"{name}\", {name}.ToJson())";
                 }
-                return $"{Environment.NewLine}                    if (item.Item2 != null){Environment.NewLine}                    {{" +
-                    $"{Environment.NewLine}                        ((JArray)prop.First).Add(new JObject({Environment.NewLine}        " +
-                    $"                    new JProperty(\"month\", item.Item1), new JProperty(\"timezone\", item.Item2)));{Environment.NewLine}" +
-                    $"                    }}{Environment.NewLine}                    else {{ ((JArray)prop.First).Add(new JObject(" +
-                    $"new JProperty(\"month\", item.Item1))); }}";
+                return $"((JArray)prop.First).Add(item.ToJson());";
             }
             if (origDataTypeName.ToLower().Equals("anyuri"))
             {
                 if (!isList) { return $"{start}new JProperty(\"{name}\", {name})"; }
-                return $"{Environment.NewLine}                    ((JArray)prop.First).Add(item);";
+                return $"((JArray)prop.First).Add(item);";
             }
             if (origDataTypeName.ToLower().Equals("cogsdate"))
             {
@@ -719,11 +679,11 @@ namespace Cogs.Publishers
                     return $"{start}new JProperty(\"{name}\", new JObject({Environment.NewLine}                    new " +
                         $"JProperty({name}.GetUsedType(), {name}.GetValue())))";
                 }
-                return $"{Environment.NewLine}                    ((JArray)prop.First).Add(new JObject({Environment.NewLine}            " +
+                return $"((JArray)prop.First).Add(new JObject({Environment.NewLine}            " +
                     $"            new JProperty(item.GetUsedType(), item.GetValue())));";
             }
             if (!isList) { return $"{start}new JProperty(\"{name}\", {name})"; }
-            return "{Environment.NewLine}                    ((JArray)prop.First).Add(item);";
+            return "((JArray)prop.First).Add(item);";
         }
 
 
@@ -750,7 +710,7 @@ namespace Cogs.Publishers
             builder.AppendLine("        JProperty ToJson();");
             builder.AppendLine("        string ReferenceId { get; set; }");
             builder.AppendLine("        void InitializeReferences(Dictionary<string, IIdentifiable> dict);");
-            builder.AppendLine("        XElement ToXml();");
+            builder.AppendLine("        XElement ToXml(bool inherited = false);");
             builder.AppendLine("    }");
             builder.AppendLine("}");
             File.WriteAllText(Path.Combine(TargetDirectory, "IIdentifiable.cs"), builder.ToString());
@@ -760,7 +720,15 @@ namespace Cogs.Publishers
         // Creates the ItemContainer Class
         private void CreateItemContainer(CogsModel model, string projName)
         {
-            string clss = @"using System;
+            StringBuilder ifs = new StringBuilder();
+            string start = "";
+            foreach (var item in model.ItemTypes)
+            {
+                ifs.AppendLine($"                        {start}if (clss.Equals(\"{item.Name}\")) {{ obj = " +
+                    $"JsonConvert.DeserializeObject<{item.Name}>(instance.Value.ToString()); }}");
+                start = "else ";
+            }
+            string clss = $@"using System;
 using System.Linq;
 using Newtonsoft.Json;
 using System.Xml.Linq;
@@ -768,22 +736,22 @@ using System.Reflection;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 
-namespace !!!
-{
+namespace {projName}
+{{
     /// <summary>
     /// Class that contains a list of all items in the model 
     /// <summary>
     [JsonConverter(typeof(ItemContainerConverter))]
     public class ItemContainer
-    {
-        public List<IIdentifiable> Items { get; } = new List<IIdentifiable>();
-        public List<IIdentifiable> TopLevelReferences { get; } = new List<IIdentifiable>();
+    {{
+        public List<IIdentifiable> Items {{ get; }} = new List<IIdentifiable>();
+        public List<IIdentifiable> TopLevelReferences {{ get; }} = new List<IIdentifiable>();
 
         public string Serialize()
-        {
+        {{
             JObject builder = new JObject();
             if (TopLevelReferences.Count > 0)
-            {
+            {{
                 builder.Add(new JProperty(""TopLevelReference"", new JArray(
                 from obj in TopLevelReferences
                 select new JObject(
@@ -791,92 +759,85 @@ namespace !!!
                     new JProperty(""value"", new JArray(
                         obj.GetType().ToString(),
                         obj.ID))))));
-            }
+            }}
             foreach(var item in Assembly.GetExecutingAssembly().GetTypes())
-            {
+            {{
                 var elements = Items.Where(x => x.GetType().Equals(item)).ToList();
                 if (elements.Count() > 0)
-                {
+                {{
                     var classType = new JObject();
                     foreach(var element in elements)
-                    {
+                    {{
                         classType.Add(element.ToJson());
-                    }
+                    }}
                     builder.Add(new JProperty(item.Name, new JObject(classType)));
-                }
-            }
+                }}
+            }}
             return builder.ToString();
-        }
+        }}
 
 
         public void Parse(JsonReader json)
-        {
+        {{
             json.DateParseHandling = DateParseHandling.None;
             List<string> ids = new List<string>();
             JObject builder = JObject.Load(json);
             Dictionary<string, IIdentifiable> dict = new Dictionary<string, IIdentifiable>();
             foreach (var type in builder)
-            {
+            {{
                 if (type.Key.Equals(""TopLevelReference""))
-                {
+                {{
                     if (type.Value.First != null)
-                    {
+                    {{
                         foreach (var reference in (JArray)type.Value)
-                        {
+                        {{
                             ids.Add(reference.Last.First.Last.ToString());
-                        }
-                    }
-                }
+                        }}
+                    }}
+                }}
                 else
-                {
+                {{
                     var clss = type.Key;
                     foreach (KeyValuePair<string, JToken> instance in (JObject)type.Value)
-                    {
+                    {{
                         IIdentifiable obj = null;
-???
-                        if (obj == null) { throw new InvalidOperationException(); }
+{ifs.ToString()}
+                        if (obj == null) {{ throw new InvalidOperationException(); }}
                         obj.ReferenceId = instance.Key;
                         Items.Add(obj);
                         dict.Add(instance.Key, obj);
-                        if (ids.Contains(obj.ID)) { TopLevelReferences.Add(obj); }
-                    }
-                }
-            }
+                        if (ids.Contains(obj.ID)) {{ TopLevelReferences.Add(obj); }}
+                    }}
+                }}
+            }}
             foreach (var obj in dict.Values)
-            {
+            {{
                 obj.InitializeReferences(dict);
-            }
-        }
+            }}
+        }}
 
         public XDocument MakeXml()
-        {
-            XDocument xDoc = new XDocument(new XElement(GetType().Namespace));
+        {{
+            XDocument xDoc = new XDocument(new XElement(""ItemContainer"", new XAttribute(XNamespace.Xmlns + ""{TargetNamespacePrefix}"", ""{TargetNamespace}"")));
+            XNamespace ns = ""{TargetNamespace}"";
             if (TopLevelReferences != null && TopLevelReferences.Count > 0)
-            {
-                XElement tops = new XElement(""TopLevelReferences"");
+            {{
+                XElement tops = new XElement(ns + ""TopLevelReferences"");
                 foreach (var item in TopLevelReferences)
-                {
-                    tops.Add(new XElement(item.GetType().ToString(), item.ID));
-                }
+                {{
+                    tops.Add(new XElement(ns + item.GetType().ToString(), item.ID));
+                }}
                 xDoc.Root.Add(tops);
-            }
+            }}
             foreach (var item in Items)
-            {
+            {{
                 xDoc.Root.Add(item.ToXml());
-            }
+            }}
             return xDoc;
-        }
-    }
-}";
-            StringBuilder ifs = new StringBuilder();
-            string start = "";
-            foreach(var item in model.ItemTypes)
-            {
-                ifs.AppendLine($"                        {start}if (clss.Equals(\"{item.Name}\")) {{ obj = " +
-                    $"JsonConvert.DeserializeObject<{item.Name}>(instance.Value.ToString()); }}");
-                start = "else ";
-            }
-            File.WriteAllText(Path.Combine(TargetDirectory, "ItemContainer.cs"), clss.Replace("!!!", projName).Replace("???", ifs.ToString()));
+        }}
+    }}
+}}";
+            File.WriteAllText(Path.Combine(TargetDirectory, "ItemContainer.cs"), clss);
         }
 
 
@@ -886,6 +847,7 @@ namespace !!!
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
+using Cogs.SimpleTypes;
 using System.Collections;
 using Newtonsoft.Json.Linq;
 using Cogs.DataAnnotations;
@@ -1093,24 +1055,24 @@ namespace !!!
                 return new Uri(prop.ToString());
             }
             JObject obj = (JObject)prop;
-            if (objectType == typeof(Tuple<int, int, string>))
+            if (objectType == typeof(GDay) || objectType == typeof(GMonth) || objectType == typeof(GYear))
+            {
+                int a = int.Parse(((JProperty)obj.First).First.ToString());
+                if (((JProperty)obj.First).First.ToString().Equals(((JProperty)obj.Last).Value.ToString()))
+                {
+                    return Activator.CreateInstance(objectType, a, null);
+                }
+                return Activator.CreateInstance(objectType, a, ((JProperty)obj.Last).Value.ToString());
+            }
+            if (objectType == typeof(GYearMonth) || objectType == typeof(GMonthDay))
             {
                 int a = int.Parse(((JProperty)obj.First).First.ToString());
                 int b = int.Parse(((JProperty)obj.First).Next.First.ToString());
-                if (((JProperty) obj.First).Next.First.ToString().Equals(((JProperty) obj.Last).Value.ToString()))
+                if (((JProperty)obj.First).Next.First.ToString().Equals(((JProperty)obj.Last).Value.ToString()))
                 {
-                    return new Tuple<int, int, string>(a, b, null);
+                    return Activator.CreateInstance(objectType, a, b, null);
                 }
-                return new Tuple<int, int, string>(a, b, ((JProperty) obj.Last).Value.ToString());
-            }
-            if (objectType == typeof(Tuple<int, string>))
-            {
-                int a = int.Parse(((JProperty)obj.First).First.ToString());
-                if (((JProperty) obj.First).First.ToString().Equals(((JProperty) obj.Last).Value.ToString()))
-                {
-                    return new Tuple<int, string>(a, null);
-                }
-                return new Tuple<int, string>(a, ((JProperty) obj.Last).Value.ToString());
+                return Activator.CreateInstance(objectType, a, b, ((JProperty)obj.Last).Value.ToString());
             }
             if (objectType == typeof(CogsDate))
             {
@@ -1200,12 +1162,11 @@ namespace !!!
                 { "dateTime", "DateTimeOffset" },
                 { "time", "DateTimeOffset" },
                 { "date", "DateTimeOffset" },
-                { "gYearMonth", "Tuple<int, int, string>" },
-                { "gMonthDay", "Tuple<int, int, string>" },
-                { "gYear", "Tuple<int, string>" },
-                { "gYearDay", "Tuple<int, int, string>" },
-                { "gDay", "Tuple<int, string>" },
-                { "gMonth", "Tuple<int, string>" },
+                { "gYearMonth", "GYearMonth" },
+                { "gMonthDay", "GMonthDay" },
+                { "gYear", "GYear" },
+                { "gMonth", "GMonth" },
+                { "gDay", "GDay" },
                 { "anyURI", "Uri" },
                 { "nonPositiveInteger", "int" },
                 { "negativeInteger", "int" },
