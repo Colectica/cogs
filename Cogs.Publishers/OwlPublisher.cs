@@ -131,10 +131,10 @@ namespace Cogs.Publisher
                                 ObjectProp.AppendLine(@"  <owl:ObjectProperty rdf:about = ""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.Name + @""">");
                                 ObjectProp.AppendLine(@"    <rdfs:comment>" + prop.Description + "</rdfs:comment>");
                                 ObjectProp.AppendLine(@"    <rdfs:domain rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + props.Name + @"""/>");
-                                ObjectProp.AppendLine(@"    <rdfs:range rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.DataType.Name + @"""/>");
-                                //added here
+                                addRestrictionRange(ObjectProp, prop, projName);   
                                 ObjectProp.AppendLine(@"  </owl:ObjectProperty>");
-                               
+                                ObjectProp.AppendLine();
+
                             }
                             else
                             {
@@ -156,9 +156,7 @@ namespace Cogs.Publisher
                                     DataProp.AppendLine(@"  <owl:DatatypeProperty rdf:about = ""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.Name + @""">");
                                     DataProp.AppendLine(@"      <rdfs:comment>" + prop.Description + "</rdfs:comment>");
                                     DataProp.AppendLine(@"      <rdfs:domain rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + props.Name + @"""/>");
-                                    DataProp.AppendLine(@"      <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#" + prop.DataType.Name + @"""/>");
-                                    //addRestrictionRange(DataProp, prop, prop.Name);
-                                    //added here
+                                    addRestrictionRange(DataProp, prop, projName);
                                     DataProp.AppendLine(@"  </owl:DatatypeProperty>");
                                    
                                 }
@@ -189,9 +187,7 @@ namespace Cogs.Publisher
                             ObjectProp.AppendLine(@"  <owl:ObjectProperty rdf:about = ""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.Name + @""">");
                             ObjectProp.AppendLine(@"    <rdfs:comment>" + prop.Description + "</rdfs:comment>");
                             ObjectProp.AppendLine(@"    <rdfs:domain rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + props.Name + @"""/>");
-                            ObjectProp.AppendLine(@"    <rdfs:range rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.DataType.Name + @"""/>");
-                            //addRestrictionRange(ObjectProp, prop, prop.Name);
-                            //added here 
+                            addRestrictionRange(ObjectProp, prop, projName);
                             ObjectProp.AppendLine(@"  </owl:ObjectProperty>");
                             
                         }
@@ -215,8 +211,7 @@ namespace Cogs.Publisher
                                 DataProp.AppendLine(@"  <owl:DatatypeProperty rdf:about = ""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.Name + @""">");
                                 DataProp.AppendLine(@"      <rdfs:comment>" + prop.Description + "</rdfs:comment>");
                                 DataProp.AppendLine(@"      <rdfs:domain rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + props.Name + @"""/>");
-                                DataProp.AppendLine(@"      <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#" + prop.DataType.Name + @"""/>");
-                                //addRestrictionRange(DataProp, prop, prop.Name);
+                                addRestrictionRange(DataProp, prop, projName);
                                 DataProp.AppendLine(@"  </owl:DatatypeProperty>");
                             }
                         }
@@ -372,22 +367,57 @@ namespace Cogs.Publisher
             res.AppendLine(@"</ rdfs:domain >");
         }
 
-        public void addRestrictionRange(StringBuilder res, Property prop)
+        public void addRestrictionRange(StringBuilder OProp, Property prop, String projName)
         {
-            res.AppendLine(@"<rdfs:range>");
-            res.AppendLine(@"   <owl:Restriction>");
-            res.AppendLine(@"       <owl:onProperty rdf:resource = ""http://www.semanticweb.org/clement/ontologies/2017/6/cogsburger#" + prop.Name + @"""/>");
-            if (!prop.MinCardinality.Equals("0"))
+            if (prop.MinCardinality.Equals("0") && prop.MaxCardinality.Equals("n"))
             {
-                res.AppendLine(@"           <owl:minQualifiedCardinality rdf:datatype = ""http://www.w3.org/2001/XMLSchema#nonNegativeInteger"">" + prop.MinCardinality + @"</owl:minQualifiedCardinality>");
+                if (!IsReusableType(prop.DataType.Name) && !IsItemType(prop.DataType.Name))
+                {
+                    OProp.AppendLine(@"      <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#" + prop.DataType.Name + @"""/>");
+                }
+                else
+                {
+                    OProp.AppendLine(@"      <rdfs:range rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.DataType.Name + @"""/>");
+                }
             }
-            if (!prop.MinCardinality.Equals("n"))
+            else
             {
-                res.AppendLine(@"           <owl:maxQualifiedCardinality rdf:datatype = ""http://www.w3.org/2001/XMLSchema#nonNegativeInteger"">" + prop.MaxCardinality + @"</owl:maxQualifiedCardinality>");
+                if (!prop.MinCardinality.Equals("0"))
+                {
+                    OProp.AppendLine(@"    <rdfs:range>");
+                    OProp.AppendLine(@"        <owl:Restriction>");
+                    OProp.AppendLine(@"            <owl:onProperty rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.Name + @"""/>");
+                    OProp.AppendLine(@"            <owl:minQualifiedCardinality rdf:datatype = ""http://www.w3.org/2001/XMLSchema#nonNegativeInteger"">" + prop.MinCardinality + @"</owl:minQualifiedCardinality>");
+                    //OProp.AppendLine(@"            <owl:onClass rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.DataType.Name + @"""/>");
+                    if (!IsReusableType(prop.DataType.Name) && !IsItemType(prop.DataType.Name))
+                    {
+                        OProp.AppendLine(@"            <owl:onDataRange rdf:resource = ""http://www.w3.org/2001/XMLSchema#" + prop.DataType.Name + @"""/>");
+                    }
+                    else
+                    {
+                        OProp.AppendLine(@"            <owl:onClass rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.DataType.Name + @"""/>");
+                    }
+                    OProp.AppendLine(@"        </owl:Restriction>");
+                    OProp.AppendLine(@"    </rdfs:range>");
+                }
+                if (!prop.MaxCardinality.Equals("n"))
+                {
+                    OProp.AppendLine(@"    <rdfs:range>");
+                    OProp.AppendLine(@"        <owl:Restriction>");
+                    OProp.AppendLine(@"            <owl:onProperty rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.Name + @"""/>");
+                    OProp.AppendLine(@"            <owl:maxQualifiedCardinality rdf:datatype = ""http://www.w3.org/2001/XMLSchema#nonNegativeInteger"">" + prop.MaxCardinality + @"</owl:maxQualifiedCardinality>");
+                    if (!IsReusableType(prop.DataType.Name) && !IsItemType(prop.DataType.Name))
+                    {
+                        OProp.AppendLine(@"            <owl:onDataRange rdf:resource = ""http://www.w3.org/2001/XMLSchema#" + prop.DataType.Name + @"""/>");
+                    }
+                    else
+                    {
+                        OProp.AppendLine(@"            <owl:onClass rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.DataType.Name + @"""/>");
+                    }
+                    OProp.AppendLine(@"        </owl:Restriction>");
+                    OProp.AppendLine(@"    </rdfs:range>");
+                }
             }
-            //res.AppendLine(@"       <owl:onClass rdf:resource = ""http://www.semanticweb.org/clement/ontologies/2017/6/cogsburger#" + classname + @"""/>");
-            res.AppendLine(@"   </owl:Restriction>");
-            res.AppendLine(@"</rdfs:range>");
         }
 
         public Boolean IsItemType(string type)
