@@ -249,12 +249,30 @@ namespace Cogs.Console
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
                                            CommandOptionType.NoValue);
+                var namespaceUri = command.Option("-n|--namespace",
+                                           "URI of the target XML namespace",
+                                           CommandOptionType.SingleValue);
 
+                var namespaceUriPrefix = command.Option("-p|--namespacePrefix",
+                                           "Namespace prefix to use for the target XML namespace",
+                                           CommandOptionType.SingleValue);
                 command.OnExecute(() =>
                 {
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
+                    var targetNamespace = namespaceUri.Value() ?? "cogs:default";
+                    var prefix = namespaceUriPrefix.Value() ?? "cogs";
+
+                    try
+                    {
+                        XmlConvert.VerifyName(prefix);
+                    }
+                    catch (XmlException xmlEx)
+                    {
+                        CogsError xmlPrefixError = new CogsError(ErrorLevel.Error, "Invalid xml prefix string", xmlEx);
+                        HandleErrors(new List<CogsError>() { xmlPrefixError });
+                    }
 
                     var directoryReader = new CogsDirectoryReader();
                     var cogsDtoModel = directoryReader.Load(location);
@@ -265,6 +283,8 @@ namespace Cogs.Console
                     CsSchemaPublisher publisher = new CsSchemaPublisher
                     {
                         TargetDirectory = target,
+                        TargetNamespace = targetNamespace,
+                        TargetNamespacePrefix = prefix,
                         Overwrite = overwrite
                     };
                     publisher.Publish(cogsModel);

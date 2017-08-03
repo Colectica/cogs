@@ -6,7 +6,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Xml;
+using System.Xml.Linq;
+using System.Xml.Schema;
 using Xunit;
+using Cogs.SimpleTypes;
 
 namespace Cogs.Tests.Integration
 {
@@ -36,9 +40,9 @@ namespace Cogs.Tests.Integration
                 Language = "eng",
                 Content = "Just a normal cow"
             };
-            Tuple<int, string> monthG = new Tuple<int, string>(9, "Z");
-            Tuple<int, string> dayG = new Tuple<int, string>(6, "+09:00");
-            Tuple<int, int, string> mDay = new Tuple<int, int, string>(6, 9, "-12:00");
+            GMonth monthG = new GMonth(9, "Z");
+            GDay dayG = new GDay(6, "+09:00");
+            GMonthDay mDay = new GMonthDay(6, 9, "-12:00");
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
@@ -50,10 +54,8 @@ namespace Cogs.Tests.Integration
                 GMonthDay = mDay
             };
 
-            List<decimal> heights = new List<decimal>();
-            heights.Add(5);
-            heights.Add(5);
-            Tuple<int, int, string> GYM = new Tuple<int, int, string>(2017, 06, "Z");
+            List<decimal> heights = new List<decimal> { 5, 5 };
+            GYearMonth GYM = new GYearMonth(2017, 06, "Z");
 
             Bread bread = new Bread
             {
@@ -157,8 +159,6 @@ namespace Cogs.Tests.Integration
             // evaluation
             string schemaPath = Path.Combine(Path.Combine(Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), ".."), ".."), ".."), "..");
             string jsonSchema = File.ReadAllText(Path.Combine(Path.Combine(schemaPath, "generated"), "jsonSchema.json"));
-            var outPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "out");
-            Directory.CreateDirectory(outPath);
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings
             {
                 MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
@@ -171,7 +171,6 @@ namespace Cogs.Tests.Integration
             {
                 // test serializing
                 string json = JsonConvert.SerializeObject(containers[i]);
-                File.WriteAllText(Path.Combine(outPath, "serialized" + i + ".json"), json);
 
                 var errors = schema.Validate(json);
 
@@ -180,7 +179,6 @@ namespace Cogs.Tests.Integration
                 // test parsing
                 ItemContainer newContainer = JsonConvert.DeserializeObject<ItemContainer>(json);
                 var newJson = JsonConvert.SerializeObject(newContainer);
-                File.WriteAllText(Path.Combine(outPath, "parsed" + i + ".json"), newJson);
 
                 errors = schema.Validate(newJson);
                 Assert.Empty(errors);
@@ -198,12 +196,12 @@ namespace Cogs.Tests.Integration
             Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
-                Gyearmonth = new Tuple<int, int, string>(9, 24, "-06:00")
+                Gyearmonth = new GYearMonth(9, 24, "-06:00")
             };
             container.Items.Add(bread);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -225,12 +223,12 @@ namespace Cogs.Tests.Integration
             Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
-                Gyearmonth = new Tuple<int, int, string>(9, 24, null)
+                Gyearmonth = new GYearMonth(9, 24, null)
             };
             container.Items.Add(bread);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -252,16 +250,16 @@ namespace Cogs.Tests.Integration
             Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
-                GYearMonthList = new List<Tuple<int, int, string>>()
+                GYearMonthList = new List<GYearMonth>()
                 {
-                    new Tuple<int, int, string>(9, 24, null),
-                    new Tuple<int, int, string>(12, 93, "+09:00")
+                    new GYearMonth(9, 24, null),
+                    new GYearMonth(12, 93, "+09:00")
                 }
             };
             container.Items.Add(bread);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -291,7 +289,7 @@ namespace Cogs.Tests.Integration
 
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -346,7 +344,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -373,7 +371,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -405,7 +403,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -467,7 +465,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -496,7 +494,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -527,7 +525,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -553,12 +551,12 @@ namespace Cogs.Tests.Integration
             VeggiePatty patty = new VeggiePatty
             {
                 ID = Guid.NewGuid().ToString(),
-                GYear = new Tuple<int, string>(9, "Z")
+                GYear = new GYear(9, "Z")
             };
             container.Items.Add(patty);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -580,12 +578,12 @@ namespace Cogs.Tests.Integration
             VeggiePatty patty = new VeggiePatty
             {
                 ID = Guid.NewGuid().ToString(),
-                GYear = new Tuple<int, string>(9, null)
+                GYear = new GYear(9)
             };
             container.Items.Add(patty);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -607,16 +605,16 @@ namespace Cogs.Tests.Integration
             Cheese cheese = new Cheese
             {
                 ID = Guid.NewGuid().ToString(),
-                Years = new List<Tuple<int, string>>()
+                Years = new List<GYear>()
                 {
-                    new Tuple<int, string>(2017, "+09:00"),
-                    new Tuple<int, string>(1996, null)
+                    new GYear(2017, "+09:00"),
+                    new GYear(1996, null)
                 }
             };
             container.Items.Add(cheese);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -631,8 +629,8 @@ namespace Cogs.Tests.Integration
             Assert.Equal(cheese.Years.Count, cheese2.Years.Count);
             for (int i = 0; i < cheese.Years.Count; i++)
             {
-                Assert.Equal(cheese.Years[i].Item1, cheese2.Years[i].Item1);
-                Assert.Equal(cheese.Years[i].Item2, cheese2.Years[i].Item2);
+                Assert.Equal(cheese.Years[i], cheese2.Years[i]);
+                Assert.Equal(cheese.Years[i], cheese2.Years[i]);
             }
         }
 
@@ -643,12 +641,12 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                GMonthDay = new Tuple<int, int, string>(9, 3, "Z")
+                GMonthDay = new GMonthDay(9, 3, "Z")
             };
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -670,12 +668,12 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                GMonthDay = new Tuple<int, int, string>(9, 3, null)
+                GMonthDay = new GMonthDay(9, 3, null)
             };
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -697,17 +695,17 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                GMonthDays = new List<Tuple<int, int, string>>()
+                GMonthDays = new List<GMonthDay>()
                 {
-                    new Tuple<int, int, string>(9, 3, null),
-                    new Tuple<int, int, string>(0, 0, "-09:00")
+                    new GMonthDay(9, 3, null),
+                    new GMonthDay(0, 0, "-09:00")
                 }
                 
             };
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -731,7 +729,7 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                GDay = new Tuple<int, string>(15, "+10:00")
+                GDay = new GDay(15, "+10:00")
 
             };
             container.Items.Add(animal);
@@ -759,13 +757,13 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                GDay = new Tuple<int, string>(15, null)
+                GDay = new GDay(15, null)
 
             };
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -787,10 +785,10 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                GDays = new List<Tuple<int, string>>()
+                GDays = new List<GDay>()
                 {
-                    new Tuple<int, string>(15, null),
-                    new Tuple<int, string>(0, "Z")
+                    new GDay(15, null),
+                    new GDay(0, "Z")
                 }
                 
 
@@ -798,7 +796,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -822,12 +820,12 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                GMonth = new Tuple<int, string>(2, "+01:00")
+                GMonth = new GMonth(2, "+01:00")
             };
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -849,12 +847,12 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                GMonth = new Tuple<int, string>(2, null)
+                GMonth = new GMonth(2, null)
             };
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -876,16 +874,16 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                GMonths = new List<Tuple<int, string>>()
+                GMonths = new List<GMonth>()
                 {
-                     new Tuple<int, string>(2, null),
-                     new Tuple<int, string>(8, "Z")
+                     new GMonth(2, null),
+                     new GMonth(8, "Z")
                 }
             };
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -914,7 +912,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(condiment);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -960,7 +958,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(condiment);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1047,7 +1045,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1074,7 +1072,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1096,7 +1094,7 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                CDate = new DataAnnotations.CogsDate(new Tuple<int, int, string>(2017, 7, "Z"))
+                CDate = new DataAnnotations.CogsDate(new GYearMonth(2017, 7, "Z"))
             };
             container.Items.Add(animal);
 
@@ -1123,12 +1121,12 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                CDate = new DataAnnotations.CogsDate(new Tuple<int, int, string>(2017, 7, null))
+                CDate = new DataAnnotations.CogsDate(new GYearMonth(2017, 7, null))
             };
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1150,12 +1148,12 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                CDate = new DataAnnotations.CogsDate(new Tuple<int, string>(2017, "Z"))
+                CDate = new DataAnnotations.CogsDate(new GYear(2017, "Z"))
             };
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1177,12 +1175,12 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                CDate = new DataAnnotations.CogsDate(new Tuple<int, string>(2017, null))
+                CDate = new DataAnnotations.CogsDate(new GYear(2017, null))
             };
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1231,16 +1229,16 @@ namespace Cogs.Tests.Integration
             Condiment condiment = new Condiment
             {
                 ID = Guid.NewGuid().ToString(),
-                Dates = new List<DataAnnotations.CogsDate>
+                CDates = new List<DataAnnotations.CogsDate>
                 {
                     new DataAnnotations.CogsDate(new TimeSpan(1562)),
-                    new DataAnnotations.CogsDate(new Tuple<int, string>(2017, "+01:00")),
+                    new DataAnnotations.CogsDate(new GYear(2017, "+01:00")),
                     new DataAnnotations.CogsDate(new DateTimeOffset(new DateTime(1996, 8, 23, 4, 37, 4),
                         new TimeSpan(+3, 0, 0)), false),
                     new DataAnnotations.CogsDate(new DateTime(2017, 9, 2), true),
-                    new DataAnnotations.CogsDate(new Tuple<int, int, string>(2017, 7, "+02:00")),
-                    new DataAnnotations.CogsDate(new Tuple<int, int, string>(2017, 7, null)),
-                    new DataAnnotations.CogsDate(new Tuple<int, string>(2017, null))
+                    new DataAnnotations.CogsDate(new GYearMonth(2017, 7, "+02:00")),
+                    new DataAnnotations.CogsDate(new GYearMonth(2017, 7, null)),
+                    new DataAnnotations.CogsDate(new GYear(2017, null))
                 },
                 Description = "Dates"
             };
@@ -1259,10 +1257,10 @@ namespace Cogs.Tests.Integration
             Assert.IsType<Condiment>(container2.Items.First());
 
             Condiment condiment2 = container2.Items.First() as Condiment;
-            Assert.Equal(condiment.Dates.Count, condiment2.Dates.Count);
-            for (int i = 0; i < condiment.Dates.Count; i++)
+            Assert.Equal(condiment.CDates.Count, condiment2.CDates.Count);
+            for (int i = 0; i < condiment.CDates.Count; i++)
             {
-                Assert.Equal(condiment.Dates[i].GetValue(), condiment2.Dates[i].GetValue());
+                Assert.Equal(condiment.CDates[i].GetValue(), condiment2.CDates[i].GetValue());
             }
         }
 
@@ -1316,7 +1314,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(bread);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1338,16 +1336,16 @@ namespace Cogs.Tests.Integration
             Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
-                GYearMonthList = new List<Tuple<int, int, string>>()
+                GYearMonthList = new List<GYearMonth>()
                 {
-                    new Tuple<int, int, string>(2017, 7 , null),
-                    new Tuple<int, int, string>(1996, 8, "+01:00")
+                    new GYearMonth(2017, 7 , null),
+                    new GYearMonth(1996, 8, "+01:00")
                 }
             };
             container.Items.Add(bread);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1450,7 +1448,7 @@ namespace Cogs.Tests.Integration
             animal.MeatPieces.Add(sirloin);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1506,7 +1504,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1529,18 +1527,18 @@ namespace Cogs.Tests.Integration
         public async void ListOfSimpleTypeGyear()
         {
             ItemContainer container = new ItemContainer();
-            Tuple<int, string> year1 = new Tuple<int, string>(1997, "+09:00");
-            Tuple<int, string> year2 = new Tuple<int, string>(2002, "+09:00");
-            Tuple<int, string> year3 = new Tuple<int, string>(2017, "Z");
+            GYear year1 = new GYear(1997, "+09:00");
+            GYear year2 = new GYear(2002, "+09:00");
+            GYear year3 = new GYear(2017, "Z");
             Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
-                Gyear = new List<Tuple<int, string>>() { year1, year2, year3 }
+                Gyear = new List<GYear>() { year1, year2, year3 }
             };
             container.Items.Add(bread);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1561,18 +1559,18 @@ namespace Cogs.Tests.Integration
         public async void ListOfSimpleTypeGMonth()
         {
             ItemContainer container = new ItemContainer();
-            Tuple<int, string> month1 = new Tuple<int, string>(6, "Z");
-            Tuple<int, string> month2 = new Tuple<int, string>(9, "+09:00");
-            Tuple<int, string> month3 = new Tuple<int, string>(17, "+01:00");
+            GMonth month1 = new GMonth(6, "Z");
+            GMonth month2 = new GMonth(9, "+09:00");
+            GMonth month3 = new GMonth(17, "+01:00");
             Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
-                Gmonth = new List<Tuple<int, string>>() { month1, month2, month3 }
+                Gmonth = new List<GMonth>() { month1, month2, month3 }
             };
             container.Items.Add(bread);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1593,13 +1591,13 @@ namespace Cogs.Tests.Integration
         public async void ListOfSimpleTypeGDay()
         {
             ItemContainer container = new ItemContainer();
-            Tuple<int, string> day1 = new Tuple<int, string>(1, "Z");
-            Tuple<int, string> day2 = new Tuple<int, string>(9, "+09:00");
-            Tuple<int, string> day3 = new Tuple<int, string>(12, "-01:00");
+            GDay day1 = new GDay(1, "Z");
+            GDay day2 = new GDay(9, "+09:00");
+            GDay day3 = new GDay(12, "-01:00");
             Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
-                Gday = new List<Tuple<int, string>>() { day1, day2, day3 }
+                Gday = new List<GDay>() { day1, day2, day3 }
             };
             container.Items.Add(bread);
 
@@ -1625,18 +1623,18 @@ namespace Cogs.Tests.Integration
         public async void ListOfSimpleTypeGMonthDay()
         {
             ItemContainer container = new ItemContainer();
-            Tuple<int, int, string> day1 = new Tuple<int, int, string>(1, 2, "+09:00");
-            Tuple<int, int, string> day2 = new Tuple<int, int, string>(9, 12, "Z");
-            Tuple<int, int, string> day3 = new Tuple<int, int, string>(12, 23, "+00:00");
+            GMonthDay day1 = new GMonthDay(1, 2, "+09:00");
+            GMonthDay day2 = new GMonthDay(9, 12, "Z");
+            GMonthDay day3 = new GMonthDay(12, 23, "+00:00");
             Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
-                GMonthDay = new List<Tuple<int, int, string>>() { day1, day2, day3 }
+                GMonthDay = new List<GMonthDay>() { day1, day2, day3 }
             };
             container.Items.Add(bread);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1657,18 +1655,18 @@ namespace Cogs.Tests.Integration
         public async void ListOfSimpleTypeGYearMonth()
         {
             ItemContainer container = new ItemContainer();
-            Tuple<int, int, string> ym1 = new Tuple<int, int, string>(1996, 2, "Z");
-            Tuple<int, int, string> ym2 = new Tuple<int, int, string>(2002, 9, "+03:00");
-            Tuple<int, int, string> ym3 = new Tuple<int, int, string>(2017, 12, "+02:00");
+            GYearMonth ym1 = new GYearMonth(1996, 2, "Z");
+            GYearMonth ym2 = new GYearMonth(2002, 9, "+03:00");
+            GYearMonth ym3 = new GYearMonth(2017, 12, "+02:00");
             Roll roll = new Roll
             {
                 ID = Guid.NewGuid().ToString(),
-                GYearMonth = new List<Tuple<int, int, string>>() { ym1, ym2, ym3 }
+                GYearMonth = new List<GYearMonth>() { ym1, ym2, ym3 }
             };
             container.Items.Add(roll);
 
             JsonSchema4 schema = await GetJsonSchema();
-           string json = JsonConvert.SerializeObject(container);
+            string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
