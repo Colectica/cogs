@@ -15,6 +15,7 @@ namespace Cogs.Model
         public List<TopicIndex> TopicIndices { get; } = new List<TopicIndex>();
 
         public List<Property> Identification { get; } = new List<Property>();
+        public Settings Settings { get; set; }
 
         public string ArticlesPath { get; set; }
         public List<string> ArticleTocEntries { get; } = new List<string>();

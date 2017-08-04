@@ -26,7 +26,7 @@ namespace Cogs.Model
             model.ArticlesPath = dto.ArticlesPath;
             model.ArticleTocEntries.AddRange(dto.ArticleTocEntries);
 
-            // First pass: create object stubs.
+            // Identification
             foreach (var id in dto.Identification)
             {
                 var property = new Property();
@@ -34,6 +34,91 @@ namespace Cogs.Model
                 model.Identification.Add(property);
             }
 
+            // Settings
+            model.Settings = new Settings();
+            foreach (var setting in dto.Settings)
+            {
+                switch (setting.Key)
+                {
+                    case "Title":
+                        model.Settings.Title = setting.Value;
+                        break;
+                    case "ShortTitle":
+                        model.Settings.ShortTitle = setting.Value;
+                        break;
+                    case "Slug":
+                        model.Settings.Slug = setting.Value;
+                        break;
+                    case "Description":
+                        model.Settings.Description = setting.Value;
+                        break;
+                    case "Version":
+                        model.Settings.Version = setting.Value;
+                        break;
+                    case "Author":
+                        model.Settings.Author = setting.Value;
+                        break;
+                    case "Copyright":
+                        model.Settings.Copyright = setting.Value;
+                        break;
+                    case "NamespaceUrl":
+                        model.Settings.NamespaceUrl = setting.Value;
+                        break;
+                    case "NamespacePrefix":
+                        model.Settings.NamespacePrefix = setting.Value;
+                        break;
+                    default:
+                        model.Settings.ExtraSettings.Add(setting.Key, setting.Value);
+                        break;
+                }
+            }
+
+            // Set defaults for well-known settings, if they are blank.
+            if (string.IsNullOrWhiteSpace(model.Settings.Title))
+            {
+                model.Settings.Title = "Model Title";
+            }
+            if (string.IsNullOrWhiteSpace(model.Settings.ShortTitle))
+            {
+                model.Settings.ShortTitle = "Model";
+            }
+            if (string.IsNullOrWhiteSpace(model.Settings.Slug))
+            {
+                model.Settings.ShortTitle = "model";
+            }
+
+            if (string.IsNullOrWhiteSpace(model.Settings.Description))
+            {
+                model.Settings.ShortTitle = "TODO";
+            }
+
+            if (string.IsNullOrWhiteSpace(model.Settings.Version))
+            {
+                model.Settings.ShortTitle = "0.1";
+            }
+
+            if (string.IsNullOrWhiteSpace(model.Settings.Author))
+            {
+                model.Settings.ShortTitle = "TODO";
+            }
+
+            if (string.IsNullOrWhiteSpace(model.Settings.Copyright))
+            {
+                model.Settings.ShortTitle = "TODO";
+            }
+
+            if (string.IsNullOrWhiteSpace(model.Settings.NamespaceUrl))
+            {
+                model.Settings.ShortTitle = "http://example.org/todo";
+            }
+
+            if (string.IsNullOrWhiteSpace(model.Settings.NamespacePrefix))
+            {
+                model.Settings.ShortTitle = "todo";
+            }
+
+
+            // First pass: create object stubs.
             string[] itemNames = dto.ItemTypes.Select(x => x.Name).ToArray();
 
             foreach (var itemTypeDto in dto.ItemTypes)

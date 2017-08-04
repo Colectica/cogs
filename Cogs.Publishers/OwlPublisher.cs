@@ -42,7 +42,7 @@ namespace Cogs.Publisher
             ItemTypeStorage = model.ItemTypes;
             set = new HashSet<string>();
             //Start here
-            var projName = "cogsburger";
+            var projName = model.Settings.Slug;
             StringBuilder res = new StringBuilder();
             res.AppendLine(@"<?xml version=""1.0""?>");
             res.AppendLine(@"<rdf:RDF xmlns=""http://www.semanticweb.org/clement/ontologies/2017/6/cogsburger#""");
