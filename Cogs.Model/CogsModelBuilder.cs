@@ -73,6 +73,51 @@ namespace Cogs.Model
                 }
             }
 
+            // Set defaults for well-known settings, if they are blank.
+            if (string.IsNullOrWhiteSpace(model.Settings.Title))
+            {
+                model.Settings.Title = "Model Title";
+            }
+            if (string.IsNullOrWhiteSpace(model.Settings.ShortTitle))
+            {
+                model.Settings.ShortTitle = "Model";
+            }
+            if (string.IsNullOrWhiteSpace(model.Settings.Slug))
+            {
+                model.Settings.ShortTitle = "model";
+            }
+
+            if (string.IsNullOrWhiteSpace(model.Settings.Description))
+            {
+                model.Settings.ShortTitle = "TODO";
+            }
+
+            if (string.IsNullOrWhiteSpace(model.Settings.Version))
+            {
+                model.Settings.ShortTitle = "0.1";
+            }
+
+            if (string.IsNullOrWhiteSpace(model.Settings.Author))
+            {
+                model.Settings.ShortTitle = "TODO";
+            }
+
+            if (string.IsNullOrWhiteSpace(model.Settings.Copyright))
+            {
+                model.Settings.ShortTitle = "TODO";
+            }
+
+            if (string.IsNullOrWhiteSpace(model.Settings.NamespaceUrl))
+            {
+                model.Settings.ShortTitle = "http://example.org/todo";
+            }
+
+            if (string.IsNullOrWhiteSpace(model.Settings.NamespacePrefix))
+            {
+                model.Settings.ShortTitle = "todo";
+            }
+
+
             // First pass: create object stubs.
             string[] itemNames = dto.ItemTypes.Select(x => x.Name).ToArray();
 
