@@ -15,6 +15,8 @@ namespace Cogs.Validation
         {
             List<CogsError> errors = new List<CogsError>();
 
+            errors = CheckSettings(model, errors);
+
             errors = CheckDataTypesMustBeDefined(model, errors);
             errors = CheckDataTypeNamesShouldMatchCase(model, errors);
             errors = CheckDataTypeNamesShouldNotConflictWithBuiltins(model, errors);
@@ -26,7 +28,6 @@ namespace Cogs.Validation
 
             return errors;
         }
-
 
         public static List<CogsError> CheckDuplicatePropertiesInSameItem(CogsDtoModel model, List<CogsError> errors = null)
         {
@@ -171,6 +172,20 @@ namespace Cogs.Validation
             }
             return errors;
         }
+
+        public static List<CogsError> CheckSettings(CogsDtoModel model, List<CogsError> errors)
+        {
+            // If a slug is set, it must not contain spaces.
+            // TODO check for other characters that would be invalid in URLs, C#/Java namespaces, etc.
+            var slugSetting = model.Settings.FirstOrDefault(x => x.Key == "Slug");
+            if (slugSetting.Value.Contains(" "))
+            {
+                errors.Add(new CogsError(ErrorLevel.Error, "The slug cannot contain spaces"));
+            }
+
+            return errors;
+        }
+
 
     }
 }
