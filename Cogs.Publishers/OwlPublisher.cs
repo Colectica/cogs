@@ -103,6 +103,7 @@ namespace Cogs.Publisher
                 {
                     StringBuilder GenClass = new StringBuilder();
                     GenClass.AppendLine(@"  <owl:Class rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + item.Name + @""">");
+                    GenClass.AppendLine(@"    <rdfs:label xml:lang=""en"">"+ item.Name +"</rdfs:label>");
                     GenClass.AppendLine(@"      <rdfs:comment>"+item.Description+"</rdfs:comment>");
                     if(item.ExtendsTypeName == null || item.ExtendsTypeName.Equals(""))
                     {
@@ -142,6 +143,7 @@ namespace Cogs.Publisher
                 {
                     StringBuilder GenClass = new StringBuilder();
                     GenClass.AppendLine(@"  <owl:Class rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + item.Name + @""">");
+                    GenClass.AppendLine(@"    <rdfs:label xml:lang=""en"">" + item.Name + "</rdfs:label>");
                     GenClass.AppendLine(@"      <rdfs:comment>" + item.Description + "</rdfs:comment>");
                     if (item.ExtendsTypeName == null || item.ExtendsTypeName.Equals(""))
                     {
@@ -190,6 +192,7 @@ namespace Cogs.Publisher
                             if (IsItemType(prop.DataType.Name) || IsReusableType(prop.DataType.Name))
                             {
                                 ObjectProp.AppendLine(@"  <owl:ObjectProperty rdf:about = ""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.Name + @""">");
+                                ObjectProp.AppendLine(@"    <rdfs:label xml:lang=""en"">" + prop.Name + "</rdfs:label>");
                                 ObjectProp.AppendLine(@"    <rdfs:comment>" + prop.Description + "</rdfs:comment>");
                                 //ObjectProp.AppendLine(@"    <rdfs:domain rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + props.Name + @"""/>");
                                 addRestrictionDomain(ObjectProp, prop, projName);
@@ -203,6 +206,7 @@ namespace Cogs.Publisher
                                 {
                                     DataProp.AppendLine(@"      <owl:ObjectProperty rdf:about = ""http://www.semanticweb.org/clement/ontologies/2017/6/cogsburger#CogsDate"">");
                                     //DataProp.AppendLine(@"          <rdfs:domain rdf:resource = ""http://www.semanticweb.org/clement/ontologies/2017/6/cogsburger#" + props.Name + @"""/>");
+                                    DataProp.AppendLine(@"      <rdfs:label xml:lang=""en"">CogsDate</rdfs:label>");
                                     addRestrictionDomain(DataProp, prop, projName);
                                     DataProp.AppendLine(@"          <rdfs:range>");
                                     DataProp.AppendLine(@"              <owl:Restriction>");
@@ -216,6 +220,7 @@ namespace Cogs.Publisher
                                 else
                                 {
                                     DataProp.AppendLine(@"  <owl:DatatypeProperty rdf:about = ""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.Name + @""">");
+                                    DataProp.AppendLine(@"      <rdfs:label xml:lang=""en"">" + prop.Name + "</rdfs:label>");
                                     DataProp.AppendLine(@"      <rdfs:comment>" + prop.Description + "</rdfs:comment>");
                                     //DataProp.AppendLine(@"      <rdfs:domain rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + props.Name + @"""/>");
                                     addRestrictionDomain(DataProp, prop, projName);
@@ -254,6 +259,7 @@ namespace Cogs.Publisher
                             if (IsItemType(prop.DataType.Name) || IsReusableType(prop.DataType.Name))
                             {
                                 ObjectProp.AppendLine(@"  <owl:ObjectProperty rdf:about = ""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.Name + @""">");
+                                ObjectProp.AppendLine(@"    <rdfs:label xml:lang=""en"">" + prop.Name + "</rdfs:label>");
                                 ObjectProp.AppendLine(@"    <rdfs:comment>" + prop.Description + "</rdfs:comment>");
                                 //ObjectProp.AppendLine(@"    <rdfs:domain rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + props.Name + @"""/>");
                                 addRestrictionDomain(ObjectProp, prop, projName);
@@ -266,6 +272,7 @@ namespace Cogs.Publisher
                                 if (prop.DataType.Name.Equals("cogsDate"))
                                 {
                                     DataProp.AppendLine(@"      <owl:ObjectProperty rdf:about = ""http://www.semanticweb.org/clement/ontologies/2017/6/cogsburger#CogsDate"">");
+                                    DataProp.AppendLine(@"          <rdfs:label xml:lang=""en"">CogsDate</rdfs:label>");
                                     //DataProp.AppendLine(@"          <rdfs:domain rdf:resource = ""http://www.semanticweb.org/clement/ontologies/2017/6/cogsburger#" + props.Name + @"""/>");
                                     addRestrictionDomain(DataProp, prop, projName);
                                     DataProp.AppendLine(@"          <rdfs:range>");
@@ -280,6 +287,7 @@ namespace Cogs.Publisher
                                 else
                                 {
                                     DataProp.AppendLine(@"  <owl:DatatypeProperty rdf:about = ""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.Name + @""">");
+                                    DataProp.AppendLine(@"      <rdfs:label xml:lang=""en"">" + prop.Name + "</rdfs:label>");
                                     DataProp.AppendLine(@"      <rdfs:comment>" + prop.Description + "</rdfs:comment>");
                                     //DataProp.AppendLine(@"      <rdfs:domain rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + props.Name + @"""/>");
                                     addRestrictionDomain(DataProp, prop, projName);
@@ -307,6 +315,7 @@ namespace Cogs.Publisher
         {
             StringBuilder GenCogsDate = new StringBuilder();
             GenCogsDate.AppendLine(@"  <owl:ObjectProperty rdf:about=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + @"#cogsDate"">");
+            GenCogsDate.AppendLine(@"    <rdfs:label xml:lang=""en"">cogsDate</rdfs:label>");
             GenCogsDate.AppendLine(@"    <rdfs:comment>Simple Type for cogsDate</rdfs:comment>");
             GenCogsDate.AppendLine(@"       <rdfs:range>");
             GenCogsDate.AppendLine(@"           <owl:Restriction>");
@@ -349,6 +358,7 @@ namespace Cogs.Publisher
             //date
             StringBuilder GenDate = new StringBuilder();
             GenDate.AppendLine(@"  <owl:DatatypeProperty rdf:about=""http://www.w3.org/2001/XMLSchema#date"">");
+            GenDate.AppendLine(@"    <rdfs:label xml:lang=""en"">date</rdfs:label>");
             GenDate.AppendLine(@"    <rdfs:comment>Simple Type for date</rdfs:comment>");
             GenDate.AppendLine(@"    <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#date""/>");
             GenDate.AppendLine(@"  </owl:DatatypeProperty>");
@@ -357,6 +367,7 @@ namespace Cogs.Publisher
             //dateTime
             StringBuilder GenDateTime = new StringBuilder();
             GenDateTime.AppendLine(@"  <owl:DatatypeProperty rdf:about=""http://www.w3.org/2001/XMLSchema#dateTime"">");
+            GenDateTime.AppendLine(@"    <rdfs:label xml:lang=""en"">dateTime</rdfs:label>");
             GenDateTime.AppendLine(@"    <rdfs:comment>Simple Type for dateTime</rdfs:comment>");
             GenDateTime.AppendLine(@"    <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#dateTime""/>");
             GenDateTime.AppendLine(@"  </owl:DatatypeProperty>");
@@ -365,6 +376,7 @@ namespace Cogs.Publisher
             //duration
             StringBuilder GenDuration = new StringBuilder();
             GenDuration.AppendLine(@"  <owl:DatatypeProperty rdf:about=""http://www.w3.org/2001/XMLSchema#duration"">");
+            GenDuration.AppendLine(@"    <rdfs:label xml:lang=""en"">duration</rdfs:label>");
             GenDuration.AppendLine(@"    <rdfs:comment>Simple Type for date</rdfs:comment>");
             GenDuration.AppendLine(@"    <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#duration""/>");
             GenDuration.AppendLine(@"  </owl:DatatypeProperty>");
@@ -373,6 +385,7 @@ namespace Cogs.Publisher
             //gYear
             StringBuilder GengYear = new StringBuilder();
             GengYear.AppendLine(@"  <owl:DatatypeProperty rdf:about=""http://www.w3.org/2001/XMLSchema#gYear"">");
+            GengYear.AppendLine(@"    <rdfs:label xml:lang=""en"">gYear</rdfs:label>");
             GengYear.AppendLine(@"    <rdfs:comment>Simple Type for gYear</rdfs:comment>");
             GengYear.AppendLine(@"    <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#gYear""/>");
             GengYear.AppendLine(@"  </owl:DatatypeProperty>");
@@ -381,6 +394,7 @@ namespace Cogs.Publisher
             //gYearMonth
             StringBuilder GengYearMonth = new StringBuilder();
             GengYearMonth.AppendLine(@"  <owl:DatatypeProperty rdf:about=""http://www.w3.org/2001/XMLSchema#gYearMonth"">");
+            GengYearMonth.AppendLine(@"    <rdfs:label xml:lang=""en"">gYearMonth</rdfs:label>");
             GengYearMonth.AppendLine(@"    <rdfs:comment>Simple Type for gYearMonth</rdfs:comment>");
             GengYearMonth.AppendLine(@"    <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#gYearMonth""/>");
             GengYearMonth.AppendLine(@"  </owl:DatatypeProperty>");

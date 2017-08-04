@@ -427,22 +427,22 @@ namespace Cogs.Console
             app.Command("publish-owl", (command) =>
             {
 
-                command.Description = "Publish an XML schema from a COGS data model";
+                command.Description = "Publish an OWL/RDF schema from a COGS data model";
                 command.HelpOption("-?|-h|--help");
 
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
-                var targetArgument = command.Argument("[targetLocation]", "Directory where the xsd schema is generated.");
+                var targetArgument = command.Argument("[targetLocation]", "Directory where the owl schema is generated.");
 
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
                                            CommandOptionType.NoValue);
 
                 var namespaceUri = command.Option("-n|--namespace",
-                                           "URI of the target XML namespace",
+                                           "URI of the target Owl namespace",
                                            CommandOptionType.SingleValue);
 
                 var namespaceUriPrefix = command.Option("-p|--namespacePrefix",
-                                           "Namespace prefix to use for the target XML namespace",
+                                           "Namespace prefix to use for the target Owl namespace",
                                            CommandOptionType.SingleValue);
 
                 command.OnExecute(() =>
@@ -453,25 +453,25 @@ namespace Cogs.Console
                     var targetNamespace = namespaceUri.Value() ?? "cogs:default";
                     var prefix = namespaceUriPrefix.Value() ?? "cogs";
 
-                    //try
-                    //{
-                    //    XmlConvert.VerifyName(prefix);
-                    //}
-                    //catch (XmlException xmlEx)
-                    //{
-                    //    CogsError xmlPrefixError = new CogsError(ErrorLevel.Error, "Invalid xml prefix string", xmlEx);
-                    //    HandleErrors(new List<CogsError>() { xmlPrefixError });
-                    //}
+                    try
+                    {
+                        XmlConvert.VerifyName(prefix);
+                    }
+                    catch (XmlException xmlEx)
+                    {
+                        CogsError xmlPrefixError = new CogsError(ErrorLevel.Error, "Invalid xml prefix string", xmlEx);
+                        HandleErrors(new List<CogsError>() { xmlPrefixError });
+                    }
 
                     // read cogs directory and validate the contents
                     var directoryReader = new CogsDirectoryReader();
                     var cogsDtoModel = directoryReader.Load(location);
-                    //HandleErrors(directoryReader.Errors);
-                    //HandleErrors(DtoValidation.Validate(cogsDtoModel));
+                    HandleErrors(directoryReader.Errors);
+                    HandleErrors(DtoValidation.Validate(cogsDtoModel));
 
                     var modelBuilder = new CogsModelBuilder();
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
-                    //HandleErrors(modelBuilder.Errors);
+                    HandleErrors(modelBuilder.Errors);
 
                     OwlPublisher publisher = new OwlPublisher
                     {
@@ -488,6 +488,7 @@ namespace Cogs.Console
 
                     return 0;
                 });
+
             });
 
             app.OnExecute(() =>
