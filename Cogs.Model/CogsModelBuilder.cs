@@ -52,6 +52,15 @@ namespace Cogs.Model
                     case "Description":
                         model.Settings.Description = setting.Value;
                         break;
+                    case "Version":
+                        model.Settings.Version = setting.Value;
+                        break;
+                    case "Author":
+                        model.Settings.Author = setting.Value;
+                        break;
+                    case "Copyright":
+                        model.Settings.Copyright = setting.Value;
+                        break;
                     case "NamespaceUrl":
                         model.Settings.NamespaceUrl = setting.Value;
                         break;
