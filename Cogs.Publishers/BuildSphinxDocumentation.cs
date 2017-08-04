@@ -75,7 +75,7 @@ namespace Cogs.Publishers
             var builder = new StringBuilder();
 
             // Title
-            builder.AppendLine("Example Title");
+            builder.AppendLine(cogsModel.Settings.Title);
             builder.AppendLine("=============");
             builder.AppendLine();
 
@@ -289,7 +289,7 @@ namespace Cogs.Publishers
                 indexBuilder.Append("=");
             }
             indexBuilder.AppendLine();
-            indexBuilder.AppendLine($"The DDI standard has {dataTypes.Count} {lowerTitle}.");
+            indexBuilder.AppendLine($"{cogsModel.Settings.ShortTitle} has {dataTypes.Count} {lowerTitle}.");
             indexBuilder.AppendLine();
             indexBuilder.AppendLine(".. toctree::");
             indexBuilder.AppendLine("   :maxdepth: 1");
@@ -351,7 +351,7 @@ namespace Cogs.Publishers
                 builder.AppendLine("Item Types");
                 builder.AppendLine("**********");
                 builder.AppendLine();
-                builder.AppendLine($"The DDI standard has {view.ItemTypes.Count} item types related to {view.Name}.");
+                builder.AppendLine($"{cogsModel.Settings.ShortTitle} has {view.ItemTypes.Count} item types related to {view.Name}.");
                 builder.AppendLine();
 
                 builder.AppendLine(".. toctree::");
@@ -584,10 +584,10 @@ help:
             string template = GetConfDotPyTemplate();
 
             return template
-                .Replace("@Title", "EXAMPLE TITLE")
-                .Replace("@Author", "Example Author")
-                .Replace("@Version", "1.0")
-                .Replace("@Copyright", "Example Copyright");
+                .Replace("@Title", cogsModel.Settings.Title)
+                .Replace("@Author", cogsModel.Settings.Author)
+                .Replace("@Version", cogsModel.Settings.Version)
+                .Replace("@Copyright", cogsModel.Settings.Copyright);
         }
 
         

@@ -52,7 +52,7 @@ namespace Cogs.Publishers
 
             InitializeDictionary();
             //get the project name
-            var projName = "cogsBurger";
+            var projName = model.Settings.Slug;
             CreateIIdentifiable(model, projName);
             CreateItemContainer(model, projName);
             //create project file

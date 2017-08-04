@@ -52,7 +52,7 @@ namespace Cogs.Publishers
             Directory.CreateDirectory(TargetDirectory);
 
             //TODO: get project name and set it here
-            string projectName = "CogsBurger";
+            string projectName = model.Settings.Slug;
 
             // set namespaces based on output format
             XNamespace xmins = "http://www.omg.org/spec/XMI/20110701";
