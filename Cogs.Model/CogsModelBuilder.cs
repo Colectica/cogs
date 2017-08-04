@@ -26,7 +26,7 @@ namespace Cogs.Model
             model.ArticlesPath = dto.ArticlesPath;
             model.ArticleTocEntries.AddRange(dto.ArticleTocEntries);
 
-            // First pass: create object stubs.
+            // Identification
             foreach (var id in dto.Identification)
             {
                 var property = new Property();
@@ -34,6 +34,37 @@ namespace Cogs.Model
                 model.Identification.Add(property);
             }
 
+            // Settings
+            model.Settings = new Settings();
+            foreach (var setting in dto.Settings)
+            {
+                switch (setting.Key)
+                {
+                    case "Title":
+                        model.Settings.Title = setting.Value;
+                        break;
+                    case "ShortTitle":
+                        model.Settings.ShortTitle = setting.Value;
+                        break;
+                    case "Slug":
+                        model.Settings.Slug = setting.Value;
+                        break;
+                    case "Description":
+                        model.Settings.Description = setting.Value;
+                        break;
+                    case "NamespaceUrl":
+                        model.Settings.NamespaceUrl = setting.Value;
+                        break;
+                    case "NamespacePrefix":
+                        model.Settings.NamespacePrefix = setting.Value;
+                        break;
+                    default:
+                        model.Settings.ExtraSettings.Add(setting.Key, setting.Value);
+                        break;
+                }
+            }
+
+            // First pass: create object stubs.
             string[] itemNames = dto.ItemTypes.Select(x => x.Name).ToArray();
 
             foreach (var itemTypeDto in dto.ItemTypes)

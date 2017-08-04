@@ -26,7 +26,6 @@ namespace Cogs.Dto
             SettingsDirectoryName = Path.Combine(directory, "Settings");
             string identificationFile = Path.Combine(SettingsDirectoryName, "Identification.csv");
 
-
             if (!File.Exists(identificationFile))
             {
                 Errors.Add(new CogsError(ErrorLevel.Error, "identification information is not present in the Settings directory."));
@@ -34,8 +33,8 @@ namespace Cogs.Dto
             }
 
 
-            string csvStr = File.ReadAllText(identificationFile, Encoding.UTF8);
-            using (var textReader = new StringReader(csvStr))
+            string idCsvStr = File.ReadAllText(identificationFile, Encoding.UTF8);
+            using (var textReader = new StringReader(idCsvStr))
             {
                 try
                 {
@@ -49,6 +48,25 @@ namespace Cogs.Dto
                     return model;
                 }
             }
+
+            // Load settings
+            string settingsFileName = Path.Combine(SettingsDirectoryName, "Settings.csv");
+            string settingsCsvStr = File.ReadAllText(settingsFileName, Encoding.UTF8);
+            using (var textReader = new StringReader(settingsCsvStr))
+            {
+                try
+                {
+                    var csvReader = new CsvReader(textReader);
+                    var records = csvReader.GetRecords<Setting>();
+                    model.Settings.AddRange(records);
+                }
+                catch(Exception e)
+                {
+                    Errors.Add(new CogsError(ErrorLevel.Error, e.Message + " " + identificationFile, e));
+                    return model;
+                }
+            }
+
 
             // Load information about articles.
             string articlesPath = Path.Combine(directory, "Articles");
@@ -91,6 +109,7 @@ namespace Cogs.Dto
 
                 model.TopicIndices.Add(view);
             }
+
 
             return model;
         }
