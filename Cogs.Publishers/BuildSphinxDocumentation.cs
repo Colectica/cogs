@@ -265,7 +265,7 @@ namespace Cogs.Publishers
                 builder.AppendLine("   |stub|");
                 builder.AppendLine();
                 builder.Append(".. |stub| image:: ");
-                builder.AppendLine(Path.Combine("..", "..", "images", itemType.Name + ".svg"));
+                builder.AppendLine(Path.Combine("../../images/" + itemType.Name + ".svg"));
                 builder.AppendLine();
 
                 // Output Properties details
