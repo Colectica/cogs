@@ -84,37 +84,37 @@ namespace Cogs.Model
             }
             if (string.IsNullOrWhiteSpace(model.Settings.Slug))
             {
-                model.Settings.ShortTitle = "model";
+                model.Settings.Slug = "model";
             }
 
             if (string.IsNullOrWhiteSpace(model.Settings.Description))
             {
-                model.Settings.ShortTitle = "TODO";
+                model.Settings.Description = "TODO";
             }
 
             if (string.IsNullOrWhiteSpace(model.Settings.Version))
             {
-                model.Settings.ShortTitle = "0.1";
+                model.Settings.Version = "0.1";
             }
 
             if (string.IsNullOrWhiteSpace(model.Settings.Author))
             {
-                model.Settings.ShortTitle = "TODO";
+                model.Settings.Author = "TODO";
             }
 
             if (string.IsNullOrWhiteSpace(model.Settings.Copyright))
             {
-                model.Settings.ShortTitle = "TODO";
+                model.Settings.Copyright = "TODO";
             }
 
             if (string.IsNullOrWhiteSpace(model.Settings.NamespaceUrl))
             {
-                model.Settings.ShortTitle = "http://example.org/todo";
+                model.Settings.NamespaceUrl = "http://example.org/todo";
             }
 
             if (string.IsNullOrWhiteSpace(model.Settings.NamespacePrefix))
             {
-                model.Settings.ShortTitle = "todo";
+                model.Settings.NamespacePrefix = "todo";
             }
 
 
