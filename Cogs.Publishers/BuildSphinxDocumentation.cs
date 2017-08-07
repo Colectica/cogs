@@ -76,7 +76,7 @@ namespace Cogs.Publishers
 
             // Title
             builder.AppendLine(cogsModel.Settings.Title);
-            builder.AppendLine("=============");
+            builder.AppendLine(GetRepeatedCharacters(cogsModel.Settings.Title, "="));
             builder.AppendLine();
 
             // Articles TOCs
