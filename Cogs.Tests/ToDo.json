@@ -3,7 +3,7 @@
 		{
 			"$type": "ref",
 			"value": [
-				"cogsBurger.Hamburger",
+				"Hamburger",
 				"b43cf994-6235-4d40-b999-33fc89bd7c80"
 			]
 		}
