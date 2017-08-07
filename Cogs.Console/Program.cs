@@ -82,18 +82,6 @@ namespace Cogs.Console
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
-                    var targetNamespace = namespaceUri.Value() ?? "cogs:default";
-                    var prefix = namespaceUriPrefix.Value() ?? "cogs";
-
-                    try
-                    {
-                        XmlConvert.VerifyName(prefix);
-                    }
-                    catch(XmlException xmlEx)
-                    {
-                        CogsError xmlPrefixError = new CogsError(ErrorLevel.Error, "Invalid xml prefix string", xmlEx);
-                        HandleErrors(new List<CogsError>() { xmlPrefixError });
-                    }
 
                     // read cogs directory and validate the contents
                     var directoryReader = new CogsDirectoryReader();                    
@@ -104,6 +92,18 @@ namespace Cogs.Console
                     var modelBuilder = new CogsModelBuilder();
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
                     HandleErrors(modelBuilder.Errors);
+
+                    var targetNamespace = namespaceUri.Value() ?? cogsModel.Settings.NamespaceUrl;
+                    var prefix = namespaceUriPrefix.Value() ?? cogsModel.Settings.NamespacePrefix;
+                    try
+                    {
+                        XmlConvert.VerifyName(prefix);
+                    }
+                    catch(XmlException xmlEx)
+                    {
+                        CogsError xmlPrefixError = new CogsError(ErrorLevel.Error, "Invalid xml prefix string", xmlEx);
+                        HandleErrors(new List<CogsError>() { xmlPrefixError });
+                    }
 
                     XmlSchemaPublisher publisher = new XmlSchemaPublisher
                     {
@@ -261,9 +261,15 @@ namespace Cogs.Console
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
-                    var targetNamespace = namespaceUri.Value() ?? "cogs:default";
-                    var prefix = namespaceUriPrefix.Value() ?? "cogs";
 
+                    var directoryReader = new CogsDirectoryReader();
+                    var cogsDtoModel = directoryReader.Load(location);
+
+                    var modelBuilder = new CogsModelBuilder();
+                    var cogsModel = modelBuilder.Build(cogsDtoModel);
+
+                    var targetNamespace = namespaceUri.Value() ?? cogsModel.Settings.NamespaceUrl;
+                    var prefix = namespaceUriPrefix.Value() ?? cogsModel.Settings.NamespacePrefix;
                     try
                     {
                         XmlConvert.VerifyName(prefix);
@@ -273,12 +279,6 @@ namespace Cogs.Console
                         CogsError xmlPrefixError = new CogsError(ErrorLevel.Error, "Invalid xml prefix string", xmlEx);
                         HandleErrors(new List<CogsError>() { xmlPrefixError });
                     }
-
-                    var directoryReader = new CogsDirectoryReader();
-                    var cogsDtoModel = directoryReader.Load(location);
-
-                    var modelBuilder = new CogsModelBuilder();
-                    var cogsModel = modelBuilder.Build(cogsDtoModel);
 
                     CsSchemaPublisher publisher = new CsSchemaPublisher
                     {
@@ -450,18 +450,6 @@ namespace Cogs.Console
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
-                    var targetNamespace = namespaceUri.Value() ?? "cogs:default";
-                    var prefix = namespaceUriPrefix.Value() ?? "cogs";
-
-                    try
-                    {
-                        XmlConvert.VerifyName(prefix);
-                    }
-                    catch (XmlException xmlEx)
-                    {
-                        CogsError xmlPrefixError = new CogsError(ErrorLevel.Error, "Invalid xml prefix string", xmlEx);
-                        HandleErrors(new List<CogsError>() { xmlPrefixError });
-                    }
 
                     // read cogs directory and validate the contents
                     var directoryReader = new CogsDirectoryReader();
@@ -472,6 +460,19 @@ namespace Cogs.Console
                     var modelBuilder = new CogsModelBuilder();
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
                     HandleErrors(modelBuilder.Errors);
+
+                    var targetNamespace = namespaceUri.Value() ?? cogsModel.Settings.NamespaceUrl;
+                    var prefix = namespaceUriPrefix.Value() ?? cogsModel.Settings.NamespacePrefix;
+
+                    try
+                    {
+                        XmlConvert.VerifyName(prefix);
+                    }
+                    catch (XmlException xmlEx)
+                    {
+                        CogsError xmlPrefixError = new CogsError(ErrorLevel.Error, "Invalid xml prefix string", xmlEx);
+                        HandleErrors(new List<CogsError>() { xmlPrefixError });
+                    }
 
                     OwlPublisher publisher = new OwlPublisher
                     {
