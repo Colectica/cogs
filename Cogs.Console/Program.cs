@@ -492,6 +492,45 @@ namespace Cogs.Console
 
             });
 
+            app.Command("cogs-new", (command) =>
+            {
+                command.Description = "create a model skeleton";
+                command.HelpOption("-?|-h|--help");
+                
+                var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
+                var targetArgument = command.Argument("[targetLocation]", "Directory where the json schema is generated.");
+
+                var overwriteOption = command.Option("-o|--overwrite",
+                                           "If the target directory exists, delete and overwrite the location",
+                                           CommandOptionType.NoValue);
+
+
+
+                command.OnExecute(() =>
+                {
+                    var location = locationArgument.Value ?? Environment.CurrentDirectory;
+                    var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
+                    bool overwrite = overwriteOption.HasValue();
+
+                    var directoryReader = new CogsDirectoryReader();
+                    var cogsDtoModel = directoryReader.Load(location);
+
+                    var modelBuilder = new CogsModelBuilder();
+                    var cogsModel = modelBuilder.Build(cogsDtoModel);
+
+                    ModelInitializer cogsmodel = new ModelInitializer
+                    {
+                        Dir = location
+                    };
+
+                    cogsmodel.Create();
+
+
+                    return 0;
+                });
+
+            });
+
             app.OnExecute(() =>
             {
                 System.Console.WriteLine("Cogs");
