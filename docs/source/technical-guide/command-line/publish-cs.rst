@@ -8,15 +8,15 @@ Required inputs for publish-cs command (must be specified in order).
 
 * ``[CogsLocation]`` 
 
-    The location of folder containing model.
+    The location of the folder containing model.
 
 * ``[TargetLocation]`` 
 
-    The location of folder where the output will be created.
+    The location of the folder where the output will be created.
 
 Command Line Flags
 ----------------------
-Optional inputs for publish-cs command in no particular order.
+Optional inputs for publish-cs command.
 
 * ``-?|-h|--help``
 
@@ -36,7 +36,7 @@ Optional inputs for publish-cs command in no particular order.
 
 Example Command Line Usage
 --------------------------
-A few examples of how the command line arguments and flags are used together.
+A few examples of how the command line arguments and flags can be used together.
 
 .. code-block:: console
 

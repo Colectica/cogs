@@ -188,7 +188,7 @@ namespace Cogs.Console
                                            CommandOptionType.NoValue);
                 var outputFormat = command.Option("-f|--format", "Specifies format for output file. Defaults to svg", CommandOptionType.SingleValue);
                 var outputAll = command.Option("-a|--all",
-                                           "generate one graph containing all objects. Connot be used with -s",
+                                           "generate one graph containing all objects. Cannot be used with -s",
                                            CommandOptionType.NoValue);
                 var outputSingle = command.Option("-s|--single",
                                            "generate a graph for every single item (incoming links and outgoing links). Cannot be used with -a",
