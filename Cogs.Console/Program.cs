@@ -253,7 +253,7 @@ namespace Cogs.Console
                                            "URI of the target XML namespace",
                                            CommandOptionType.SingleValue);
 
-                var namespaceUriPrefix = command.Option("-p|--namespacePrefix",
+                var namespaceUriPrefix = command.Option("-p|--prefix",
                                            "Namespace prefix to use for the target XML namespace",
                                            CommandOptionType.SingleValue);
                 command.OnExecute(() =>
