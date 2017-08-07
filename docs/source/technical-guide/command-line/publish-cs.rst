@@ -47,22 +47,35 @@ A few examples of how the command line arguments and flags are used together.
 
 Simple Type Mappings to c#
 --------------------------
-============    =================
-Simple Type     c# representation
-============    =================
-Duration        `Timespan <https://msdn.microsoft.com/en-us/library/system.timespan(v=vs.110).aspx>`_
-DateTime        `DateTimeOffset <https://msdn.microsoft.com/en-us/library/system.datetimeoffset(v=vs.110).aspx>`_
-Time            `DateTimeOffset <https://msdn.microsoft.com/en-us/library/system.datetimeoffset(v=vs.110).aspx>`_
-Date            `DateTimeOffset <https://msdn.microsoft.com/en-us/library/system.datetimeoffset(v=vs.110).aspx>`_
-GYearMonth      Custom GYearMonth_ class
-GMonthDay       Custom GMonthDay_ class
-GYear           Custom GYear_ class
-GMonth          Custom GMonth_ class
-GDay            Custom GDay_ class
-AnyURI          `Uri <https://msdn.microsoft.com/en-us/library/system.uri(v=vs.110).aspx?>`_
-Language        `String <https://msdn.microsoft.com/en-us/library/system.string(v=vs.110).aspx>`_
-CogsDate        Custom CogsDate_ class 
-============    =================
+===================     =================
+Simple Type             c# representation
+===================     =================
+AnyURI                  `Uri <https://msdn.microsoft.com/en-us/library/system.uri(v=vs.110).aspx?>`_
+Boolean                 `bool <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/bool>`_
+CogsDate                Custom CogsDate_ class
+Date                    `DateTimeOffset <https://msdn.microsoft.com/en-us/library/system.datetimeoffset(v=vs.110).aspx>`_
+DateTime                `DateTimeOffset <https://msdn.microsoft.com/en-us/library/system.datetimeoffset(v=vs.110).aspx>`_
+Decimal                 `decimal <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/decimal>`_
+Double                  `double <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/double>`_
+Duration                `TimeSpan <https://msdn.microsoft.com/en-us/library/system.timespan(v=vs.110).aspx>`_
+Float                   `float <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/float>`_
+GYearMonth              Custom GYearMonth_ class
+GMonthDay               Custom GMonthDay_ class
+GYear                   Custom GYear_ class
+GMonth                  Custom GMonth_ class
+GDay                    Custom GDay_ class
+Integer                 `int <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/int>`_
+Integer                 `int <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/int>`_
+Language                `String <https://msdn.microsoft.com/en-us/library/system.string(v=vs.110).aspx>`_
+Long                    `long <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/long>`_
+NegativeInteger         `int <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/int>`_
+NonNegativeInteger      `int <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/int>`_
+NonPositiveInteger      `int <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/int>`_
+PositiveInteger         `int <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/int>`_
+String                  `String <https://msdn.microsoft.com/en-us/library/system.string(v=vs.110).aspx>`_
+Time                    `DateTimeOffset <https://msdn.microsoft.com/en-us/library/system.datetimeoffset(v=vs.110).aspx>`_
+UnsignedLong            `ulong <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/ulong>`_
+===================     =================
 
 Custom Simple Types in c#
 -------------------------
