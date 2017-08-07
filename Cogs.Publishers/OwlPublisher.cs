@@ -40,6 +40,8 @@ namespace Cogs.Publisher
                 Directory.Delete(TargetDirectory, true);
             }
 
+            Directory.CreateDirectory(TargetDirectory);
+
             ReusableStorage = model.ReusableDataTypes;
             ItemTypeStorage = model.ItemTypes;
             set = new HashSet<string>();
