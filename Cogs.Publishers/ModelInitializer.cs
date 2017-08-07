@@ -34,9 +34,9 @@ namespace Cogs.Publishers
 
             //write to the directory
             //create items
-            List<DataInformation> items = new List<DataInformation>()
+            List<Property> items = new List<Property>()
             {
-                new DataInformation()
+                new Property()
                 {
                     Name="name",
                     DataType="string",
@@ -44,7 +44,7 @@ namespace Cogs.Publishers
                     MaxCardinality="1",
                     Description="Name of the object being referenced"
                 },
-                new DataInformation()
+                new Property()
                 {
                     Name="ID",
                     DataType="string",
@@ -76,9 +76,9 @@ namespace Cogs.Publishers
             DirectoryInfo r1 = Directory.CreateDirectory(Path.Combine(rt.FullName, "Type1"));
             DirectoryInfo r2 = Directory.CreateDirectory(Path.Combine(rt.FullName, "Type2"));
 
-            List<DataInformation>reusableitem1 = new List<DataInformation>()
+            List<Property>reusableitem1 = new List<Property>()
             {
-                new DataInformation()
+                new Property()
                 {
                     Name="val",
                     DataType="int",
@@ -100,9 +100,9 @@ namespace Cogs.Publishers
             File.WriteAllText(Path.Combine(r1.FullName, "readme.md"), reuse1readme.ToString());
 
             //create reuse2
-            List<DataInformation> reusableitem2 = new List<DataInformation>()
+            List<Property> reusableitem2 = new List<Property>()
             {
-                new DataInformation()
+                new Property()
                 {
                     Name="length",
                     DataType="double",
@@ -124,9 +124,9 @@ namespace Cogs.Publishers
             File.WriteAllText(Path.Combine(r2.FullName, "readme.md"), reuse2readme.ToString());
 
             //Create setting
-            List<DataInformation> identification1 = new List<DataInformation>()
+            List<Property> identification1 = new List<Property>()
             {
-                new DataInformation()
+                new Property()
                 {
                     Name="ID",
                     DataType="string",
