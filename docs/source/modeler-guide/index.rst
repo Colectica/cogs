@@ -33,4 +33,5 @@ A COGS model consists of the following core components.
    topics
    articles
    primitive-types
+   identification
 
