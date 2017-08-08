@@ -4,7 +4,7 @@ Publish-Json
 Introduction
 ----------------------
 
-Generate a json file that describe the itemTypes, reusableTypes and simpleTypes as well
+Generate a json file that describe the Item type, Composite type and Primitive type as well
 as showing the connection between this items. 
 
 Command Line Argument
@@ -32,10 +32,14 @@ Command Line Flags
 
     Delete and overwrite the directory if the target directory exits
 
+* ``-a|--allowAdditionalProperties``
+
+    Allow AdditionalProperties  to be added 
+
 Example of Command Line Usage
 ----------------------
 
 .. code-block:: bash
 
-        $ publish-json MyCogsModelDirecotry
-        $ publish-json MyCogsModelDirecotry MyOutputDirectory
+        $ publish-json MyCogsModelDirectory
+        $ publish-json MyCogsModelDirectory MyOutputDirectory

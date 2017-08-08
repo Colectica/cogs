@@ -127,7 +127,19 @@ namespace Cogs.Publishers
                                 }
                             }
                         }
-                        obj2.Add(new JProperty(prop.Title, new JObject(new JProperty("type", "object"), new JProperty("patternProperties", new JObject(new JProperty(@"^(?!\s*$).+", new JObject(new JProperty("type", prop.Type), new JProperty("id", prop.Id), new JProperty("properties", obj), new JProperty("required", prop.Required))))))));
+                        var inner_object = new JObject();
+                        inner_object.Add(new JProperty("type", "object"));
+                        var inner_inner_object = new JObject();
+                        inner_inner_object.Add(new JProperty("type", prop.Type));
+                        inner_inner_object.Add(new JProperty("id", prop.Id));
+                        inner_inner_object.Add(new JProperty("properties", obj));
+                        inner_inner_object.Add(new JProperty("required", prop.Required));
+                        if (!prop.AddProp)
+                        {
+                            inner_inner_object.Add(new JProperty("additionalProperties", false));
+                        }
+                        inner_object.Add(new JProperty("patternProperties", new JObject(new JProperty(@"^(?!\s*$).+", inner_inner_object))));
+                        obj2.Add(new JProperty(prop.Title,  inner_object));
                     }
                 }
                 obj2.WriteTo(writer);
