@@ -41,9 +41,9 @@ A few examples of how the command line arguments and flags can be used together.
 .. code-block:: console
 
     publish-cs -h
-    publish-cs C:\Users\kevin\Documents\GitHub\cogs\cogsburger C:\Users\kevin\Documents\GitHub\cogs\Cogs.Console\out
-    publish-cs -o C:\Users\kevin\Documents\GitHub\cogs\cogsburger C:\Users\kevin\Documents\GitHub\cogs\Cogs.Console\out
-    publish-cs -n http://example.org/cogsburger -p cogs -o C:\Users\kevin\Documents\GitHub\cogs\cogsburger C:\Users\kevin\Documents\GitHub\cogs\Cogs.Console\out
+    publish-cs MyCogsModelDirectory MyOutputDirectory
+    publish-cs -o MyCogsModelDirectory MyOutputDirectory
+    publish-cs -n http://example.org/cogs -p cogs -o MyCogsModelDirectory MyOutputDirectory
 
 Simple Type Mappings to c#
 --------------------------
@@ -79,394 +79,127 @@ UnsignedLong            `ulong <https://docs.microsoft.com/en-us/dotnet/csharp/l
 
 Custom Simple Types in c#
 -------------------------
-Source code for custom simple types.
 
 .. _GYearMonth:
 
-**GYearMonth** ::
+**GYearMonth** 
+    
+    * Constructors:
+        * public GYearMonth(int year, int month)
+            Initializes the year and month values (timezone still null).
 
-    public class GYearMonth : IComparable
-    {
-        int Y;
-        int M;
-        string Timezone;
+        *  public GYearMonth(int year, int month, string zone)
+            Initializes the year, month and timezone values.
 
-        public GYearMonth(int year, int month)
-        {
-            Y = year;
-            M = month;
-        }
+    * ToString()
+        Returns a string representation of the GYearMonth. Timezone is only included if it has been initialized.
 
-        public GYearMonth(int year, int month, string zone)
-        {
-            Y = year;
-            M = month;
-            Timezone = zone;
-        }
+    * public JObject ToJson()
+        Returns a JObject representation of the GYearMonth. Timezone is only included if it has been initialized.
 
-        public override string ToString()
-        {
-            if (Timezone != null)
-            {
-                if (char.IsDigit(Timezone[0])) { return Y.ToString().PadLeft(4, '0') + "-" + M.ToString().PadLeft(2, '0') + "+" + Timezone; }
-                return Y.ToString().PadLeft(4, '0') + "-" + M.ToString().PadLeft(2, '0') + Timezone;
-            }
-            return Y.ToString().PadLeft(4, '0') + "-" + M.ToString().PadLeft(2, '0');
-        }
-
-        public JObject ToJson()
-        {
-            if (Timezone != null) { return new JObject(new JProperty("year", Y), new JProperty("month", M), new JProperty("timezone", Timezone)); }
-            return new JObject(new JProperty("year", Y), new JProperty("month", M));
-        }
-
-        public int CompareTo(object obj)
-        {
-            if (obj == null || obj.GetType() != typeof(GYearMonth)) { return -1; }
-            var other = (GYearMonth)obj;
-            if (other.Y < Y) { return -1; }
-            if (other.Y == Y)
-            {
-                if (other.M < M) { return -1; }
-                if (other.M == M)
-                {
-                    if (other.Timezone == null && Timezone == null) { return 0; }
-                    if (other.Timezone == null) { return -1; }
-                    if (Timezone == null) { return 1; }
-                    if (other.Timezone.Equals(Timezone)) { return 0; }
-                    return -1;
-                }
-                if (other.M > M) { return 1; }
-            }
-            return 1;
-        }
-    }
+    * public int CompareTo(object obj)
+        Implements IComparable to allow GYearMonth comparisons.
 
 .. _GMonthDay:
 
-**GMonthDay** ::
+**GMonthDay**
 
-    public class GMonthDay : IComparable
-    {
-        int M;
-        int D;
-        string Timezone;
+    * Constructors:
+        * public GMonthDay(int month, int day)
+            Initializes the month and day values (timezone still null).
 
-        public GMonthDay(int month, int day)
-        {
-            M = month;
-            D = day;
-        }
+        *  public GMonthDay(int month, int day, string zone)
+            Initializes the month, day and timezone values.
 
-        public GMonthDay(int month, int day, string zone)
-        {
-            M = month;
-            D = day;
-            Timezone = zone;
-        }
+    * ToString()
+        Returns a string representation of the GMonthDay. Timezone is only included if it has been initialized.
 
-        public override string ToString()
-        {
-            if (Timezone != null)
-            {
-                if (char.IsDigit(Timezone[0])) { return "--" + M.ToString().PadLeft(2, '0') + "-" + D.ToString().PadLeft(2, '0') + "+" + Timezone; }
-                return "--" + M.ToString().PadLeft(2, '0') + "-" + D.ToString().PadLeft(2, '0') + Timezone;
-            }
-            return "--" + M.ToString().PadLeft(2, '0') + "-" + D.ToString().PadLeft(2, '0');
-        }
+    * public JObject ToJson()
+        Returns a JObject representation of the GMonthDay. Timezone is only included if it has been initialized.
 
-        public JObject ToJson()
-        {
-            if (Timezone != null) { return new JObject(new JProperty("month", M), new JProperty("day", D), new JProperty("timezone", Timezone)); }
-            return new JObject(new JProperty("month", M), new JProperty("day", D));
-        }
-
-        public int CompareTo(object obj)
-        {
-            if (obj == null || obj.GetType() != typeof(GMonthDay)) { return -1; }
-            var other = (GMonthDay)obj;
-            if (other.M < M) { return -1; }
-            if (other.M == M)
-            {
-                if (other.D < D) { return -1; }
-                if (other.D == D)
-                {
-                    if (other.Timezone == null && Timezone == null) { return 0; }
-                    if (other.Timezone == null) { return -1; }
-                    if (Timezone == null) { return 1; }
-                    if (other.Timezone.Equals(Timezone)) { return 0; }
-                    return -1;
-                }
-                if (other.D > D) { return 1; }
-            }
-            return 1;
-        }
-    }
+    * public int CompareTo(object obj)
+        Implements IComparable to allow GMonthDay comparisons.
 
 .. _GYear:
 
-**GYear** ::
+**GYear**
 
-    public class GYear : IComparable
-	{
-		int Value;
-		string Timezone;
+    * Constructors:
+        * public GYear(int year)
+            Initializes the year value (timezone still null).
 
-		public GYear(int year)
-		{
-			Value = year;
-		}
+        *  public GYear(int year, string zone)
+            Initializes the year and timezone values.
 
-		public GYear(int year, string zone)
-		{
-			Value = year;
-			Timezone = zone;
-		}
+    * ToString()
+        Returns a string representation of the GYear. Timezone is only included if it has been initialized.
 
-		public override string ToString()
-		{
-			if (Timezone != null) 
-			{
-				if (char.IsDigit(Timezone[0])) { return Value.ToString().PadLeft(4, '0') + "+" + Timezone; }
-				return Value.ToString().PadLeft(4, '0') + Timezone; 
-			}
-			return Value.ToString().PadLeft(4, '0');
-		}
+    * public JObject ToJson()
+        Returns a JObject representation of the GYear. Timezone is only included if it has been initialized.
 
-		public JObject ToJson()
-		{
-            if (Timezone != null) { return new JObject(new JProperty("year", Value), new JProperty("timezone", Timezone)); }
-            return new JObject(new JProperty("year", Value));
-        }
-
-        public int CompareTo(object obj)
-        {
-            if (obj == null || obj.GetType() != typeof(GYear)) { return -1; }
-            var other = (GYear)obj;
-            if (other.Value < Value) { return -1; }
-            if (other.Value == Value)
-            {
-                if (other.Timezone == null && Timezone == null) { return 0; }
-                if (other.Timezone == null) { return -1; }
-                if (Timezone == null) { return 1; }
-                if (other.Timezone.Equals(Timezone)) { return 0; }
-                return -1;
-            }
-            return 1;
-        }
-    }
+    * public int CompareTo(object obj)
+        Implements IComparable to allow GYear comparisons.
 
 .. _GMonth:
 
-**GMonth** ::
+**GMonth**
 
-    public class GMonth : IComparable
-    {
-        int Value;
-        string Timezone;
+    * Constructors:
+        * public GYear(int month)
+            Initializes the month value (timezone still null).
 
-        public GMonth(int month)
-        {
-            Value = month;
-        }
+        *  public GYear(int month, string zone)
+            Initializes the month and timezone values.
 
-        public GMonth(int month, string zone)
-        {
-            Value = month;
-            Timezone = zone;
-        }
+    * ToString()
+        Returns a string representation of the GMonth. Timezone is only included if it has been initialized.
 
-        public override string ToString()
-        {
-            if (Timezone != null)
-            {
-                if (char.IsDigit(Timezone[0])) { return "--" + Value.ToString().PadLeft(2, '0') + "+" + Timezone; }
-                return "--" + Value.ToString().PadLeft(2, '0') + Timezone;
-            }
-            return "--" + Value.ToString().PadLeft(2, '0');
-        }
+    * public JObject ToJson()
+        Returns a JObject representation of the GMonth. Timezone is only included if it has been initialized.
 
-        public JObject ToJson()
-        {
-            if (Timezone != null) { return new JObject(new JProperty("month", Value), new JProperty("timezone", Timezone)); }
-            return new JObject(new JProperty("month", Value));
-        }
-
-        public int CompareTo(object obj)
-        {
-            if (obj == null || obj.GetType() != typeof(GMonth)) { return -1; }
-            var other = (GMonth)obj;
-            if (other.Value < Value) { return -1; }
-            if (other.Value == Value)
-            {
-                if (other.Timezone == null && Timezone == null) { return 0; }
-                if (other.Timezone == null) { return -1; }
-                if (Timezone == null) { return 1; }
-                if (other.Timezone.Equals(Timezone)) { return 0; }
-                return -1;
-            }
-            return 1;
-        }
-    }
+    * public int CompareTo(object obj)
+        Implements IComparable to allow GMonth comparisons.
 
 .. _GDay:
 
-**GDay** ::
+**GDay**
 
-    public class GDay : IComparable
-    {
-        int Value;
-        string Timezone;
+    * Constructors:
+        * public GYear(int day)
+            Initializes the day value (timezone still null).
 
-        public GDay(int day)
-        {
-            Value = day;
-        }
+        *  public GYear(int day, string zone)
+            Initializes the day and timezone values.
 
-        public GDay(int day, string zone)
-        {
-            Value = day;
-            Timezone = zone;
-        }
+    * ToString()
+        Returns a string representation of the GDay. Timezone is only included if it has been initialized.
 
-        public override string ToString()
-        {
-            if (Timezone != null)
-            {
-                if (char.IsDigit(Timezone[0])) { return "---" + Value.ToString().PadLeft(2, '0') + "+" + Timezone; }
-                return "---" + Value.ToString().PadLeft(2, '0') + Timezone;
-            }
-            return "---" + Value.ToString().PadLeft(2, '0');
-        }
+    * public JObject ToJson()
+        Returns a JObject representation of the GDay. Timezone is only included if it has been initialized.
 
-        public JObject ToJson()
-        {
-            if (Timezone != null) { return new JObject(new JProperty("day", Value), new JProperty("timezone", Timezone)); }
-            return new JObject(new JProperty("day", Value));
-        }
-
-        public int CompareTo(object obj)
-        {
-            if (obj == null || obj.GetType() != typeof(GDay)) { return -1; }
-            var other = (GDay)obj;
-            if (other.Value < Value) { return -1; }
-            if (other.Value == Value)
-            {
-                if (other.Timezone == null && Timezone == null) { return 0; }
-                if (other.Timezone == null) { return -1; }
-                if (Timezone == null) { return 1; }
-                if (other.Timezone.Equals(Timezone)) { return 0; }
-                return -1;
-            }
-            return 1;
-        }
-    }
+    * public int CompareTo(object obj)
+        Implements IComparable to allow GDay comparisons.
 
 .. _CogsDate: 
 
-**CogsDate** ::
+**CogsDate**
 
-    public struct CogsDate
-    {
-        public DateTimeOffset DateTime { get; set; }
-        public DateTimeOffset Date { get; set; }
-        public GYearMonth GYearMonth { get; set; }
-        public GYear GYear { get; set; }
-        public TimeSpan Duration { get; set; }
-        public enum CogsDateType { DateTime, Date, GYearMonth, GYear, Duration } 
-        public CogsDateType UsedType { get; private set; }
+    * Constructors:
+        * public CogsDate(DateTimeOffset item, bool isDate = false)
+            Initializes the Cogsdate to either the Date or DateTime of the DateTimeOffset provided based on bool argument.
+        * public CogsDate(GYearMonth item)
+            Initializes the Cogsdate to the GYearMonth value provided.
+        * public CogsDate(GYear item)
+            Initializes the Cogsdate to the GYear value provided.
+        * public CogsDate(TimeSpan item)
+            Initializes the Cogsdate to the Duration value provided.
 
-        public CogsDate(DateTimeOffset item, bool isDate = false) : this()
-        {
-            if (isDate)
-            {
-                Date = item;
-                UsedType = CogsDateType.Date;
-            }
-            else
-            {
-                DateTime = item;
-                UsedType = CogsDateType.DateTime;
-            }
-        }
+    * public string GetUsedType()
+        Returns which type is being used ("date", "datetime", "yearMonth", "year" or "duration").
 
-        public CogsDate(GYearMonth item) : this()
-        {
-            GYearMonth = item;
-            UsedType = CogsDateType.GYearMonth;
-        }
+    * ToString()
+        Returns a string representation of the CogsDate. Used for XML serialization.
 
-        public CogsDate(GYear item) : this()
-        {
-            GYear = item;
-            UsedType = CogsDateType.GYear;
-        }
-
-        public CogsDate(TimeSpan item) : this()
-        {
-            Duration = item;
-            UsedType = CogsDateType.Duration;
-        }
-
-        public string GetUsedType()
-        {
-            switch (UsedType)
-            {
-                case CogsDateType.Date: { return "date"; }
-                case CogsDateType.DateTime: { return "datetime"; }
-                case CogsDateType.Duration: { return "duration"; }
-                case CogsDateType.GYear: { return "year"; }
-                case CogsDateType.GYearMonth: { return "YearMonth"; }
-            }
-            return null;  
-        }
-
-        public override string ToString()
-        {
-            switch (UsedType)
-            {
-                case CogsDateType.Date: { return Date.ToString("u").Split(' ')[0]; }
-                case CogsDateType.DateTime: { return DateTime.ToString("yyyy-MM-dd\\THH:mm:ss.FFFFFFFK"); }
-                case CogsDateType.Duration:
-                    {
-                        return string.Format("P{00}DT{00}H{00}M{00}S", Duration.ToString("%d"), Duration.ToString("%h"), 
-                            Duration.ToString("%m"), Duration.ToString("%s"));
-                    }
-                case CogsDateType.GYear: { return GYear.ToString(); }
-                case CogsDateType.GYearMonth: { return GYearMonth.ToString(); }
-            }
-            return base.ToString();
-        }
-
-        public object GetValue()
-        {
-            switch (UsedType)
-            {
-                case CogsDateType.DateTime:
-                    {
-						if (DateTime == default(DateTimeOffset)) { return null; }
-                        return DateTime.ToString("yyyy-MM-dd\\THH:mm:ss.FFFFFFFK");
-                    }
-                case CogsDateType.Date:
-                    {
-						if (Date == default(DateTimeOffset)) { return null; }
-                        return Date.ToString("u").Split(' ')[0];
-                    }
-                case CogsDateType.GYearMonth:
-                    {
-                        return GYearMonth.ToJson();
-                    }
-                case CogsDateType.GYear:
-                    {
-                        return GYear.ToJson();
-                    }
-                case CogsDateType.Duration:
-                    {
-						if (Duration == default(TimeSpan)) { return null; }
-                        return Duration.Ticks;
-                    }
-            }
-            return null;
-        }
-    }
+    * public object GetValue()
+        Returns the value of the CogsDate. Result can be a string, long, JObject, or null depending on the CogsDate value. Used for Json serialization.
 

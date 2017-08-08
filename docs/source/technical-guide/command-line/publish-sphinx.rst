@@ -37,6 +37,6 @@ A few examples of how the command line arguments and flags can be used together.
 .. code-block:: console
 
     publish-sphinx -h
-    publish-sphinx C:\Users\kevin\Documents\GitHub\cogs\cogsburger C:\Users\kevin\Documents\GitHub\cogs\Cogs.Console\out
-    publish-sphinx -o C:\Users\kevin\Documents\GitHub\cogs\cogsburger C:\Users\kevin\Documents\GitHub\cogs\Cogs.Console\out
-    publish-sphinx -o -l C:\Users\kevin\Downloads\graphviz-2.38\release\bin C:\Users\kevin\Documents\GitHub\cogs\cogsburger C:\Users\kevin\Documents\GitHub\cogs\Cogs.Console\out
+    publish-sphinx MyCogsModelDirectory MyOutputDirectory
+    publish-sphinx -o MyCogsModelDirectory MyOutputDirectory
+    publish-sphinx -o -l MyGraphvizDotDirectory MyCogsModelDirectory MyOutputDirectory

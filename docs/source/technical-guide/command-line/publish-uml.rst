@@ -36,5 +36,5 @@ A few examples of how the command line arguments and flags can be used together.
 .. code-block:: console
 
     publish-uml -h
-    publish-uml C:\Users\kevin\Documents\GitHub\cogs\cogsburger C:\Users\kevin\Documents\GitHub\cogs\Cogs.Console\out
-    publish-uml -o -n C:\Users\kevin\Documents\GitHub\cogs\cogsburger C:\Users\kevin\Documents\GitHub\cogs\Cogs.Console\out
+    publish-uml MyCogsModelDirectory MyOutputDirectory
+    publish-uml -o -n MyCogsModelDirectory MyOutputDirectory

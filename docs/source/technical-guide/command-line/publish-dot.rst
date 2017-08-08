@@ -57,6 +57,6 @@ A few examples of how the command line arguments and flags can be used together.
 .. code-block:: console
 
     publish-dot -h
-    publish-dot C:\Users\kevin\Documents\GitHub\cogs\cogsburger C:\Users\kevin\Documents\GitHub\cogs\Cogs.Console\out
-    publish-dot -o -a -i -r C:\Users\kevin\Documents\GitHub\cogs\cogsburger C:\Users\kevin\Documents\GitHub\cogs\Cogs.Console\out
-    publish-dot -o -l C:\Users\kevin\Downloads\graphviz-2.38\release\bin -f jpg C:\Users\kevin\Documents\GitHub\cogs\cogsburger C:\Users\kevin\Documents\GitHub\cogs\Cogs.Console\out
+    publish-dot MyCogsModelDirectory MyOutputDirectory
+    publish-dot -o -a -i -r MyCogsModelDirectory MyOutputDirectory
+    publish-dot -o -l MyGraphvizDotDirectory -f jpg MyCogsModelDirectory MyOutputDirectory
