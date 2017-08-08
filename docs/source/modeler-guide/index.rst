@@ -2,7 +2,7 @@ Modeler's Guide
 ===============
 
 With COGS, you can specify your information model in plain text. This section describes the 
-markdown and CSV files that define your model.
+text and CSV files that define your model.
 
 A COGS model consists of the following core components.
 
