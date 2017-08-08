@@ -1,6 +1,6 @@
 publish-cs
 ~~~~~~~~~~
-Generates c# classes for all ItemTypes and ReusableTypes in the model. The generated classes can be serialized to json, populated from json, and serialized to XML.
+Generates c# classes for all item types and composite types in the model. The generated classes can be serialized to json, populated from json, and serialized to XML.
 
 Command Line Arguments
 ----------------------
@@ -20,7 +20,7 @@ Optional inputs for publish-cs command.
 
 * ``-?|-h|--help``
 
-    Displays all command arguments and flags are for the publish-cs command.
+    Displays all possible command arguments and flags for the publish-cs command.
 
 * ``-o|--overwrite``
 
@@ -34,22 +34,30 @@ Optional inputs for publish-cs command.
 
     Allows user to specify the prefix for XML namespace used in XML creation from generated c# classes.
 
-Example Command Line Usage
---------------------------
-A few examples of how the command line arguments and flags can be used together.
+Command Line Usage
+-------------------
+**Format**
 
-.. code-block:: console
+    .. code-block:: bash
 
-    publish-cs -h
-    publish-cs MyCogsModelDirectory MyOutputDirectory
-    publish-cs -o MyCogsModelDirectory MyOutputDirectory
-    publish-cs -n http://example.org/cogs -p cogs -o MyCogsModelDirectory MyOutputDirectory
+        $ publish-cs (-h) (-o) (-n [namespace]) (-p [prefix]) [CogsLocation] [TargetLocation]
 
-Simple Type Mappings to c#
---------------------------
-===================     =================
-Simple Type             c# representation
-===================     =================
+**Examples**
+
+    A few examples of how the command line arguments and flags can be used together.
+
+    .. code-block:: bash
+
+        $ publish-cs -h
+        $ publish-cs MyCogsModelDirectory MyOutputDirectory
+        $ publish-cs -o MyCogsModelDirectory MyOutputDirectory
+        $ publish-cs -n http://example.org/cogs -p cogs -o MyCogsModelDirectory MyOutputDirectory
+
+Primitive Type Mappings to c#
+-------------------------------
+===================     =====================
+Primitive Type           c# representation
+===================     =====================
 AnyURI                  `Uri <https://msdn.microsoft.com/en-us/library/system.uri(v=vs.110).aspx?>`_
 Boolean                 `bool <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/bool>`_
 CogsDate                Custom CogsDate_ class
@@ -75,10 +83,10 @@ PositiveInteger         `int <https://docs.microsoft.com/en-us/dotnet/csharp/lan
 String                  `String <https://msdn.microsoft.com/en-us/library/system.string(v=vs.110).aspx>`_
 Time                    `DateTimeOffset <https://msdn.microsoft.com/en-us/library/system.datetimeoffset(v=vs.110).aspx>`_
 UnsignedLong            `ulong <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/ulong>`_
-===================     =================
+===================     =====================
 
-Custom Simple Types in c#
--------------------------
+Custom Primitive Types in c#
+------------------------------
 
 .. _GYearMonth:
 

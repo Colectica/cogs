@@ -10,12 +10,17 @@ namespace Cogs.Publishers
     public class ModelInitializer
     {
         public string Dir { get; set; }
+        public bool Overwrite { get; set; }
 
         public void Create()
         {
             if (Directory.Exists(Dir))
             {
-                throw new InvalidDataException("The directory already exist");
+                if (Overwrite)
+                {
+                    Directory.Delete(Dir, true);
+                }
+                else { throw new InvalidDataException("The directory already exists"); }
             }
 
             //Create the directory that user want

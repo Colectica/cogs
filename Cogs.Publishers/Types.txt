@@ -172,7 +172,7 @@ namespace Cogs.DataAnnotations
 
 namespace Cogs.SimpleTypes
 {
-	public class GYear : IComparable
+	public class GYear : IComparable, IEquatable<GYear>
 	{
 		int Value;
 		string Timezone;
@@ -219,9 +219,15 @@ namespace Cogs.SimpleTypes
             }
             return 1;
         }
+
+        public bool Equals(GYear other)
+        {
+            if (CompareTo(other) == 0) { return true; }
+            return false;
+        }
     }
 
-    public class GMonth : IComparable
+    public class GMonth : IComparable, IEquatable<GMonth>
     {
         int Value;
         string Timezone;
@@ -268,9 +274,15 @@ namespace Cogs.SimpleTypes
             }
             return 1;
         }
+
+        public bool Equals(GMonth other)
+        {
+            if (CompareTo(other) == 0) { return true; }
+            return false;
+        }
     }
 
-    public class GDay : IComparable
+    public class GDay : IComparable, IEquatable<GDay>
     {
         int Value;
         string Timezone;
@@ -317,9 +329,15 @@ namespace Cogs.SimpleTypes
             }
             return 1;
         }
+
+        public bool Equals(GDay other)
+        {
+            if (CompareTo(other) == 0) { return true; }
+            return false;
+        }
     }
 
-    public class GYearMonth : IComparable
+    public class GYearMonth : IComparable, IEquatable<GYearMonth>
     {
         int Y;
         int M;
@@ -374,9 +392,15 @@ namespace Cogs.SimpleTypes
             }
             return 1;
         }
+
+        public bool Equals(GYearMonth other)
+        {
+            if (CompareTo(other) == 0) { return true; }
+            return false;
+        }
     }
 
-    public class GMonthDay : IComparable
+    public class GMonthDay : IComparable, IEquatable<GMonthDay>
     {
         int M;
         int D;
@@ -430,6 +454,12 @@ namespace Cogs.SimpleTypes
                 if (other.D > D) { return 1; }
             }
             return 1;
+        }
+
+        public bool Equals(GMonthDay other)
+        {
+            if (CompareTo(other) == 0) { return true; }
+            return false;
         }
     }
 }

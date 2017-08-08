@@ -195,7 +195,7 @@ namespace Cogs.Console
                                            CommandOptionType.NoValue);
                 var inheritanceArgument = command.Option("-i|--inheritance",
                                             "allow inheritance in the graph(s)", CommandOptionType.NoValue);
-                var reusableArgument = command.Option("-r|--reusables", "show reusable inside items", CommandOptionType.NoValue);
+                var reusableArgument = command.Option("-c|--composite", "show composite types inside item types", CommandOptionType.NoValue);
 
                 command.OnExecute(() =>
                 {
@@ -501,7 +501,7 @@ namespace Cogs.Console
                 command.HelpOption("-?|-h|--help");
                 
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
-                var targetArgument = command.Argument("[targetLocation]", "Directory where the json schema is generated.");
+                var targetArgument = command.Argument("[targetLocation]", "Directory where the model skelton is generated.");
 
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
@@ -523,7 +523,8 @@ namespace Cogs.Console
 
                     ModelInitializer cogsmodel = new ModelInitializer
                     {
-                        Dir = location
+                        Dir = location,
+                        Overwrite = overwrite
                     };
 
                     cogsmodel.Create();

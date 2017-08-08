@@ -1,6 +1,6 @@
 publish-sphinx
 ~~~~~~~~~~~~~~
-Generates documentation for the model including inbedded graphs of each item type and reusable type using the `publish-dot <../publish-dot/index.html>`_ command.
+Generates documentation for the model including inbedded graphs of each item type and composite type using the `publish-dot <../publish-dot/index.html>`_ command.
 
 Command Line Arguments
 ----------------------
@@ -20,7 +20,7 @@ Optional inputs for publish-sphinx command.
 
 * ``-?|-h|--help``
 
-    Displays all command arguments and flags are for the publish-sphinx command.
+    Displays all possible command arguments and flags for the publish-sphinx command.
 
 * ``-o|--overwrite``
 
@@ -30,13 +30,21 @@ Optional inputs for publish-sphinx command.
 
     Directory where the dot.exe file is located--only needed if not running on Windows.
 
-Example Command Line Usage
---------------------------
-A few examples of how the command line arguments and flags can be used together.
+Command Line Usage
+-------------------
+**Format**
 
-.. code-block:: console
+    .. code-block:: bash
 
-    publish-sphinx -h
-    publish-sphinx MyCogsModelDirectory MyOutputDirectory
-    publish-sphinx -o MyCogsModelDirectory MyOutputDirectory
-    publish-sphinx -o -l MyGraphvizDotDirectory MyCogsModelDirectory MyOutputDirectory
+        $ publish-sphinx (-h) (-o) (-l [location]) [CogsLocation] [TargetLocation]
+
+**Examples**
+
+    A few examples of how the command line arguments and flags can be used together.
+
+    .. code-block:: bash
+
+        $ publish-sphinx -h
+        $ publish-sphinx MyCogsModelDirectory MyOutputDirectory
+        $ publish-sphinx -o MyCogsModelDirectory MyOutputDirectory
+        $ publish-sphinx -o -l MyGraphvizDotDirectory MyCogsModelDirectory MyOutputDirectory
