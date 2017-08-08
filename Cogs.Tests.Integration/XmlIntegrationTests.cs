@@ -1,4 +1,4 @@
-﻿using cogsBurger;
+using cogsburger;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,6 +9,7 @@ using System.Xml.Linq;
 using System.Xml.Schema;
 using Xunit;
 using Cogs.SimpleTypes;
+using cogsburger;
 
 namespace Cogs.Tests.Integration
 {

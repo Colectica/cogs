@@ -5,7 +5,7 @@ Introduction
 ----------------------
 
 
-Generate a schema in owl/rdf format. Where all itemTypes and reusableTypes are define 
+Generate a schema in owl/rdf format. Where all Item type and Composite type are define 
 as class and their property as object properties or datatype properties.
 
 Command Line Argument

@@ -1,4 +1,4 @@
-using cogsBurger;
+using cogsburger;
 using Newtonsoft.Json;
 using NJsonSchema;
 using System;
@@ -188,6 +188,47 @@ namespace Cogs.Tests.Integration
             }
         }
 
+
+        [Fact]
+        public async void JsonCreatesOneInstancePerIdentifiedItem()
+        {
+            Hamburger hamburger = new Hamburger
+            {
+                ID = Guid.NewGuid().ToString(),
+                Description = "Large Special",
+                HamburgerName = "Four Corners Burger"                
+            };
+
+            MeatPatty beef = new MeatPatty()
+            {
+                ID = Guid.NewGuid().ToString()
+            };
+
+            hamburger.Patty.Add(beef);
+            hamburger.Patty.Add(beef);
+
+            ItemContainer container = new ItemContainer();
+            container.Items.Add(hamburger);
+            container.Items.Add(beef);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = JsonConvert.SerializeObject(container);
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
+            string json2 = JsonConvert.SerializeObject(container2);
+            Assert.Equal(json, json2);
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Hamburger>(container2.Items[0]);
+            Assert.IsType<MeatPatty>(container2.Items[1]);
+
+            Hamburger hamburger2 = container2.Items.First() as Hamburger;
+            Assert.Same(container2.Items[1], hamburger.Patty[0]);
+            Assert.Same(hamburger.Patty[0], hamburger.Patty[1]);
+
+
+        }
         [Fact]
         public async void SimpleTypeGMonthYear()
         {

@@ -34,4 +34,5 @@ Cogs.Console/Properties/launchSettings.json
 /generated
 /docs/build
 /docs/source/_build/html
+/docs/.vscode
 /out

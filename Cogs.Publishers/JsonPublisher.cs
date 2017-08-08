@@ -17,6 +17,7 @@ namespace Cogs.Publishers
         public string CogsLocation { get; set; }
         public string TargetDirectory { get; set; }
         public bool Overwrite { get; set; }
+        public bool AdditionalProp { get; set; }
 
         public string TargetNamespace { get; set; } = "ddi:3_4";
         public List<DataType> ReusableStorage { get; set; }
@@ -66,10 +67,30 @@ namespace Cogs.Publishers
             root.Id = "#root";
             root.Properties = items;
             root.SimpleType = "root";
-
-
             root.definitions = define;
 
+            if (!AdditionalProp)
+            {
+                foreach (var prop in root.Properties)
+                {
+                    prop.AddProp = false;
+                }
+                foreach (var prop in root.definitions)
+                {
+                    prop.AddProp = false;
+                }
+            }
+            else
+            {
+                foreach (var prop in root.Properties)
+                {
+                    prop.AddProp = true;
+                }
+                foreach (var prop in root.definitions)
+                {
+                    prop.AddProp = true;
+                }
+            }
             //Console.WriteLine(JsonConvert.SerializeObject(root, settings));
             string res = JsonConvert.SerializeObject(root, settings);
             File.WriteAllText(Path.Combine(TargetDirectory, "jsonSchema" + ".json"), res);
