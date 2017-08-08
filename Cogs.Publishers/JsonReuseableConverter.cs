@@ -29,10 +29,6 @@ namespace Cogs.Publishers
                         obj.Add(new JProperty("Reference",
                            new JObject(new JProperty("type", "object"),
                            new JProperty("properties", new JObject(new JProperty("$type", new JObject(new JProperty("type", "string"))), new JProperty("value", new JObject(new JProperty("type", "array"), new JProperty("items", new JObject(new JProperty("type", "string"))))))))));
-                        if(!reuse.AddProp)
-                        {
-                            obj.Add(new JProperty("additionalProperties", false));
-                        }
                     }
                     else
                     {
