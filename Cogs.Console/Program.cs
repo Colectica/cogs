@@ -350,6 +350,8 @@ namespace Cogs.Console
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
                                            CommandOptionType.NoValue);
+                var additionalprop = command.Option("-a|--allowAdditionalProperties",
+                                            "Allow additional Properties to be added when enabled", CommandOptionType.NoValue);
 
 
 
@@ -358,6 +360,7 @@ namespace Cogs.Console
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
+                    bool addprop = additionalprop.HasValue();
 
 
                     var directoryReader = new CogsDirectoryReader();
@@ -370,7 +373,8 @@ namespace Cogs.Console
                     {
                         CogsLocation = location,
                         TargetDirectory = target,
-                        Overwrite = overwrite
+                        Overwrite = overwrite,
+                        AdditionalProp = addprop
                     };
 
                     publisher.Publish(cogsModel);
@@ -417,7 +421,6 @@ namespace Cogs.Console
                     };
 
                     publisher.Publish(cogsModel);
-
 
                     return 0;
                 });

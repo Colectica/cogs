@@ -1,4 +1,4 @@
-Publish-Graphql
+Publish-GraphQL
 ~~~~~~~~~~~~~~~
 
 Introduction

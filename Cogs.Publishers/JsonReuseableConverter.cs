@@ -29,6 +29,10 @@ namespace Cogs.Publishers
                         obj.Add(new JProperty("Reference",
                            new JObject(new JProperty("type", "object"),
                            new JProperty("properties", new JObject(new JProperty("$type", new JObject(new JProperty("type", "string"))), new JProperty("value", new JObject(new JProperty("type", "array"), new JProperty("items", new JObject(new JProperty("type", "string"))))))))));
+                        if(!reuse.AddProp)
+                        {
+                            obj.Add(new JProperty("additionalProperties", false));
+                        }
                     }
                     else
                     {
@@ -70,7 +74,14 @@ namespace Cogs.Publishers
                                 }
                             }
                         }
-                        obj.Add(new JProperty(reuse.Name, new JObject(new JProperty("type", "object"), new JProperty("properties", obj2))));
+                        var inner_object = new JObject();
+                        inner_object.Add(new JProperty("type", "object"));
+                        inner_object.Add(new JProperty("properties", obj2));
+                        if (!reuse.AddProp)
+                        {
+                            inner_object.Add(new JProperty("additionalProperties", false));
+                        }
+                        obj.Add(new JProperty(reuse.Name, inner_object));
                     }
                 }
                 obj.WriteTo(writer);
