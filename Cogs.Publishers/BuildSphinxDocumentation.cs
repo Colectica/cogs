@@ -147,7 +147,7 @@ namespace Cogs.Publishers
 
         private void BuildReusableTypePages()
         {
-            BuildDataTypePages("All Reusable Types", "reusable types", "reusable-types", cogsModel.ReusableDataTypes);
+            BuildDataTypePages("All Composite Types", "composite types", "composite-types", cogsModel.ReusableDataTypes);
         }
 
         private void BuildDataTypePages(string title, string lowerTitle, string path, List<DataType> dataTypes)
@@ -314,7 +314,7 @@ namespace Cogs.Publishers
             }
             else if (cogsModel.ReusableDataTypes.Any(x => x.Name == typeName))
             {
-                dataTypeRoot = "reusable-types";
+                dataTypeRoot = "composite-types";
             }
 
             return dataTypeRoot;

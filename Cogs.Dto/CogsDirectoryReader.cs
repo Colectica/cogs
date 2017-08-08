@@ -81,7 +81,7 @@ namespace Cogs.Dto
             LoadDataTypes(directory, "ItemTypes", model, model.ItemTypes);
 
             // Load all reusable types from the ReusableTypes directory.
-            LoadDataTypes(directory, "ReusableTypes", model, model.ReusableDataTypes);
+            LoadDataTypes(directory, "CompositeTypes", model, model.ReusableDataTypes);
 
             // Load all topics from the Topics directory.
             string topicsDirectory = Path.Combine(directory, "Topics");
