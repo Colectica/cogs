@@ -4,11 +4,11 @@ Generates svg graph(s) showing connections between items and, optionally, compos
 
 Command Line Arguments
 ----------------------
-Required inputs for publish-dot command (must be specified in order).
+Required inputs for the publish-dot command (must be specified in order).
 
 * ``[CogsLocation]`` 
 
-    The location of the folder containing model.
+    The location of the folder containing the model.
 
 * ``[TargetLocation]`` 
 
@@ -16,7 +16,7 @@ Required inputs for publish-dot command (must be specified in order).
 
 Command Line Flags
 ----------------------
-Optional inputs for publish-dot command.
+Optional inputs for the publish-dot command.
 
 * ``-?|-h|--help``
 

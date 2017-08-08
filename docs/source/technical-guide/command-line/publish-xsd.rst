@@ -4,11 +4,11 @@ Generates a XML schema for the data model.
 
 Command Line Arguments
 ----------------------
-Required inputs for publish-xsd command (must be specified in order).
+Required inputs for the publish-xsd command (must be specified in order).
 
 * ``[CogsLocation]`` 
 
-    The location of the folder containing model.
+    The location of the folder containing the model.
 
 * ``[TargetLocation]`` 
 
@@ -16,7 +16,7 @@ Required inputs for publish-xsd command (must be specified in order).
 
 Command Line Flags
 ----------------------
-Optional inputs for publish-xsd command.
+Optional inputs for the publish-xsd command.
 
 * ``-?|-h|--help``
 

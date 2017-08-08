@@ -4,11 +4,11 @@ Generates c# classes for all item types and composite types in the model. The ge
 
 Command Line Arguments
 ----------------------
-Required inputs for publish-cs command (must be specified in order).
+Required inputs for the publish-cs command (must be specified in order).
 
 * ``[CogsLocation]`` 
 
-    The location of the folder containing model.
+    The location of the folder containing the model.
 
 * ``[TargetLocation]`` 
 
@@ -16,7 +16,7 @@ Required inputs for publish-cs command (must be specified in order).
 
 Command Line Flags
 ----------------------
-Optional inputs for publish-cs command.
+Optional inputs for hte publish-cs command.
 
 * ``-?|-h|--help``
 
@@ -90,8 +90,7 @@ Custom Primitive Types in c#
 
 .. _GYearMonth:
 
-**GYearMonth** 
-    
+**GYearMonth**     
     * Constructors:
         * public GYearMonth(int year, int month)
             Initializes the year and month values (timezone still null).
@@ -111,7 +110,6 @@ Custom Primitive Types in c#
 .. _GMonthDay:
 
 **GMonthDay**
-
     * Constructors:
         * public GMonthDay(int month, int day)
             Initializes the month and day values (timezone still null).
@@ -131,7 +129,6 @@ Custom Primitive Types in c#
 .. _GYear:
 
 **GYear**
-
     * Constructors:
         * public GYear(int year)
             Initializes the year value (timezone still null).
@@ -151,7 +148,6 @@ Custom Primitive Types in c#
 .. _GMonth:
 
 **GMonth**
-
     * Constructors:
         * public GYear(int month)
             Initializes the month value (timezone still null).
@@ -171,7 +167,6 @@ Custom Primitive Types in c#
 .. _GDay:
 
 **GDay**
-
     * Constructors:
         * public GYear(int day)
             Initializes the day value (timezone still null).
@@ -191,7 +186,6 @@ Custom Primitive Types in c#
 .. _CogsDate: 
 
 **CogsDate**
-
     * Constructors:
         * public CogsDate(DateTimeOffset item, bool isDate = false)
             Initializes the Cogsdate to either the Date or DateTime of the DateTimeOffset provided based on bool argument.
