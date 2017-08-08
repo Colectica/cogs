@@ -20,7 +20,7 @@ Optional inputs for publish-cs command.
 
 * ``-?|-h|--help``
 
-    Displays all command arguments and flags are for the publish-cs command.
+    Displays all possible command arguments and flags for the publish-cs command.
 
 * ``-o|--overwrite``
 
@@ -45,11 +45,11 @@ A few examples of how the command line arguments and flags can be used together.
     publish-cs -o MyCogsModelDirectory MyOutputDirectory
     publish-cs -n http://example.org/cogs -p cogs -o MyCogsModelDirectory MyOutputDirectory
 
-Simple Type Mappings to c#
---------------------------
-===================     =================
+Primitive Type Mappings to c#
+-------------------------------
+===================     =====================
 Primitive Type           c# representation
-===================     =================
+===================     =====================
 AnyURI                  `Uri <https://msdn.microsoft.com/en-us/library/system.uri(v=vs.110).aspx?>`_
 Boolean                 `bool <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/bool>`_
 CogsDate                Custom CogsDate_ class
@@ -75,10 +75,10 @@ PositiveInteger         `int <https://docs.microsoft.com/en-us/dotnet/csharp/lan
 String                  `String <https://msdn.microsoft.com/en-us/library/system.string(v=vs.110).aspx>`_
 Time                    `DateTimeOffset <https://msdn.microsoft.com/en-us/library/system.datetimeoffset(v=vs.110).aspx>`_
 UnsignedLong            `ulong <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/ulong>`_
-===================     =================
+===================     =====================
 
 Custom Primitive Types in c#
--------------------------
+------------------------------
 
 .. _GYearMonth:
 

@@ -20,7 +20,7 @@ Optional inputs for cogs-new command.
 
 * ``-?|-h|--help``
 
-    Displays all command arguments and flags are for the cogs-new command.
+    Displays all possible command arguments and flags for the cogs-new command.
 
 * ``-o|--overwrite``
 

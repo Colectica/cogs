@@ -19,7 +19,6 @@ namespace Cogs.Publishers
                 if (Overwrite)
                 {
                     Directory.Delete(Dir, true);
-                    Directory.CreateDirectory(Dir);
                 }
                 else { throw new InvalidDataException("The directory already exists"); }
             }

@@ -20,7 +20,7 @@ Optional inputs for publish-sphinx command.
 
 * ``-?|-h|--help``
 
-    Displays all command arguments and flags are for the publish-sphinx command.
+    Displays all possible command arguments and flags for the publish-sphinx command.
 
 * ``-o|--overwrite``
 

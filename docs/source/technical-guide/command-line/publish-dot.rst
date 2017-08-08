@@ -20,7 +20,7 @@ Optional inputs for publish-dot command.
 
 * ``-?|-h|--help``
 
-    Displays all command arguments and flags are for the publish-dot command.
+    Displays all possible command arguments and flags for the publish-dot command.
 
 * ``-o|--overwrite``
 
