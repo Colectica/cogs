@@ -43,5 +43,5 @@ Example of Command Line Usage
 
 .. code-block:: bash
 
-        $ publish-owl C:\\Users\\jenny\\Documents\\model
-        $ publish-owl C:\\Users\\jenny\\Documents\\model -p MyNamespacePrefix
+        $ publish-owl MyCogsModelDirectory
+        $ publish-owl MyCogsModelDirectory -p MyNamespacePrefix

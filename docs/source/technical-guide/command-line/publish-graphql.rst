@@ -37,5 +37,5 @@ Example of Command Line Usage
 
 .. code-block:: bash
 
-        $ publish-GraphQL C:\\Users\\jenny\\Documents\\model
-        $ publish-GraphQL C:\\Users\\jenny\\Documents\\model C:\\Users\\username\\cogs\\Cogs.Console\\out
+        $ publish-GraphQL MyCogsModelDirectory
+        $ publish-GraphQL MyCogsModelDirectory MyOutputDirectory

@@ -37,5 +37,5 @@ Example of Command Line Usage
 
 .. code-block:: bash
 
-        $ publish-json C:\\Users\\jenny\\Documents\\model
-        $ publish-json C:\\Users\\jenny\\Documents\\model C:\\Users\\username\\cogs\\Cogs.Console\\out
+        $ publish-json MyCogsModelDirecotry
+        $ publish-json MyCogsModelDirecotry MyOutputDirectory
