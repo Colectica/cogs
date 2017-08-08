@@ -34,16 +34,24 @@ Optional inputs for publish-cs command.
 
     Allows user to specify the prefix for XML namespace used in XML creation from generated c# classes.
 
-Example Command Line Usage
---------------------------
-A few examples of how the command line arguments and flags can be used together.
+Command Line Usage
+-------------------
+**Format**
 
-.. code-block:: console
+    .. code-block:: bash
 
-    publish-cs -h
-    publish-cs MyCogsModelDirectory MyOutputDirectory
-    publish-cs -o MyCogsModelDirectory MyOutputDirectory
-    publish-cs -n http://example.org/cogs -p cogs -o MyCogsModelDirectory MyOutputDirectory
+        $ publish-cs (-h) (-o) (-n [namespace]) (-p [prefix]) [CogsLocation] [TargetLocation]
+
+**Examples**
+
+    A few examples of how the command line arguments and flags can be used together.
+
+    .. code-block:: bash
+
+        $ publish-cs -h
+        $ publish-cs MyCogsModelDirectory MyOutputDirectory
+        $ publish-cs -o MyCogsModelDirectory MyOutputDirectory
+        $ publish-cs -n http://example.org/cogs -p cogs -o MyCogsModelDirectory MyOutputDirectory
 
 Primitive Type Mappings to c#
 -------------------------------

@@ -12,7 +12,7 @@ Command Line Argument
 
 .. code-block:: bash
 
-        $ publishe-json [Cogslocation] [Targetlocation]
+        $ publish-json [Cogslocation] [Targetlocation]
 
 - Cogslocation   
     - location of the folder containing model

@@ -29,12 +29,20 @@ Optional inputs for publish-uml command.
 * ``-n|--normative`` 
     Output a normative XMI file (2.4.2) instead of XMI 2.5.1. Normative file cannot contain graph information.
 
-Example Command Line Usage
---------------------------
-A few examples of how the command line arguments and flags can be used together.
+Command Line Usage
+-------------------
+**Format**
 
-.. code-block:: console
+    .. code-block:: bash
 
-    publish-uml -h
-    publish-uml MyCogsModelDirectory MyOutputDirectory
-    publish-uml -o -n MyCogsModelDirectory MyOutputDirectory
+        $ publish-uml (-h) (-o) (-n) [CogsLocation] [TargetLocation]
+
+**Examples**
+
+    A few examples of how the command line arguments and flags can be used together.
+
+    .. code-block:: bash
+
+        $ publish-uml -h
+        $ publish-uml MyCogsModelDirectory MyOutputDirectory
+        $ publish-uml -o -n MyCogsModelDirectory MyOutputDirectory

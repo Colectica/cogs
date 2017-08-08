@@ -26,12 +26,20 @@ Optional inputs for cogs-new command.
 
     If the ``[TargetLocation]`` is not empty, erase all files in the folder before generation.
 
-Example Command Line Usage
---------------------------
-A few examples of how the command line arguments and flags can be used together.
+Command Line Usage
+-------------------
+**Format**
 
-.. code-block:: console
+    .. code-block:: bash
 
-    cogs-new -h
-    cogs-new MyCogsModelDirectory MyOutputDirectory
-    cogs-new -o MyCogsModelDirectory MyOutputDirectory
+        $ cogs-new (-h) (-o) [CogsLocation] [TargetLocation]
+
+**Examples**
+
+    A few examples of how the command line arguments and flags can be used together.
+
+    .. code-block:: bash
+
+        $ cogs-new -h
+        $ cogs-new MyCogsModelDirectory MyOutputDirectory
+        $ cogs-new -o MyCogsModelDirectory MyOutputDirectory

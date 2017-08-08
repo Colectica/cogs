@@ -50,13 +50,21 @@ Optional inputs for publish-dot command.
 
     Display composite types and their properties inside item types in the generated graph(s).
 
-Example Command Line Usage
---------------------------
-A few examples of how the command line arguments and flags can be used together.
+Command Line Usage
+-------------------
+**Format**
 
-.. code-block:: console
+    .. code-block:: bash
 
-    publish-dot -h
-    publish-dot MyCogsModelDirectory MyOutputDirectory
-    publish-dot -o -a -i -c MyCogsModelDirectory MyOutputDirectory
-    publish-dot -o -l MyGraphvizDotDirectory -f jpg MyCogsModelDirectory MyOutputDirectory
+        $ publish-dot (-h) (-o) (-l [location]) (-f [format]) (-a) (-s) (-i) (-c) [CogsLocation] [TargetLocation]
+
+**Examples**
+
+    A few examples of how the command line arguments and flags can be used together.
+
+    .. code-block:: bash
+
+        $ publish-dot -h
+        $ publish-dot MyCogsModelDirectory MyOutputDirectory
+        $ publish-dot -o -a -i -c MyCogsModelDirectory MyOutputDirectory
+        $ publish-dot -o -l MyGraphvizDotDirectory -f jpg MyCogsModelDirectory MyOutputDirectory

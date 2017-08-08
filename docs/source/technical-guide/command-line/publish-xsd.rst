@@ -20,7 +20,7 @@ Optional inputs for publish-xsd command.
 
 * ``-?|-h|--help``
 
-    Displays all possible command arguments and flags for the command.
+    Displays all possible command arguments and flags for the publish-xsd command.
 
 * ``-o|--overwrite``
 
@@ -34,16 +34,24 @@ Optional inputs for publish-xsd command.
 
     Allows user to specify the prefix for the XML namespace.
 
-Example Command Line Usage
---------------------------
-A few examples of how the command line arguments and flags can be used together.
+Command Line Usage
+-------------------
+**Format**
 
-.. code-block:: console
+    .. code-block:: bash
 
-    publish-xsd -h
-    publish-xsd MyCogsModelDirectory MyOutputDirectory
-    publish-xsd -o MyCogsModelDirectory MyOutputDirectory
-    publish-xsd -n http://example.org/cogs -p cogs -o MyCogsModelDirectory MyOutputDirectory
+        $ publish-xsd (-h) (-o) (-n [namespace]) (-p [prefix]) [CogsLocation] [TargetLocation]
+
+**Examples**
+
+    A few examples of how the command line arguments and flags can be used together.
+
+    .. code-block:: bash
+
+        $ publish-xsd -h
+        $ publish-xsd MyCogsModelDirectory MyOutputDirectory
+        $ publish-xsd -o MyCogsModelDirectory MyOutputDirectory
+        $ publish-xsd -n http://example.org/cogs -p cogs -o MyCogsModelDirectory MyOutputDirectory
 
 Primitive Type Mappings to XML
 -------------------------------
@@ -52,18 +60,18 @@ Primitive Type           XML representation
 ===================     =====================
 AnyURI                  `anyURI <https://www.w3.org/TR/xmlschema-2/#anyURI>`_
 Boolean                 `boolean <https://www.w3.org/TR/xmlschema-2/#boolean>`_
-CogsDate                Union of Date, DateTime, Duration, GYear, and GYearMonth primitive types.
+CogsDate                Union of `date <https://www.w3.org/TR/xmlschema-2/#date>`_, `dateTime <https://www.w3.org/TR/xmlschema-2/#dateTime>`_, `duration <https://www.w3.org/TR/xmlschema-2/#duration>`_, `gYear <https://www.w3.org/TR/xmlschema-2/#gYear>`_, and `gYearMonth <https://www.w3.org/TR/xmlschema-2/#gYearMonth>`_ primitive types.
 Date                    `date <https://www.w3.org/TR/xmlschema-2/#date>`_
 DateTime                `dateTime <https://www.w3.org/TR/xmlschema-2/#dateTime>`_
 Decimal                 `decimal <https://www.w3.org/TR/xmlschema-2/#decimal>`_
 Double                  `double <https://www.w3.org/TR/xmlschema-2/#double>`_
 Duration                `duration <https://www.w3.org/TR/xmlschema-2/#duration>`_
 Float                   `float <https://www.w3.org/TR/xmlschema-2/#float>`_
-GYearMonth              `gYearMonth <https://www.w3.org/TR/xmlschema-2/#gYearMonth>`_
+GDay                    `gDay <https://www.w3.org/TR/xmlschema-2/#gDay>`_
+GMonth                  `gMonth <https://www.w3.org/TR/xmlschema-2/#gMonth>`_
 GMonthDay               `gMonthDay <https://www.w3.org/TR/xmlschema-2/#gMonthDay>`_
 GYear                   `gYear <https://www.w3.org/TR/xmlschema-2/#gYear>`_
-GMonth                  `gMonth <https://www.w3.org/TR/xmlschema-2/#gMonth>`_
-GDay                    `gDay <https://www.w3.org/TR/xmlschema-2/#gDay>`_
+GYearMonth              `gYearMonth <https://www.w3.org/TR/xmlschema-2/#gYearMonth>`_
 Int                     `int <https://www.w3.org/TR/xmlschema-2/#int>`_
 Integer                 `integer <https://www.w3.org/TR/xmlschema-2/#integer>`_
 Language                `language <https://www.w3.org/TR/xmlschema-2/#language>`_
