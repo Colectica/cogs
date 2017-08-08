@@ -2,7 +2,7 @@ COGS
 ====
 
 COGS lets you specify your information model in plain text.
-From this model, multiple output formats are generated. 
+From this model, COGS generates rich documentation and multiple representations.
 Plain text specifications allow using industry-standard tools like git 
 to manage collaboration.
 
@@ -12,7 +12,8 @@ concerns and gives you full control over markup for enjoyable, agile
 development. COGS includes many features that enable fast, test-driven
 development, allowing you to publish sophisticated models in a variety of formats.
 
-COGS is for domain experts and groups who value **ease of collaboration** and **low technical barriers** for participation.
+COGS is a production framework for domain experts and groups who value 
+**ease of collaboration** and **low technical barriers** for participation.
 
 Output Formats
 --------------
@@ -32,6 +33,23 @@ Upcoming formats include:
 
 * Class libraries for other languages
 
+Quick Start
+-----------
+
+Forthcoming
+
+Modeler's Guide
+---------------
+
+The :doc:`Modeler's Guide <modeler-guide/index>` describes the folders and files
+that allow you to define your information model.
+
+Technical Guide
+---------------
+
+The :doc:`Technical Guide <technical-guide/index>` describes the COGS
+command line application, the publishers, and the technical details 
+of the system.
 
 Platforms
 ---------
@@ -46,7 +64,7 @@ Legal and Licensing
 COGS is licensed under the MIT license.
 
 .. toctree::
-   :maxdepth: 1
+   :hidden:
    :caption: Contents
 
    modeler-guide/index
