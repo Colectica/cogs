@@ -37,7 +37,7 @@ Command Line Flags
     Allow AdditionalProperties  to be added 
 
 Example of Command Line Usage
-----------------------
+--------------------------------
 
 .. code-block:: bash
 
