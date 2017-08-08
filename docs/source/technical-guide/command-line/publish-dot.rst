@@ -1,6 +1,6 @@
 publish-dot
 ~~~~~~~~~~~
-Generates svg graph(s) showing connections between items and, optionally, reusable types in the model.
+Generates svg graph(s) showing connections between items and, optionally, composite types in the model.
 
 Command Line Arguments
 ----------------------
@@ -40,15 +40,15 @@ Optional inputs for publish-dot command.
 
 * ``-s|--single``
 
-    Generate a separate graph for every single item (default is one graph for each topic). Cannot be used with ``-a``.
+    Generate a separate graph for every single item type (default is one graph for each topic). Cannot be used with ``-a``.
 
 * ``-i|--inheritance``
 
     Show inheritance in the generated graph(s).
 
-* ``-r|--reusables``
+* ``-c|--composite``
 
-    Display reusable types and their properties inside items in generated graph(s).
+    Display composite types and their properties inside item types in the generated graph(s).
 
 Example Command Line Usage
 --------------------------
@@ -58,5 +58,5 @@ A few examples of how the command line arguments and flags can be used together.
 
     publish-dot -h
     publish-dot MyCogsModelDirectory MyOutputDirectory
-    publish-dot -o -a -i -r MyCogsModelDirectory MyOutputDirectory
+    publish-dot -o -a -i -c MyCogsModelDirectory MyOutputDirectory
     publish-dot -o -l MyGraphvizDotDirectory -f jpg MyCogsModelDirectory MyOutputDirectory

@@ -1,0 +1,37 @@
+cogs-new
+~~~~~~~~~
+Generates a model skelton for ease of starting a new project.
+
+Command Line Arguments
+----------------------
+Required inputs for cogs-new command (must be specified in order).
+
+* ``[CogsLocation]`` 
+
+    The location of the folder containing model.
+
+* ``[TargetLocation]`` 
+
+    The location of the folder where the output will be created.
+
+Command Line Flags
+----------------------
+Optional inputs for cogs-new command.
+
+* ``-?|-h|--help``
+
+    Displays all command arguments and flags are for the cogs-new command.
+
+* ``-o|--overwrite``
+
+    If the ``[TargetLocation]`` is not empty, erase all files in the folder before generation.
+
+Example Command Line Usage
+--------------------------
+A few examples of how the command line arguments and flags can be used together.
+
+.. code-block:: console
+
+    cogs-new -h
+    cogs-new MyCogsModelDirectory MyOutputDirectory
+    cogs-new -o MyCogsModelDirectory MyOutputDirectory

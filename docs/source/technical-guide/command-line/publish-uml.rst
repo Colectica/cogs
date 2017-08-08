@@ -1,6 +1,6 @@
 publish-uml
 ~~~~~~~~~~~
-Generates a uml file containing connections between item types and reusable types in the model. Outputted Uml can be non-normative or normative. If non-normative, it will also contain graph information.
+Generates a uml file containing connections between item types and composite types in the model. Outputted Uml can be non-normative or normative. If non-normative, it will also contain graph information.
 
 Command Line Arguments
 ----------------------

@@ -1,6 +1,6 @@
 publish-cs
 ~~~~~~~~~~
-Generates c# classes for all ItemTypes and ReusableTypes in the model. The generated classes can be serialized to json, populated from json, and serialized to XML.
+Generates c# classes for all item types and composite types in the model. The generated classes can be serialized to json, populated from json, and serialized to XML.
 
 Command Line Arguments
 ----------------------
@@ -48,7 +48,7 @@ A few examples of how the command line arguments and flags can be used together.
 Simple Type Mappings to c#
 --------------------------
 ===================     =================
-Simple Type             c# representation
+Primitive Type           c# representation
 ===================     =================
 AnyURI                  `Uri <https://msdn.microsoft.com/en-us/library/system.uri(v=vs.110).aspx?>`_
 Boolean                 `bool <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/bool>`_
@@ -77,7 +77,7 @@ Time                    `DateTimeOffset <https://msdn.microsoft.com/en-us/librar
 UnsignedLong            `ulong <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/ulong>`_
 ===================     =================
 
-Custom Simple Types in c#
+Custom Primitive Types in c#
 -------------------------
 
 .. _GYearMonth:

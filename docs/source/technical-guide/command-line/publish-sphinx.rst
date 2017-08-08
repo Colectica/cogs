@@ -1,6 +1,6 @@
 publish-sphinx
 ~~~~~~~~~~~~~~
-Generates documentation for the model including inbedded graphs of each item type and reusable type using the `publish-dot <../publish-dot/index.html>`_ command.
+Generates documentation for the model including inbedded graphs of each item type and composite type using the `publish-dot <../publish-dot/index.html>`_ command.
 
 Command Line Arguments
 ----------------------
