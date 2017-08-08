@@ -1,5 +1,5 @@
 using System;
-using cogsBurger;
+using cogsburger;
 using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -24,8 +24,7 @@ namespace Cogs.DataAnnotations
             {
                 return true;
             }
-            string s = value as string;
-            if (s != null && String.IsNullOrEmpty(s))
+            if (value is string s && String.IsNullOrEmpty(s))
             {
                 return true;
             }

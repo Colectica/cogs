@@ -12,8 +12,7 @@ concerns and gives you full control over markup for enjoyable, agile
 development. COGS includes many features that enable fast, test-driven
 development, allowing you to publish sophisticated models in a variety of formats.
 
-COGS is for domain experts and groups who value ease of collaboration and low
-technical barriers for participation.
+COGS is for domain experts and groups who value **ease of collaboration** and **low technical barriers** for participation.
 
 Output Formats
 --------------
@@ -21,6 +20,7 @@ Output Formats
 Publishable formats include:
 
 * XML Schema
+* OWL 2 (RDF Schema)
 * OMG's UML Normative XMI 2.4.2
 * OMG's UML XMI 2.5 with diagram exchange
 * Sphinx HTML documentation and visualizations
@@ -29,9 +29,9 @@ Publishable formats include:
 * GraphQL schema language
 
 Upcoming formats include:
- 
-* OWL 2 / QL (RDF Schema)
-* Class libraries for other languages 
+
+* Class libraries for other languages
+
 
 Platforms
 ---------

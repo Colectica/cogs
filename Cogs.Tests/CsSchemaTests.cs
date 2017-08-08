@@ -45,7 +45,7 @@ namespace Cogs.Tests
             }
             if (dotLoc == null) { throw new InvalidOperationException(); }
 
-            Build("cogsBurger", outputPath, dotLoc);
+            Build("cogsburger", outputPath, dotLoc);
         }
 
         // builds the created project

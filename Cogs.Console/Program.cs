@@ -188,7 +188,7 @@ namespace Cogs.Console
                                            CommandOptionType.NoValue);
                 var outputFormat = command.Option("-f|--format", "Specifies format for output file. Defaults to svg", CommandOptionType.SingleValue);
                 var outputAll = command.Option("-a|--all",
-                                           "generate one graph containing all objects. Connot be used with -s",
+                                           "generate one graph containing all objects. Cannot be used with -s",
                                            CommandOptionType.NoValue);
                 var outputSingle = command.Option("-s|--single",
                                            "generate a graph for every single item (incoming links and outgoing links). Cannot be used with -a",
@@ -253,7 +253,7 @@ namespace Cogs.Console
                                            "URI of the target XML namespace",
                                            CommandOptionType.SingleValue);
 
-                var namespaceUriPrefix = command.Option("-p|--namespacePrefix",
+                var namespaceUriPrefix = command.Option("-p|--prefix",
                                            "Namespace prefix to use for the target XML namespace",
                                            CommandOptionType.SingleValue);
                 command.OnExecute(() =>
@@ -485,6 +485,45 @@ namespace Cogs.Console
 
                     publisher.Publish(cogsModel);
                     //HandleErrors(publisher.Errors);
+
+
+                    return 0;
+                });
+
+            });
+
+            app.Command("cogs-new", (command) =>
+            {
+                command.Description = "create a model skeleton";
+                command.HelpOption("-?|-h|--help");
+                
+                var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
+                var targetArgument = command.Argument("[targetLocation]", "Directory where the json schema is generated.");
+
+                var overwriteOption = command.Option("-o|--overwrite",
+                                           "If the target directory exists, delete and overwrite the location",
+                                           CommandOptionType.NoValue);
+
+
+
+                command.OnExecute(() =>
+                {
+                    var location = locationArgument.Value ?? Environment.CurrentDirectory;
+                    var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
+                    bool overwrite = overwriteOption.HasValue();
+
+                    var directoryReader = new CogsDirectoryReader();
+                    var cogsDtoModel = directoryReader.Load(location);
+
+                    var modelBuilder = new CogsModelBuilder();
+                    var cogsModel = modelBuilder.Build(cogsDtoModel);
+
+                    ModelInitializer cogsmodel = new ModelInitializer
+                    {
+                        Dir = location
+                    };
+
+                    cogsmodel.Create();
 
 
                     return 0;
