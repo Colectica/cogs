@@ -12,7 +12,7 @@ Command Line Argument
 
 .. code-block:: bash
 
-        $ publishe-json [Cogslocation] [Targetlocation]
+        $ publish-json [Cogslocation] [Targetlocation]
 
 - Cogslocation   
     - location of the folder containing model
@@ -37,7 +37,7 @@ Command Line Flags
     Allow AdditionalProperties  to be added 
 
 Example of Command Line Usage
-----------------------
+--------------------------------
 
 .. code-block:: bash
 

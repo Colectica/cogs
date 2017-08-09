@@ -613,7 +613,7 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                CDate = new DataAnnotations.CogsDate(new DateTimeOffset(new DateTime(1996, 8, 23, 4, 37, 4),
+                CDate = new CogsDate(new DateTimeOffset(new DateTime(1996, 8, 23, 4, 37, 4),
                     new TimeSpan(+3, 0, 0)), false)
             };
             container.Items.Add(animal);
@@ -628,7 +628,7 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                CDate = new DataAnnotations.CogsDate(new DateTime(2017, 9, 2), true)
+                CDate = new CogsDate(new DateTime(2017, 9, 2), true)
             };
             container.Items.Add(animal);
 
@@ -642,7 +642,7 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                CDate = new DataAnnotations.CogsDate(new GYearMonth(2017, 7, "Z"))
+                CDate = new CogsDate(new GYearMonth(2017, 7, "Z"))
             };
             container.Items.Add(animal);
 
@@ -656,7 +656,7 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                CDate = new DataAnnotations.CogsDate(new GYearMonth(2017, 7, null))
+                CDate = new CogsDate(new GYearMonth(2017, 7, null))
             };
             container.Items.Add(animal);
 
@@ -670,7 +670,7 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                CDate = new DataAnnotations.CogsDate(new GYear(2017, "Z"))
+                CDate = new CogsDate(new GYear(2017, "Z"))
             };
             container.Items.Add(animal);
 
@@ -684,7 +684,7 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                CDate = new DataAnnotations.CogsDate(new GYear(2017, null))
+                CDate = new CogsDate(new GYear(2017, null))
             };
             container.Items.Add(animal);
 
@@ -698,7 +698,7 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                CDate = new DataAnnotations.CogsDate(new TimeSpan(1562))
+                CDate = new CogsDate(new TimeSpan(1562))
             };
             container.Items.Add(animal);
 
@@ -712,16 +712,16 @@ namespace Cogs.Tests.Integration
             Condiment condiment = new Condiment
             {
                 ID = Guid.NewGuid().ToString(),
-                CDates = new List<DataAnnotations.CogsDate>
+                CDates = new List<CogsDate>
                 {
-                    new DataAnnotations.CogsDate(new TimeSpan(1562)),
-                    new DataAnnotations.CogsDate(new GYear(2017, "+01:00")),
-                    new DataAnnotations.CogsDate(new DateTimeOffset(new DateTime(1996, 8, 23, 4, 37, 4),
+                    new CogsDate(new TimeSpan(1562)),
+                    new CogsDate(new GYear(2017, "+01:00")),
+                    new CogsDate(new DateTimeOffset(new DateTime(1996, 8, 23, 4, 37, 4),
                         new TimeSpan(+3, 0, 0)), false),
-                    new DataAnnotations.CogsDate(new DateTime(2017, 9, 2), true),
-                    new DataAnnotations.CogsDate(new GYearMonth(2017, 7, "+02:00")),
-                    new DataAnnotations.CogsDate(new GYearMonth(2017, 7, null)),
-                    new DataAnnotations.CogsDate(new GYear(2017, null))
+                    new CogsDate(new DateTime(2017, 9, 2), true),
+                    new CogsDate(new GYearMonth(2017, 7, "+02:00")),
+                    new CogsDate(new GYearMonth(2017, 7, null)),
+                    new CogsDate(new GYear(2017, null))
                 },
                 Description = "Dates"
             };
@@ -761,7 +761,7 @@ namespace Cogs.Tests.Integration
                 ID = Guid.NewGuid().ToString(),
                 Size = new Dimensions
                 {
-                    CogsDate = new DataAnnotations.CogsDate(new TimeSpan(10000000))
+                    CogsDate = new CogsDate(new TimeSpan(10000000))
                 }
             };
             container.Items.Add(bread);

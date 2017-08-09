@@ -15,7 +15,7 @@ namespace Cogs.Validation
         {
             List<CogsError> errors = new List<CogsError>();
 
-            errors = CheckSettings(model, errors);
+            errors = CheckSettingsSlugToEnsureNoSpaces(model, errors);
 
             errors = CheckDataTypesMustBeDefined(model, errors);
             errors = CheckDataTypeNamesShouldMatchCase(model, errors);
@@ -173,7 +173,7 @@ namespace Cogs.Validation
             return errors;
         }
 
-        public static List<CogsError> CheckSettings(CogsDtoModel model, List<CogsError> errors)
+        public static List<CogsError> CheckSettingsSlugToEnsureNoSpaces(CogsDtoModel model, List<CogsError> errors)
         {
             // If a slug is set, it must not contain spaces.
             // TODO check for other characters that would be invalid in URLs, C#/Java namespaces, etc.

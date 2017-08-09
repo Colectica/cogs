@@ -39,7 +39,7 @@ Optional inputs for publish-uml command.
     Specified Namespace prefix to use for the target Owl namespace
 
 Example of Command Line Usage
-----------------------
+------------------------------
 
 .. code-block:: bash
 

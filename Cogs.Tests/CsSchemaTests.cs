@@ -1,6 +1,6 @@
 ﻿using Cogs.Dto;
 using Cogs.Model;
-using Cogs.Publishers;
+using Cogs.Publishers.Csharp;
 using System.IO;
 using Xunit;
 using System.Diagnostics;

@@ -1,14 +1,14 @@
 publish-dot
 ~~~~~~~~~~~
-Generates svg graph(s) showing connections between items and, optionally, reusable types in the model.
+Generates svg graph(s) showing connections between items and, optionally, composite types in the model.
 
 Command Line Arguments
 ----------------------
-Required inputs for publish-dot command (must be specified in order).
+Required inputs for the publish-dot command (must be specified in order).
 
 * ``[CogsLocation]`` 
 
-    The location of the folder containing model.
+    The location of the folder containing the model.
 
 * ``[TargetLocation]`` 
 
@@ -16,11 +16,11 @@ Required inputs for publish-dot command (must be specified in order).
 
 Command Line Flags
 ----------------------
-Optional inputs for publish-dot command.
+Optional inputs for the publish-dot command.
 
 * ``-?|-h|--help``
 
-    Displays all command arguments and flags are for the publish-dot command.
+    Displays all possible command arguments and flags for the publish-dot command.
 
 * ``-o|--overwrite``
 
@@ -40,23 +40,31 @@ Optional inputs for publish-dot command.
 
 * ``-s|--single``
 
-    Generate a separate graph for every single item (default is one graph for each topic). Cannot be used with ``-a``.
+    Generate a separate graph for every single item type (default is one graph for each topic). Cannot be used with ``-a``.
 
 * ``-i|--inheritance``
 
     Show inheritance in the generated graph(s).
 
-* ``-r|--reusables``
+* ``-c|--composite``
 
-    Display reusable types and their properties inside items in generated graph(s).
+    Display composite types and their properties inside item types in the generated graph(s).
 
-Example Command Line Usage
---------------------------
-A few examples of how the command line arguments and flags can be used together.
+Command Line Usage
+-------------------
+**Format**
 
-.. code-block:: console
+    .. code-block:: bash
 
-    publish-dot -h
-    publish-dot MyCogsModelDirectory MyOutputDirectory
-    publish-dot -o -a -i -r MyCogsModelDirectory MyOutputDirectory
-    publish-dot -o -l MyGraphvizDotDirectory -f jpg MyCogsModelDirectory MyOutputDirectory
+        $ publish-dot (-h) (-o) (-l [location]) (-f [format]) (-a) (-s) (-i) (-c) [CogsLocation] [TargetLocation]
+
+**Examples**
+
+    A few examples of how the command line arguments and flags can be used together.
+
+    .. code-block:: bash
+
+        $ publish-dot -h
+        $ publish-dot MyCogsModelDirectory MyOutputDirectory
+        $ publish-dot -o -a -i -c MyCogsModelDirectory MyOutputDirectory
+        $ publish-dot -o -l MyGraphvizDotDirectory -f jpg MyCogsModelDirectory MyOutputDirectory

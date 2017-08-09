@@ -1,14 +1,14 @@
 publish-uml
 ~~~~~~~~~~~
-Generates a uml file containing connections between item types and reusable types in the model. Outputted Uml can be non-normative or normative. If non-normative, it will also contain graph information.
+Generates a uml file containing connections between item types and composite types in the model. Outputted Uml can be non-normative or normative. If non-normative, it will also contain graph information.
 
 Command Line Arguments
 ----------------------
-Required inputs for publish-uml command (must be specified in order).
+Required inputs for the publish-uml command (must be specified in order).
 
 * ``[CogsLocation]`` 
 
-    The location of the folder containing model.
+    The location of the folder containing the model.
 
 * ``[TargetLocation]`` 
 
@@ -16,7 +16,7 @@ Required inputs for publish-uml command (must be specified in order).
 
 Command Line Flags
 ----------------------
-Optional inputs for publish-uml command.
+Optional inputs for the publish-uml command.
 
 * ``-?|-h|--help``
 
@@ -29,12 +29,20 @@ Optional inputs for publish-uml command.
 * ``-n|--normative`` 
     Output a normative XMI file (2.4.2) instead of XMI 2.5.1. Normative file cannot contain graph information.
 
-Example Command Line Usage
---------------------------
-A few examples of how the command line arguments and flags can be used together.
+Command Line Usage
+-------------------
+**Format**
 
-.. code-block:: console
+    .. code-block:: bash
 
-    publish-uml -h
-    publish-uml MyCogsModelDirectory MyOutputDirectory
-    publish-uml -o -n MyCogsModelDirectory MyOutputDirectory
+        $ publish-uml (-h) (-o) (-n) [CogsLocation] [TargetLocation]
+
+**Examples**
+
+    A few examples of how the command line arguments and flags can be used together.
+
+    .. code-block:: bash
+
+        $ publish-uml -h
+        $ publish-uml MyCogsModelDirectory MyOutputDirectory
+        $ publish-uml -o -n MyCogsModelDirectory MyOutputDirectory

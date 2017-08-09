@@ -17,7 +17,7 @@ Publishable formats include:
 * OMG's UML XMI 2.5 with diagram exchange
 * Sphinx HTML documentation and visualizations
 * JSON Schema
-* C# class library
+* C# class library with JSON and XML serialization
 * GraphQL schema language
 
 Upcoming formats include:

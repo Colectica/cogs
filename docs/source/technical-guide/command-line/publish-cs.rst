@@ -1,14 +1,14 @@
 publish-cs
 ~~~~~~~~~~
-Generates c# classes for all ItemTypes and ReusableTypes in the model. The generated classes can be serialized to json, populated from json, and serialized to XML.
+Generates c# classes for all item types and composite types in the model. The generated classes can be serialized to json, populated from json, and serialized to XML.
 
 Command Line Arguments
 ----------------------
-Required inputs for publish-cs command (must be specified in order).
+Required inputs for the publish-cs command (must be specified in order).
 
 * ``[CogsLocation]`` 
 
-    The location of the folder containing model.
+    The location of the folder containing the model.
 
 * ``[TargetLocation]`` 
 
@@ -16,11 +16,11 @@ Required inputs for publish-cs command (must be specified in order).
 
 Command Line Flags
 ----------------------
-Optional inputs for publish-cs command.
+Optional inputs for hte publish-cs command.
 
 * ``-?|-h|--help``
 
-    Displays all command arguments and flags are for the publish-cs command.
+    Displays all possible command arguments and flags for the publish-cs command.
 
 * ``-o|--overwrite``
 
@@ -34,22 +34,30 @@ Optional inputs for publish-cs command.
 
     Allows user to specify the prefix for XML namespace used in XML creation from generated c# classes.
 
-Example Command Line Usage
---------------------------
-A few examples of how the command line arguments and flags can be used together.
+Command Line Usage
+-------------------
+**Format**
 
-.. code-block:: console
+    .. code-block:: bash
 
-    publish-cs -h
-    publish-cs MyCogsModelDirectory MyOutputDirectory
-    publish-cs -o MyCogsModelDirectory MyOutputDirectory
-    publish-cs -n http://example.org/cogs -p cogs -o MyCogsModelDirectory MyOutputDirectory
+        $ publish-cs (-h) (-o) (-n [namespace]) (-p [prefix]) [CogsLocation] [TargetLocation]
 
-Simple Type Mappings to c#
---------------------------
-===================     =================
-Simple Type             c# representation
-===================     =================
+**Examples**
+
+    A few examples of how the command line arguments and flags can be used together.
+
+    .. code-block:: bash
+
+        $ publish-cs -h
+        $ publish-cs MyCogsModelDirectory MyOutputDirectory
+        $ publish-cs -o MyCogsModelDirectory MyOutputDirectory
+        $ publish-cs -n http://example.org/cogs -p cogs -o MyCogsModelDirectory MyOutputDirectory
+
+Primitive Type Mappings to c#
+-------------------------------
+===================     =====================
+Primitive Type           c# representation
+===================     =====================
 AnyURI                  `Uri <https://msdn.microsoft.com/en-us/library/system.uri(v=vs.110).aspx?>`_
 Boolean                 `bool <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/bool>`_
 CogsDate                Custom CogsDate_ class
@@ -75,15 +83,14 @@ PositiveInteger         `int <https://docs.microsoft.com/en-us/dotnet/csharp/lan
 String                  `String <https://msdn.microsoft.com/en-us/library/system.string(v=vs.110).aspx>`_
 Time                    `DateTimeOffset <https://msdn.microsoft.com/en-us/library/system.datetimeoffset(v=vs.110).aspx>`_
 UnsignedLong            `ulong <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/ulong>`_
-===================     =================
+===================     =====================
 
-Custom Simple Types in c#
--------------------------
+Custom Primitive Types in c#
+------------------------------
 
 .. _GYearMonth:
 
-**GYearMonth** 
-    
+**GYearMonth**     
     * Constructors:
         * public GYearMonth(int year, int month)
             Initializes the year and month values (timezone still null).
@@ -103,7 +110,6 @@ Custom Simple Types in c#
 .. _GMonthDay:
 
 **GMonthDay**
-
     * Constructors:
         * public GMonthDay(int month, int day)
             Initializes the month and day values (timezone still null).
@@ -123,7 +129,6 @@ Custom Simple Types in c#
 .. _GYear:
 
 **GYear**
-
     * Constructors:
         * public GYear(int year)
             Initializes the year value (timezone still null).
@@ -143,7 +148,6 @@ Custom Simple Types in c#
 .. _GMonth:
 
 **GMonth**
-
     * Constructors:
         * public GYear(int month)
             Initializes the month value (timezone still null).
@@ -163,7 +167,6 @@ Custom Simple Types in c#
 .. _GDay:
 
 **GDay**
-
     * Constructors:
         * public GYear(int day)
             Initializes the day value (timezone still null).
@@ -183,7 +186,6 @@ Custom Simple Types in c#
 .. _CogsDate: 
 
 **CogsDate**
-
     * Constructors:
         * public CogsDate(DateTimeOffset item, bool isDate = false)
             Initializes the Cogsdate to either the Date or DateTime of the DateTimeOffset provided based on bool argument.
