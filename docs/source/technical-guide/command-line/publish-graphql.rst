@@ -20,7 +20,7 @@ Required inputs for the publish-GraphQL command (must be specified in order).
 
 Command Line Flags
 ----------------------
-Optional inputs for the publish-sphinx command.
+Optional inputs for the publish-GraphQL command.
 
 * ``-?|-h|--help``
 

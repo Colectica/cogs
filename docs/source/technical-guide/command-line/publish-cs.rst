@@ -71,11 +71,11 @@ Decimal                 `decimal <https://docs.microsoft.com/en-us/dotnet/csharp
 Double                  `double <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/double>`_
 Duration                `TimeSpan <https://msdn.microsoft.com/en-us/library/system.timespan(v=vs.110).aspx>`_
 Float                   `float <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/float>`_
-GYearMonth              Custom GYearMonth_ class
+GDay                    Custom GDay_ class
+GMonth                  Custom GMonth_ class
 GMonthDay               Custom GMonthDay_ class
 GYear                   Custom GYear_ class
-GMonth                  Custom GMonth_ class
-GDay                    Custom GDay_ class
+GYearMonth              Custom GYearMonth_ class
 Integer                 `int <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/int>`_
 Integer                 `int <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/int>`_
 Language                `String <https://msdn.microsoft.com/en-us/library/system.string(v=vs.110).aspx>`_
@@ -92,24 +92,65 @@ UnsignedLong            `ulong <https://docs.microsoft.com/en-us/dotnet/csharp/l
 Custom Primitive Types in c#
 ------------------------------
 
-.. _GYearMonth:
+.. _CogsDate: 
 
-**GYearMonth**     
+**CogsDate**
     * Constructors:
-        * public GYearMonth(int year, int month)
-            Initializes the year and month values (timezone still null).
+        * public CogsDate(DateTimeOffset item, bool isDate = false)
+            Initializes the Cogsdate to either the Date or DateTime of the DateTimeOffset provided based on bool argument.
+        * public CogsDate(GYearMonth item)
+            Initializes the Cogsdate to the GYearMonth value provided.
+        * public CogsDate(GYear item)
+            Initializes the Cogsdate to the GYear value provided.
+        * public CogsDate(TimeSpan item)
+            Initializes the Cogsdate to the Duration value provided.
 
-        *  public GYearMonth(int year, int month, string zone)
-            Initializes the year, month and timezone values.
+    * public string GetUsedType()
+        Returns which type is being used ("date", "datetime", "yearMonth", "year" or "duration").
 
     * ToString()
-        Returns a string representation of the GYearMonth. Timezone is only included if it has been initialized.
+        Returns a string representation of the CogsDate. Used for XML serialization.
+
+    * public object GetValue()
+        Returns the value of the CogsDate. Result can be a string, long, JObject, or null depending on the CogsDate value. Used for Json serialization.
+
+.. _GDay:
+
+**GDay**
+    * Constructors:
+        * public GYear(int day)
+            Initializes the day value (timezone still null).
+
+        *  public GYear(int day, string zone)
+            Initializes the day and timezone values.
+
+    * ToString()
+        Returns a string representation of the GDay. Timezone is only included if it has been initialized.
 
     * public JObject ToJson()
-        Returns a JObject representation of the GYearMonth. Timezone is only included if it has been initialized.
+        Returns a JObject representation of the GDay. Timezone is only included if it has been initialized.
 
     * public int CompareTo(object obj)
-        Implements IComparable to allow GYearMonth comparisons.
+        Implements IComparable to allow GDay comparisons.
+
+.. _GMonth:
+
+**GMonth**
+    * Constructors:
+        * public GYear(int month)
+            Initializes the month value (timezone still null).
+
+        *  public GYear(int month, string zone)
+            Initializes the month and timezone values.
+
+    * ToString()
+        Returns a string representation of the GMonth. Timezone is only included if it has been initialized.
+
+    * public JObject ToJson()
+        Returns a JObject representation of the GMonth. Timezone is only included if it has been initialized.
+
+    * public int CompareTo(object obj)
+        Implements IComparable to allow GMonth comparisons.
 
 .. _GMonthDay:
 
@@ -148,64 +189,23 @@ Custom Primitive Types in c#
 
     * public int CompareTo(object obj)
         Implements IComparable to allow GYear comparisons.
+    
+.. _GYearMonth:
 
-.. _GMonth:
-
-**GMonth**
+**GYearMonth**     
     * Constructors:
-        * public GYear(int month)
-            Initializes the month value (timezone still null).
+        * public GYearMonth(int year, int month)
+            Initializes the year and month values (timezone still null).
 
-        *  public GYear(int month, string zone)
-            Initializes the month and timezone values.
+        *  public GYearMonth(int year, int month, string zone)
+            Initializes the year, month and timezone values.
 
     * ToString()
-        Returns a string representation of the GMonth. Timezone is only included if it has been initialized.
+        Returns a string representation of the GYearMonth. Timezone is only included if it has been initialized.
 
     * public JObject ToJson()
-        Returns a JObject representation of the GMonth. Timezone is only included if it has been initialized.
+        Returns a JObject representation of the GYearMonth. Timezone is only included if it has been initialized.
 
     * public int CompareTo(object obj)
-        Implements IComparable to allow GMonth comparisons.
-
-.. _GDay:
-
-**GDay**
-    * Constructors:
-        * public GYear(int day)
-            Initializes the day value (timezone still null).
-
-        *  public GYear(int day, string zone)
-            Initializes the day and timezone values.
-
-    * ToString()
-        Returns a string representation of the GDay. Timezone is only included if it has been initialized.
-
-    * public JObject ToJson()
-        Returns a JObject representation of the GDay. Timezone is only included if it has been initialized.
-
-    * public int CompareTo(object obj)
-        Implements IComparable to allow GDay comparisons.
-
-.. _CogsDate: 
-
-**CogsDate**
-    * Constructors:
-        * public CogsDate(DateTimeOffset item, bool isDate = false)
-            Initializes the Cogsdate to either the Date or DateTime of the DateTimeOffset provided based on bool argument.
-        * public CogsDate(GYearMonth item)
-            Initializes the Cogsdate to the GYearMonth value provided.
-        * public CogsDate(GYear item)
-            Initializes the Cogsdate to the GYear value provided.
-        * public CogsDate(TimeSpan item)
-            Initializes the Cogsdate to the Duration value provided.
-
-    * public string GetUsedType()
-        Returns which type is being used ("date", "datetime", "yearMonth", "year" or "duration").
-
-    * ToString()
-        Returns a string representation of the CogsDate. Used for XML serialization.
-
-    * public object GetValue()
-        Returns the value of the CogsDate. Result can be a string, long, JObject, or null depending on the CogsDate value. Used for Json serialization.
+        Implements IComparable to allow GYearMonth comparisons.
 

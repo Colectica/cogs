@@ -32,7 +32,7 @@ Optional inputs for the publish-json command.
 
 * ``-a|--allowAdditionalProperties``
 
-    Allow properties not defined in the schema to be added.
+    Allow properties not defined in the schema to be added to items.
 
 Command Line Usage
 -------------------
