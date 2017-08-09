@@ -32,8 +32,8 @@
   </ItemGroup>
 
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <Copy SourceFiles="CSharp\Types.cs" DestinationFiles="CSharp\Types.txt" SkipUnchangedFiles="true"></Copy>
-    <Copy SourceFiles="CSharp\DependantTypes.cs" DestinationFiles="CSharp\DependantTypes.txt" SkipUnchangedFiles="true"></Copy>
+    <Copy SourceFiles="CSharp/Types.cs" DestinationFiles="CSharp/Types.txt" SkipUnchangedFiles="true"></Copy>
+    <Copy SourceFiles="CSharp/DependantTypes.cs" DestinationFiles="CSharp/DependantTypes.txt" SkipUnchangedFiles="true"></Copy>
     <!--<Exec Command="copy /Y CSharp\Types.cs CSharp\Types.txt" />-->
   </Target>
   
