@@ -3,7 +3,7 @@ cogs-new
 
 Introduction
 ----------------------
-Generates a model skelton for ease of starting a new project.
+Generates a model skeleton for ease of starting a new project.
 
 Command Line Arguments
 ----------------------

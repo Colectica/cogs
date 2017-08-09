@@ -3,7 +3,8 @@ publish-dot
 
 Introduction
 ----------------------
-Generates svg graph(s) showing connections between items and, optionally, composite types in the model.
+Generates graph(s) showing connections between `Item types <../../../modeler-guide/item-types/index.html>`_ and, 
+optionally, `Composite types <../../../modeler-guide/composite-types/index.html>`_ in the model.
 
 Command Line Arguments
 ----------------------
@@ -31,27 +32,27 @@ Optional inputs for the publish-dot command.
 
 * ``-l|--location``
 
-    Directory where the dot.exe file is located--only needed if not using normative and not running on Windows.
+    The directory where the dot.exe file is located--only needed if not using normative and not running on Windows.
 
 * ``-f|--format``
 
-    Specifies the format of the outputted file (default is svg). `Supported Formats <http://www.graphviz.org/doc/info/output.html>`_
+    Specifies the format of the outputted file (default is SVG). `Supported Formats <http://www.graphviz.org/doc/info/output.html>`_
 
 * ``-a|--all``
 
-    Generate one graph containing all objects (default is one graph for each topic). Cannot be used with ``-s``.
+    Generates one graph containing all objects (default is one graph for each topic). Cannot be used with ``-s``.
 
 * ``-s|--single``
 
-    Generate a separate graph for every single item type (default is one graph for each topic). Cannot be used with ``-a``.
+    Generates a separate graph for every single item type (default is one graph for each topic). Cannot be used with ``-a``.
 
 * ``-i|--inheritance``
 
-    Show inheritance in the generated graph(s).
+    Shows inheritance in the generated graph(s).
 
 * ``-c|--composite``
 
-    Display composite types and their properties inside item types in the generated graph(s).
+    Displays composite types and their properties inside item types in the generated graph(s).
 
 Command Line Usage
 -------------------

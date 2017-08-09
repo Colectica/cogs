@@ -3,8 +3,10 @@ publish-json
 
 Introduction
 ----------------------
-Generate a json file that describe the Item type, Composite type and Primitive type as well
-as showing the connection between this items. 
+Generate a json schema file that defines all `Item types <../../../modeler-guide/item-types/index.html>`_, 
+`Composite types <../../../modeler-guide/composite-types/index.html>`_, and 
+`Primitive types <../../../modeler-guide/primitive-types/index.html>`_ in the model
+as well as defines connections between items. 
 
 Command Line Arguments
 ----------------------
@@ -32,7 +34,7 @@ Optional inputs for the publish-json command.
 
 * ``-a|--allowAdditionalProperties``
 
-    Allow properties not defined in the schema to be added to items.
+    Allows properties not defined in the schema to be added to items.
 
 Command Line Usage
 -------------------

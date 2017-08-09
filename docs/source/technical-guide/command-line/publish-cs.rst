@@ -4,7 +4,7 @@ publish-cs
 Introduction
 ----------------------
 Generates c# classes for all item types and composite types in the model. 
-The generated classes can be serialized to json, populated from json, and serialized to XML.
+The generated classes can be serialized to JSON, populated from JSON, and serialized to XML.
 
 Command Line Arguments
 ----------------------
@@ -20,7 +20,7 @@ Required inputs for the publish-cs command (must be specified in order).
 
 Command Line Flags
 ----------------------
-Optional inputs for hte publish-cs command.
+Optional inputs for the publish-cs command.
 
 * ``-?|-h|--help``
 
@@ -32,11 +32,11 @@ Optional inputs for hte publish-cs command.
 
 * ``-n|--namespace``
 
-    Allows user to specify the XMI of desired XML namespace used in XML creation from generated c# classes.
+    Allows the user to specify the XMI of desired XML namespace used in XML creation from generated c# classes.
 
 * ``-p|--prefix``
 
-    Allows user to specify the prefix for XML namespace used in XML creation from generated c# classes.
+    Allows the user to specify the prefix for XML namespace used in XML creation from generated c# classes.
 
 Command Line Usage
 -------------------
@@ -112,7 +112,7 @@ Custom Primitive Types in c#
         Returns a string representation of the CogsDate. Used for XML serialization.
 
     * public object GetValue()
-        Returns the value of the CogsDate. Result can be a string, long, JObject, or null depending on the CogsDate value. Used for Json serialization.
+        Returns the value of the CogsDate. The result can be a string, long, JObject, or null depending on the CogsDate value. Used for Json serialization.
 
 .. _GDay:
 

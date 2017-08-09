@@ -3,7 +3,7 @@ validate
 
 Introduction
 ----------------------
-Takes a directory of a model and checks that it is a valid model. 
+Takes the directory of a model and checks that it is a valid model. 
 Any errors in the model are printed to the screen along with a description of why the model is invalid.
 
 Command Line Arguments
@@ -44,16 +44,16 @@ Validation Tests
 * CheckSettingsSlugToEnsureNoSpaces
     Checks if the slug in `settings <../../../modeler-guide/settings/index.html>`_, if provided, is an invalid url containing whitespace.
 * CheckDataTypesMustBeDefined
-    Checks if any referenced datatypes are not defined in the model.
+    Checks if any referenced data types are not defined in the model.
 * CheckDataTypeNamesShouldMatchCase
-    Checks if datatypes differ only by case.
+    Checks if data types differ only by case.
 * CheckDataTypeNamesShouldNotConflictWithBuiltins
-    Checks if the model defines datatypes of the same name as built-in `primitive types <../../../modeler-guide/primitive-types/index.html>`_.
+    Checks if the model defines data types of the same name as built-in `primitive types <../../../modeler-guide/primitive-types/index.html>`_.
 * CheckDataTypeNamesShouldBePascalCase
     Checks if any `item types <../../../modeler-guide/item-types/index.html>`_ in the model do not start with a capital letter.
 * CheckDuplicatePropertiesInSameItem
     Checks if an `item <../../../modeler-guide/item-types/index.html>`_ has more than one property of the same name.
 * CheckReusedPropertyNamesShouldHaveSameDatatype
-    Checks if two properties of the same name have different datatypes in the model.
+    Checks if two properties of the same name have different data types in the model.
 * CheckPropertyNamesShouldBePascalCase
     Checks if any property names in the model do not start with a capital letter.
