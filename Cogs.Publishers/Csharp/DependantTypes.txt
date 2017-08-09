@@ -280,6 +280,6 @@ namespace __CogsGeneratedNamespace
 
         internal static AsyncLocal<CogsItemCacheFactory> AsyncLocalItemCache { get; } = new AsyncLocal<CogsItemCacheFactory>();
 
-        internal static string ModelNamespace { get; set; } = "cogsburger";        
+        internal static string ModelNamespace { get; set; } = "__CogsGeneratedNamespace";        
     }
 }
