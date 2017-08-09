@@ -25,8 +25,7 @@ namespace Cogs.Publishers
                 foreach(var reuse in define)
                 {
                     if (reuse.Name == "~~reference~~")
-                    {
-                        
+                    {   
                         var referenceBody = 
                             new JObject(
                                 new JProperty("type", "object"),
