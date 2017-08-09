@@ -1,0 +1,3 @@
+Name,DataType,MinCardinality,MaxCardinality,Description,MinLength,MaxLength,Enumeration,Pattern,MinInclusive,MinExclusive,MaxInclusive,MaxExclusive,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
+PartName,string,0,1,name of a part,,,,,,,,,,,
+SubComponents,Part,0,n,sub components,,,,,,,,,,,

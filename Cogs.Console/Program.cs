@@ -188,14 +188,14 @@ namespace Cogs.Console
                                            CommandOptionType.NoValue);
                 var outputFormat = command.Option("-f|--format", "Specifies format for output file. Defaults to svg", CommandOptionType.SingleValue);
                 var outputAll = command.Option("-a|--all",
-                                           "generate one graph containing all objects. Connot be used with -s",
+                                           "generate one graph containing all objects. Cannot be used with -s",
                                            CommandOptionType.NoValue);
                 var outputSingle = command.Option("-s|--single",
                                            "generate a graph for every single item (incoming links and outgoing links). Cannot be used with -a",
                                            CommandOptionType.NoValue);
                 var inheritanceArgument = command.Option("-i|--inheritance",
                                             "allow inheritance in the graph(s)", CommandOptionType.NoValue);
-                var reusableArgument = command.Option("-r|--reusables", "show reusable inside items", CommandOptionType.NoValue);
+                var reusableArgument = command.Option("-c|--composite", "show composite types inside item types", CommandOptionType.NoValue);
 
                 command.OnExecute(() =>
                 {
@@ -253,7 +253,7 @@ namespace Cogs.Console
                                            "URI of the target XML namespace",
                                            CommandOptionType.SingleValue);
 
-                var namespaceUriPrefix = command.Option("-p|--namespacePrefix",
+                var namespaceUriPrefix = command.Option("-p|--prefix",
                                            "Namespace prefix to use for the target XML namespace",
                                            CommandOptionType.SingleValue);
                 command.OnExecute(() =>
@@ -350,6 +350,8 @@ namespace Cogs.Console
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
                                            CommandOptionType.NoValue);
+                var additionalprop = command.Option("-a|--allowAdditionalProperties",
+                                            "Allow additional Properties to be added when enabled", CommandOptionType.NoValue);
 
 
 
@@ -358,6 +360,7 @@ namespace Cogs.Console
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
+                    bool addprop = additionalprop.HasValue();
 
 
                     var directoryReader = new CogsDirectoryReader();
@@ -370,7 +373,8 @@ namespace Cogs.Console
                     {
                         CogsLocation = location,
                         TargetDirectory = target,
-                        Overwrite = overwrite
+                        Overwrite = overwrite,
+                        AdditionalProp = addprop
                     };
 
                     publisher.Publish(cogsModel);
@@ -417,7 +421,6 @@ namespace Cogs.Console
                     };
 
                     publisher.Publish(cogsModel);
-
 
                     return 0;
                 });
@@ -498,7 +501,7 @@ namespace Cogs.Console
                 command.HelpOption("-?|-h|--help");
                 
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
-                var targetArgument = command.Argument("[targetLocation]", "Directory where the json schema is generated.");
+                var targetArgument = command.Argument("[targetLocation]", "Directory where the model skelton is generated.");
 
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
@@ -520,7 +523,8 @@ namespace Cogs.Console
 
                     ModelInitializer cogsmodel = new ModelInitializer
                     {
-                        Dir = location
+                        Dir = location,
+                        Overwrite = overwrite
                     };
 
                     cogsmodel.Create();

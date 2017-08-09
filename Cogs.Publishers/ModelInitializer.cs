@@ -10,12 +10,17 @@ namespace Cogs.Publishers
     public class ModelInitializer
     {
         public string Dir { get; set; }
+        public bool Overwrite { get; set; }
 
         public void Create()
         {
             if (Directory.Exists(Dir))
             {
-                throw new InvalidDataException("The directory already exist");
+                if (Overwrite)
+                {
+                    Directory.Delete(Dir, true);
+                }
+                else { throw new InvalidDataException("The directory already exists"); }
             }
 
             //Create the directory that user want
@@ -23,7 +28,7 @@ namespace Cogs.Publishers
 
             //Create the 4 major folders and 1 readme file
             DirectoryInfo it = Directory.CreateDirectory(Path.Combine(di.FullName, "ItemTypes"));
-            DirectoryInfo rt = Directory.CreateDirectory(Path.Combine(di.FullName, "ReusableTypes"));
+            DirectoryInfo rt = Directory.CreateDirectory(Path.Combine(di.FullName, "CompositeTypes"));
             DirectoryInfo setting = Directory.CreateDirectory(Path.Combine(di.FullName, "Settings"));
             DirectoryInfo topics = Directory.CreateDirectory(Path.Combine(di.FullName, "Topics"));
             File.WriteAllText(Path.Combine(di.FullName, "readme.md"), "Model description");

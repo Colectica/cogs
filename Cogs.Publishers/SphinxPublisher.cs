@@ -22,15 +22,13 @@ namespace Cogs.Publishers
             {
                 throw new InvalidOperationException("Target directory must be specified");
             }
-
-            string sourcePath = Path.Combine(TargetDirectory, "source");
-            if (Overwrite && Directory.Exists(sourcePath))
+            if (Overwrite && Directory.Exists(TargetDirectory))
             {
-                Directory.Delete(sourcePath, true);
-                System.Threading.Thread.Sleep(1000);
+                Directory.Delete(TargetDirectory, true);
             }
-
+            // TODO: if Overwrite is false and Directory.Exists(TargetDirectory)) throw an error and exit
             Directory.CreateDirectory(TargetDirectory);
+
             // create graphs for each item
             var builder = new DotSchemaPublisher
             {
@@ -49,7 +47,10 @@ namespace Cogs.Publishers
             //copy over image css file
             var path = Path.Combine(Path.Combine(Path.Combine(Path.Combine(TargetDirectory, "build"), "html"), "_static"), "css");
             Directory.CreateDirectory(path);
-            Assembly.GetExecutingAssembly().GetManifestResourceStream("Cogs.Publishers.image.css").CopyTo(new FileStream(Path.Combine(path, "image.css"), FileMode.Create));
+            using (var stream = new FileStream(Path.Combine(path, "image.css"), FileMode.Create))
+            {
+                Assembly.GetExecutingAssembly().GetManifestResourceStream("Cogs.Publishers.image.css").CopyTo(stream);
+            }
         }
     }
 }
