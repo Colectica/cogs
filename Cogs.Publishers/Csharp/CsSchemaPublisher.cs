@@ -162,7 +162,7 @@ namespace Cogs.Publishers.Csharp
 
                 }
                 else { newClass.AppendLine($"{Environment.NewLine}    {{"); }
-                bool first = true;
+
                 foreach (var prop in item.Properties)
                 {
 
@@ -217,8 +217,7 @@ namespace Cogs.Publishers.Csharp
                     if (Translator.ContainsKey(prop.DataTypeName))
                     {
                         origDataTypeName = prop.DataTypeName;
-                        prop.DataTypeName = Translator[prop.DataTypeName];
-                        if (!Isboolintdoubleulong(prop.DataTypeName)) { first = true; }
+                        prop.DataTypeName = Translator[prop.DataTypeName];                        
                     }
 
                     // create constraints
@@ -281,7 +280,6 @@ namespace Cogs.Publishers.Csharp
                         if (Isboolintdoubleulong(prop.DataTypeName) || model.Identification.Contains(prop))
                         {
                             toXml.AppendLine($"            xEl.Add(new XElement(ns + \"{prop.Name}\", {prop.Name}));");
-                            first = false;
                         }
                         else if (origDataTypeName != null)
                         {
@@ -338,7 +336,6 @@ namespace Cogs.Publishers.Csharp
                             toXml.AppendLine($"            xEl.Add(");
                             toXml.AppendLine($"                from item in {prop.Name}");
                             toXml.AppendLine($"                select new XElement(ns + \"{prop.Name}\", item));");
-                            first = false;
                         }
                         else if (origDataTypeName != null)
                         {
