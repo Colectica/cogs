@@ -3,8 +3,8 @@
 using Cogs.Common;
 using Cogs.Dto;
 using Cogs.Model;
-using Cogs.Publisher;
 using Cogs.Publishers;
+using Cogs.Publishers.Csharp;
 using Cogs.Validation;
 using Microsoft.Extensions.CommandLineUtils;
 using System;

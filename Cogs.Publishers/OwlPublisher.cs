@@ -2,13 +2,12 @@
 // See the LICENSE file in the project root for more information.
 using Cogs.Common;
 using Cogs.Model;
-using Cogs.Publishers;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace Cogs.Publisher
+namespace Cogs.Publishers
 {
     public class OwlPublisher
     {
