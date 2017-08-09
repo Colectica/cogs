@@ -3,8 +3,9 @@ publish-owl
 
 Introduction
 ----------------------
-Generate a schema in owl/rdf format. Where all Item type and Composite type are define 
-as class and their property as object properties or datatype properties.
+Generate a schema in owl/rdf format where all `Item types <../../../modeler-guide/item-types/index.html>`_ and 
+`Composite types <../../../modeler-guide/composite-types/index.html>`_ are defined 
+as classes and their properties as object properties or datatype properties.
 
 Command Line Arguments
 ----------------------
@@ -32,7 +33,7 @@ Optional inputs for the publish-owl command.
 
 *  ``-p|--namespacePrefix``
 
-    Specified Namespace prefix to use for the target Owl namespace.
+    Specifies a namespace prefix to use for the target Owl namespace.
 
 Command Line Usage
 -------------------

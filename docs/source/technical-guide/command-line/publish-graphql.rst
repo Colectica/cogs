@@ -3,8 +3,8 @@ publish-GraphQL
 
 Introduction
 ----------------------
-Generate a json file that contains a schema that define cogs model in GraphQL. 
-All types and properties are defined independently, and linked together by simply calling its defined name.
+Generate a JSON file that contains a schema that defines the given model in GraphQL. 
+All types and properties are defined independently and linked together by referencing the type names.
 
 Command Line Arguments
 ----------------------

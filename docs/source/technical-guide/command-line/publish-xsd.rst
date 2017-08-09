@@ -3,7 +3,7 @@ publish-xsd
 
 Introduction
 ----------------------
-Generates a XML schema for the data model.
+Generates an XML schema for the data model.
 
 Command Line Arguments
 ----------------------
@@ -31,11 +31,11 @@ Optional inputs for the publish-xsd command.
 
 * ``-n|--namespace``
 
-    Allows user to specify the XMI of the desired XML namespace.
+    Allows the user to specify the XMI of the desired XML namespace.
 
 * ``-p|--prefix``
 
-    Allows user to specify the prefix for the XML namespace.
+    Allows the user to specify the prefix for the XML namespace.
 
 Command Line Usage
 -------------------

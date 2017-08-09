@@ -3,8 +3,9 @@ publish-uml
 
 Introduction
 ----------------------
-Generates a uml file containing connections between item types and composite types in the model. 
-Outputted Uml can be non-normative or normative. If non-normative, it will also contain graph information.
+Generates a UML file containing connections between `Item types <../../../modeler-guide/item-types/index.html>`_
+ and `Composite types <../../../modeler-guide/composite-types/index.html>`_ in the model. 
+Outputted UML can be normative or non-normative. If non-normative, it will also contain graph information.
 
 Command Line Arguments
 ----------------------
@@ -31,7 +32,7 @@ Optional inputs for the publish-uml command.
     If the ``[TargetLocation]`` is not empty, erase all files in the folder before generation.
 
 * ``-n|--normative`` 
-    Output a normative XMI file (2.4.2) instead of XMI 2.5.1. Normative file cannot contain graph information.
+    Outputs a normative XMI file (2.4.2) instead of XMI 2.5.1. The normative file cannot contain graph information.
 
 Command Line Usage
 -------------------
