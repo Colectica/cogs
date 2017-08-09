@@ -4,13 +4,20 @@ Command Line
 .. toctree::
 
     cogs-new
-    validate
-    publish-xsd
-    publish-uml
-    publish-dot
     publish-cs
-    publish-sphinx
-    publish-json
+    publish-dot
     publish-graphql
+    publish-json
     publish-owl
-
+    publish-sphinx
+    publish-uml
+    publish-xsd
+    validate
+    
+    
+    
+    
+    
+    
+    
+    

@@ -273,7 +273,7 @@ namespace Cogs.SimpleTypes
         }
     }
 
-    public class GYear : IComparable
+    public class GYear : IComparable, IEquatable<GYear>
 	{
         public int Value;
         public string Timezone;
@@ -320,9 +320,15 @@ namespace Cogs.SimpleTypes
             }
             return 1;
         }
+
+        public bool Equals(GYear other)
+        {
+            if (CompareTo(other) == 0) { return true; }
+            return false;
+        }
     }
 
-    public class GMonth : IComparable
+    public class GMonth : IComparable, IEquatable<GMonth>
     {
         public int Value;
         public string Timezone;
@@ -369,9 +375,15 @@ namespace Cogs.SimpleTypes
             }
             return 1;
         }
+
+        public bool Equals(GMonth other)
+        {
+            if (CompareTo(other) == 0) { return true; }
+            return false;
+        }
     }
 
-    public class GDay : IComparable
+    public class GDay : IComparable, IEquatable<GDay>
     {
         public int Value;
         public string Timezone;
@@ -418,9 +430,15 @@ namespace Cogs.SimpleTypes
             }
             return 1;
         }
+
+        public bool Equals(GDay other)
+        {
+            if (CompareTo(other) == 0) { return true; }
+            return false;
+        }
     }
 
-    public class GYearMonth : IComparable
+    public class GYearMonth : IComparable, IEquatable<GYearMonth>
     {
         public int Y;
         public int M;
@@ -475,9 +493,15 @@ namespace Cogs.SimpleTypes
             }
             return 1;
         }
+
+        public bool Equals(GYearMonth other)
+        {
+            if (CompareTo(other) == 0) { return true; }
+            return false;
+        }
     }
 
-    public class GMonthDay : IComparable
+    public class GMonthDay : IComparable, IEquatable<GMonthDay>
     {
         public int M;
         public int D;
@@ -531,6 +555,12 @@ namespace Cogs.SimpleTypes
                 if (other.D > D) { return 1; }
             }
             return 1;
+        }
+
+        public bool Equals(GMonthDay other)
+        {
+            if (CompareTo(other) == 0) { return true; }
+            return false;
         }
     }
 }
