@@ -3,6 +3,7 @@ Command Line
 
 .. toctree::
 
+    cogs-new
     validate
     publish-xsd
     publish-uml

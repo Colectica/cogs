@@ -36,7 +36,15 @@ Upcoming formats include:
 Quick Start
 -----------
 
-Forthcoming
+Get started quickly with the Quick Start guide for your platform.
+
+========  =====================================================================
+Platform  Quick Start
+========  =====================================================================
+Windows   :doc:`COGS Quick Start for Windows <quick-start/windows-quick-start>`
+Linux     :doc:`COGS Quick Start for Linux <quick-start/linux-quick-start>`
+macOS     :doc:`COGS Quick Start for macOS <quick-start/macos-quick-start>`
+========  =====================================================================
 
 Modeler's Guide
 ---------------
@@ -67,5 +75,6 @@ COGS is licensed under the MIT license.
    :hidden:
    :caption: Contents
 
+   quick-start/index
    modeler-guide/index
    technical-guide/index
