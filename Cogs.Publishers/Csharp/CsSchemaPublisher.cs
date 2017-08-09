@@ -382,7 +382,10 @@ namespace Cogs.Publishers.Csharp
                             toXml.AppendLine("                }");
                             toXml.AppendLine("            }");
                         }
+
                         newClass.AppendLine($"        public List<{prop.DataTypeName}> {prop.Name} {{ get; set; }} = new List<{prop.DataTypeName}>();");
+                        newClass.AppendLine($"        public bool ShouldSerialize{prop.Name}() {{ return {prop.Name}.Count > 0; }}");
+
                     }
                 }
                 
