@@ -11,8 +11,8 @@ Command Line
     publish-owl
     publish-sphinx
     publish-uml
-    validate
     publish-xsd
+    validate
     
     
     
