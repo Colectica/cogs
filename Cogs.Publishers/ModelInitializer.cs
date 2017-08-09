@@ -146,7 +146,7 @@ namespace Cogs.Publishers
             {
                 csv = new CsvWriter(textwriter);
                 csv.WriteRecords(identification1);
-                File.WriteAllText(Path.Combine(setting.FullName, "identification.csv"), textwriter.ToString());
+                File.WriteAllText(Path.Combine(setting.FullName, "Identification.csv"), textwriter.ToString());
             }
             StringBuilder settinginfo = new StringBuilder();
             settinginfo.Append("this is the setting info csv file");
@@ -154,7 +154,7 @@ namespace Cogs.Publishers
 
             //Create topics
             StringBuilder index = new StringBuilder();
-            index.Append("All content items");
+            index.Append("All");
             DirectoryInfo All = Directory.CreateDirectory(Path.Combine(topics.FullName, "All"));
             File.WriteAllText(Path.Combine(topics.FullName, "index.txt"), index.ToString());
 
