@@ -4,11 +4,11 @@ Generates a model skelton for ease of starting a new project.
 
 Command Line Arguments
 ----------------------
-Required inputs for cogs-new command (must be specified in order).
+Required inputs for the cogs-new command (must be specified in order).
 
 * ``[CogsLocation]`` 
 
-    The location of the folder containing model.
+    The location of the folder containing the model.
 
 * ``[TargetLocation]`` 
 
@@ -16,7 +16,7 @@ Required inputs for cogs-new command (must be specified in order).
 
 Command Line Flags
 ----------------------
-Optional inputs for cogs-new command.
+Optional inputs for the cogs-new command.
 
 * ``-?|-h|--help``
 
