@@ -4,7 +4,7 @@ publish-uml
 Introduction
 ----------------------
 Generates a UML file containing connections between `Item types <../../../modeler-guide/item-types/index.html>`_
- and `Composite types <../../../modeler-guide/composite-types/index.html>`_ in the model. 
+and `Composite types <../../../modeler-guide/composite-types/index.html>`_ in the model. 
 Outputted UML can be normative or non-normative. If non-normative, it will also contain graph information.
 
 Command Line Arguments
