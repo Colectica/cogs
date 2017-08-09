@@ -9,6 +9,7 @@ using System.Xml.Schema;
 using Xunit;
 using Cogs.SimpleTypes;
 using cogsburger;
+using Cogs.DataAnnotations;
 
 namespace Cogs.Tests.Integration
 {

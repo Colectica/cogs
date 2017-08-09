@@ -11,6 +11,7 @@ using System.Xml.Linq;
 using System.Xml.Schema;
 using Xunit;
 using Cogs.SimpleTypes;
+using Cogs.DataAnnotations;
 
 namespace Cogs.Tests.Integration
 {
