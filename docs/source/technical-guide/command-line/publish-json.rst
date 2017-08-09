@@ -1,45 +1,53 @@
-Publish-Json
+publish-json
 ~~~~~~~~~~~~
 
 Introduction
 ----------------------
-
 Generate a json file that describe the Item type, Composite type and Primitive type as well
 as showing the connection between this items. 
 
-Command Line Argument
+Command Line Arguments
 ----------------------
+Required inputs for the publish-json command (must be specified in order).
 
-.. code-block:: bash
+* ``[CogsLocation]`` 
 
-        $ publish-json [Cogslocation] [Targetlocation]
+    The location of the folder containing the model.
 
-- Cogslocation   
-    - location of the folder containing model
+* ``[TargetLocation]`` 
 
-- Targetlocation 
-    - location where the output is being generated
-    - if not set, default location will be used , i.e. ``C:\Users\username\cogs\Cogs.Console\out``
+    The location of the folder where the output will be created.
 
 Command Line Flags
 ----------------------
+Optional inputs for the publish-json command.
 
 * ``-?|-h|--help``
 
-    Display all command arguments and flags are for the publish-json command.
+    Displays all possible command arguments and flags for the publish-json command.
 
 * ``-o|--overwrite``
 
-    Delete and overwrite the directory if the target directory exits
+    If the ``[TargetLocation]`` is not empty, erase all files in the folder before generation.
 
 * ``-a|--allowAdditionalProperties``
 
-    Allow AdditionalProperties  to be added 
+    Allow properties not defined in the schema to be added.
 
-Example of Command Line Usage
---------------------------------
+Command Line Usage
+-------------------
+**Format**
 
-.. code-block:: bash
+    .. code-block:: bash
 
-        $ publish-json MyCogsModelDirectory
+        $ publish-json (-h) (-o) (-a) [CogsLocation] [TargetLocation]
+
+**Examples**
+
+    A few examples of how the command line arguments and flags can be used together.
+
+    .. code-block:: bash
+
+        $ publish-json -h
         $ publish-json MyCogsModelDirectory MyOutputDirectory
+        $ publish-json -o -a MyCogsModelDirectory MyOutputDirectory

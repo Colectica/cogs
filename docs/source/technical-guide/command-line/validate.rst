@@ -1,6 +1,10 @@
 validate
 ~~~~~~~~
-Takes a directory of a model and checks that it is a valid model. Any errors in the model are printed to the screen along with a description of why the model is invalid.
+
+Introduction
+----------------------
+Takes a directory of a model and checks that it is a valid model. 
+Any errors in the model are printed to the screen along with a description of why the model is invalid.
 
 Command Line Arguments
 ----------------------

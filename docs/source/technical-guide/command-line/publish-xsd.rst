@@ -1,5 +1,8 @@
 publish-xsd
 ~~~~~~~~~~~
+
+Introduction
+----------------------
 Generates a XML schema for the data model.
 
 Command Line Arguments

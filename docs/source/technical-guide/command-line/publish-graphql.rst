@@ -1,41 +1,49 @@
-Publish-GraphQL
+publish-GraphQL
 ~~~~~~~~~~~~~~~
 
 Introduction
 ----------------------
-
 Generate a json file that contains a schema that define cogs model in GraphQL. 
-All types and properties are defined independently, and linked together by simply calling its defined name
+All types and properties are defined independently, and linked together by simply calling its defined name.
 
-Command Line Argument
+Command Line Arguments
 ----------------------
+Required inputs for the publish-GraphQL command (must be specified in order).
 
-.. code-block:: bash
+* ``[CogsLocation]`` 
 
-        $ publish-GraphQL [Cogslocation] [Targetlocation]
+    The location of the folder containing the model.
 
-- Cogslocation   
-    - location of the folder containing model
+* ``[TargetLocation]`` 
 
-- Targetlocation 
-    - location where the output is being generated
-    - if not set, default location will be used , i.e. ``C:\Users\username\cogs\Cogs.Console\out``
+    The location of the folder where the output will be created.
 
 Command Line Flags
 ----------------------
+Optional inputs for the publish-sphinx command.
 
 * ``-?|-h|--help``
 
-    Display all command arguments and flags are for the publish-json command.
+    Displays all possible command arguments and flags for the publish-GraphQL command.
 
 * ``-o|--overwrite``
 
-    Delete and overwrite the directory if the target directory exits
+    If the ``[TargetLocation]`` is not empty, erase all files in the folder before generation.
 
-Example of Command Line Usage
-----------------------
+Command Line Usage
+-------------------
+**Format**
 
-.. code-block:: bash
+    .. code-block:: bash
 
-        $ publish-GraphQL MyCogsModelDirectory
+        $ publish-GraphQL (-h) (-o) [CogsLocation] [TargetLocation]
+
+**Examples**
+
+    A few examples of how the command line arguments and flags can be used together.
+
+    .. code-block:: bash
+
+        $ publish-GraphQL -h
         $ publish-GraphQL MyCogsModelDirectory MyOutputDirectory
+        $ publish-GraphQL -o MyCogsModelDirectory MyOutputDirectory

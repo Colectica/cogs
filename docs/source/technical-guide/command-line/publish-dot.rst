@@ -1,5 +1,8 @@
 publish-dot
 ~~~~~~~~~~~
+
+Introduction
+----------------------
 Generates svg graph(s) showing connections between items and, optionally, composite types in the model.
 
 Command Line Arguments

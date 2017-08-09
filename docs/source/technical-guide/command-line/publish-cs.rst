@@ -1,6 +1,10 @@
 publish-cs
 ~~~~~~~~~~
-Generates c# classes for all item types and composite types in the model. The generated classes can be serialized to json, populated from json, and serialized to XML.
+
+Introduction
+----------------------
+Generates c# classes for all item types and composite types in the model. 
+The generated classes can be serialized to json, populated from json, and serialized to XML.
 
 Command Line Arguments
 ----------------------
