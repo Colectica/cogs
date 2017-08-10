@@ -8,6 +8,8 @@ Generate a json schema file that defines all `Item types <../../../modeler-guide
 `Primitive types <../../../modeler-guide/primitive-types/index.html>`_ in the model
 as well as defines connections between items. 
 
+Requires that `dotnet <../../installation/dotnet/index.html>`_ is installed.
+
 Command Line Arguments
 ----------------------
 Required inputs for the publish-json command (must be specified in order).

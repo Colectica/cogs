@@ -6,6 +6,8 @@ Introduction
 Generates c# classes for all item types and composite types in the model. 
 The generated classes can be serialized to JSON, populated from JSON, and serialized to XML.
 
+Requires that `dotnet <../../installation/dotnet/index.html>`_ is installed.
+
 Command Line Arguments
 ----------------------
 Required inputs for the publish-cs command (must be specified in order).

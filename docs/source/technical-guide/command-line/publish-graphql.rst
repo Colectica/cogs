@@ -6,6 +6,8 @@ Introduction
 Generate a JSON file that contains a schema that defines the given model in GraphQL. 
 All types and properties are defined independently and linked together by referencing the type names.
 
+Requires that `dotnet <../../installation/dotnet/index.html>`_ is installed.
+
 Command Line Arguments
 ----------------------
 Required inputs for the publish-GraphQL command (must be specified in order).

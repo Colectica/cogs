@@ -7,6 +7,8 @@ Generates a UML file containing connections between `Item types <../../../modele
 and `Composite types <../../../modeler-guide/composite-types/index.html>`_ in the model. 
 Outputted UML can be normative or non-normative. If non-normative, it will also contain graph information.
 
+Requires that `dotnet <../../installation/dotnet/index.html>`_ and `Graphviz <../../installation/graphviz/index.html>`_ are installed.
+
 Command Line Arguments
 ----------------------
 Required inputs for the publish-uml command (must be specified in order).
