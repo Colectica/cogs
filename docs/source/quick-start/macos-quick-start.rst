@@ -7,7 +7,7 @@ MacOS Quick Start
 First, `Download COGS <http://ci.appveyor.com/api/projects/DanSmith/cogs/artifacts/Cogs.Console/bin/Release/netcoreapp2.0/Windows-CogsRelease.zip>`_
 and extract the ZIP file.
 
-COGS runs on the open source .NET Core platform. You will need to `Download .NET Core <https://download.microsoft.com/download/7/C/3/7C310A63-13AC-49A4-9666-4CB26388F852/dotnet-runtime-2.0.0-preview2-25407-01-win-x64.exe>`_
+COGS runs on the open source .NET Core platform. You will need to `Download .NET Core Preview 2 <https://www.microsoft.com/net/core/preview#macos>`_
 and install it
 
 2. Initialize a Model
@@ -56,6 +56,11 @@ Now, Let's create an XML Schema to represent the skeleton model that COGS create
     user$ cd output/sphinx
     user$ make html
     user$ cd build/html
+
+.. note::
+
+    If you get error ``no module name sphinx``, you probbably need to install sphinx to your python
+    using the command ``python3 -m pip install sphinx``, provided you are using ``python3``
 
 Here is the output of the directory listing
 
