@@ -1,6 +1,6 @@
 Installing COGS
 ----------------
-COGS can be installed for free at http://cogsdata.org/. 
+COGS can be installed for free at `cogsdata.org <http://cogsdata.org/>`_. 
 
 Dependencies
 -------------
