@@ -7,6 +7,8 @@ Generate a schema in owl/rdf format where all `Item types <../../../modeler-guid
 `Composite types <../../../modeler-guide/composite-types/index.html>`_ are defined 
 as classes and their properties as object properties or datatype properties.
 
+Requires that `dotnet <../../installation/dotnet/index.html>`_ is installed.
+
 Command Line Arguments
 ----------------------
 Required inputs for the publish-owl command (must be specified in order).

@@ -3,8 +3,11 @@ publish-sphinx
 
 Introduction
 ----------------------
-Generates documentation for the model including inbedded graphs of each item type and 
-composite type using the `publish-dot <../publish-dot/index.html>`_ command.
+Generates documentation for the model including embedded graphs of each `Item type <../../../modeler-guide/item-types/index.html>`_ 
+and `Composite type <../../../modeler-guide/composite-types/index.html>`_ using the `publish-dot <../publish-dot/index.html>`_ command.
+
+Requires that `dotnet <../../installation/dotnet/index.html>`_, `Graphviz <../../installation/graphviz/index.html>`_ and
+`Sphinx <../../installation/sphinx/index.html>`_ are installed.
 
 Command Line Arguments
 ----------------------

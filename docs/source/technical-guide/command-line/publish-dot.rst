@@ -4,7 +4,9 @@ publish-dot
 Introduction
 ----------------------
 Generates graph(s) showing connections between `Item types <../../../modeler-guide/item-types/index.html>`_ and, 
-optionally, `Composite types <../../../modeler-guide/composite-types/index.html>`_ in the model.
+optionally, `Composite types <../../../modeler-guide/composite-types/index.html>`_ in the model. 
+
+Requires that `dotnet <../../installation/dotnet/index.html>`_ and `Graphviz <../../installation/graphviz/index.html>`_ are installed.
 
 Command Line Arguments
 ----------------------

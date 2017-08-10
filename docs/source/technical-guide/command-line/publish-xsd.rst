@@ -5,6 +5,8 @@ Introduction
 ----------------------
 Generates an XML schema for the data model.
 
+Requires that `dotnet <../../installation/dotnet/index.html>`_ is installed.
+
 Command Line Arguments
 ----------------------
 Required inputs for the publish-xsd command (must be specified in order).

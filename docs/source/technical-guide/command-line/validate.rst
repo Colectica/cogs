@@ -6,6 +6,8 @@ Introduction
 Takes the directory of a model and checks that it is a valid model. 
 Any errors in the model are printed to the screen along with a description of why the model is invalid.
 
+Requires that `dotnet <../../installation/dotnet/index.html>`_ is installed.
+
 Command Line Arguments
 ----------------------
 Required inputs for the publish-cs command (must be specified in order).
