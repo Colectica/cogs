@@ -4,7 +4,7 @@ Technical Guide
 COGS is a command line application. It performs its work in two steps.
 
 #. Read a model as specified according to the :doc:`/modeler-guide/index`.
-#. Generate many outputs by invoking a :keyword:`publisher`. Each publisher
+#. Generate many outputs by invoking a publisher. Each publisher
    is described in the :doc:`/technical-guide/command-line/index` section.
 
 Since a COGS model is just plain text, many people can collaborate on the 

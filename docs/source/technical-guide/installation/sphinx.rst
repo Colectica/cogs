@@ -1,5 +1,5 @@
-Installing Sphinx
-~~~~~~~~~~~~~~~~~~~~
+Sphinx
+~~~~~~~
 
 Usage
 ------
