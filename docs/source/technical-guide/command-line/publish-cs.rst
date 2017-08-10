@@ -3,7 +3,7 @@ publish-cs
 
 Introduction
 ----------------------
-Generates c# classes for all item types and composite types in the model. 
+Generates C# classes for all item types and composite types in the model. 
 The generated classes can be serialized to JSON, populated from JSON, and serialized to XML.
 
 Command Line Arguments
@@ -32,11 +32,11 @@ Optional inputs for the publish-cs command.
 
 * ``-n|--namespace``
 
-    Allows the user to specify the XMI of desired XML namespace used in XML creation from generated c# classes.
+    Allows the user to specify the XMI of desired XML namespace used in XML creation from generated C# classes.
 
 * ``-p|--prefix``
 
-    Allows the user to specify the prefix for XML namespace used in XML creation from generated c# classes.
+    Allows the user to specify the prefix for XML namespace used in XML creation from generated C# classes.
 
 Command Line Usage
 -------------------
@@ -57,10 +57,10 @@ Command Line Usage
         $ publish-cs -o MyCogsModelDirectory MyOutputDirectory
         $ publish-cs -n http://example.org/cogs -p cogs -o MyCogsModelDirectory MyOutputDirectory
 
-Primitive Type Mappings to c#
+Primitive Type Mappings to C#
 -------------------------------
 ===================     =====================
-Primitive Type           c# representation
+Primitive Type           C# representation
 ===================     =====================
 AnyURI                  `Uri <https://msdn.microsoft.com/en-us/library/system.uri(v=vs.110).aspx?>`_
 Boolean                 `bool <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/bool>`_
@@ -89,7 +89,7 @@ Time                    `DateTimeOffset <https://msdn.microsoft.com/en-us/librar
 UnsignedLong            `ulong <https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/ulong>`_
 ===================     =====================
 
-Custom Primitive Types in c#
+Custom Primitive Types in C#
 ------------------------------
 
 .. _CogsDate: 
