@@ -3,7 +3,8 @@ publish-cs
 
 Introduction
 ----------------------
-Generates C# classes for all item types and composite types in the model. 
+Generates C# classes for all `Item types <../../../modeler-guide/item-types/index.html>`_ 
+and `Composite types <../../../modeler-guide/composite-types/index.html>`_ in the model. 
 The generated classes can be serialized to JSON, populated from JSON, and serialized to XML.
 
 Requires that `dotnet <../../installation/dotnet/index.html>`_ is installed.
