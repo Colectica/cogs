@@ -5,6 +5,8 @@ Introduction
 ----------------------
 Generates a model skeleton for ease of starting a new project.
 
+Requires that `dotnet <../../installation/dotnet/index.html>`_ is installed.
+
 Command Line Arguments
 ----------------------
 Required inputs for the cogs-new command (must be specified in order).

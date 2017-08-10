@@ -17,6 +17,7 @@ for a transparent development process and fast iterations.
 .. toctree::
    :maxdepth: 2
 
+   installation/index
    command-line/index
    continuous-integration/index
 
