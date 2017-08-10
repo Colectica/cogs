@@ -275,42 +275,42 @@ namespace Cogs.SimpleTypes
 
     public class GYear : IComparable, IEquatable<GYear>
 	{
-        public int Value;
-        public string Timezone;
+        public int Year { set; get; }
+        public string Timezone { set; get; }
 
 		public GYear(int year)
 		{
-			Value = year;
+			Year = year;
 		}
 
-		public GYear(int year, string zone)
+		public GYear(int year, string timezone)
 		{
-			Value = year;
-			Timezone = zone;
+			Year = year;
+			Timezone = timezone;
 		}
 
 		public override string ToString()
 		{
 			if (Timezone != null) 
 			{
-				if (char.IsDigit(Timezone[0])) { return Value.ToString().PadLeft(4, '0') + "+" + Timezone; }
-				return Value.ToString().PadLeft(4, '0') + Timezone; 
+				if (char.IsDigit(Timezone[0])) { return Year.ToString().PadLeft(4, '0') + "+" + Timezone; }
+				return Year.ToString().PadLeft(4, '0') + Timezone; 
 			}
-			return Value.ToString().PadLeft(4, '0');
+			return Year.ToString().PadLeft(4, '0');
 		}
 
 		public JObject ToJson()
 		{
-            if (Timezone != null) { return new JObject(new JProperty("year", Value), new JProperty("timezone", Timezone)); }
-            return new JObject(new JProperty("year", Value));
+            if (Timezone != null) { return new JObject(new JProperty("year", Year), new JProperty("timezone", Timezone)); }
+            return new JObject(new JProperty("year", Year));
         }
 
         public int CompareTo(object obj)
         {
             if (obj == null || obj.GetType() != typeof(GYear)) { return -1; }
             var other = (GYear)obj;
-            if (other.Value < Value) { return -1; }
-            if (other.Value == Value)
+            if (other.Year < Year) { return -1; }
+            if (other.Year == Year)
             {
                 if (other.Timezone == null && Timezone == null) { return 0; }
                 if (other.Timezone == null) { return -1; }
@@ -330,42 +330,43 @@ namespace Cogs.SimpleTypes
 
     public class GMonth : IComparable, IEquatable<GMonth>
     {
-        public int Value;
-        public string Timezone;
+        [Range(1, 12)]
+        public int Month { set; get; }
+        public string Timezone { set; get; }
 
         public GMonth(int month)
         {
-            Value = month;
+            Month = month;
         }
 
-        public GMonth(int month, string zone)
+        public GMonth(int month, string timezone)
         {
-            Value = month;
-            Timezone = zone;
+            Month = month;
+            Timezone = timezone;
         }
 
         public override string ToString()
         {
             if (Timezone != null)
             {
-                if (char.IsDigit(Timezone[0])) { return "--" + Value.ToString().PadLeft(2, '0') + "+" + Timezone; }
-                return "--" + Value.ToString().PadLeft(2, '0') + Timezone;
+                if (char.IsDigit(Timezone[0])) { return "--" + Month.ToString().PadLeft(2, '0') + "+" + Timezone; }
+                return "--" + Month.ToString().PadLeft(2, '0') + Timezone;
             }
-            return "--" + Value.ToString().PadLeft(2, '0');
+            return "--" + Month.ToString().PadLeft(2, '0');
         }
 
         public JObject ToJson()
         {
-            if (Timezone != null) { return new JObject(new JProperty("month", Value), new JProperty("timezone", Timezone)); }
-            return new JObject(new JProperty("month", Value));
+            if (Timezone != null) { return new JObject(new JProperty("month", Month), new JProperty("timezone", Timezone)); }
+            return new JObject(new JProperty("month", Month));
         }
 
         public int CompareTo(object obj)
         {
             if (obj == null || obj.GetType() != typeof(GMonth)) { return -1; }
             var other = (GMonth)obj;
-            if (other.Value < Value) { return -1; }
-            if (other.Value == Value)
+            if (other.Month < Month) { return -1; }
+            if (other.Month == Month)
             {
                 if (other.Timezone == null && Timezone == null) { return 0; }
                 if (other.Timezone == null) { return -1; }
@@ -385,42 +386,43 @@ namespace Cogs.SimpleTypes
 
     public class GDay : IComparable, IEquatable<GDay>
     {
-        public int Value;
-        public string Timezone;
+        [Range(1, 31)]
+        public int Day { set; get; }
+        public string Timezone { set; get; }
 
         public GDay(int day)
         {
-            Value = day;
+            Day = day;
         }
 
-        public GDay(int day, string zone)
+        public GDay(int day, string timezone)
         {
-            Value = day;
-            Timezone = zone;
+            Day = day;
+            Timezone = timezone;
         }
 
         public override string ToString()
         {
             if (Timezone != null)
             {
-                if (char.IsDigit(Timezone[0])) { return "---" + Value.ToString().PadLeft(2, '0') + "+" + Timezone; }
-                return "---" + Value.ToString().PadLeft(2, '0') + Timezone;
+                if (char.IsDigit(Timezone[0])) { return "---" + Day.ToString().PadLeft(2, '0') + "+" + Timezone; }
+                return "---" + Day.ToString().PadLeft(2, '0') + Timezone;
             }
-            return "---" + Value.ToString().PadLeft(2, '0');
+            return "---" + Day.ToString().PadLeft(2, '0');
         }
 
         public JObject ToJson()
         {
-            if (Timezone != null) { return new JObject(new JProperty("day", Value), new JProperty("timezone", Timezone)); }
-            return new JObject(new JProperty("day", Value));
+            if (Timezone != null) { return new JObject(new JProperty("day", Day), new JProperty("timezone", Timezone)); }
+            return new JObject(new JProperty("day", Day));
         }
 
         public int CompareTo(object obj)
         {
             if (obj == null || obj.GetType() != typeof(GDay)) { return -1; }
             var other = (GDay)obj;
-            if (other.Value < Value) { return -1; }
-            if (other.Value == Value)
+            if (other.Day < Day) { return -1; }
+            if (other.Day == Day)
             {
                 if (other.Timezone == null && Timezone == null) { return 0; }
                 if (other.Timezone == null) { return -1; }
@@ -440,48 +442,49 @@ namespace Cogs.SimpleTypes
 
     public class GYearMonth : IComparable, IEquatable<GYearMonth>
     {
-        public int Y;
-        public int M;
-        public string Timezone;
+        public int Year { set; get; }
+        [Range(1, 12)]
+        public int Month { set; get; }
+        public string Timezone { set; get; }
 
         public GYearMonth(int year, int month)
         {
-            Y = year;
-            M = month;
+            Year = year;
+            Month = month;
         }
 
-        public GYearMonth(int year, int month, string zone)
+        public GYearMonth(int year, int month, string timezone)
         {
-            Y = year;
-            M = month;
-            Timezone = zone;
+            Year = year;
+            Month = month;
+            Timezone = timezone;
         }
 
         public override string ToString()
         {
             if (Timezone != null)
             {
-                if (char.IsDigit(Timezone[0])) { return Y.ToString().PadLeft(4, '0') + "-" + M.ToString().PadLeft(2, '0') + "+" + Timezone; }
-                return Y.ToString().PadLeft(4, '0') + "-" + M.ToString().PadLeft(2, '0') + Timezone;
+                if (char.IsDigit(Timezone[0])) { return Year.ToString().PadLeft(4, '0') + "-" + Month.ToString().PadLeft(2, '0') + "+" + Timezone; }
+                return Year.ToString().PadLeft(4, '0') + "-" + Month.ToString().PadLeft(2, '0') + Timezone;
             }
-            return Y.ToString().PadLeft(4, '0') + "-" + M.ToString().PadLeft(2, '0');
+            return Year.ToString().PadLeft(4, '0') + "-" + Month.ToString().PadLeft(2, '0');
         }
 
         public JObject ToJson()
         {
-            if (Timezone != null) { return new JObject(new JProperty("year", Y), new JProperty("month", M), new JProperty("timezone", Timezone)); }
-            return new JObject(new JProperty("year", Y), new JProperty("month", M));
+            if (Timezone != null) { return new JObject(new JProperty("year", Year), new JProperty("month", Month), new JProperty("timezone", Timezone)); }
+            return new JObject(new JProperty("year", Year), new JProperty("month", Month));
         }
 
         public int CompareTo(object obj)
         {
             if (obj == null || obj.GetType() != typeof(GYearMonth)) { return -1; }
             var other = (GYearMonth)obj;
-            if (other.Y < Y) { return -1; }
-            if (other.Y == Y)
+            if (other.Year < Year) { return -1; }
+            if (other.Year == Year)
             {
-                if (other.M < M) { return -1; }
-                if (other.M == M)
+                if (other.Month < Month) { return -1; }
+                if (other.Month == Month)
                 {
                     if (other.Timezone == null && Timezone == null) { return 0; }
                     if (other.Timezone == null) { return -1; }
@@ -489,7 +492,7 @@ namespace Cogs.SimpleTypes
                     if (other.Timezone.Equals(Timezone)) { return 0; }
                     return -1;
                 }
-                if (other.M > M) { return 1; }
+                if (other.Month > Month) { return 1; }
             }
             return 1;
         }
@@ -503,48 +506,50 @@ namespace Cogs.SimpleTypes
 
     public class GMonthDay : IComparable, IEquatable<GMonthDay>
     {
-        public int M;
-        public int D;
-        public string Timezone;
+        [Range(1, 12)]
+        public int Month { set; get; }
+        [Range(1, 31)]
+        public int Day { set; get; }
+        public string Timezone { set; get; }
 
         public GMonthDay(int month, int day)
         {
-            M = month;
-            D = day;
+            Month = month;
+            Day = day;
         }
 
-        public GMonthDay(int month, int day, string zone)
+        public GMonthDay(int month, int day, string timezone)
         {
-            M = month;
-            D = day;
-            Timezone = zone;
+            Month = month;
+            Day = day;
+            Timezone = timezone;
         }
 
         public override string ToString()
         {
             if (Timezone != null)
             {
-                if (char.IsDigit(Timezone[0])) { return "--" + M.ToString().PadLeft(2, '0') + "-" + D.ToString().PadLeft(2, '0') + "+" + Timezone; }
-                return "--" + M.ToString().PadLeft(2, '0') + "-" + D.ToString().PadLeft(2, '0') + Timezone;
+                if (char.IsDigit(Timezone[0])) { return "--" + Month.ToString().PadLeft(2, '0') + "-" + Day.ToString().PadLeft(2, '0') + "+" + Timezone; }
+                return "--" + Month.ToString().PadLeft(2, '0') + "-" + Day.ToString().PadLeft(2, '0') + Timezone;
             }
-            return "--" + M.ToString().PadLeft(2, '0') + "-" + D.ToString().PadLeft(2, '0');
+            return "--" + Month.ToString().PadLeft(2, '0') + "-" + Day.ToString().PadLeft(2, '0');
         }
 
         public JObject ToJson()
         {
-            if (Timezone != null) { return new JObject(new JProperty("month", M), new JProperty("day", D), new JProperty("timezone", Timezone)); }
-            return new JObject(new JProperty("month", M), new JProperty("day", D));
+            if (Timezone != null) { return new JObject(new JProperty("month", Month), new JProperty("day", Day), new JProperty("timezone", Timezone)); }
+            return new JObject(new JProperty("month", Month), new JProperty("day", Day));
         }
 
         public int CompareTo(object obj)
         {
             if (obj == null || obj.GetType() != typeof(GMonthDay)) { return -1; }
             var other = (GMonthDay)obj;
-            if (other.M < M) { return -1; }
-            if (other.M == M)
+            if (other.Month < Month) { return -1; }
+            if (other.Month == Month)
             {
-                if (other.D < D) { return -1; }
-                if (other.D == D)
+                if (other.Day < Day) { return -1; }
+                if (other.Day == Day)
                 {
                     if (other.Timezone == null && Timezone == null) { return 0; }
                     if (other.Timezone == null) { return -1; }
@@ -552,7 +557,7 @@ namespace Cogs.SimpleTypes
                     if (other.Timezone.Equals(Timezone)) { return 0; }
                     return -1;
                 }
-                if (other.D > D) { return 1; }
+                if (other.Day > Day) { return 1; }
             }
             return 1;
         }
@@ -763,7 +768,7 @@ namespace Cogs.Converters
         {
             writer.WriteStartObject();
             writer.WritePropertyName("day");
-            writer.WriteValue(item.Value);
+            writer.WriteValue(item.Day);
             if (!string.IsNullOrWhiteSpace(item.Timezone))
             {
                 writer.WritePropertyName("timezone");
@@ -787,7 +792,7 @@ namespace Cogs.Converters
         {
             writer.WriteStartObject();
             writer.WritePropertyName("month");
-            writer.WriteValue(item.Value);
+            writer.WriteValue(item.Month);
             if (!string.IsNullOrWhiteSpace(item.Timezone))
             {
                 writer.WritePropertyName("timezone");
@@ -812,9 +817,9 @@ namespace Cogs.Converters
         {
             writer.WriteStartObject();
             writer.WritePropertyName("month");
-            writer.WriteValue(item.M);
+            writer.WriteValue(item.Month);
             writer.WritePropertyName("day");
-            writer.WriteValue(item.D);
+            writer.WriteValue(item.Day);
             if (!string.IsNullOrWhiteSpace(item.Timezone))
             {
                 writer.WritePropertyName("timezone");
@@ -837,7 +842,7 @@ namespace Cogs.Converters
         {
             writer.WriteStartObject();
             writer.WritePropertyName("year");
-            writer.WriteValue(item.Value);
+            writer.WriteValue(item.Year);
 
             if (!string.IsNullOrWhiteSpace(item.Timezone))
             {
@@ -863,9 +868,9 @@ namespace Cogs.Converters
         {
             writer.WriteStartObject();
             writer.WritePropertyName("year");
-            writer.WriteValue(item.Y);
+            writer.WriteValue(item.Year);
             writer.WritePropertyName("month");
-            writer.WriteValue(item.M);
+            writer.WriteValue(item.Month);
 
             if (!string.IsNullOrWhiteSpace(item.Timezone))
             {

@@ -37,6 +37,10 @@ Optional inputs for the publish-owl command.
 
     Specifies a namespace prefix to use for the target Owl namespace.
 
+* ``-v|--version``
+
+    Specifies version number for the target Owl namespace
+
 Command Line Usage
 -------------------
 **Format**
