@@ -1,9 +1,10 @@
-Installing dotnet
-~~~~~~~~~~~~~~~~~~~~
+dotnet
+~~~~~~~
 
 Usage
 ------
-Since COGS is written in c# using the .Net framework, all of the COGS publishers require that `dotnet <https://www.microsoft.com/net/core#windowscmd>`_ is installed.
+Since COGS is written in c# using the .Net framework, all of the COGS `publishers <../../command-line/index.html>`_ 
+require that `dotnet <https://www.microsoft.com/net/core#windowscmd>`_ is installed.
 
 Download
 ---------
