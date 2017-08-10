@@ -14,10 +14,11 @@ Publishable formats include:
 * XML Schema
 * OWL 2 (RDF Schema)
 * OMG's UML Normative XMI 2.4.2
-* OMG's UML XMI 2.5 with diagram exchange
+* OMG's UML XMI 2.5 with Diagrams and Diagram Exchange
 * Sphinx HTML documentation and visualizations
 * JSON Schema
 * C# class library with JSON and XML serialization
+* SVG and dot visualizations
 * GraphQL schema language
 
 Upcoming formats include:
