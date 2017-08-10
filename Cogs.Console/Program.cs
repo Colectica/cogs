@@ -447,11 +447,15 @@ namespace Cogs.Console
                 var namespaceUriPrefix = command.Option("-p|--namespacePrefix",
                                            "Namespace prefix to use for the target Owl namespace",
                                            CommandOptionType.SingleValue);
+                var versionnumber = command.Option("-v|--version",
+                                           "Version number for the target Owl namespace",
+                                           CommandOptionType.SingleValue);
 
                 command.OnExecute(() =>
                 {
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
+                    var version = versionnumber.Value() ?? "version1.0";
                     bool overwrite = overwriteOption.HasValue();
 
                     // read cogs directory and validate the contents
@@ -466,6 +470,7 @@ namespace Cogs.Console
 
                     var targetNamespace = namespaceUri.Value() ?? cogsModel.Settings.NamespaceUrl;
                     var prefix = namespaceUriPrefix.Value() ?? cogsModel.Settings.NamespacePrefix;
+                    var comment = cogsModel.Settings.Description;
 
                     try
                     {
@@ -483,7 +488,9 @@ namespace Cogs.Console
                         TargetDirectory = target,
                         Overwrite = overwrite,
                         TargetNamespace = targetNamespace,
-                        TargetNamespacePrefix = prefix
+                        TargetNamespacePrefix = prefix,
+                        VersionInfo = version,
+                        Description = comment
                     };
 
                     publisher.Publish(cogsModel);
