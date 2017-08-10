@@ -66,7 +66,7 @@ Here is the output of the directory listing
 
 .. code-block:: doscon
     
-    MyModel/build/html user$ ls -l
+    html user$ ls -l
     total 64
     drwxr-xr-x@  6 user staff  204 Aug 9 2017 _sources
     drwxr-xr-x@ 25 user staff  850 Aug 9 2017 _static
