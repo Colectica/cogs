@@ -20,6 +20,7 @@ namespace Cogs.Publishers
 
         public string VersionInfo { get; set; }
         public string Description { get; set; }
+        public string Title { get; set; }
 
         public List<DataType> ReusableStorage { get; set; }
         public List<ItemType> ItemTypeStorage { get; set; }
@@ -60,11 +61,21 @@ namespace Cogs.Publishers
             res.AppendLine(@"   xmlns:xml=""http://www.w3.org/XML/1998/namespace""");
             res.AppendLine(@"   xmlns:xsd=""http://www.w3.org/2001/XMLSchema#""");
             res.AppendLine(@"   xmlns:rdfs=""http://www.w3.org/2000/01/rdf-schema#"">");
-            if(VersionInfo != null || Description != null)
+            if(!String.IsNullOrWhiteSpace(VersionInfo) || !String.IsNullOrWhiteSpace(Description) || !String.IsNullOrWhiteSpace(Title))
             {
                 res.AppendLine(@"   <owl:Ontology rdf:about=""" + TargetNamespace + @""">");
-                res.AppendLine(@"       <owl:versionInfo>" + VersionInfo + "</owl:versionInfo>");
-                res.AppendLine(@"       <rdfs:comment>" + Description + "</rdfs:comment>");
+                if (!String.IsNullOrWhiteSpace(VersionInfo))
+                {
+                    res.AppendLine(@"       <owl:versionInfo>" + VersionInfo + "</owl:versionInfo>");
+                }
+                if (!String.IsNullOrWhiteSpace(Description))
+                {
+                    res.AppendLine(@"       <rdfs:comment>" + Description + "</rdfs:comment>");
+                }
+                if(!String.IsNullOrWhiteSpace(Title))
+                {
+                    res.AppendLine(@"       <rdfs:label>" + Title + "</rdfs:label>");
+                }
                 res.AppendLine(@"   </owl:Ontology>");
             }
             else
