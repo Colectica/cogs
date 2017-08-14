@@ -26,7 +26,7 @@ Upcoming formats include:
 
 ## Platform
 COGS runs on Windows, Linux, and macOS on the .NET Core 2.0 platform.
-* https://www.microsoft.com/net/core/preview
+* https://www.microsoft.com/net/core/
 
 ## Legal and Licensing
 COGS is licensed under the MIT license.

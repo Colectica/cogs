@@ -61,9 +61,9 @@ namespace Cogs.Publishers.Csharp
                 new XElement("PropertyGroup", new XElement("TargetFramework", "netstandard2.0"),
                     new XElement("AssemblyName", projName), new XElement("RootNamespace", projName)),
                 new XElement("ItemGroup", new XElement("PackageReference", new XAttribute("Include", "System.ComponentModel.Annotations"),
-                    new XAttribute("Version", "4.4.0-preview2-25405-01")),
+                    new XAttribute("Version", "4.4.0")),
                     new XElement("PackageReference", new XAttribute("Include", "Microsoft.CSharp"), 
-                    new XAttribute("Version", "4.4.0-preview2-25405-01")),
+                    new XAttribute("Version", "4.4.0")),
                     new XElement("PackageReference", new XAttribute("Include", "Newtonsoft.Json"), new XAttribute("Version", "10.0.3")))));
             XmlWriterSettings xws = new XmlWriterSettings { OmitXmlDeclaration = true };
             using (XmlWriter xw = XmlWriter.Create(Path.Combine(TargetDirectory, projName + ".csproj"), xws))

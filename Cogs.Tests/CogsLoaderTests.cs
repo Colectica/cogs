@@ -30,7 +30,7 @@ namespace Cogs.Tests
             Assert.Equal("Breading", rollType.ExtendsTypeName);
 
             // Verify we read Topics correctly.
-            Assert.Equal(1, cogsModel.TopicIndices.Count);
+            Assert.Single(cogsModel.TopicIndices);
 
             // TODO Verify we read properties correctly.
 

@@ -7,7 +7,7 @@ MacOS Quick Start
 First, `Download COGS <http://ci.appveyor.com/api/projects/DanSmith/cogs/artifacts/Cogs.Console/bin/Release/netcoreapp2.0/Windows-CogsRelease.zip>`_
 and extract the ZIP file.
 
-COGS runs on the open source .NET Core platform. You will need to `Download .NET Core Preview 2 <https://www.microsoft.com/net/core/preview#macos>`_
+COGS runs on the open source .NET Core platform. You will need to `Download .NET Core 2 <https://www.microsoft.com/net/core/#macos>`_
 and install it
 
 2. Initialize a Model

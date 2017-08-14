@@ -32,7 +32,7 @@ namespace Cogs.Tests
 
             var errors = DtoValidation.CheckDuplicatePropertiesInSameItem(dto);
 
-            Assert.NotEqual(0, errors.Count);
+            Assert.NotEmpty(errors);
 
         }
 
@@ -73,7 +73,7 @@ namespace Cogs.Tests
 
             var errors = DtoValidation.CheckReusedPropertyNamesShouldHaveSameDatatype(dto);
 
-            Assert.NotEqual(0, errors.Count);
+            Assert.NotEmpty(errors);
         }
 
 
@@ -100,7 +100,7 @@ namespace Cogs.Tests
 
             var errors = DtoValidation.CheckDataTypesMustBeDefined(dto);
 
-            Assert.NotEqual(0, errors.Count);
+            Assert.NotEmpty(errors);
         }
 
         [Fact]
@@ -125,7 +125,7 @@ namespace Cogs.Tests
 
             var errors = DtoValidation.CheckDataTypeNamesShouldMatchCase(dto);
 
-            Assert.NotEqual(0, errors.Count);
+            Assert.NotEmpty(errors);
         }
 
         
@@ -142,7 +142,7 @@ namespace Cogs.Tests
             
             var errors = DtoValidation.CheckDataTypeNamesShouldNotConflictWithBuiltins(dto);
 
-            Assert.NotEqual(0, errors.Count);
+            Assert.NotEmpty(errors);
         }
 
         [Fact]
@@ -158,7 +158,7 @@ namespace Cogs.Tests
 
             var errors = DtoValidation.CheckDataTypeNamesShouldBePascalCase(dto);
 
-            Assert.NotEqual(0, errors.Count);
+            Assert.NotEmpty(errors);
         }
 
         [Fact]
@@ -180,7 +180,7 @@ namespace Cogs.Tests
 
             var errors = DtoValidation.CheckPropertyNamesShouldBePascalCase(dto);
 
-            Assert.NotEqual(0, errors.Count);
+            Assert.NotEmpty(errors);
         }
         
     }
