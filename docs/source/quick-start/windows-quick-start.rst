@@ -73,6 +73,11 @@ Here is the output of the directory listing.
 
 The :file:`schema.xsd` file contains our XML schema.
 
+.. note:: 
+
+    You will need to install Python and Sphinx to generate documentation.
+    For installation instructions see `here <http://www.sphinx-doc.org/en/stable/install.html>`_. 
+
 Next, let's generate some documentation using Sphinx.
 
 .. code-block:: doscon
