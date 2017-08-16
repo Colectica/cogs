@@ -28,6 +28,10 @@ Upcoming formats include:
 COGS runs on Windows, Linux, and macOS on the .NET Core 2.0 platform.
 * https://www.microsoft.com/net/core/
 
+## Documentation
+Quick starts, Modelers Guide, and technical documentation is available.
+* http://cogsdata.org/docs
+
 ## Outputs Diagram
 <p align="center"><img src="http://cogsdata.org/img/cogsoutputs1080.png" alt="cogs output formats"/></p>
 
