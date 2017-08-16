@@ -31,4 +31,8 @@ COGS runs on Windows, Linux, and macOS on the .NET Core 2.0 platform.
 ## Legal and Licensing
 COGS is licensed under the MIT license.
 
+## Outputs Diagram
+<p align="center"><img src="http://cogsdata.org/img/cogsoutputs1080.png" alt="cogs output formats"/></p>
+
+## Logo
 <p align="center"><img src="http://cogsdata.org/img/cogs-logo-800.png" alt="cogs"/></p>
