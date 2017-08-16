@@ -145,7 +145,8 @@ Facets
 
 language
 ````````
-Represents natural language identifiers (defined by BCP 47).    
+Represents natural language identifiers (defined by BCP 47).   
+
 Facets
     None
 
