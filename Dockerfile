@@ -6,6 +6,6 @@ WORKDIR /app
 
 RUN dotnet restore ./Cogs.Console.sln
 
-RUN dotnet build ./Cogs.Console.sln
+RUN dotnet build ./Cogs.Console.sln -c Release -o out
 
-ENTRYPOINT ["dotnet", "/app/Cogs.Console/bin/Debug/netcoreapp2.0/Cogs.Console.dll"]
+ENTRYPOINT ["dotnet", "/app/Cogs.Console/out/Cogs.Console.dll"]
