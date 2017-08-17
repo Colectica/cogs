@@ -2,7 +2,7 @@ Docker Quick Start
 -------------------
 
 1. Download Docker
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
 
 First, `Download Docker <https://www.docker.com/>`
 
