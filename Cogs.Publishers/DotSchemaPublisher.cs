@@ -24,7 +24,7 @@ namespace Cogs.Publishers
         /// </summary>
         public string TargetDirectory { get; set; }
         /// <summary>
-        /// path to dot.exe file
+        /// path to dot executable file
         /// </summary>
         public string DotLocation { get; set; }
         /// <summary>
@@ -51,6 +51,7 @@ namespace Cogs.Publishers
 
         private List<ItemType> ClassList { get; set; }
         private List<DataType> ReusableList { get; set; }
+        public List<CogsError> Errors { get; set; } = new List<CogsError>();
 
         public object Publish(CogsModel model)
         {
@@ -68,16 +69,27 @@ namespace Cogs.Publishers
             if (DotLocation == null)
             {
                 if (File.Exists("dot.exe")) { DotLocation = Path.GetFullPath("dot.exe"); }
+                else if (File.Exists("dot")) { DotLocation = Path.GetFullPath("dot"); }
                 else
                 {
-                    var values = Environment.GetEnvironmentVariable("PATH");
-                    foreach (var exe in values.Split(Path.PathSeparator))
+                    if (Environment.OSVersion.Platform == PlatformID.Win32NT)
                     {
-                        var fullPath = Path.Combine(exe, "dot.exe");
-                        if (File.Exists(fullPath)) { DotLocation = exe; }
+                        foreach (var exe in Environment.GetEnvironmentVariable("PATH").Split(Path.PathSeparator))
+                        {
+                            var fullPath = Path.Combine(exe, "dot.exe");
+                            if (File.Exists(fullPath)) { DotLocation = fullPath; }
+                        }
+                    }
+                    else if (Environment.OSVersion.Platform == PlatformID.Unix)
+                    {
+                        DotLocation = "dot";
                     }
                 }
-                if (DotLocation == null) { return new CogsError(ErrorLevel.Error, "Could not find dot file: please specify path"); }
+                if (DotLocation == null)
+                {
+                    Errors.Add(new CogsError(ErrorLevel.Error, "Could not find dot file: please specify path"));
+                    return -1;
+                }
             }
             // create list of all class names so you know if a class is being referenced
             ClassList = model.ItemTypes;
@@ -89,15 +101,15 @@ namespace Cogs.Publishers
             if (Output.Equals("all")) { MakeGraphAll(model, header); }
             else if (Output.Equals("topic")) { MakeGraphTopic(model, header); }
             else { MakeGraphSingle(model, header); }
-            return null;
+            return 0;
         }
 
         private string MakeItem(DataType item)
         {
-            return MakeNode(item, $"{item.Name} [ shape = \"record\" label = \"{{ {item.Name} | ");
+            return MakeNode(item, new StringBuilder($"{item.Name} [ shape = \"record\" label = \"{{ {item.Name} | "));
         }
 
-        private string MakeCluster(DataType item, DataType reusable)
+        private string MakeCluster(DataType item)
         {
             StringBuilder output = new StringBuilder();
             StringBuilder outerClass = new StringBuilder($"subgraph cluster{item.Name} {{ style = \"filled\" " +
@@ -143,7 +155,7 @@ namespace Cogs.Publishers
                     }
                 }
             }
-            if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName) && Inheritance)
+            if (Inheritance && !string.IsNullOrWhiteSpace(item.ExtendsTypeName))
             {
                 output.Append("edge [arrowhead = \"empty\"] ");
                 output.Append(item.Name + "Properties ->" + item.ExtendsTypeName + "[ltail=cluster" + item.Name + "] ");
@@ -170,7 +182,7 @@ namespace Cogs.Publishers
                         output.Append(item.Name + reused.Name + " -> " + item.Name + property.DataTypeName + "[ arrowhead = \"none\" label = \"" + property.Name + "\"] ");
                     }
                 }
-                if (!string.IsNullOrWhiteSpace(reused.ExtendsTypeName) && Inheritance)
+                if (Inheritance && !string.IsNullOrWhiteSpace(reused.ExtendsTypeName))
                 {
                     output.Append("edge [arrowhead = \"empty\"] ");
                     output.Append(item.Name + reused.Name + "->" + reused.ExtendsTypeName + " ");
@@ -182,17 +194,17 @@ namespace Cogs.Publishers
             return output.ToString();
         }
 
-        private string MakeNode(DataType item, string classText)
+        private string MakeNode(DataType item, StringBuilder classText)
         {
             StringBuilder outputText = new StringBuilder();
             foreach (var property in item.Properties)
             {
-                classText += property.Name + " : " + property.DataTypeName;
+                classText.Append(property.Name + " : " + property.DataTypeName);
                 if (!string.IsNullOrWhiteSpace(property.MinCardinality) && !string.IsNullOrWhiteSpace(property.MaxCardinality))
                 {
-                    classText += "[" + property.MinCardinality + "..." + property.MaxCardinality + "] ";
+                    classText.Append("[" + property.MinCardinality + "..." + property.MaxCardinality + "] ");
                 }
-                classText += "\\l";
+                classText.Append("\\l");
                 if (ClassList.Contains(property.DataType))
                 {
                    outputText.Append("edge[ arrowhead = \"none\" headlabel = \"0...*\" taillabel = \"0...*\"] ");
@@ -200,7 +212,7 @@ namespace Cogs.Publishers
                 }
                 if (ReusableList.Contains(property.DataType) && ShowReusables)
                 {
-                    return MakeCluster(item, property.DataType);
+                    return MakeCluster(item);
                 }
             }
             if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName) && Inheritance)
@@ -208,7 +220,7 @@ namespace Cogs.Publishers
                 outputText.Append("edge [arrowhead = \"empty\" headlabel = \"\" taillabel = \"\"] ");
                 outputText.Append(item.Name + "->" + item.ExtendsTypeName + " ");
             }
-            outputText.Append(classText + "}\"] ");
+            outputText.Append(classText.ToString() + "}\"] ");
             return outputText.ToString();
         }
 
@@ -277,26 +289,26 @@ namespace Cogs.Publishers
                 }
                 else { Console.Write("\rCreating Graph for " + item.Name); }
                 previousOutput = item.Name.Length;
-                var arrows = "";
+                StringBuilder arrows = new StringBuilder();
                 bool isCluster = false;
-                if (item.Properties.Where(x => ReusableList.Contains(x.DataType)).ToList().Count > 0 && ShowReusables) { isCluster = true; }
+                if (ShowReusables && item.Properties.Where(x => ReusableList.Contains(x.DataType)).ToList().Count > 0) { isCluster = true; }
                 foreach(var clss in model.ItemTypes.Concat(model.ReusableDataTypes))
                 {
-                    if (clss.ExtendsTypeName.Equals(item.Name) && Inheritance)
+                    if (Inheritance && clss.ExtendsTypeName.Equals(item.Name))
                     {
-                        if (isCluster) { arrows += $"{clss.Name} -> {item.Name}Properties [arrowhead=\"empty\" lhead = cluster{item.Name}] "; }
-                        else arrows += $"{clss.Name} -> {item.Name} [ arrowhead=\"empty\"] ";
+                        if (isCluster) { arrows.Append($"{clss.Name} -> {item.Name}Properties [arrowhead=\"empty\" lhead = cluster{item.Name}] "); }
+                        else { arrows.Append($"{clss.Name} -> {item.Name} [ arrowhead=\"empty\"] "); }
                     }
                     foreach (var property in clss.Properties)
                     {
                         if (property.DataTypeName.Equals(item.Name))
                         {
-                            if (clss.Name.Equals(item.Name) && isCluster)
+                            if (isCluster && clss.Name.Equals(item.Name))
                             {
-                                arrows += $"{clss.Name}Properties -> {item.Name}Properties [ arrowhead=\"none\" label = {property.Name}] ";
-                            } 
-                            else if (isCluster) arrows += $"{clss.Name} -> {item.Name}Properties [ arrowhead=\"none\" label= {property.Name} lhead = cluster{item.Name}] ";
-                            else arrows += $"{clss.Name} -> {item.Name}[ arrowhead=\"none\" label={property.Name}] ";
+                                arrows.Append($"{clss.Name}Properties -> {item.Name}Properties [ arrowhead=\"none\" label = {property.Name}] ");
+                            }
+                            else if (isCluster) { arrows.Append($"{clss.Name} -> {item.Name}Properties [ arrowhead=\"none\" label= {property.Name} lhead = cluster{item.Name}] "); }
+                            else { arrows.Append($"{clss.Name} -> {item.Name}[ arrowhead=\"none\" label={property.Name}] "); }
                         }
                     }
                 }
@@ -310,13 +322,31 @@ namespace Cogs.Publishers
             File.WriteAllText(Path.Combine(TargetDirectory, "input.dot"), outputText);
             // run graphviz dot
             Process process = new Process();
-            ProcessStartInfo startInfo = new ProcessStartInfo(Path.Combine(DotLocation, "dot.exe"))
+            ProcessStartInfo startInfo = new ProcessStartInfo(Path.Combine(DotLocation))
             {
                 WindowStyle = ProcessWindowStyle.Hidden,
                 Arguments = "-T " + Format + " -o " + Path.Combine(TargetDirectory, filename.Replace(" ", "") + "." + Format) + " " + Path.Combine(TargetDirectory, "input.dot")
             };
             process.StartInfo = startInfo;
-            process.Start();
+            try
+            {
+                if (process.Start() == false)
+                {
+                    if (Errors.Where(x => x.Message.Equals("Error launching dot executable")).ToList().Count == 0)
+                    {
+                        Errors.Add(new CogsError(ErrorLevel.Error, "Error launching dot executable"));
+                    }
+                    return;
+                }
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                if (Errors.Where(x => x.Message.Equals("dot executable not found: please check path")).ToList().Count == 0)
+                {
+                    Errors.Add(new CogsError(ErrorLevel.Error, "dot executable not found: please check path"));
+                }
+                return;
+            }
             process.WaitForExit();
 
             // delete the intermediate file

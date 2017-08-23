@@ -230,7 +230,7 @@ namespace Cogs.Console
                         ShowReusables = reusables
                     };
                     publisher.Publish(cogsModel);
-
+                    HandleErrors(publisher.Errors);
                     return 0;
                 });
 
