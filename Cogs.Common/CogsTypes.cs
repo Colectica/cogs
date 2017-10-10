@@ -28,7 +28,6 @@ namespace Cogs.Common
             "gMonth",
             "anyURI",
             "language",
-            "int",
             "nonPositiveInteger",
             "negativeInteger",
             "long",
@@ -36,7 +35,8 @@ namespace Cogs.Common
             "nonNegativeInteger",
             "unsignedLong",
             "positiveInteger",
-            "cogsDate"
+            "cogsDate",
+            "dcTerms"
         };
 
         public static readonly string CogsDate = "cogsDate";
