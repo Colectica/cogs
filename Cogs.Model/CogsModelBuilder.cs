@@ -305,7 +305,7 @@ namespace Cogs.Model
             }
             else
             {
-                dataType.Path = $"/reusable-types/{dataType.Name}/index";
+                dataType.Path = $"/composite-types/{dataType.Name}/index";
             }
         }
 

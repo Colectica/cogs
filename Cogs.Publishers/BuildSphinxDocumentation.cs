@@ -113,7 +113,7 @@ namespace Cogs.Publishers
             builder.AppendLine("   :caption: Items and Fields");
             builder.AppendLine();
             builder.AppendLine("   item-types/index");
-            builder.AppendLine("   reusable-types/index");
+            builder.AppendLine("   composite-types/index");
             builder.AppendLine();
 
             string mainIndexFileName = Path.Combine(outputDirectory, "source", "index.rst");
@@ -251,6 +251,68 @@ namespace Cogs.Publishers
                     propertiesBuilder.AppendLine("Cardinality");
                     propertiesBuilder.AppendLine($"    {property.MinCardinality}..{property.MaxCardinality}");
                     propertiesBuilder.AppendLine();
+
+                    // simple string restrictions
+                    if (property.MinLength.HasValue)
+                    {
+                        propertiesBuilder.AppendLine("Minimum Length");
+                        propertiesBuilder.AppendLine($"    {property.MinLength.Value}");
+                        propertiesBuilder.AppendLine();
+                    }
+                    if (property.MinLength.HasValue)
+                    {
+                        propertiesBuilder.AppendLine("Maximum Length");
+                        propertiesBuilder.AppendLine($"    {property.MaxLength.Value}");
+                        propertiesBuilder.AppendLine();
+                    }
+                    if (property.Enumeration != null && property.Enumeration.Count > 0)
+                    {
+                        propertiesBuilder.AppendLine("Enumeration");
+                        var enumString = string.Join(", ", property.Enumeration);
+                        propertiesBuilder.AppendLine($"    {enumString}");
+                        propertiesBuilder.AppendLine();
+                    }
+                    if (!string.IsNullOrWhiteSpace(property.Pattern))
+                    {
+                        propertiesBuilder.AppendLine("Pattern regular expression");
+                        propertiesBuilder.AppendLine($"    {property.Pattern}");
+                        propertiesBuilder.AppendLine();
+                    }
+
+                    // numeric restrictions
+                    if (property.MinInclusive.HasValue)
+                    {
+                        propertiesBuilder.AppendLine("Minimum Value (Inclusive)");
+                        propertiesBuilder.AppendLine($"    {property.MinInclusive.Value}");
+                        propertiesBuilder.AppendLine();
+                    }
+                    if (property.MaxInclusive.HasValue)
+                    {
+                        propertiesBuilder.AppendLine("Maximum Value (Inclusive)");
+                        propertiesBuilder.AppendLine($"    {property.MaxInclusive.Value}");
+                        propertiesBuilder.AppendLine();
+                    }
+                    if (property.MinExclusive.HasValue)
+                    {
+                        propertiesBuilder.AppendLine("Minimum Value (Exclusive)");
+                        propertiesBuilder.AppendLine($"    {property.MinExclusive.Value}");
+                        propertiesBuilder.AppendLine();
+                    }
+                    if (property.MaxExclusive.HasValue)
+                    {
+                        propertiesBuilder.AppendLine("Maximum Value (Exclusive)");
+                        propertiesBuilder.AppendLine($"    {property.MaxExclusive.Value}");
+                        propertiesBuilder.AppendLine();
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(property.DeprecatedNamespace))
+                    {
+                        propertiesBuilder.AppendLine("DDI namespace");
+                        var xmlType = property.DeprecatedElementOrAttribute != null 
+                            && property.DeprecatedElementOrAttribute == "e" ? "Element" : "Attribute";
+                        propertiesBuilder.AppendLine($"    {xmlType} in {property.DeprecatedNamespace}");
+                        propertiesBuilder.AppendLine();
+                    }
 
                     // Description
                     propertiesBuilder.AppendLine(property.Description);
