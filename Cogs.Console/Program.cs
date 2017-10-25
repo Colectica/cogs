@@ -20,6 +20,8 @@ namespace Cogs.Console
         static void Main(string[] args)
         {
             System.Console.WriteLine(cogsLogo);
+            string programVersion = Microsoft.Extensions.PlatformAbstractions.PlatformServices.Default.Application.ApplicationVersion;
+            System.Console.WriteLine($"Version {programVersion}");
 
             var app = new CommandLineApplication
             {

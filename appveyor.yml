@@ -6,6 +6,15 @@ platform: Any CPU
 init:
 - cmd: git config --global core.autocrlf true
 
+dotnet_csproj:
+  patch: true
+  file: '**\*.csproj'
+  version: '{version}'
+  package_version: '{version}'
+  assembly_version: '{version}'
+  file_version: '{version}'
+  informational_version: '{version}'
+
 environment:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
