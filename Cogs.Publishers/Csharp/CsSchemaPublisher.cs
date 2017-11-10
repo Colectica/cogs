@@ -140,14 +140,15 @@ namespace Cogs.Publishers.Csharp
 
                 // add abstract to class title if relevant
                 if (item.IsAbstract) { newClass.Append("abstract "); }
-                newClass.Append("class " + item.Name);
-                
+                newClass.Append("partial class " + item.Name);
+
                 // allow inheritance when relevant
+                string nameArgument = model.ReusableDataTypes.Contains(item) ? "\"" + item.ExtendsTypeName + "\"" : string.Empty;
                 if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
                 {
                     newClass.AppendLine($" : {item.ExtendsTypeName}");
                     newClass.AppendLine("    {");
-                    toXml.AppendLine("            foreach (var el in base.ToXml().Descendants())");
+                    toXml.AppendLine($"            foreach (var el in base.ToXml({nameArgument}).Descendants())");
                     toXml.AppendLine("            {");
                     toXml.AppendLine("                xEl.Add(el);");
                     toXml.AppendLine("            }");
