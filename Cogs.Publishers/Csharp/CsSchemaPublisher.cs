@@ -140,7 +140,7 @@ namespace Cogs.Publishers.Csharp
 
                 // add abstract to class title if relevant
                 if (item.IsAbstract) { newClass.Append("abstract "); }
-                newClass.Append("class " + item.Name);
+                newClass.Append("partial class " + item.Name);
                 
                 // allow inheritance when relevant
                 if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
