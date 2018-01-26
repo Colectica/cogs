@@ -285,6 +285,7 @@ namespace Cogs.Model
         {
             dataType.Name = dto.Name;
             dataType.Description = dto.Description;
+            dataType.Examples = dto.Examples;
             dataType.IsAbstract = dto.IsAbstract;
             dataType.IsPrimitive = dto.IsPrimitive;
             dataType.ExtendsTypeName = dto.Extends;

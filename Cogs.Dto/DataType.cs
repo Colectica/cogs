@@ -10,7 +10,7 @@ namespace Cogs.Dto
 
         public string Name { get; set; }
         public string Description { get; set; }
-
+        public string Examples { get; set; }
         public string Extends { get; set; }
 
         public bool IsAbstract { get; set; }

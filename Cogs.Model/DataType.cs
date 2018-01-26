@@ -15,6 +15,7 @@ namespace Cogs.Model
 
         public string Name { get; set; }
         public string Description { get; set; }
+        public string Examples { get; set; }
 
         public string ExtendsTypeName { get; set; }
         public List<DataType> ParentTypes { get; } = new List<DataType>();

@@ -121,6 +121,7 @@ namespace Cogs.Dto
             {
                 string itemTypeName = Path.GetFileName(typeDir);
                 string readmePath = Path.Combine(typeDir, "readme.markdown");
+                string examplesPath = Path.Combine(typeDir, "examples.markdown");
                 string propertiesFileName = Path.Combine(typeDir, itemTypeName + ".csv");
 
                 var itemType = new ItemType();
@@ -128,6 +129,7 @@ namespace Cogs.Dto
 
                 itemType.Name = itemTypeName;
                 itemType.Description = GetDescription(readmePath);
+                itemType.Examples= GetExamples(examplesPath);
                 itemType.Extends = GetExtendsClass(typeDir);
                 
                 string abstractFileName = Path.Combine(typeDir, "Abstract");
@@ -175,6 +177,16 @@ namespace Cogs.Dto
             }
 
             return File.ReadAllText(readmePath);
+        }
+
+        private string GetExamples(string examplesPath)
+        {
+            if (!File.Exists(examplesPath))
+            {
+                return string.Empty;
+            }
+
+            return File.ReadAllText(examplesPath);
         }
 
         private string GetExtendsClass(string typeDir)

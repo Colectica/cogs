@@ -338,6 +338,18 @@ namespace Cogs.Publishers
 
                 builder.AppendLine();
 
+                // Output Examples details
+                if (itemType.Examples.Length > 0)
+                {
+                    builder.AppendLine("Examples");
+                    builder.AppendLine("~~~~~~~~");
+                    builder.AppendLine();
+                    builder.AppendLine(itemType.Examples);
+
+                    builder.AppendLine();
+                }
+
+
                 string typeIndexFileName = Path.Combine(typeDir, "index.rst");
                 File.WriteAllText(typeIndexFileName, builder.ToString());
 
