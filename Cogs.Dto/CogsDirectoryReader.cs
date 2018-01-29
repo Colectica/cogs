@@ -129,7 +129,7 @@ namespace Cogs.Dto
 
                 itemType.Name = itemTypeName;
                 itemType.Description = GetDescription(readmePath);
-                itemType.Examples= GetExamples(examplesPath);
+                string examplesPath = Path.Combine(typeDir, "examples.markdown");
                 itemType.Extends = GetExtendsClass(typeDir);
                 
                 string abstractFileName = Path.Combine(typeDir, "Abstract");
