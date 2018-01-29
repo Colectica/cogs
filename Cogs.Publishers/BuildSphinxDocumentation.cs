@@ -339,7 +339,7 @@ namespace Cogs.Publishers
                 builder.AppendLine();
 
                 // Output Examples details
-                if (!string.IsNullOrWhiteSpace(itemType.Examples))
+                if (itemType.Examples.Length > 0)
                 {
                     builder.AppendLine("Examples");
                     builder.AppendLine("~~~~~~~~");
