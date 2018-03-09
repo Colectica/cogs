@@ -57,16 +57,23 @@ namespace Cogs.Publishers.Csharp
             CreatePartialIIdentifiable(model, projName);
             CreatePartialItemContainer(model, projName);
             //create project file
-            XDocument project = new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
-                new XElement("PropertyGroup", new XElement("TargetFramework", "netstandard2.0"),
-                    new XElement("AssemblyName", projName), new XElement("RootNamespace", projName)),
-                new XElement("ItemGroup", new XElement("PackageReference", new XAttribute("Include", "System.ComponentModel.Annotations"),
-                    new XAttribute("Version", "4.4.0")),
-                    new XElement("PackageReference", new XAttribute("Include", "Microsoft.CSharp"), 
-                    new XAttribute("Version", "4.4.0")),
-                    new XElement("PackageReference", new XAttribute("Include", "Newtonsoft.Json"), new XAttribute("Version", "10.0.3")))));
-            XmlWriterSettings xws = new XmlWriterSettings { OmitXmlDeclaration = true };
-            using (XmlWriter xw = XmlWriter.Create(Path.Combine(TargetDirectory, projName + ".csproj"), xws))
+            XDocument project = new XDocument(
+                new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
+                    new XElement("PropertyGroup", 
+                        new XElement("TargetFramework", "netstandard2.0"),
+                        new XElement("AssemblyName", projName), 
+                        new XElement("RootNamespace", projName)),
+                    new XElement("ItemGroup", 
+                        new XElement("PackageReference", new XAttribute("Include", "System.ComponentModel.Annotations"), new XAttribute("Version", "4.4.1")),
+                        new XElement("PackageReference", new XAttribute("Include", "Microsoft.CSharp"), new XAttribute("Version", "4.4.1")),
+                        new XElement("PackageReference", new XAttribute("Include", "Newtonsoft.Json"), new XAttribute("Version", "11.0.1")))));
+            XmlWriterSettings xws = new XmlWriterSettings
+            {
+                OmitXmlDeclaration = true,
+                Indent = true                
+            };
+            using (FileStream s = new FileStream(Path.Combine(TargetDirectory, projName + ".csproj"), FileMode.OpenOrCreate, FileAccess.ReadWrite))
+            using (XmlWriter xw = XmlWriter.Create(s, xws))
             {
                 project.Save(xw);
             }
