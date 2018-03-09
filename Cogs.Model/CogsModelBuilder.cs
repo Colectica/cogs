@@ -67,6 +67,9 @@ namespace Cogs.Model
                     case "NamespacePrefix":
                         model.Settings.NamespacePrefix = setting.Value;
                         break;
+                    case "CSharpNamespace":
+                        model.Settings.CSharpNamespace = setting.Value;
+                        break;
                     default:
                         model.Settings.ExtraSettings.Add(setting.Key, setting.Value);
                         break;

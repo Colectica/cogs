@@ -15,6 +15,7 @@ namespace Cogs.Model
         public string Copyright { get; set; }
         public string NamespaceUrl { get; set; }
         public string NamespacePrefix { get; set; }
+        public string CSharpNamespace { get; set; }
 
         public Dictionary<string, string> ExtraSettings { get; } = new Dictionary<string, string>();
     }

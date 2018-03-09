@@ -270,7 +270,7 @@ namespace Cogs.Console
                     var modelBuilder = new CogsModelBuilder();
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
 
-                    var targetNamespace = namespaceUri.Value() ?? cogsModel.Settings.NamespaceUrl;
+                    var targetNamespace = namespaceUri.Value() ?? cogsModel.Settings.CSharpNamespace;
                     var prefix = namespaceUriPrefix.Value() ?? cogsModel.Settings.NamespacePrefix;
                     try
                     {
