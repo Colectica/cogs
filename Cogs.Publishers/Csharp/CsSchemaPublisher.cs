@@ -109,7 +109,11 @@ namespace Cogs.Publishers.Csharp
                 newClass.AppendLine($"namespace {projName}");
                 newClass.AppendLine("{");
                 newClass.AppendLine( "    /// <summary>");
-                newClass.AppendLine($"    /// {item.Description}");
+                foreach(var line in item.Description.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None))
+                {
+                    newClass.AppendLine($"    /// {line}");
+                }
+                
                 newClass.AppendLine( "    /// <summary>");
                 newClass.Append("    public ");
                 
@@ -169,7 +173,10 @@ namespace Cogs.Publishers.Csharp
 
                     // create documentation for property
                     newClass.AppendLine("        /// <summary>");
-                    newClass.AppendLine($"        /// {prop.Description}");
+                    foreach (var line in prop.Description.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None))
+                    {
+                        newClass.AppendLine($"        /// {line}");
+                    }                    
                     newClass.AppendLine("        /// <summary>");
 
                     
@@ -254,7 +261,7 @@ namespace Cogs.Publishers.Csharp
                             }
                             else if (!string.IsNullOrWhiteSpace(prop.Pattern))
                             {
-                                newClass.AppendLine($"        [StringValidation(null, \"{prop.Pattern}\")]");
+                                newClass.AppendLine($"        [StringValidation(null, @\"{prop.Pattern}\")]");
                             }
                         }
                     }
