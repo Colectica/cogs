@@ -5,6 +5,7 @@ using Cogs.Model;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace Cogs.Publishers
@@ -27,6 +28,8 @@ namespace Cogs.Publishers
         public HashSet<string> set { get; set; }
         public Dictionary<string, List<string>> map { get; set; }
 
+        private CogsModel model { get; set; }
+
         public void Publish(CogsModel model)
         {
             //if (CogsLocation == null)
@@ -44,6 +47,8 @@ namespace Cogs.Publishers
             }
 
             Directory.CreateDirectory(TargetDirectory);
+
+            this.model = model;
 
             ReusableStorage = model.ReusableDataTypes;
             ItemTypeStorage = model.ItemTypes;
@@ -83,7 +88,7 @@ namespace Cogs.Publishers
                 res.AppendLine(@"   <owl:Ontology rdf:about=""" + TargetNamespace +@"""/>");
             }
             res.AppendLine("\n");
-             
+            
             //Generate each ItemType class and add to result
             GenComment(res, "Annotation properties & Datatypes");
             PredefineSimple(res, projName);
@@ -138,12 +143,21 @@ namespace Cogs.Publishers
                     {
                         GenClass.AppendLine(@"      <rdfs:subClassOf rdf:resource=""" + TargetNamespace +"#" + item.ExtendsTypeName +@"""/>");
                     }
-                    if(item.Properties.Count != 0)
+                    var keyPropertiesList = model.Identification.Where(x => item.Properties.Any(y => y.Name == x.Name)).ToList();//if they are injected to a base class
+                    if (keyPropertiesList.Count != 0)
                     {
                         GenClass.AppendLine(@"      <owl:hasKey rdf:parseType = ""Collection"">");
-                        foreach(var prop in item.Properties)
+                        foreach(var prop in keyPropertiesList)
+                        {                           
+                            GenClass.AppendLine(@"          <rdf:Description rdf:about=""" + TargetNamespace + "#" + prop.Name + @"""/>");
+                        }
+                        GenClass.AppendLine(@"      </owl:hasKey>");
+                    }
+                    if (item.Properties.Count != 0)
+                    {
+                        foreach (var prop in item.Properties)
                         {
-                            if(!map.ContainsKey(prop.Name))
+                            if (!map.ContainsKey(prop.Name))
                             {
                                 map[prop.Name] = new List<String>();
                                 map[prop.Name].Add(item.Name);
@@ -152,9 +166,7 @@ namespace Cogs.Publishers
                             {
                                 map[prop.Name].Add(item.Name);
                             }
-                            GenClass.AppendLine(@"          <rdf:Description rdf:about = """ + TargetNamespace + "#" + prop.Name +@"""/>");
                         }
-                        GenClass.AppendLine(@"      </owl:hasKey>");
                     }
                     GenClass.AppendLine(@"  </owl:Class>");
                     res.Append(GenClass.ToString());
