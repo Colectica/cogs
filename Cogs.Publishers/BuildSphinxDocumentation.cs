@@ -338,6 +338,20 @@ namespace Cogs.Publishers
 
                 builder.AppendLine();
 
+
+                // Output additional markdown text content
+                // TODO Markdown to RST
+                foreach(var extraText in itemType.AdditionalText)
+                {
+                    builder.AppendLine(extraText.Key);
+                    builder.AppendLine(new string('~',extraText.Key.Length));
+                    builder.AppendLine();
+                    builder.AppendLine(extraText.Value);
+
+                    builder.AppendLine();
+                }
+
+
                 string typeIndexFileName = Path.Combine(typeDir, "index.rst");
                 File.WriteAllText(typeIndexFileName, builder.ToString());
 

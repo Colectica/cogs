@@ -161,6 +161,19 @@ namespace Cogs.Dto
                     }
                 }
 
+                foreach(var markdown in Directory.EnumerateFiles(typeDir, "*.markdown"))
+                {
+                    string markdownContent = File.ReadAllText(markdown);
+                    string markdownName = Path.GetFileName(markdown).Replace(".markdown","");
+
+                    if(string.IsNullOrWhiteSpace(markdownContent) || string.IsNullOrWhiteSpace(markdownName))
+                    {
+                        continue;
+                    }
+                    if(markdownName == "readme") { continue; }
+
+                    itemType.AdditionalText[markdownName] = markdownContent;
+                }
 
                 // TODO DeprecatedNamespace
                 // TODO IsDeprecated

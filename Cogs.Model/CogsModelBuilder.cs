@@ -293,7 +293,7 @@ namespace Cogs.Model
             dataType.ExtendsTypeName = dto.Extends;
             dataType.DeprecatedNamespace = dto.DeprecatedNamespace;
             dataType.IsDeprecated = dto.IsDeprecated;
-            
+            dataType.AdditionalText = dto.AdditionalText;
 
             foreach (var dtoProperty in dto.Properties)
             {

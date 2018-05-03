@@ -16,6 +16,8 @@ namespace Cogs.Model
         public string Name { get; set; }
         public string Description { get; set; }
 
+        public Dictionary<string, string> AdditionalText = new Dictionary<string, string>();
+
         public string ExtendsTypeName { get; set; }
         public List<DataType> ParentTypes { get; } = new List<DataType>();
         public List<DataType> ChildTypes { get; } = new List<DataType>();

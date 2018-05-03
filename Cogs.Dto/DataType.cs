@@ -21,7 +21,7 @@ namespace Cogs.Dto
         public string DeprecatedNamespace { get; set; }
         public bool IsDeprecated { get; set; }
 
-        
+        public Dictionary<string, string> AdditionalText = new Dictionary<string, string>();
 
     }
 }
