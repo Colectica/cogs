@@ -10,6 +10,7 @@ using System.Xml.Linq;
 using System.Xml;
 using System.Reflection;
 using System.Collections;
+using Cogs.Common;
 
 namespace Cogs.Publishers.Csharp
 {
@@ -129,7 +130,7 @@ namespace Cogs.Publishers.Csharp
                 var toXml = new StringBuilder();
                 string n = "";
                 if (model.ReusableDataTypes.Contains(item)) { n = "string name"; }
-                if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
+                if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName) && !CogsTypes.SimpleTypeNames.Contains(item.ExtendsTypeName) )
                 {
                     toXml.AppendLine($"        public override XElement ToXml({n})");
                 }
@@ -157,12 +158,37 @@ namespace Cogs.Publishers.Csharp
                 string nameArgument = model.ReusableDataTypes.Contains(item) ? "\"" + item.ExtendsTypeName + "\"" : string.Empty;
                 if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
                 {
-                    newClass.AppendLine($" : {item.ExtendsTypeName}");
-                    newClass.AppendLine("    {");
-                    toXml.AppendLine($"            foreach (var el in base.ToXml({nameArgument}).Descendants())");
-                    toXml.AppendLine("            {");
-                    toXml.AppendLine("                xEl.Add(el);");
-                    toXml.AppendLine("            }");
+                    if(CogsTypes.SimpleTypeNames.Contains(item.ExtendsTypeName))
+                    {
+                        // TODO should we allow subclassing simple types? add others and handle serialization, or eliminate
+                        newClass.AppendLine($"");
+                        newClass.AppendLine("    {");
+                        newClass.AppendLine("        /// <summary>");
+                        newClass.AppendLine($"        /// The value of the item");
+                        newClass.AppendLine("        /// <summary>");                        
+                        if(string.Compare(item.ExtendsTypeName, "string") == 0)
+                        {
+                            newClass.AppendLine($"        public string Value {{ get; set; }}");
+                        }
+                        else
+                        {
+                            // TODO other types?
+                            newClass.AppendLine($"        public string Value {{ get; set; }}");
+                        }
+
+                        newClass.AppendLine();
+
+                    }
+                    else
+                    {
+                        newClass.AppendLine($" : {item.ExtendsTypeName}");
+                        newClass.AppendLine("    {");
+                        toXml.AppendLine($"            foreach (var el in base.ToXml({nameArgument}).Descendants())");
+                        toXml.AppendLine("            {");
+                        toXml.AppendLine("                xEl.Add(el);");
+                        toXml.AppendLine("            }");
+                    }
+
                 }
                 else if (!model.ReusableDataTypes.Contains(item))
                 {

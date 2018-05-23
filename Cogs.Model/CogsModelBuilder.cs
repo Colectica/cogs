@@ -338,8 +338,8 @@ namespace Cogs.Model
             property.Pattern = dto.Pattern;
             // numeric restrictions
             property.MinInclusive = dto.MinInclusive;
-            property.MinExclusive = dto.MaxExclusive;
-            property.MaxInclusive = dto.MinExclusive;
+            property.MinExclusive = dto.MinExclusive;
+            property.MaxInclusive = dto.MaxInclusive;
             property.MaxExclusive = dto.MaxExclusive;
 
             property.DeprecatedNamespace = dto.DeprecatedNamespace;
