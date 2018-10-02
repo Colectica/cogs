@@ -27,8 +27,31 @@ namespace Cogs.Validation
             errors = CheckPropertyNamesShouldBePascalCase(model, errors);
             errors = CheckAbstractDataTypePropertiesMustAllowSubtypes(model, errors);
 
+            errors = CheckOrderedCollectionsMustHaveCardinalityGreaterThanOne(model, errors);
+
+            
             return errors;
         }
+        public static List<CogsError> CheckOrderedCollectionsMustHaveCardinalityGreaterThanOne(CogsDtoModel model, List<CogsError> errors = null)
+        {
+            errors = errors ?? new List<CogsError>();
+            
+            foreach (var item in model.ItemTypes.Union(model.ReusableDataTypes))
+            {
+                foreach (var property in item.Properties)
+                {                    
+                    var ordered = !string.IsNullOrWhiteSpace(property.Ordered);
+                    var cardinalityNotOverOne = property.MaxCardinality == "0" || property.MaxCardinality == "1";
+                    if (ordered && cardinalityNotOverOne)
+                    {
+                        errors.Add(new CogsError(ErrorLevel.Error, $"Ordered property constraint: Property '{property.Name}' in '{item.Name}' has max cardinality '{property.MaxCardinality}', which is not 2 or greater"));
+                    }
+                    
+                }
+            }
+            return errors;
+        }
+
         public static List<CogsError> CheckAbstractDataTypePropertiesMustAllowSubtypes(CogsDtoModel model, List<CogsError> errors = null)
         {
             errors = errors ?? new List<CogsError>();
