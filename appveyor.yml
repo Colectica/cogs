@@ -34,5 +34,7 @@ after_build:
 test: off
 
 artifacts:
-- path: .\Cogs.Console\bin\Release\netcoreapp2.0\publish\
+- path: .\Cogs.Console\bin\Release\netcoreapp2.1\publish\
   name: Windows-CogsRelease
+
+- path: '**\*.nupkg'
