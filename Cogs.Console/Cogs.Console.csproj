@@ -1,12 +1,27 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp2.0</TargetFramework>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <PackAsTool>true</PackAsTool>
+    <AssemblyName>cogs</AssemblyName>
     <StartupObject></StartupObject>
     <GenerateProgramFile>false</GenerateProgramFile>
-    <Version>1.0.1</Version>
+    <Version>1.0.313</Version>
     <Copyright>Colectica</Copyright>
+    <PackageId>cogs</PackageId>
+    <Authors>Colectica</Authors>
+    <Company>Colectica</Company>
+    <Product>Cogs</Product>
+    <RootNamespace>Cogs.Console</RootNamespace>
+    <PackageProjectUrl>https://cogsdata.org</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Colectica/cogs</RepositoryUrl>
+    <PackageLicenseUrl>https://github.com/Colectica/cogs/blob/master/LICENSE</PackageLicenseUrl>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Description>The Convention-based Ontology Generation System (COGS) gives you a powerful, patterns-based way to build ontologies. COGS enables a clean separation of concerns and gives you full control over markup for enjoyable, agile development. COGS includes many features that enable fast, test-driven development for publishing sophisticated models in a variety of formats.
+
+COGS is for domain experts and groups who value ease of collaboration and low technical barriers for participation.</Description>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,7 +37,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.CommandLineUtils" Version="1.1.1" />
     <PackageReference Include="Microsoft.Extensions.PlatformAbstractions" Version="1.1.0" />
-    <PackageReference Include="System.ComponentModel.Annotations" Version="4.4.0" />
+    <PackageReference Include="System.ComponentModel.Annotations" Version="4.5.0" />
   </ItemGroup>
 
   <ItemGroup>
