@@ -2,7 +2,7 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Cogs.Publishers
+namespace Cogs.Publishers.JsonSchema
 {
     public class JsonSimpleConverter : JsonConverter
     {

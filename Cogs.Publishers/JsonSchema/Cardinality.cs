@@ -1,4 +1,4 @@
-﻿namespace Cogs.Publishers
+﻿namespace Cogs.Publishers.JsonSchema
 {
     public class Cardinality
     {

@@ -8,7 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace Cogs.Publishers
+namespace Cogs.Publishers.JsonSchema
 {
     public class JsonPublisher
     {
@@ -93,6 +93,7 @@ namespace Cogs.Publishers
             }
             //Console.WriteLine(JsonConvert.SerializeObject(root, settings));
             string res = JsonConvert.SerializeObject(root, settings);
+            Directory.CreateDirectory(TargetDirectory);
             File.WriteAllText(Path.Combine(TargetDirectory, "jsonSchema" + ".json"), res);
         }
 
@@ -103,6 +104,17 @@ namespace Cogs.Publishers
             {
                 ReusableType define = new ReusableType();
                 define.Name = reuseabletype.Name;
+
+                if (reuseabletype.IsSubstitute)
+                {
+                    var subTypeProperty = new JsonSchemaProp();
+                    subTypeProperty.MultiplicityElement = new Cardinality() { MinCardinality = "1", MaxCardinality = "1" };
+                    subTypeProperty.Name = "$type";
+                    subTypeProperty.Description = "Discriminator specifies the data type name";
+                    subTypeProperty.Type = "string";
+                    define.Properties.Add(subTypeProperty);
+                }
+
                 foreach(var prop in reuseabletype.Properties)
                 {
                     var temp = new JsonSchemaProp();

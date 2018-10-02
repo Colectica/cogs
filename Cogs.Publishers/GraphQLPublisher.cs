@@ -1,4 +1,5 @@
 ﻿using Cogs.Model;
+using Cogs.Publishers.JsonSchema;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System;

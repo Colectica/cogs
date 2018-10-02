@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Cogs.Publishers
+namespace Cogs.Publishers.JsonSchema
 {
     public class JsonSchema
     {

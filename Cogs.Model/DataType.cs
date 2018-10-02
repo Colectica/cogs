@@ -21,6 +21,7 @@ namespace Cogs.Model
         public string ExtendsTypeName { get; set; }
         public List<DataType> ParentTypes { get; } = new List<DataType>();
         public List<DataType> ChildTypes { get; } = new List<DataType>();
+        public bool IsSubstitute { get; set; }
 
         public List<Relationship> Relationships { get; } = new List<Relationship>();
 

@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 
-namespace Cogs.Publishers
+namespace Cogs.Publishers.JsonSchema
 {
     internal class JsonReuseableConverter : JsonConverter
     {

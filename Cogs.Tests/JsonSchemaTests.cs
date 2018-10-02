@@ -1,6 +1,7 @@
 ﻿using Cogs.Dto;
 using Cogs.Model;
 using Cogs.Publishers;
+using Cogs.Publishers.JsonSchema;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NJsonSchema;

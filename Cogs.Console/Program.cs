@@ -5,6 +5,7 @@ using Cogs.Dto;
 using Cogs.Model;
 using Cogs.Publishers;
 using Cogs.Publishers.Csharp;
+using Cogs.Publishers.JsonSchema;
 using Cogs.Validation;
 using Microsoft.Extensions.CommandLineUtils;
 using System;

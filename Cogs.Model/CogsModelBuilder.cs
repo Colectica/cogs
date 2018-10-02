@@ -187,7 +187,28 @@ namespace Cogs.Model
                 ProcessProperties(itemType.Properties, itemType.Relationships, new HashSet<string>());
             }
 
+            // find reusable types which can have a subclass used in their place
+            foreach(var dataType in model.ReusableDataTypes.Union(model.ItemTypes))
+            {
+                foreach(var property in dataType.Properties)
+                {
+                    if (property.AllowSubtypes)
+                    {
+                        MarkSubstitute(property.DataType);
+                    }
+                }
+            }
+
             return model;
+        }
+
+        private void MarkSubstitute(DataType dataType)
+        {
+            dataType.IsSubstitute = true;
+            foreach(var child in dataType.ChildTypes)
+            {
+                MarkSubstitute(child);
+            }
         }
 
         private void CreateRelationships(DataType type)

@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Cogs.Publishers
+namespace Cogs.Publishers.JsonSchema
 {
     public class ReusableType
     {

@@ -31,6 +31,10 @@
     <ProjectReference Include="..\Cogs.Model\Cogs.Model.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="JsonSchema\" />
+  </ItemGroup>
+
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
     <Copy SourceFiles="$(MSBuildProjectDirectory)/Csharp/Types.cs" DestinationFiles="$(MSBuildProjectDirectory)/Csharp/Types.txt" SkipUnchangedFiles="true"></Copy>
     <Copy SourceFiles="$(MSBuildProjectDirectory)/Csharp/DependantTypes.cs" DestinationFiles="$(MSBuildProjectDirectory)/Csharp/DependantTypes.txt" SkipUnchangedFiles="true"></Copy>
