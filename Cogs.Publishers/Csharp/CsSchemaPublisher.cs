@@ -65,9 +65,9 @@ namespace Cogs.Publishers.Csharp
                         new XElement("AssemblyName", projName), 
                         new XElement("RootNamespace", projName)),
                     new XElement("ItemGroup", 
-                        new XElement("PackageReference", new XAttribute("Include", "System.ComponentModel.Annotations"), new XAttribute("Version", "4.4.1")),
-                        new XElement("PackageReference", new XAttribute("Include", "Microsoft.CSharp"), new XAttribute("Version", "4.4.1")),
-                        new XElement("PackageReference", new XAttribute("Include", "Newtonsoft.Json"), new XAttribute("Version", "11.0.1")))));
+                        new XElement("PackageReference", new XAttribute("Include", "System.ComponentModel.Annotations"), new XAttribute("Version", "4.5.0")),
+                        new XElement("PackageReference", new XAttribute("Include", "Microsoft.CSharp"), new XAttribute("Version", "4.5.0")),
+                        new XElement("PackageReference", new XAttribute("Include", "Newtonsoft.Json"), new XAttribute("Version", "11.0.2")))));
             XmlWriterSettings xws = new XmlWriterSettings
             {
                 OmitXmlDeclaration = true,
@@ -200,6 +200,38 @@ namespace Cogs.Publishers.Csharp
 
                 }
                 else { newClass.AppendLine($"{Environment.NewLine}    {{"); }
+
+
+                // insert a type descriminator that will be output for json serialization
+                if (item.IsSubstitute && item is DataType)
+                {
+                    bool isFirst = true;
+                    if(item.ParentTypes.Count > 0)
+                    {
+                        var directParent = item.ParentTypes.Last();
+                        if (directParent.IsSubstitute)
+                        {
+                            // not first in inheritance chain with a type descriminator
+                            isFirst = false;
+                        }
+                    }
+                    if (isFirst)
+                    {
+                        newClass.AppendLine();
+                        newClass.AppendLine("        /// <summary>");
+                        newClass.AppendLine("        /// Set the TypeDescriminator");
+                        newClass.AppendLine("        /// <summary>");
+                        newClass.AppendLine("        public " + item.Name + "() { this.TypeDescriminator = this.GetType().Name; }");
+                        newClass.AppendLine();
+                        newClass.AppendLine("        /// <summary>");
+                        newClass.AppendLine("        /// Type descriminator for json serialization");
+                        newClass.AppendLine("        /// <summary>");
+                        newClass.AppendLine("        [JsonProperty(\"$type\")]");
+                        newClass.AppendLine("        public string TypeDescriminator { get; set; }");
+                        newClass.AppendLine();
+                    }
+                }
+
 
                 foreach (var prop in item.Properties)
                 {
