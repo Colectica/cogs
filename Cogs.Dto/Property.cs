@@ -17,6 +17,9 @@ namespace Cogs.Dto
 
         public string Description { get; set; }
 
+        public string Ordered { get; set; }
+        public string AllowSubtypes { get; set; }
+
         // simple string restrictions
         public int? MinLength { get; set; }
         public int? MaxLength { get; set; }

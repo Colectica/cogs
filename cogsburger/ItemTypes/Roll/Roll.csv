@@ -1,3 +1,3 @@
-Name,DataType,MinCardinality,MaxCardinality,Description,MinLength,MaxLength,Enumeration,Pattern,MinInclusive,MinExclusive,MaxInclusive,MaxExclusive,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
-SesameSeeds,boolean,0,1,Does the bread roll have sesame seeds on it,,,,,,,,,,,
-GYearMonth,gYearMonth,0,n,the list of year and month,,,,,,,,,,,
+Name,DataType,MinCardinality,MaxCardinality,Description,Ordered,AllowSubtypes,MinLength,MaxLength,Enumeration,Pattern,MinInclusive,MinExclusive,MaxInclusive,MaxExclusive,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
+SesameSeeds,boolean,0,1,Does the bread roll have sesame seeds on it,,,,,,,,,,,,,
+GYearMonth,gYearMonth,0,n,the list of year and month,,,,,,,,,,,,,

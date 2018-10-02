@@ -1,7 +1,7 @@
-"Key","Value"
-"Title","COGS Burger Example Model"
-"ShortTitle","COGS Burger"
-"Slug","cogsburger"
-"Description","A model for describing all sorts of burgers."
-"NamespaceUrl","http://example.org/cogsburger"
-"NamespacePrefix","cogsburger"
+Key,Value
+Title,COGS Burger Example Model
+ShortTitle,COGS Burger
+Slug,cogsburger
+Description,A model for describing all sorts of burgers.
+NamespaceUrl,http://example.org/cogsburger
+NamespacePrefix,cogsburger

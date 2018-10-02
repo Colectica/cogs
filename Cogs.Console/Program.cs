@@ -58,6 +58,28 @@ namespace Cogs.Console
 
             });
 
+            app.Command("rewrite", (command) =>
+            {
+
+                command.Description = "Read a on disk COGS data model directory and rewrite the csv files to the newest on-disk format";
+                command.HelpOption("-?|-h|--help");
+
+                var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
+
+                command.OnExecute(() =>
+                {
+                    var location = locationArgument.Value ?? Environment.CurrentDirectory;
+
+                    // rewrite the cogs csv files
+                    var rewrite = new RewriteCsvFormat();
+                    rewrite.Rewrite(location);
+                    HandleErrors(rewrite.Errors);
+
+                    return 0;
+                });
+
+            });
+
             app.Command("publish-xsd", (command) =>
             {
 

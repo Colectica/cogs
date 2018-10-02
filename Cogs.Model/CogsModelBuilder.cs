@@ -326,6 +326,8 @@ namespace Cogs.Model
             property.MaxCardinality = dto.MaxCardinality;
             property.Description = dto.Description;
 
+            property.Ordered = !string.IsNullOrWhiteSpace(dto.Ordered);
+            property.AllowSubtypes = !string.IsNullOrWhiteSpace(dto.AllowSubtypes);
 
             // simple string restrictions
             property.MinLength = dto.MinLength;

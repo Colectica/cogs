@@ -25,9 +25,33 @@ namespace Cogs.Validation
             errors = CheckDuplicatePropertiesInSameItem(model, errors);
             errors = CheckReusedPropertyNamesShouldHaveSameDatatype(model, errors);
             errors = CheckPropertyNamesShouldBePascalCase(model, errors);
+            errors = CheckAbstractDataTypePropertiesMustAllowSubtypes(model, errors);
 
             return errors;
         }
+        public static List<CogsError> CheckAbstractDataTypePropertiesMustAllowSubtypes(CogsDtoModel model, List<CogsError> errors = null)
+        {
+            errors = errors ?? new List<CogsError>();
+
+            var typeNames = model.ItemTypes.Union(model.ReusableDataTypes).ToDictionary(x => x.Name);
+
+            foreach (var item in model.ItemTypes.Union(model.ReusableDataTypes))
+            {
+                foreach (var property in item.Properties)
+                {
+                    DataType dataType = null;
+                    if(typeNames.TryGetValue(property.DataType, out dataType))
+                    {
+                        if(dataType.IsAbstract && string.IsNullOrWhiteSpace(property.AllowSubtypes))
+                        {
+                            errors.Add(new CogsError(ErrorLevel.Error, $"Abstract needs to allow subtypes: Property '{property.Name}' in '{item.Name}' uses datatype '{property.DataType}', which is abstract and does not allow subtypes"));
+                        }
+                    }
+                }
+            }
+            return errors;
+        }
+
 
         public static List<CogsError> CheckDuplicatePropertiesInSameItem(CogsDtoModel model, List<CogsError> errors = null)
         {

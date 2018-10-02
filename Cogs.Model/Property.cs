@@ -30,6 +30,9 @@ namespace Cogs.Model
             }
         }
         
+        public bool Ordered { get; set; }
+        public bool AllowSubtypes { get; set; }
+
         // simple string restrictions
         public int? MinLength { get; set; }
         public int? MaxLength { get; set; }
