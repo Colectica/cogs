@@ -25,12 +25,22 @@ Upcoming formats include:
 * Class libraries for other languages
 
 ## Platform
-COGS runs on Windows, Linux, and macOS on the .NET Core 2.0 platform.
+COGS runs on Windows, Linux, and macOS on the .NET Core 2.1 platform.
 * https://www.microsoft.com/net/core/
 
 ## Documentation
 Quick starts, Modelers Guide, and technical documentation is available.
 * http://cogsdata.org/docs
+
+## Installation and download
+COGS can be installed as a dotnet global tool from nuget
+```
+dotnet tool install -g cogs
+```
+Development versions can be installed from the appveyor nuget feed
+```
+dotnet tool install -g --add-source https://ci.appveyor.com/nuget/cogs/ cogs
+```
 
 ## Outputs Diagram
 <p align="center"><img src="http://cogsdata.org/img/cogsoutputs1080.png" alt="cogs output formats"/></p>
