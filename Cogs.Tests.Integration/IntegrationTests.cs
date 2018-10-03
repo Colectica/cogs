@@ -12,6 +12,7 @@ using System.Xml.Schema;
 using Xunit;
 using Cogs.SimpleTypes;
 using Cogs.DataAnnotations;
+using System.Reflection;
 
 namespace Cogs.Tests.Integration
 {
@@ -1410,6 +1411,45 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
+        public async void SubstitutionsInReusableItem()
+        {
+            ItemContainer container = new ItemContainer();
+            Animal animal = new Animal
+            {
+                ID = Guid.NewGuid().ToString()
+            };
+            container.Items.Add(animal);
+
+            Part sirloin = new Part()
+            {
+                PartName = "Sirloin"
+            };
+            animal.MeatPieces.Add(sirloin);
+            SubPart Tenderloin = new SubPart()
+            {
+                PartName = "Tenderloin"
+            };
+            animal.MeatPieces.Add(Tenderloin);
+
+            JsonSchema4 schema = await GetJsonSchema();
+            string json = JsonConvert.SerializeObject(container);
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
+            string json2 = JsonConvert.SerializeObject(container2);
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Animal>(container2.Items.First());
+
+            Animal animal2 = container2.Items.First() as Animal;
+            Assert.NotEmpty(animal2.MeatPieces);
+            Assert.Equal(animal.MeatPieces.Count, animal2.MeatPieces.Count);
+            Assert.IsType<Part>(animal2.MeatPieces[0]);
+            Assert.IsType<SubPart>(animal2.MeatPieces[1]);
+        }
+        [Fact]
         public async void NestedReusableItem()
         {
             ItemContainer container = new ItemContainer();
@@ -1732,17 +1772,22 @@ namespace Cogs.Tests.Integration
 
         private async Task<JsonSchema4> GetJsonSchema()
         {
-            // TODO build the json schema into the generated assembly as a resource
-            string schemaPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "generated", "jsonSchema.json");
-            string jsonSchema = File.ReadAllText(schemaPath);
+            var resourceName = typeof(ItemContainer).Namespace + ".jsonSchema.json";
+            var assembly = typeof(ItemContainer).Assembly;
+            var names = assembly.GetManifestResourceNames();
 
-            JsonConvert.DefaultSettings = () => new JsonSerializerSettings
+            using (Stream stream = assembly.GetManifestResourceStream(resourceName))
+            using (StreamReader reader = new StreamReader(stream, System.Text.Encoding.UTF8))
             {
-                MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
-                DateParseHandling = DateParseHandling.None
-            };
-            JsonSchema4 schema = await JsonSchema4.FromJsonAsync(jsonSchema);
-            return schema;
+                string jsonSchema = reader.ReadToEnd();
+                JsonConvert.DefaultSettings = () => new JsonSerializerSettings
+                {
+                    MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
+                    DateParseHandling = DateParseHandling.None
+                };
+                JsonSchema4 schema = await JsonSchema4.FromJsonAsync(jsonSchema);
+                return schema;
+            }            
         }
     }
 }

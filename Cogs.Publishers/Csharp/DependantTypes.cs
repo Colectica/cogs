@@ -236,7 +236,56 @@ namespace __CogsGeneratedNamespace
             }
         }
     }
-    
+
+    public class SubstitutionConverter : JsonConverter
+    {
+        public override bool CanConvert(Type objectType)
+        {
+            return true; // maybe make a ITypeDiscriminator
+        }
+
+        public override bool CanRead => true;
+        public override bool CanWrite => false;
+        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        {
+            throw new NotImplementedException();
+        }
+
+
+        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        {
+            if (reader.TokenType == JsonToken.StartArray)
+            {
+                var results = Activator.CreateInstance(objectType);
+                if (results is IList list)
+                {
+                    var array = JArray.Load(reader);
+                    foreach (var item in array.Children())
+                    {
+                        var jsonObject = (JObject)item;
+                        list.Add(FromTypeDiscriminatedObject(jsonObject));
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException("All generated collections should implement IList");
+                }
+                return results;
+            }
+
+            var single = JObject.Load(reader);
+            return FromTypeDiscriminatedObject(single);
+        }
+
+        private object FromTypeDiscriminatedObject(JObject jsonObject)
+        {
+            string typeDiscriminator = (string)jsonObject["$type"];
+            Type requestedType = Type.GetType($"{ ItemContainer.ModelNamespace}.{ typeDiscriminator}");
+            var result = jsonObject.ToObject(requestedType);
+            return result;
+        }
+    }
+
     /// <summary>
     /// Read json style item references
     /// </summary>

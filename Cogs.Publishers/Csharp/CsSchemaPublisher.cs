@@ -283,8 +283,6 @@ namespace Cogs.Publishers.Csharp
                         newClass.AppendLine("        [JsonConverter(typeof(DurationConverter))]");
                     }
 
-                    
-
                     // set c# datatype representation while saving original so can tell what type it is
                     string origDataTypeName = null;
                     if (Translator.ContainsKey(prop.DataTypeName))
@@ -347,6 +345,14 @@ namespace Cogs.Publishers.Csharp
                     {
                         newClass.AppendLine("        [JsonConverter(typeof(IIdentifiableConverter))]");
                     }
+
+                    // allow substitution of reusable datatypes
+                    if (prop.AllowSubtypes && model.ReusableDataTypes.Contains(prop.DataType))
+                    {
+                        newClass.AppendLine("        [JsonConverter(typeof(SubstitutionConverter))]");
+                    }
+
+
                     // if there can be at most one, create an instance variable
                     if (!prop.MaxCardinality.Equals("n") && int.Parse(prop.MaxCardinality) == 1)
                     {
