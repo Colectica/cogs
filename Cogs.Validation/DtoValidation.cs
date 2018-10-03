@@ -29,7 +29,10 @@ namespace Cogs.Validation
 
             errors = CheckOrderedCollectionsMustHaveCardinalityGreaterThanOne(model, errors);
 
+            errors = NamingDataTypeReferenceTypeNotAllowed(model, errors);
+            errors = NamingPropertyTopLevelReferenceNotAllowed(model, errors);
             
+
             return errors;
         }
         public static List<CogsError> CheckOrderedCollectionsMustHaveCardinalityGreaterThanOne(CogsDtoModel model, List<CogsError> errors = null)
@@ -222,6 +225,8 @@ namespace Cogs.Validation
 
         public static List<CogsError> CheckSettingsSlugToEnsureNoSpaces(CogsDtoModel model, List<CogsError> errors)
         {
+            errors = errors ?? new List<CogsError>();
+
             // If a slug is set, it must not contain spaces.
             // TODO check for other characters that would be invalid in URLs, C#/Java namespaces, etc.
             var slugSetting = model.Settings.FirstOrDefault(x => x.Key == "Slug");
@@ -233,6 +238,43 @@ namespace Cogs.Validation
             return errors;
         }
 
+        public static List<CogsError> NamingDataTypeReferenceTypeNotAllowed(CogsDtoModel model, List<CogsError> errors = null)
+        {
+            errors = errors ?? new List<CogsError>();
+
+            List<string> typeNames = model.ItemTypes.Union(model.ReusableDataTypes).Select(x => x.Name).ToList();
+            List<string> allTypeNames = typeNames.Union(CogsTypes.SimpleTypeNames).Union(CogsTypes.BuiltinTypeNames).ToList();
+
+            foreach (var item in model.ItemTypes.Union(model.ReusableDataTypes))
+            {
+                if (string.Compare(item.Name, "ReferenceType", true) == 0)
+                {
+                    errors.Add(new CogsError(ErrorLevel.Warning, $"Naming: '{item.Name}' is a reserved datatype name."));
+                }
+            }
+            return errors;
+        }
+
+        public static List<CogsError> NamingPropertyTopLevelReferenceNotAllowed(CogsDtoModel model, List<CogsError> errors = null)
+        {
+            errors = errors ?? new List<CogsError>();
+
+            List<string> typeNames = model.ItemTypes.Union(model.ReusableDataTypes).Select(x => x.Name).ToList();
+            List<string> allTypeNames = typeNames.Union(CogsTypes.SimpleTypeNames).Union(CogsTypes.BuiltinTypeNames).ToList();
+
+            foreach (var item in model.ItemTypes.Union(model.ReusableDataTypes))
+            {
+                foreach(var property in item.Properties)
+                {
+                    if (string.Compare(property.Name, "TopLevelReference", true) == 0)
+                    {
+                        errors.Add(new CogsError(ErrorLevel.Warning, $"Naming: '{property.Name}' in '{item.Name}' is a reserved property name."));
+                    }
+                }
+
+            }
+            return errors;
+        }
 
     }
 }
