@@ -4,12 +4,31 @@ Windows Quick Start
 1. Download COGS
 ~~~~~~~~~~~~~~~~
 
-First, `Download COGS <http://ci.appveyor.com/api/projects/DanSmith/cogs/artifacts/Cogs.Console/bin/Release/netcoreapp2.0/Windows-CogsRelease.zip>`_ 
-and extract the ZIP file.
+COGS runs on the open source .NET Core platform. You will need to `Download .NET Core 2.1 <https://www.microsoft.com/net/download?initial-os=windows>`_
+and install it
 
-COGS runs on the open source .NET Core platform. You will also need to 
-`Download .NET Core <https://download.microsoft.com/download/7/C/3/7C310A63-13AC-49A4-9666-4CB26388F852/dotnet-runtime-2.0.0-preview2-25407-01-win-x64.exe>`_
-and install it.
+Next, install COGS as a dotnet tool on your system by downloading the latest stable version.
+
+.. code-block:: doscon
+
+    user$ dotnet tool install -g cogs
+
+.. note::
+
+    Alternatively, you can install the latest development build using this command.
+
+    .. code-block:: doscon
+
+        user$ dotnet tool install -g --add-source https://ci.appveyor.com/nuget/cogs/ cogs
+
+
+After the tool is installed, you can now run cogs from your command prompt.
+
+.. code-block:: doscon
+
+    user$ cogs --help
+
+
 
 2. Initialize a Model
 ~~~~~~~~~~~~~~~~~~~~~
@@ -19,12 +38,7 @@ where you will create your model. Then, run the following.
 
 .. code-block:: doscon
 
-    c:\sandbox>  dotnet Cogs.Console.dll cogs-new MyModel
-
-.. note::
-
-   Instead of ``Cogs.Console.dll``, you may need to specify the full path. For example,
-   it may be ``c:\cogs\Cogs.Console.dll``.
+    c:\sandbox>  cogs cogs-new MyModel
 
 Let's see what's in the directory that COGS created.
  
@@ -58,7 +72,7 @@ created for us.
 
 .. code-block:: doscon
 
-    C:\sandbox>  dotnet Cogs.Console.dll publish-xsd MyModel output
+    C:\sandbox>  cogs publish-xsd MyModel output
     C:\sandbox>  dir output
 
 Here is the output of the directory listing.
@@ -82,7 +96,7 @@ Next, let's generate some documentation using Sphinx.
 
 .. code-block:: doscon
 
-    C:\sandbox>  dotnet Cogs.Console.dll publish-sphinx MyModel output/sphinx
+    C:\sandbox>  cogs publish-sphinx MyModel output/sphinx
     C:\sandbox>  cd output/sphinx
     C:\sandbox>  make html
     C:\sandbox>  dir build/html

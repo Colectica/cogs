@@ -63,7 +63,7 @@ of the system.
 Platforms
 ---------
 
-COGS runs on Windows, Linux, and macOS on the .NET Core 2.0 platform.
+COGS runs on Windows, Linux, and macOS on the .NET Core 2.1 platform.
 
 https://www.microsoft.com/net/core
 

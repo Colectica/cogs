@@ -4,11 +4,32 @@ Linux Quick Start
 1. Download COGS
 ~~~~~~~~~~~~~~~~
 
-First, `Download COGS <http://ci.appveyor.com/api/projects/DanSmith/cogs/artifacts/Cogs.Console/bin/Release/netcoreapp2.0/Windows-CogsRelease.zip>`_
-and extract the ZIP file.
-
-COGS runs on the open source .NET Core platform. You will need to `Download .NET Core 2 <https://www.microsoft.com/net/core#linuxubuntu>`_
+COGS runs on the open source .NET Core platform. You will need to `Download .NET Core 2.1 <https://www.microsoft.com/net/download?initial-os=linux>`_
 and install it
+
+Next, install COGS as a dotnet tool on your system by downloading the latest stable version.
+
+.. code-block:: doscon
+
+    user$ dotnet tool install -g cogs
+
+.. note::
+
+    Alternatively, you can install the latest development build using this command.
+
+    .. code-block:: doscon
+
+        user$ dotnet tool install -g --add-source https://ci.appveyor.com/nuget/cogs/ cogs
+
+
+After the tool is installed, you can now run cogs from your command prompt.
+
+.. code-block:: doscon
+
+    user$ cogs --help
+
+
+
 
 2. Initialize a Model
 ~~~~~~~~~~~~~~~~~~~~~
@@ -18,12 +39,7 @@ create your model. Then, run the following.
 
 .. code-block:: doscon
 
-    user$ dotnet Cogs.Console.dll cogs-new MyModel
-
-.. note::
-
-    Instead of ``Cogs.Console.dll``, you may need to specify the full path. For example,
-    It maybe ``/Users/user/cogs/Cogs.Console.dll``
+    user$ dotnet cogs cogs-new MyModel
 
 Let's see what's in the directory that COGS created
 
@@ -52,7 +68,7 @@ Now, Let's create an XML Schema to represent the skeleton model that COGS create
 
 .. code-block:: doscon
 
-    user$ dotnet Cogs.Console.dll publish-sphinx MyModel output/sphinx
+    user$ cogs publish-sphinx MyModel output/sphinx
     user$ cd output/sphinx
     user$ make html
     user$ cd build/html

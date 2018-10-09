@@ -148,11 +148,32 @@ language
 Represents natural language identifiers (defined by BCP 47).   
 
 Facets
-    None
+    None       
 
 int
 `````````````````````
 Represents an integer with a minimum value of -2147483648 and maximum of 2147483647. This data type is derived from long.    
+
+Facets
+    minInclusive, minExclusive, maxInclusive, maxExclusive        
+    
+long
+`````````````````````
+Represents an integer with a minimum value of -9223372036854775808 and maximum of 9223372036854775807. This data type is derived from integer.    
+
+Facets
+    minInclusive, minExclusive, maxInclusive, maxExclusive              
+
+unsignedLong
+`````````````````````
+Represents an integer with a minimum of zero and maximum of 18446744073709551615. This data type is derived from nonNegativeInteger.    
+
+Facets
+    minInclusive, minExclusive, maxInclusive, maxExclusive      
+
+nonNegativeInteger
+`````````````````````
+Represents an integer that is greater than or equal to zero. This data type is derived from integer.    
 
 Facets
     minInclusive, minExclusive, maxInclusive, maxExclusive              
@@ -175,35 +196,7 @@ and sequence of decimal digits. This data type is derived from
 nonPositiveInteger.    
 
 Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive              
-
-long
-`````````````````````
-Represents an integer with a minimum value of -9223372036854775808 and maximum of 9223372036854775807. This data type is derived from integer.    
-
-Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive              
-
-int
-`````````````````````
-Represents an integer with a minimum value of -2147483648 and maximum of 2147483647. This data type is derived from long.    
-
-Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive              
-
-nonNegativeInteger
-`````````````````````
-Represents an integer that is greater than or equal to zero. This data type is derived from integer.    
-
-Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive              
-
-unsignedLong
-`````````````````````
-Represents an integer with a minimum of zero and maximum of 18446744073709551615. This data type is derived from nonNegativeInteger.    
-
-Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive
+    minInclusive, minExclusive, maxInclusive, maxExclusive     
 
 positiveInteger
 `````````````````````
