@@ -32,9 +32,6 @@ build:
   project: Cogs.Console.sln
   verbosity: minimal
 
-after_build:
-- cmd: dotnet publish -c Release ./Cogs.Console/Cogs.Console.csproj
-
 test: off
 
 artifacts:
