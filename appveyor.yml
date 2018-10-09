@@ -33,7 +33,7 @@ build:
   verbosity: minimal
 
 after_build:
-- cmd: dotnet publish ./Cogs.Console.sln
+- cmd: dotnet publish -c Release ./Cogs.Console/Cogs.Console.csproj
 
 test: off
 
