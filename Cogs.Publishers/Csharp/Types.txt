@@ -71,7 +71,10 @@ namespace Cogs.DataAnnotations
 
 namespace Cogs.SimpleTypes
 {
-
+    public class DcTerms
+    {
+        // TODO
+    }
 
     public enum CogsDateType
     {
