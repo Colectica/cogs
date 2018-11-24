@@ -600,7 +600,8 @@ namespace {projName}
                 { "nonNegativeInteger", "int" },
                 { "unsignedLong", "ulong" },
                 { "positiveInteger", "int" },
-                { "cogsDate", "CogsDate" }
+                { "cogsDate", "CogsDate" },
+                { "dcTerms", "DcTerms" }
             };
         }
     }
