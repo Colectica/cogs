@@ -103,7 +103,7 @@ namespace Cogs.Publishers.JsonSchema
             foreach (var reuseabletype in model.ReusableDataTypes)
             {
                 ReusableType define = new ReusableType();
-                define.Name = reuseabletype.Name;
+                define.Name = reuseabletype.Name.ToLowerFirstLetter();
 
                 if (reuseabletype.IsSubstitute)
                 {
@@ -119,30 +119,30 @@ namespace Cogs.Publishers.JsonSchema
                 {
                     var temp = new JsonSchemaProp();
                     temp.MultiplicityElement = new Cardinality();
-                    temp.Name = prop.Name;
+                    temp.Name = prop.Name.ToLowerFirstLetter();
                     if (IsReusableType(prop.DataType.Name))
                     {
-                        temp.Reference = "#/definitions/" + prop.DataType.Name;
+                        temp.Reference = "#/definitions/" + prop.DataType.Name.ToLowerFirstLetter();
                     }
                     else if (IsSimpleType(prop.DataType.Name))
                     {
-                        temp.Reference = "#/simpleType/" + prop.DataType.Name;
+                        temp.Reference = "#/simpleType/" + prop.DataType.Name.ToLowerFirstLetter();
                     }
                     else if (IsItemType(prop.DataType.Name))
                     {
-                        temp.Reference = "#/definitions/Reference";
+                        temp.Reference = "#/definitions/reference";
                     }
                     else
                     {
                         if (TypeBelongToInt(prop.DataType.Name))
                         {
                             temp.Type = "integer";
-                            temp.original_type = prop.DataType.Name;
+                            temp.original_type = prop.DataType.Name.ToLowerFirstLetter();
                         }
                         else if (TypeBelongToNum(prop.DataType.Name))
                         {
                             temp.Type = "number";
-                            temp.original_type = prop.DataType.Name;
+                            temp.original_type = prop.DataType.Name.ToLowerFirstLetter();
                         }
                         else
                         {
@@ -164,9 +164,9 @@ namespace Cogs.Publishers.JsonSchema
             foreach (ItemType item in model.ItemTypes)
             {
                 JsonSchema temp = new JsonSchema();
-                temp.Title = item.Name;                          //get the name of the itemtype
+                temp.Title = item.Name.ToLowerFirstLetter();                          //get the name of the itemtype
                 temp.Type = "object";                           //get the type of the itemtype which is usually Object
-                temp.Id = "#" + item.Name;
+                temp.Id = "#" + item.Name.ToLowerFirstLetter();
                 if (item.ExtendsTypeName != "")             //Check whether there it extends another class
                 {
                     //get the Parent information
@@ -201,15 +201,15 @@ namespace Cogs.Publishers.JsonSchema
             prop.Name = property.Name;
             if (IsReusableType(property.DataType.Name))
             {
-                prop.Reference = "#/definitions/" + property.DataType.Name;
+                prop.Reference = "#/definitions/" + property.DataType.Name.ToLowerFirstLetter();
             }
             else if(IsSimpleType(property.DataType.Name))
             {
-                prop.Reference = "#/simpleType/" + property.DataType.Name;
+                prop.Reference = "#/simpleType/" + property.DataType.Name.ToLowerFirstLetter();
             }
             else if (IsItemType(property.DataType.Name))
             {
-                prop.Reference = "#/definitions/Reference";
+                prop.Reference = "#/definitions/reference";
             }
             else
             {
