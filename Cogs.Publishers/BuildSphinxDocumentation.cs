@@ -215,7 +215,7 @@ namespace Cogs.Publishers
                 }
                 else
                 {
-                    builder.AppendLine("This type contains no properties");
+                    builder.AppendLine("This type contains no properties.");
                     builder.AppendLine();
                 }
 
