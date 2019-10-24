@@ -47,6 +47,19 @@ namespace Cogs.Publishers
             sourcePath = Path.Combine(outputDirectory, "source");
             Directory.CreateDirectory(sourcePath);
 
+            // source/_static directory
+            string staticPath = Path.Combine(sourcePath, "_static");
+            Directory.CreateDirectory(staticPath);
+
+            // source/_static/css directory
+            string cssPath = Path.Combine(staticPath, "css");
+            Directory.CreateDirectory(cssPath);
+
+            // _static/css/custom.css
+            string customCssFileName = Path.Combine(cssPath, "custom.css");
+            string customCss = GetCustomCss();
+            File.WriteAllText(customCssFileName, customCss);
+
             // source/conf.py
             string confDotPyFileName = Path.Combine(sourcePath, "conf.py");
             string confDotPyContent = GetConfDotPyContents();
@@ -181,13 +194,62 @@ namespace Cogs.Publishers
 
                 // TODO Markdown to RST
                 builder.AppendLine(itemType.Description);
-
-                // TODO Properties listing
-                builder.AppendLine();
-                builder.AppendLine(".. contents::");
                 builder.AppendLine();
 
-                // Extends
+                // Tables of properties
+                builder.AppendLine("Properties");
+                builder.AppendLine("~~~~~~~~~~");
+                builder.AppendLine();
+
+                if (itemType.Properties.Any())
+                {
+                    builder.AppendLine(".. csv-table::");
+                    builder.AppendLine("   :header: \"Name\",\"Type\",\"\",\"Description\"");
+                    builder.AppendLine("   :widths: 15,10,5,100");
+                    builder.AppendLine();
+                    foreach (var property in itemType.Properties)
+                    {
+                        OutputPropertyDetails(builder, property);
+                    }
+                    builder.AppendLine();
+                }
+                else
+                {
+                    builder.AppendLine("This type contains no properties");
+                    builder.AppendLine();
+                }
+
+                foreach (var parentType in itemType.ParentTypes.Reverse<DataType>())
+                {
+                    string inheritedTitle = $"Properties Inherited from {parentType.Name}";
+                    builder.AppendLine(inheritedTitle);
+                    builder.AppendLine(GetRepeatedCharacters(inheritedTitle, "~"));
+                    builder.AppendLine();
+
+                    if (parentType.Properties.Any())
+                    {
+
+                        builder.AppendLine($".. csv-table::");
+                        builder.AppendLine("   :header: \"Name\",\"Type\",\"\",\"Description\"");
+                        builder.AppendLine("   :widths: 15,10,5,100");
+                        builder.AppendLine();
+                        foreach (var property in parentType.Properties)
+                        { 
+                            OutputPropertyDetails(builder, property);
+                        }
+                        builder.AppendLine();
+                    }
+                    else
+                    {
+                        builder.AppendLine("No properties are inherited.");
+                        builder.AppendLine();
+                    }
+                }
+
+                // Output Properties details
+                builder.AppendLine();
+
+                // Item type hierarchy.
                 if (itemType.ParentTypes.Count > 0 ||
                     itemType.ChildTypes.Count > 0)
                 {
@@ -238,33 +300,6 @@ namespace Cogs.Publishers
                 }
 
 
-                // Generate Properties
-                var propertiesBuilder = new StringBuilder();
-                builder.AppendLine("Properties");
-                builder.AppendLine("~~~~~~~~~~");
-                builder.AppendLine();
-                foreach (var property in itemType.Properties)
-                {
-                    OutputPropertyDetails(propertiesBuilder, property);
-                }
-
-                foreach (var parentType in itemType.ParentTypes)
-                {
-                    string inheritedTitle = $"Properties Inherited from {parentType.Name}";
-                    propertiesBuilder.AppendLine(inheritedTitle);
-                    propertiesBuilder.AppendLine(GetRepeatedCharacters(inheritedTitle, "~"));
-                    propertiesBuilder.AppendLine();
-
-                    foreach (var property in parentType.Properties)
-                    { 
-                        OutputPropertyDetails(propertiesBuilder, property);
-                    }
-                }
-
-                // Output Properties details
-                builder.AppendLine(propertiesBuilder.ToString());
-                builder.AppendLine();
-
                 // Output the relationships graph
                 builder.AppendLine("Relationships");
                 builder.AppendLine("~~~~~~~~~~~~~");
@@ -282,6 +317,7 @@ namespace Cogs.Publishers
                 {
                     builder.AppendLine($"* :doc:`{referencingType.Path}`");
                 }
+                builder.AppendLine();
 
                 builder.AppendLine(".. container:: image");
                 builder.AppendLine();
@@ -304,10 +340,8 @@ namespace Cogs.Publishers
                     builder.AppendLine();
                 }
 
-
                 string typeIndexFileName = Path.Combine(typeDir, "index.rst");
                 File.WriteAllText(typeIndexFileName, builder.ToString());
-
             }
 
             // Write the all-item-types index.
@@ -336,92 +370,89 @@ namespace Cogs.Publishers
 
         private void OutputPropertyDetails(StringBuilder propertiesBuilder, Property property)
         {
-            // Name with underline
-            propertiesBuilder.AppendLine(property.Name);
-            propertiesBuilder.AppendLine(GetRepeatedCharacters(property.Name, "*"));
-            propertiesBuilder.AppendLine();
-
             // Type
-            propertiesBuilder.AppendLine("Type");
+            string typeStr = string.Empty;
             if (!property.DataType.IsXmlPrimitive)
             {
-                propertiesBuilder.AppendLine($"    :doc:`{property.DataType.Path}`");
+                typeStr = $":doc:`{property.DataType.Path}`";
             }
             else
             {
-                propertiesBuilder.AppendLine("    " + property.DataType.Name);
+                typeStr = property.DataType.Name;
             }
 
             // Cardinality
-            propertiesBuilder.AppendLine("Cardinality");
-            propertiesBuilder.AppendLine($"    {property.MinCardinality}..{property.MaxCardinality}");
-            propertiesBuilder.AppendLine();
-
-            // simple string restrictions
-            if (property.MinLength.HasValue)
-            {
-                propertiesBuilder.AppendLine("Minimum Length");
-                propertiesBuilder.AppendLine($"    {property.MinLength.Value}");
-                propertiesBuilder.AppendLine();
-            }
-            if (property.MinLength.HasValue)
-            {
-                propertiesBuilder.AppendLine("Maximum Length");
-                propertiesBuilder.AppendLine($"    {property.MaxLength.Value}");
-                propertiesBuilder.AppendLine();
-            }
-            if (property.Enumeration != null && property.Enumeration.Count > 0)
-            {
-                propertiesBuilder.AppendLine("Enumeration");
-                var enumString = string.Join(", ", property.Enumeration);
-                propertiesBuilder.AppendLine($"    {enumString}");
-                propertiesBuilder.AppendLine();
-            }
-            if (!string.IsNullOrWhiteSpace(property.Pattern))
-            {
-                propertiesBuilder.AppendLine("Pattern regular expression");
-                propertiesBuilder.AppendLine($"    {property.Pattern}");
-                propertiesBuilder.AppendLine();
-            }
-
-            // numeric restrictions
-            if (property.MinInclusive.HasValue)
-            {
-                propertiesBuilder.AppendLine("Minimum Value (Inclusive)");
-                propertiesBuilder.AppendLine($"    {property.MinInclusive.Value}");
-                propertiesBuilder.AppendLine();
-            }
-            if (property.MaxInclusive.HasValue)
-            {
-                propertiesBuilder.AppendLine("Maximum Value (Inclusive)");
-                propertiesBuilder.AppendLine($"    {property.MaxInclusive.Value}");
-                propertiesBuilder.AppendLine();
-            }
-            if (property.MinExclusive.HasValue)
-            {
-                propertiesBuilder.AppendLine("Minimum Value (Exclusive)");
-                propertiesBuilder.AppendLine($"    {property.MinExclusive.Value}");
-                propertiesBuilder.AppendLine();
-            }
-            if (property.MaxExclusive.HasValue)
-            {
-                propertiesBuilder.AppendLine("Maximum Value (Exclusive)");
-                propertiesBuilder.AppendLine($"    {property.MaxExclusive.Value}");
-                propertiesBuilder.AppendLine();
-            }
-
-            if (!string.IsNullOrWhiteSpace(property.DeprecatedNamespace))
-            {
-                propertiesBuilder.AppendLine("DDI namespace");
-                var xmlType = property.DeprecatedElementOrAttribute != null
-                    && property.DeprecatedElementOrAttribute == "e" ? "Element" : "Attribute";
-                propertiesBuilder.AppendLine($"    {xmlType} in {property.DeprecatedNamespace}");
-                propertiesBuilder.AppendLine();
-            }
+            string cardinality = $"{property.MinCardinality}..{property.MaxCardinality}";
 
             // Description
-            propertiesBuilder.AppendLine(property.Description);
-            propertiesBuilder.AppendLine();
+            string description = property.Description
+                .Replace("\n", " ")
+                .Replace("\"", "\"\"");
+
+            propertiesBuilder.AppendLine($"   \"{property.Name}\",\"{typeStr}\",\"{cardinality}\",\"{description}\"");
+
+            //// simple string restrictions
+            //if (property.MinLength.HasValue)
+            //{
+            //    propertiesBuilder.AppendLine("Minimum Length");
+            //    propertiesBuilder.AppendLine($"    {property.MinLength.Value}");
+            //    propertiesBuilder.AppendLine();
+            //}
+            //if (property.MinLength.HasValue)
+            //{
+            //    propertiesBuilder.AppendLine("Maximum Length");
+            //    propertiesBuilder.AppendLine($"    {property.MaxLength.Value}");
+            //    propertiesBuilder.AppendLine();
+            //}
+            //if (property.Enumeration != null && property.Enumeration.Count > 0)
+            //{
+            //    propertiesBuilder.AppendLine("Enumeration");
+            //    var enumString = string.Join(", ", property.Enumeration);
+            //    propertiesBuilder.AppendLine($"    {enumString}");
+            //    propertiesBuilder.AppendLine();
+            //}
+            //if (!string.IsNullOrWhiteSpace(property.Pattern))
+            //{
+            //    propertiesBuilder.AppendLine("Pattern regular expression");
+            //    propertiesBuilder.AppendLine($"    {property.Pattern}");
+            //    propertiesBuilder.AppendLine();
+            //}
+
+            //// numeric restrictions
+            //if (property.MinInclusive.HasValue)
+            //{
+            //    propertiesBuilder.AppendLine("Minimum Value (Inclusive)");
+            //    propertiesBuilder.AppendLine($"    {property.MinInclusive.Value}");
+            //    propertiesBuilder.AppendLine();
+            //}
+            //if (property.MaxInclusive.HasValue)
+            //{
+            //    propertiesBuilder.AppendLine("Maximum Value (Inclusive)");
+            //    propertiesBuilder.AppendLine($"    {property.MaxInclusive.Value}");
+            //    propertiesBuilder.AppendLine();
+            //}
+            //if (property.MinExclusive.HasValue)
+            //{
+            //    propertiesBuilder.AppendLine("Minimum Value (Exclusive)");
+            //    propertiesBuilder.AppendLine($"    {property.MinExclusive.Value}");
+            //    propertiesBuilder.AppendLine();
+            //}
+            //if (property.MaxExclusive.HasValue)
+            //{
+            //    propertiesBuilder.AppendLine("Maximum Value (Exclusive)");
+            //    propertiesBuilder.AppendLine($"    {property.MaxExclusive.Value}");
+            //    propertiesBuilder.AppendLine();
+            //}
+
+            //if (!string.IsNullOrWhiteSpace(property.DeprecatedNamespace))
+            //{
+            //    propertiesBuilder.AppendLine("DDI namespace");
+            //    var xmlType = property.DeprecatedElementOrAttribute != null
+            //        && property.DeprecatedElementOrAttribute == "e" ? "Element" : "Attribute";
+            //    propertiesBuilder.AppendLine($"    {xmlType} in {property.DeprecatedNamespace}");
+            //    propertiesBuilder.AppendLine();
+            //}
+
         }
 
         private string GetDataTypeRoot(string typeName)
@@ -552,7 +583,7 @@ todo_include_todos = True
 html_theme = ""sphinx_rtd_theme""
 html_theme_path = [""themes""]
 def setup(app):
-  app.add_stylesheet( ""css/image.css"" )
+  app.add_stylesheet( ""css/custom.css"" )
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -707,6 +738,13 @@ help:
                 .Replace("@Author", cogsModel.Settings.Author)
                 .Replace("@Version", cogsModel.Settings.Version)
                 .Replace("@Copyright", cogsModel.Settings.Copyright);
+        }
+
+        private string GetCustomCss()
+        {
+            return @".wy-nav-content {
+    max-width: unset;
+}";
         }
 
         
