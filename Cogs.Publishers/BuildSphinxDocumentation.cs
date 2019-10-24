@@ -190,15 +190,23 @@ namespace Cogs.Publishers
                 builder.AppendLine("~~~~~~~~~~");
                 builder.AppendLine();
 
-                builder.AppendLine(".. csv-table::");
-                builder.AppendLine("   :header: \"Name\",\"Type\",\"\",\"Description\"");
-                builder.AppendLine("   :widths: 15,10,5,100");
-                builder.AppendLine();
-                foreach (var property in itemType.Properties)
+                if (itemType.Properties.Any())
                 {
-                    OutputPropertyDetails(builder, property);
+                    builder.AppendLine(".. csv-table::");
+                    builder.AppendLine("   :header: \"Name\",\"Type\",\"\",\"Description\"");
+                    builder.AppendLine("   :widths: 15,10,5,100");
+                    builder.AppendLine();
+                    foreach (var property in itemType.Properties)
+                    {
+                        OutputPropertyDetails(builder, property);
+                    }
+                    builder.AppendLine();
                 }
-                builder.AppendLine();
+                else
+                {
+                    builder.AppendLine("This type contains no properties");
+                    builder.AppendLine();
+                }
 
                 foreach (var parentType in itemType.ParentTypes.Reverse<DataType>())
                 {
@@ -207,15 +215,24 @@ namespace Cogs.Publishers
                     builder.AppendLine(GetRepeatedCharacters(inheritedTitle, "~"));
                     builder.AppendLine();
 
-                    builder.AppendLine($".. csv-table::");
-                    builder.AppendLine("   :header: \"Name\",\"Type\",\"\",\"Description\"");
-                    builder.AppendLine("   :widths: 15,10,5,100");
-                    builder.AppendLine();
-                    foreach (var property in parentType.Properties)
-                    { 
-                        OutputPropertyDetails(builder, property);
+                    if (parentType.Properties.Any())
+                    {
+
+                        builder.AppendLine($".. csv-table::");
+                        builder.AppendLine("   :header: \"Name\",\"Type\",\"\",\"Description\"");
+                        builder.AppendLine("   :widths: 15,10,5,100");
+                        builder.AppendLine();
+                        foreach (var property in parentType.Properties)
+                        { 
+                            OutputPropertyDetails(builder, property);
+                        }
+                        builder.AppendLine();
                     }
-                    builder.AppendLine();
+                    else
+                    {
+                        builder.AppendLine("No properties are inherited.");
+                        builder.AppendLine();
+                    }
                 }
 
                 // Output Properties details
