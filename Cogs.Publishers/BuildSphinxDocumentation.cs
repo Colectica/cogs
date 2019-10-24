@@ -257,6 +257,21 @@ namespace Cogs.Publishers
                 // Output the relationships graph
                 builder.AppendLine("Relationships");
                 builder.AppendLine("~~~~~~~~~~~~~");
+
+                List<DataType> allTypes = cogsModel.ItemTypes.Concat(cogsModel.ReusableDataTypes).ToList();
+                var incoming = allTypes.Where(type => type.Properties.Any(prop => type != itemType && prop.DataType == itemType)).ToList();
+                
+                if (incoming.Count > 0)
+                {
+                    builder.AppendLine("The following types reference this item type.");
+                }
+
+                builder.AppendLine();
+                foreach (var referencingType in incoming)
+                {
+                    builder.AppendLine($"* :doc:`{referencingType.Path}`");
+                }
+
                 builder.AppendLine(".. container:: image");
                 builder.AppendLine();
                 builder.AppendLine("   |stub|");
