@@ -61,13 +61,24 @@ namespace Cogs.Publishers
                 return;
             }
 
-            // TODO Make this work on Unix, too.
-            Process proc = new Process();
-            proc.StartInfo.UseShellExecute = false;
-            proc.StartInfo.FileName = @"C:\WINDOWS\system32\xcopy.exe";
-            proc.StartInfo.Arguments = $"{cogsModel.ArticlesPath} {sourcePath} /E /I";
-            proc.Start();
-            proc.WaitForExit();
+            if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+            {
+                Process proc = new Process();
+                proc.StartInfo.UseShellExecute = false;
+                proc.StartInfo.FileName = @"C:\WINDOWS\system32\xcopy.exe";
+                proc.StartInfo.Arguments = $"{cogsModel.ArticlesPath} {sourcePath} /E /I";
+                proc.Start();
+                proc.WaitForExit();
+            }
+            else if (Environment.OSVersion.Platform == PlatformID.Unix)
+            {
+                Process proc = new Process();
+                proc.StartInfo.UseShellExecute = false;
+                proc.StartInfo.FileName = @"cp";
+                proc.StartInfo.Arguments = $"-r {cogsModel.ArticlesPath}/. {sourcePath}";
+                proc.Start();
+                proc.WaitForExit();
+            }
         }
 
         private void BuildTopIndex()
