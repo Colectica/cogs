@@ -172,9 +172,33 @@ namespace Cogs.Publishers
                 builder.AppendLine(itemType.Description);
 
                 // Tables of properties
+                var propertiesBuilder = new StringBuilder();
+                builder.AppendLine("Properties");
+                builder.AppendLine("~~~~~~~~~~");
+                builder.AppendLine();
+                foreach (var property in itemType.Properties)
+                {
+                    OutputPropertyDetails(propertiesBuilder, property);
+                }
 
+                foreach (var parentType in itemType.ParentTypes)
+                {
+                    string inheritedTitle = $"Properties Inherited from {parentType.Name}";
+                    propertiesBuilder.AppendLine(inheritedTitle);
+                    propertiesBuilder.AppendLine(GetRepeatedCharacters(inheritedTitle, "~"));
+                    propertiesBuilder.AppendLine();
 
-                // Extends
+                    foreach (var property in parentType.Properties)
+                    { 
+                        OutputPropertyDetails(propertiesBuilder, property);
+                    }
+                }
+
+                // Output Properties details
+                builder.AppendLine(propertiesBuilder.ToString());
+                builder.AppendLine();
+
+                // Item type hierarchy.
                 if (itemType.ParentTypes.Count > 0 ||
                     itemType.ChildTypes.Count > 0)
                 {
@@ -225,33 +249,6 @@ namespace Cogs.Publishers
                 }
 
 
-                // Generate Properties
-                var propertiesBuilder = new StringBuilder();
-                builder.AppendLine("Properties");
-                builder.AppendLine("~~~~~~~~~~");
-                builder.AppendLine();
-                foreach (var property in itemType.Properties)
-                {
-                    OutputPropertyDetails(propertiesBuilder, property);
-                }
-
-                foreach (var parentType in itemType.ParentTypes)
-                {
-                    string inheritedTitle = $"Properties Inherited from {parentType.Name}";
-                    propertiesBuilder.AppendLine(inheritedTitle);
-                    propertiesBuilder.AppendLine(GetRepeatedCharacters(inheritedTitle, "~"));
-                    propertiesBuilder.AppendLine();
-
-                    foreach (var property in parentType.Properties)
-                    { 
-                        OutputPropertyDetails(propertiesBuilder, property);
-                    }
-                }
-
-                // Output Properties details
-                builder.AppendLine(propertiesBuilder.ToString());
-                builder.AppendLine();
-
                 // Output the relationships graph
                 builder.AppendLine("Relationships");
                 builder.AppendLine("~~~~~~~~~~~~~");
@@ -292,10 +289,8 @@ namespace Cogs.Publishers
                     builder.AppendLine();
                 }
 
-
                 string typeIndexFileName = Path.Combine(typeDir, "index.rst");
                 File.WriteAllText(typeIndexFileName, builder.ToString());
-
             }
 
             // Write the all-item-types index.
