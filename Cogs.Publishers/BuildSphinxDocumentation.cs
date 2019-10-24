@@ -271,6 +271,7 @@ namespace Cogs.Publishers
                 {
                     builder.AppendLine($"* :doc:`{referencingType.Path}`");
                 }
+                builder.AppendLine();
 
                 builder.AppendLine(".. container:: image");
                 builder.AppendLine();
