@@ -171,10 +171,8 @@ namespace Cogs.Publishers
                 // TODO Markdown to RST
                 builder.AppendLine(itemType.Description);
 
-                // TODO Properties listing
-                builder.AppendLine();
-                builder.AppendLine(".. contents::");
-                builder.AppendLine();
+                // Tables of properties
+
 
                 // Extends
                 if (itemType.ParentTypes.Count > 0 ||
