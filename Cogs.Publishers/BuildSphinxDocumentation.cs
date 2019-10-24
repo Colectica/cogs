@@ -200,7 +200,7 @@ namespace Cogs.Publishers
                 }
                 builder.AppendLine();
 
-                foreach (var parentType in itemType.ParentTypes)
+                foreach (var parentType in itemType.ParentTypes.Reverse<DataType>())
                 {
                     string inheritedTitle = $"Properties Inherited from {parentType.Name}";
                     builder.AppendLine(inheritedTitle);
