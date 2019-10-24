@@ -229,95 +229,30 @@ namespace Cogs.Publishers
 
                 // Generate Properties
                 var propertiesBuilder = new StringBuilder();
+                builder.AppendLine("Properties");
+                builder.AppendLine("~~~~~~~~~~");
+                builder.AppendLine();
                 foreach (var property in itemType.Properties)
                 {
-                    // Name with underline
-                    propertiesBuilder.AppendLine(property.Name);
-                    propertiesBuilder.AppendLine(GetRepeatedCharacters(property.Name, "*"));
-                    propertiesBuilder.AppendLine();
-
-                    // Type
-                    propertiesBuilder.AppendLine("Type");
-                    if (!property.DataType.IsXmlPrimitive)
-                    {
-                        propertiesBuilder.AppendLine($"    :doc:`{property.DataType.Path}`");
-                    }
-                    else
-                    {
-                        propertiesBuilder.AppendLine("    " + property.DataType.Name);
-                    }
-
-                    // Cardinality
-                    propertiesBuilder.AppendLine("Cardinality");
-                    propertiesBuilder.AppendLine($"    {property.MinCardinality}..{property.MaxCardinality}");
-                    propertiesBuilder.AppendLine();
-
-                    // simple string restrictions
-                    if (property.MinLength.HasValue)
-                    {
-                        propertiesBuilder.AppendLine("Minimum Length");
-                        propertiesBuilder.AppendLine($"    {property.MinLength.Value}");
-                        propertiesBuilder.AppendLine();
-                    }
-                    if (property.MinLength.HasValue)
-                    {
-                        propertiesBuilder.AppendLine("Maximum Length");
-                        propertiesBuilder.AppendLine($"    {property.MaxLength.Value}");
-                        propertiesBuilder.AppendLine();
-                    }
-                    if (property.Enumeration != null && property.Enumeration.Count > 0)
-                    {
-                        propertiesBuilder.AppendLine("Enumeration");
-                        var enumString = string.Join(", ", property.Enumeration);
-                        propertiesBuilder.AppendLine($"    {enumString}");
-                        propertiesBuilder.AppendLine();
-                    }
-                    if (!string.IsNullOrWhiteSpace(property.Pattern))
-                    {
-                        propertiesBuilder.AppendLine("Pattern regular expression");
-                        propertiesBuilder.AppendLine($"    {property.Pattern}");
-                        propertiesBuilder.AppendLine();
-                    }
-
-                    // numeric restrictions
-                    if (property.MinInclusive.HasValue)
-                    {
-                        propertiesBuilder.AppendLine("Minimum Value (Inclusive)");
-                        propertiesBuilder.AppendLine($"    {property.MinInclusive.Value}");
-                        propertiesBuilder.AppendLine();
-                    }
-                    if (property.MaxInclusive.HasValue)
-                    {
-                        propertiesBuilder.AppendLine("Maximum Value (Inclusive)");
-                        propertiesBuilder.AppendLine($"    {property.MaxInclusive.Value}");
-                        propertiesBuilder.AppendLine();
-                    }
-                    if (property.MinExclusive.HasValue)
-                    {
-                        propertiesBuilder.AppendLine("Minimum Value (Exclusive)");
-                        propertiesBuilder.AppendLine($"    {property.MinExclusive.Value}");
-                        propertiesBuilder.AppendLine();
-                    }
-                    if (property.MaxExclusive.HasValue)
-                    {
-                        propertiesBuilder.AppendLine("Maximum Value (Exclusive)");
-                        propertiesBuilder.AppendLine($"    {property.MaxExclusive.Value}");
-                        propertiesBuilder.AppendLine();
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(property.DeprecatedNamespace))
-                    {
-                        propertiesBuilder.AppendLine("DDI namespace");
-                        var xmlType = property.DeprecatedElementOrAttribute != null 
-                            && property.DeprecatedElementOrAttribute == "e" ? "Element" : "Attribute";
-                        propertiesBuilder.AppendLine($"    {xmlType} in {property.DeprecatedNamespace}");
-                        propertiesBuilder.AppendLine();
-                    }
-
-                    // Description
-                    propertiesBuilder.AppendLine(property.Description);
-                    propertiesBuilder.AppendLine();
+                    OutputPropertyDetails(propertiesBuilder, property);
                 }
+
+                foreach (var parentType in itemType.ParentTypes)
+                {
+                    string inheritedTitle = $"Properties Inherited from {parentType.Name}";
+                    propertiesBuilder.AppendLine(inheritedTitle);
+                    propertiesBuilder.AppendLine(GetRepeatedCharacters(inheritedTitle, "~"));
+                    propertiesBuilder.AppendLine();
+
+                    foreach (var property in parentType.Properties)
+                    { 
+                        OutputPropertyDetails(propertiesBuilder, property);
+                    }
+                }
+
+                // Output Properties details
+                builder.AppendLine(propertiesBuilder.ToString());
+                builder.AppendLine();
 
                 // Output the relationships graph
                 builder.AppendLine("Relationships");
@@ -328,14 +263,6 @@ namespace Cogs.Publishers
                 builder.AppendLine();
                 builder.Append(".. |stub| image:: ");
                 builder.AppendLine(Path.Combine("../../images/" + itemType.Name + ".svg"));
-                builder.AppendLine();
-
-                // Output Properties details
-                builder.AppendLine("Properties");
-                builder.AppendLine("~~~~~~~~~~");
-                builder.AppendLine();
-                builder.AppendLine(propertiesBuilder.ToString());
-
                 builder.AppendLine();
 
 
@@ -379,6 +306,96 @@ namespace Cogs.Publishers
             string allTypesIndexFileName = Path.Combine(outputDirectory, "source", path, "index.rst");
             File.WriteAllText(allTypesIndexFileName, indexBuilder.ToString());
 
+        }
+
+        private void OutputPropertyDetails(StringBuilder propertiesBuilder, Property property)
+        {
+            // Name with underline
+            propertiesBuilder.AppendLine(property.Name);
+            propertiesBuilder.AppendLine(GetRepeatedCharacters(property.Name, "*"));
+            propertiesBuilder.AppendLine();
+
+            // Type
+            propertiesBuilder.AppendLine("Type");
+            if (!property.DataType.IsXmlPrimitive)
+            {
+                propertiesBuilder.AppendLine($"    :doc:`{property.DataType.Path}`");
+            }
+            else
+            {
+                propertiesBuilder.AppendLine("    " + property.DataType.Name);
+            }
+
+            // Cardinality
+            propertiesBuilder.AppendLine("Cardinality");
+            propertiesBuilder.AppendLine($"    {property.MinCardinality}..{property.MaxCardinality}");
+            propertiesBuilder.AppendLine();
+
+            // simple string restrictions
+            if (property.MinLength.HasValue)
+            {
+                propertiesBuilder.AppendLine("Minimum Length");
+                propertiesBuilder.AppendLine($"    {property.MinLength.Value}");
+                propertiesBuilder.AppendLine();
+            }
+            if (property.MinLength.HasValue)
+            {
+                propertiesBuilder.AppendLine("Maximum Length");
+                propertiesBuilder.AppendLine($"    {property.MaxLength.Value}");
+                propertiesBuilder.AppendLine();
+            }
+            if (property.Enumeration != null && property.Enumeration.Count > 0)
+            {
+                propertiesBuilder.AppendLine("Enumeration");
+                var enumString = string.Join(", ", property.Enumeration);
+                propertiesBuilder.AppendLine($"    {enumString}");
+                propertiesBuilder.AppendLine();
+            }
+            if (!string.IsNullOrWhiteSpace(property.Pattern))
+            {
+                propertiesBuilder.AppendLine("Pattern regular expression");
+                propertiesBuilder.AppendLine($"    {property.Pattern}");
+                propertiesBuilder.AppendLine();
+            }
+
+            // numeric restrictions
+            if (property.MinInclusive.HasValue)
+            {
+                propertiesBuilder.AppendLine("Minimum Value (Inclusive)");
+                propertiesBuilder.AppendLine($"    {property.MinInclusive.Value}");
+                propertiesBuilder.AppendLine();
+            }
+            if (property.MaxInclusive.HasValue)
+            {
+                propertiesBuilder.AppendLine("Maximum Value (Inclusive)");
+                propertiesBuilder.AppendLine($"    {property.MaxInclusive.Value}");
+                propertiesBuilder.AppendLine();
+            }
+            if (property.MinExclusive.HasValue)
+            {
+                propertiesBuilder.AppendLine("Minimum Value (Exclusive)");
+                propertiesBuilder.AppendLine($"    {property.MinExclusive.Value}");
+                propertiesBuilder.AppendLine();
+            }
+            if (property.MaxExclusive.HasValue)
+            {
+                propertiesBuilder.AppendLine("Maximum Value (Exclusive)");
+                propertiesBuilder.AppendLine($"    {property.MaxExclusive.Value}");
+                propertiesBuilder.AppendLine();
+            }
+
+            if (!string.IsNullOrWhiteSpace(property.DeprecatedNamespace))
+            {
+                propertiesBuilder.AppendLine("DDI namespace");
+                var xmlType = property.DeprecatedElementOrAttribute != null
+                    && property.DeprecatedElementOrAttribute == "e" ? "Element" : "Attribute";
+                propertiesBuilder.AppendLine($"    {xmlType} in {property.DeprecatedNamespace}");
+                propertiesBuilder.AppendLine();
+            }
+
+            // Description
+            propertiesBuilder.AppendLine(property.Description);
+            propertiesBuilder.AppendLine();
         }
 
         private string GetDataTypeRoot(string typeName)
