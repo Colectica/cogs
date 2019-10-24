@@ -61,7 +61,6 @@ namespace Cogs.Publishers
                 return;
             }
 
-            // TODO Make this work on Unix, too.
             if (Environment.OSVersion.Platform == PlatformID.Win32NT)
             {
                 Process proc = new Process();
