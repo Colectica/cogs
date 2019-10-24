@@ -47,6 +47,19 @@ namespace Cogs.Publishers
             sourcePath = Path.Combine(outputDirectory, "source");
             Directory.CreateDirectory(sourcePath);
 
+            // source/_static directory
+            string staticPath = Path.Combine(sourcePath, "_static");
+            Directory.CreateDirectory(staticPath);
+
+            // source/_static/css directory
+            string cssPath = Path.Combine(staticPath, "css");
+            Directory.CreateDirectory(cssPath);
+
+            // _static/css/custom.css
+            string customCssFileName = Path.Combine(cssPath, "custom.css");
+            string customCss = GetCustomCss();
+            File.WriteAllText(customCssFileName, customCss);
+
             // source/conf.py
             string confDotPyFileName = Path.Combine(sourcePath, "conf.py");
             string confDotPyContent = GetConfDotPyContents();
@@ -177,7 +190,7 @@ namespace Cogs.Publishers
                 builder.AppendLine("~~~~~~~~~~");
                 builder.AppendLine();
 
-                builder.AppendLine(".. csv-table:: Properties");
+                builder.AppendLine(".. csv-table::");
                 builder.AppendLine("   :header: \"Name\",\"Type\",\"\",\"Description\"");
                 builder.AppendLine("   :widths: 15,10,5,100");
                 builder.AppendLine();
@@ -194,7 +207,7 @@ namespace Cogs.Publishers
                     builder.AppendLine(GetRepeatedCharacters(inheritedTitle, "~"));
                     builder.AppendLine();
 
-                    builder.AppendLine($".. csv-table:: {inheritedTitle}");
+                    builder.AppendLine($".. csv-table::");
                     builder.AppendLine("   :header: \"Name\",\"Type\",\"\",\"Description\"");
                     builder.AppendLine("   :widths: 15,10,5,100");
                     builder.AppendLine();
@@ -542,7 +555,7 @@ todo_include_todos = True
 html_theme = ""sphinx_rtd_theme""
 html_theme_path = [""themes""]
 def setup(app):
-  app.add_stylesheet( ""css/image.css"" )
+  app.add_stylesheet( ""css/custom.css"" )
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -697,6 +710,13 @@ help:
                 .Replace("@Author", cogsModel.Settings.Author)
                 .Replace("@Version", cogsModel.Settings.Version)
                 .Replace("@Copyright", cogsModel.Settings.Copyright);
+        }
+
+        private string GetCustomCss()
+        {
+            return @".wy-nav-content {
+    max-width: unset;
+}";
         }
 
         
