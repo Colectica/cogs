@@ -309,7 +309,7 @@ namespace Cogs.Publishers
                 
                 if (incoming.Count > 0)
                 {
-                    builder.AppendLine("The following types reference this item type.");
+                    builder.AppendLine("The following types reference this type.");
                 }
 
                 builder.AppendLine();
