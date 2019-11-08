@@ -53,7 +53,7 @@ namespace Cogs.Publishers
         private List<DataType> ReusableList { get; set; }
         public List<CogsError> Errors { get; set; } = new List<CogsError>();
 
-        public object Publish(CogsModel model)
+        public int Publish(CogsModel model)
         {
             if (TargetDirectory == null)
             {
@@ -77,7 +77,11 @@ namespace Cogs.Publishers
                         foreach (var exe in Environment.GetEnvironmentVariable("PATH").Split(Path.PathSeparator))
                         {
                             var fullPath = Path.Combine(exe, "dot.exe");
-                            if (File.Exists(fullPath)) { DotLocation = fullPath; }
+                            if (File.Exists(fullPath)) 
+                            { 
+                                DotLocation = fullPath;
+                                break;
+                            }
                         }
                     }
                     else if (Environment.OSVersion.Platform == PlatformID.Unix)

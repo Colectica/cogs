@@ -27,9 +27,9 @@ namespace Cogs.Publishers.JsonSchema
                     var obj = new JObject();
                     if (prop.Title == "~~reference~~")
                     {
-                        obj2.Add(new JProperty("TopLevelReference",
+                        obj2.Add(new JProperty("topLevelReference",
                             new JObject(new JProperty("type", "array"),
-                            new JProperty("items", new JObject(new JProperty("$ref", "#/definitions/Reference"), new JProperty("minItems", 0))))));
+                            new JProperty("items", new JObject(new JProperty("$ref", "#/definitions/reference"), new JProperty("minItems", 0))))));
 
                     }
                     else

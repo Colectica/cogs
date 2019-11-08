@@ -23,7 +23,7 @@ namespace Cogs.Tests
 
             // Verify we read all the item types.
             Assert.Equal(10, cogsModel.ItemTypes.Count);
-            Assert.Equal(3, cogsModel.ReusableDataTypes.Count);
+            Assert.Equal(4, cogsModel.ReusableDataTypes.Count);
 
             // Verify we read all the inheritance correctly.
             var rollType = cogsModel.ItemTypes.First(x => x.Name == "Roll");

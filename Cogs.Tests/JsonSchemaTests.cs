@@ -46,7 +46,7 @@ namespace Cogs.Tests
                 "testing1_reference_reusable.json",
                 "testing2_reference_Object.json",
                 "test3_SimpleType.json",
-                "test4_invalid_json.json",
+                //"test4_invalid_json.json",
                 "ToDo.json",
                 "testing5_more.json",
                 "jsonOut.json"
@@ -55,17 +55,17 @@ namespace Cogs.Tests
             {
                 using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Cogs.Tests." + test))
                 {
-                    StringBuilder lines = new StringBuilder();
-                    using (StreamReader reader = new StreamReader(stream))
-                    {
-                        string line;
-                        while ((line = reader.ReadLine()) != null)
-                        {
-                            lines.Append(line);
-                        }
+                    StreamReader reader = new StreamReader(stream, Encoding.UTF8);
+                    string jsonText = reader.ReadToEnd();
+                    var result = schema.Validate(jsonText);
+                    if (!test.Contains("invalid")) 
+                    {                        
+                        Assert.Empty(result); 
                     }
-                    if (!test.Contains("invalid")) { Assert.Empty(schema.Validate(lines.ToString())); }
-                    else { Assert.NotEmpty(schema.Validate(lines.ToString())); }
+                    else 
+                    { 
+                        Assert.NotEmpty(result); 
+                    }
                 }
             }
         }

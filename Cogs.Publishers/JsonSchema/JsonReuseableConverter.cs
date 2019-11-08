@@ -41,7 +41,7 @@ namespace Cogs.Publishers.JsonSchema
                             referenceBody.Add(new JProperty("additionalProperties", false));
                         }
 
-                        var referenceHead = new JProperty("Reference", referenceBody);
+                        var referenceHead = new JProperty("reference", referenceBody);
                         obj.Add(referenceHead);
                     }
                     else

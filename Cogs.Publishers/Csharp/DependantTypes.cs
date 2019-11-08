@@ -78,7 +78,7 @@ namespace __CogsGeneratedNamespace
 
                 if (container.TopLevelReferences.Count > 0)
                 {
-                    var topLevel = new JProperty("TopLevelReference",
+                    var topLevel = new JProperty("topLevelReference",
                         new JArray(
                             from obj in container.TopLevelReferences
                             select new JObject(
@@ -121,7 +121,7 @@ namespace __CogsGeneratedNamespace
 
             foreach (var type in containerObject)
             {
-                if (type.Key.Equals("TopLevelReference"))
+                if (string.Compare(type.Key, "topLevelReference", true) == 0)
                 {
                     var topLevelJsonReferences = type.Value.ToObject<List<RawJsonReference>>();
                     foreach (var r in topLevelJsonReferences)
