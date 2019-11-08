@@ -6,7 +6,7 @@
     <IsPackable>true</IsPackable>
     <PackAsTool>true</PackAsTool>
     <AssemblyName>cogs</AssemblyName>
-    <StartupObject></StartupObject>
+    <StartupObject>Cogs.Console.Program</StartupObject>
     <GenerateProgramFile>false</GenerateProgramFile>
     <Version>1.0.313</Version>
     <Copyright>Colectica</Copyright>
@@ -34,7 +34,7 @@ COGS is for domain experts and groups who value ease of collaboration and low te
 
   <ItemGroup>
     <None Include="..\Cogs.licenseheader" Link="Cogs.licenseheader" />
-    <None Include="images\colectica-seal-128x128.png" Pack="true" PackagePath=""/>
+    <None Include="images\colectica-seal-128x128.png" Pack="true" PackagePath="" />
   </ItemGroup>
 
   <ItemGroup>

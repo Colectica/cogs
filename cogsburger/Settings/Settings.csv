@@ -4,4 +4,5 @@ ShortTitle,COGS Burger
 Slug,cogsburger
 Description,A model for describing all sorts of burgers.
 NamespaceUrl,http://example.org/cogsburger
+CSharpNamespace,http://example.org/cogsburger
 NamespacePrefix,cogsburger

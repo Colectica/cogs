@@ -73,7 +73,7 @@ namespace Cogs.Publishers.Csharp
                 OmitXmlDeclaration = true,
                 Indent = true                
             };
-            using (FileStream s = new FileStream(Path.Combine(TargetDirectory, projName + ".csproj"), FileMode.OpenOrCreate, FileAccess.ReadWrite))
+            using (FileStream s = new FileStream(Path.Combine(TargetDirectory, projName + ".csproj"), FileMode.Create, FileAccess.ReadWrite))
             using (XmlWriter xw = XmlWriter.Create(s, xws))
             {
                 project.Save(xw);
