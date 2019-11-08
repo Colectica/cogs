@@ -17,12 +17,13 @@
     <RootNamespace>Cogs.Console</RootNamespace>
     <PackageProjectUrl>https://cogsdata.org</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Colectica/cogs</RepositoryUrl>
-    <PackageLicenseUrl>https://github.com/Colectica/cogs/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageLicenseUrl></PackageLicenseUrl>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Description>The Convention-based Ontology Generation System (COGS) gives you a powerful, patterns-based way to build ontologies. COGS enables a clean separation of concerns and gives you full control over markup for enjoyable, agile development. COGS includes many features that enable fast, test-driven development for publishing sophisticated models in a variety of formats.
 
 COGS is for domain experts and groups who value ease of collaboration and low technical barriers for participation.</Description>
-    <PackageIconUrl>https://www.colectica.com/img/colectica-seal-128x128.png</PackageIconUrl>
+    <PackageIcon>colectica-seal-128x128.png</PackageIcon>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
@@ -33,6 +34,7 @@ COGS is for domain experts and groups who value ease of collaboration and low te
 
   <ItemGroup>
     <None Include="..\Cogs.licenseheader" Link="Cogs.licenseheader" />
+    <None Include="images\colectica-seal-128x128.png" Pack="true" PackagePath=""/>
   </ItemGroup>
 
   <ItemGroup>

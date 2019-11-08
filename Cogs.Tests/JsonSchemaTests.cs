@@ -39,7 +39,7 @@ namespace Cogs.Tests
                 MetadataPropertyHandling = MetadataPropertyHandling.Ignore
             };
             var schemaData = File.ReadAllText(Path.Combine(outputPath, "jsonSchema" + ".json"));
-            var schema = await JsonSchema4.FromJsonAsync(schemaData);
+            var schema = await NJsonSchema.JsonSchema.FromJsonAsync(schemaData);
 
             string[] tests = new string[]
             {
