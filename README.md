@@ -1,6 +1,6 @@
 Convention-based Ontology Generation System
 ===
-(Windows) [![Windows Build status](https://ci.appveyor.com/api/projects/status/5ky4r2jd5un3a0qh/branch/master?svg=true)](https://ci.appveyor.com/project/DanSmith/cogs/branch/master) (Linux) [![Linux Build status](https://travis-ci.org/Colectica/cogs.svg?branch=master)](https://travis-ci.org/Colectica/cogs) [![NuGet version (cogs)](https://img.shields.io/nuget/v/cogs.svg?style=flat-square)](https://www.nuget.org/packages/cogs/)
+(Windows) [![Windows Build status](https://ci.appveyor.com/api/projects/status/5ky4r2jd5un3a0qh/branch/master?svg=true)](https://ci.appveyor.com/project/DanSmith/cogs/branch/master) (Linux) [![Linux Build status](https://travis-ci.org/Colectica/cogs.svg?branch=master)](https://travis-ci.org/Colectica/cogs) [![NuGet version (cogs)](https://img.shields.io/nuget/v/cogs.svg?style=flat-square)](https://www.nuget.org/packages/cogs/) [![DOI](https://zenodo.org/badge/93088121.svg)](https://zenodo.org/badge/latestdoi/93088121)
 
 The Convention-based Ontology Generation System (COGS) gives you a powerful, patterns-based way to build ontologies that enables a clean separation of concerns and gives you full control over markup for enjoyable, agile development. COGS includes many features that enable fast, Test Driven Development for publishing sophisticated models in a variety of formats.
 
