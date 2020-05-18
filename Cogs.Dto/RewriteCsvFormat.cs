@@ -2,6 +2,7 @@
 using CsvHelper;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -25,7 +26,7 @@ namespace Cogs.Dto
             {
                 try
                 {
-                    var csvReader = new CsvReader(textReader);
+                    var csvReader = new CsvReader(textReader, CultureInfo.InvariantCulture);
                     csvReader.Configuration.HeaderValidated = null;
                     csvReader.Configuration.MissingFieldFound = null;
 
@@ -40,7 +41,7 @@ namespace Cogs.Dto
 
             using (TextWriter textWriter = File.CreateText(identificationFile))
             {
-                CsvWriter csvWriter = new CsvWriter(textWriter);
+                CsvWriter csvWriter = new CsvWriter(textWriter, CultureInfo.InvariantCulture);
                 csvWriter.WriteRecords(rows);
             }
 
@@ -52,7 +53,7 @@ namespace Cogs.Dto
             {
                 try
                 {
-                    var csvReader = new CsvReader(textReader);
+                    var csvReader = new CsvReader(textReader, CultureInfo.InvariantCulture);
                     csvReader.Configuration.HeaderValidated = null;
                     csvReader.Configuration.MissingFieldFound = null;
 
@@ -67,7 +68,7 @@ namespace Cogs.Dto
 
             using (TextWriter textWriter = File.CreateText(settingsFileName))
             {
-                CsvWriter csvWriter = new CsvWriter(textWriter);
+                CsvWriter csvWriter = new CsvWriter(textWriter, CultureInfo.InvariantCulture);
                 csvWriter.WriteRecords(settings);
             }
 
@@ -97,7 +98,7 @@ namespace Cogs.Dto
                     {
                         try
                         {
-                            var csvReader = new CsvReader(textReader);
+                            var csvReader = new CsvReader(textReader, CultureInfo.InvariantCulture);
                             csvReader.Configuration.HeaderValidated = null;
                             csvReader.Configuration.MissingFieldFound = null;
 
@@ -116,7 +117,7 @@ namespace Cogs.Dto
 
                 using (TextWriter textWriter = File.CreateText(propertiesFileName))
                 {
-                    CsvWriter csvWriter = new CsvWriter(textWriter);
+                    CsvWriter csvWriter = new CsvWriter(textWriter, CultureInfo.InvariantCulture);
                     csvWriter.WriteRecords(rows);
                 }
 

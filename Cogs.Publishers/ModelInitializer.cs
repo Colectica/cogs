@@ -2,6 +2,7 @@
 using CsvHelper;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text;
 
@@ -62,7 +63,7 @@ namespace Cogs.Publishers
             CsvWriter csv = null;
             using (textwriter = new StringWriter())
             {
-                csv = new CsvWriter(textwriter);
+                csv = new CsvWriter(textwriter, CultureInfo.InvariantCulture);
 
                 csv.WriteRecords(items);
                 File.WriteAllText(Path.Combine(i1.FullName, "item1.csv"), textwriter.ToString());
@@ -96,7 +97,7 @@ namespace Cogs.Publishers
             csv = null;
             using (textwriter = new StringWriter())
             {
-                csv = new CsvWriter(textwriter);
+                csv = new CsvWriter(textwriter, CultureInfo.InvariantCulture);
                 csv.WriteRecords(reusableitem1);
                 File.WriteAllText(Path.Combine(r1.FullName, "Type1.csv"), textwriter.ToString());
             }
@@ -120,7 +121,7 @@ namespace Cogs.Publishers
             csv = null;
             using (textwriter = new StringWriter())
             {
-                csv = new CsvWriter(textwriter);
+                csv = new CsvWriter(textwriter, CultureInfo.InvariantCulture);
                 csv.WriteRecords(reusableitem2);
                 File.WriteAllText(Path.Combine(r2.FullName, "Type2.csv"), textwriter.ToString());
             }
@@ -144,7 +145,7 @@ namespace Cogs.Publishers
             csv = null;
             using (textwriter = new StringWriter())
             {
-                csv = new CsvWriter(textwriter);
+                csv = new CsvWriter(textwriter, CultureInfo.InvariantCulture);
                 csv.WriteRecords(identification1);
                 File.WriteAllText(Path.Combine(setting.FullName, "Identification.csv"), textwriter.ToString());
             }

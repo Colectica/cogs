@@ -6,6 +6,7 @@ using CsvHelper;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -38,7 +39,7 @@ namespace Cogs.Dto
             {
                 try
                 {
-                    var csvReader = new CsvReader(textReader);
+                    var csvReader = new CsvReader(textReader, CultureInfo.InvariantCulture);
                     var records = csvReader.GetRecords<Property>();
                     model.Identification.AddRange(records);
                 }
@@ -56,7 +57,7 @@ namespace Cogs.Dto
             {
                 try
                 {
-                    var csvReader = new CsvReader(textReader);
+                    var csvReader = new CsvReader(textReader, CultureInfo.InvariantCulture);
                     var records = csvReader.GetRecords<Setting>();
                     model.Settings.AddRange(records);
                 }
@@ -150,7 +151,7 @@ namespace Cogs.Dto
                     {
                         try
                         {
-                            var csvReader = new CsvReader(textReader);
+                            var csvReader = new CsvReader(textReader, CultureInfo.InvariantCulture);
                             var records = csvReader.GetRecords<Property>().ToList();
                             itemType.Properties = records;
                         }
