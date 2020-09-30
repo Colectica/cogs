@@ -383,11 +383,20 @@ namespace Cogs.Publishers
 
             // Cardinality
             string cardinality = $"{property.MinCardinality}..{property.MaxCardinality}";
-
+            if (property.Ordered)
+            {
+                cardinality += " (Ordered)";
+            }
             // Description
             string description = property.Description
                 .Replace("\n", " ")
                 .Replace("\"", "\"\"");
+
+            if(property?.Enumeration.Count > 0)
+            {
+                description += " Valid values include: ";
+                description += string.Join(", ", property.Enumeration);
+            }
 
             propertiesBuilder.AppendLine($"   \"{property.Name}\",\"{typeStr}\",\"{cardinality}\",\"{description}\"");
 
