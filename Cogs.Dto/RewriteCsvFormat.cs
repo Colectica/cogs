@@ -1,5 +1,6 @@
 ﻿using Cogs.Common;
 using CsvHelper;
+using CsvHelper.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -26,9 +27,10 @@ namespace Cogs.Dto
             {
                 try
                 {
-                    var csvReader = new CsvReader(textReader, CultureInfo.InvariantCulture);
-                    csvReader.Configuration.HeaderValidated = null;
-                    csvReader.Configuration.MissingFieldFound = null;
+                    var config = new CsvConfiguration(CultureInfo.InvariantCulture);
+                    config.HeaderValidated = null;
+                    config.MissingFieldFound = null;
+                    var csvReader = new CsvReader(textReader, config);
 
                     var records = csvReader.GetRecords<Property>();
                     rows.AddRange(records);
@@ -53,9 +55,10 @@ namespace Cogs.Dto
             {
                 try
                 {
-                    var csvReader = new CsvReader(textReader, CultureInfo.InvariantCulture);
-                    csvReader.Configuration.HeaderValidated = null;
-                    csvReader.Configuration.MissingFieldFound = null;
+                    var config = new CsvConfiguration(CultureInfo.InvariantCulture);
+                    config.HeaderValidated = null;
+                    config.MissingFieldFound = null;
+                    var csvReader = new CsvReader(textReader, config);
 
                     var records = csvReader.GetRecords<Setting>();
                     settings.AddRange(records);
@@ -98,9 +101,10 @@ namespace Cogs.Dto
                     {
                         try
                         {
-                            var csvReader = new CsvReader(textReader, CultureInfo.InvariantCulture);
-                            csvReader.Configuration.HeaderValidated = null;
-                            csvReader.Configuration.MissingFieldFound = null;
+                            var config = new CsvConfiguration(CultureInfo.InvariantCulture);
+                            config.HeaderValidated = null;
+                            config.MissingFieldFound = null;
+                            var csvReader = new CsvReader(textReader, config);
 
                             rows = csvReader.GetRecords<Property>().ToList();
                         }
