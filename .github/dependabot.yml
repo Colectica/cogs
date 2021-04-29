@@ -6,15 +6,3 @@ updates:
     interval: monthly
     time: "11:00"
   open-pull-requests-limit: 10
-  ignore:
-  - dependency-name: CsvHelper
-    versions:
-    - 19.0.0
-    - 22.1.0
-  - dependency-name: NJsonSchema
-    versions:
-    - 10.3.2
-    - 10.3.3
-  - dependency-name: Microsoft.NET.Test.Sdk
-    versions:
-    - 16.8.3
