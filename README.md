@@ -6,6 +6,16 @@ The Convention-based Ontology Generation System (COGS) gives you a powerful, pat
 
 COGS is for domain experts and groups who value **ease of collaboration** and **low technical barriers** for participation.
 
+## Highlighted projects using COGS
+
+* SDTL - Structured Data Transformation Language
+  * https://gitlab.com/c2metadata/sdtl-cogs [cogs]
+  * https://ddialliance.org/products/sdtl/1.0
+* DDI Lifecycle 3.4
+  * https://github.com/ddialliance/ddimodel [cogs]
+  * https://ddialliance.org/Specification/DDI-Lifecycle/3.3/
+
+
 ## Output Formats
 
 Publishable formats include:
