@@ -1,0 +1,29 @@
+# YAML 1.2
+---
+abstract: |
+    "The Convention-based Ontology Generation System (COGS) gives you a powerful, patterns-based way to build ontologies that enables a clean separation of concerns and gives you full control over markup for enjoyable, agile development. COGS includes many features that enable fast, Test Driven Development for publishing sophisticated models in a variety of formats.
+    
+    COGS is for domain experts and groups who value ease of collaboration and low technical barriers for participation."
+authors: 
+  -
+    affiliation: Colectica
+    family-names: Smith
+    given-names: Dan
+    orcid: "https://orcid.org/0000-0001-7492-0246"
+  -
+    affiliation: Colectica
+    family-names: Iverson
+    given-names: Jeremy
+cff-version: "1.1.0"
+date-released: 2020-09-30
+doi: "10.5281/zenodo.4060169"
+keywords: 
+  - Ontology
+  - Metadata
+  - "ontology-generation"
+license: MIT
+message: "If you use COGS, please cite it using these metadata."
+repository-code: "https://github.com/Colectica/cogs"
+title: "COGS - Convention-based Ontology Generation System"
+version: "1.0.433"
+...
