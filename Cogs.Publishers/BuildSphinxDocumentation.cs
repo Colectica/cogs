@@ -307,7 +307,8 @@ namespace Cogs.Publishers
                 builder.AppendLine();
                 foreach (var otherItemType in cogsModel.ItemTypes.OrderBy(x => x.Name))
                 {
-                    var relationship = otherItemType.Relationships.FirstOrDefault(rel => rel.TargetItemType == itemType);
+                    var relationship = otherItemType.Relationships.FirstOrDefault(rel => rel.TargetItemType == itemType
+                        || rel.TargetItemType.Name == itemType.ExtendsTypeName);
                     if (relationship != null)
                     {
                         builder.AppendLine($"* :doc:`{otherItemType.Path}` ({relationship.PropertyName})");
