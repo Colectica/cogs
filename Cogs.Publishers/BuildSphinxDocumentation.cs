@@ -303,21 +303,18 @@ namespace Cogs.Publishers
                 // Output the relationships graph
                 builder.AppendLine("Relationships");
                 builder.AppendLine("~~~~~~~~~~~~~");
-
-                List<DataType> allTypes = cogsModel.ItemTypes.Concat(cogsModel.ReusableDataTypes).ToList();
-                var incoming = allTypes.Where(type => type.Properties.Any(prop => type != itemType && prop.DataType == itemType)).ToList();
-                
-                if (incoming.Count > 0)
-                {
-                    builder.AppendLine("The following types reference this type.");
-                }
-
+                builder.AppendLine("The following types reference this type.");
                 builder.AppendLine();
-                foreach (var referencingType in incoming)
+                foreach (var otherItemType in cogsModel.ItemTypes.OrderBy(x => x.Name))
                 {
-                    builder.AppendLine($"* :doc:`{referencingType.Path}`");
+                    var relationship = otherItemType.Relationships.FirstOrDefault(rel => rel.TargetItemType == itemType);
+                    if (relationship != null)
+                    {
+                        builder.AppendLine($"* :doc:`{otherItemType.Path}` ({relationship.PropertyName})");
+                    }
                 }
                 builder.AppendLine();
+
 
                 builder.AppendLine(".. container:: image");
                 builder.AppendLine();
@@ -592,7 +589,7 @@ todo_include_todos = True
 html_theme = ""sphinx_rtd_theme""
 html_theme_path = [""themes""]
 def setup(app):
-  app.add_stylesheet( ""css/custom.css"" )
+  app.add_css_file( ""css/custom.css"" )
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -675,7 +672,7 @@ REM Command file for Sphinx documentation
 
 if ""%SPHINXBUILD%"" == """" (
 
-    set SPHINXBUILD=python -msphinx
+    set SPHINXBUILD=python3 -msphinx
 )
 set SOURCEDIR=source
 set BUILDDIR=build
@@ -719,7 +716,7 @@ popd
 
 # You can set these variables from the command line.
 SPHINXOPTS    =
-SPHINXBUILD   = python -msphinx
+SPHINXBUILD   = python3 -msphinx
 SPHINXPROJ    = COGS
 SOURCEDIR     = source
 BUILDDIR      = build
