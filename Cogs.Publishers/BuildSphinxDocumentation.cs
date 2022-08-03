@@ -376,7 +376,7 @@ namespace Cogs.Publishers
             }
             else
             {
-                typeStr = property.DataType.Name;
+                typeStr = $"`{property.DataType.Name} <https://cogsdata.org/docs/modeler-guide/primitive-types/#{property.DataType.Name.ToLower()}>`_"; //;
             }
 
             // Cardinality
