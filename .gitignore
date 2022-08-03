@@ -1,5 +1,6 @@
 /Cogs.Console/out
 /
+.vscode/
 
 # User-specific files
 *.suo
