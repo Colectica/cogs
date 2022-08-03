@@ -37,7 +37,7 @@ namespace Cogs.Publishers
                 Format = "svg",
                 Output = "single",
                 Inheritance = false,
-                ShowReusables = true,
+                ShowReusables = false,
                 DotLocation = DotLocation
             };
             builder.Publish(model);
