@@ -6,6 +6,7 @@ using Cogs.Model;
 using Cogs.Publishers;
 using Cogs.Publishers.Csharp;
 using Cogs.Publishers.JsonSchema;
+using Cogs.Publishers.LinkMl;
 using Cogs.Validation;
 using Microsoft.Extensions.CommandLineUtils;
 using System;
@@ -79,6 +80,50 @@ namespace Cogs.Console
                     return 0;
                 });
 
+            });
+
+            app.Command("publish-linkml", (command) => {
+                command.Description = "Publish LinkML from a COGS data model";
+                command.HelpOption("-?|-h|--help");
+
+                var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
+                var targetArgument = command.Argument("[targetLocation]", "Directory where the LinkML yaml is generated.");
+
+                var namespaceUriPrefix = command.Option("-p|--namespacePrefix",
+                                           "Namespace prefix to use for the target namespace",
+                                           CommandOptionType.SingleValue);
+                var name = command.Option("-n|--name",
+                            "Name of the model",
+                            CommandOptionType.SingleValue);
+
+                command.OnExecute(() =>
+                {
+                    var location = locationArgument.Value ?? Environment.CurrentDirectory;
+                    var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
+
+                    // read cogs directory and validate the contents
+                    var directoryReader = new CogsDirectoryReader();                    
+                    var cogsDtoModel = directoryReader.Load(location);
+                    HandleErrors(directoryReader.Errors);
+                    HandleErrors(DtoValidation.Validate(cogsDtoModel));
+
+                    var modelBuilder = new CogsModelBuilder();
+                    var cogsModel = modelBuilder.Build(cogsDtoModel);
+                    HandleErrors(modelBuilder.Errors);
+
+
+                    LinkMlPublisher publisher = new LinkMlPublisher
+                    {
+                        TargetDirectory = target,
+                        Name = name.Value() ?? cogsModel.Settings.ShortTitle,
+                        NamespaceUriPrefix = namespaceUriPrefix.Value() ?? cogsModel.Settings.NamespacePrefix,
+                    };
+
+                    publisher.Publish(cogsModel);
+
+
+                    return 0;
+                });
             });
 
             app.Command("publish-xsd", (command) =>
