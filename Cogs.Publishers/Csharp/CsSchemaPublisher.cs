@@ -513,7 +513,7 @@ namespace Cogs.Publishers.Csharp
 
         private bool Isboolintdoubleulong(string name)
         {
-            if (name.Equals("bool") || name.Equals("int") || name.Equals("double") || name.Equals("ulong") || name.Equals("long"))
+            if (name.Equals("bool") || name.Equals("int") || name.Equals("double") || name.Equals("ulong") || name.Equals("long") || name.Equals("decimal") || name.Equals("float"))
             {
                 return true;
             }
