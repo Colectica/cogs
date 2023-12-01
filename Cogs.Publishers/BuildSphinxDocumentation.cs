@@ -316,21 +316,28 @@ namespace Cogs.Publishers
                 builder.AppendLine("~~~~~~~~~~~~~");
                 builder.AppendLine("The following identified item types reference this type.");
                 builder.AppendLine();
-                builder.AppendLine($".. csv-table::");
-                builder.AppendLine("   :header: \"Item Type\",\"Property\"");
-                builder.AppendLine("   :widths: 30,70");
-                builder.AppendLine();
 
-                foreach (var otherItemType in cogsModel.ItemTypes.OrderBy(x => x.Name))
+                var relatedItemTypes = cogsModel.ItemTypes.Where(x => x.Relationships.Any(rel => rel.TargetItemType == itemType || rel.TargetItemType.Name == itemType.ExtendsTypeName))
+                    .OrderBy(x => x.Name)
+                    .ToList();
+
+                if (relatedItemTypes.Any())
                 {
-                    var relationship = otherItemType.Relationships.FirstOrDefault(rel => rel.TargetItemType == itemType
-                        || rel.TargetItemType.Name == itemType.ExtendsTypeName);
-                    if (relationship != null)
+                    builder.AppendLine($".. csv-table::");
+                    builder.AppendLine("   :header: \"Item Type\",\"Property\"");
+                    builder.AppendLine("   :widths: 30,70");
+                    builder.AppendLine();
+
+                    foreach (ItemType otherItemType in relatedItemTypes)
                     {
-                        builder.AppendLine($"   :doc:`{otherItemType.Path}`,{relationship.PropertyName}");
+                        Relationship relationship = otherItemType.Relationships.FirstOrDefault(rel => rel.TargetItemType == itemType || rel.TargetItemType.Name == itemType.ExtendsTypeName);
+                        if (relationship != null)
+                        {
+                            builder.AppendLine($"   :doc:`{otherItemType.Path}`,{relationship.PropertyName}");
+                        }
                     }
+                    builder.AppendLine();
                 }
-                builder.AppendLine();
 
 
                 builder.AppendLine(".. container:: image");
