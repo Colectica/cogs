@@ -40,5 +40,34 @@ to describe your topic.
 
    See https://daringfireball.net/projects/markdown/basics for a primer on using markdown to format text.
 
+Articles/
+'''''''''
 
+Articles allow you to include extra content in the documentation that is generated for your topic.
 
+Each article is a reStructuredText file, and is included in the Sphinx documentation.
+
+.. seealso::
+
+   For details on editing reStructuredText, see http://www.sphinx-doc.org/en/stable/rest.html
+
+toc.txt
+~~~~~~~
+
+To include an article on the topics page, 
+you can include the name of the article in the :file:`{topicDirectory}/toc.txt` file.
+This file contains one path per line.
+
+Example Layout
+~~~~~~~~~~~~~~
+
+As an example, assume the following directory structure.
+
+* *topicDirectory*/
+  * toc.txt
+  * Articles/
+
+    * article1.rst
+    * article2.rst
+
+In this case, the :file:`toc.txt` file might contain a reference to ``article1`` and ``article2``.

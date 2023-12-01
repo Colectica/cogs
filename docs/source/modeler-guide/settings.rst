@@ -41,3 +41,9 @@ Additional Settings
 You can add additional settings to the :file:`Settings.csv` file by creating
 additional rows. These settings may not be used by the built-in publishers,
 but it can be a useful way to track information about your model.
+
+Header Text
+~~~~~~~~~~~
+
+You can specify header text to be included in outputs creating a file named :file:`{baseDirectory}/Settings/HeaderInclude.txt`.
+Content from this file will be included as a comment on top of all output files that support comments.

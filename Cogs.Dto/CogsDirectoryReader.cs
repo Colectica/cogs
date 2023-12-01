@@ -68,6 +68,13 @@ namespace Cogs.Dto
                 }
             }
 
+            // Read the HeaderInclude.txt file.
+            string headerIncludeFileName = Path.Combine(SettingsDirectoryName, "HeaderInclude.txt");
+            if (File.Exists(headerIncludeFileName))
+            {
+                model.HeaderInclude = File.ReadAllText(headerIncludeFileName);
+            }
+
 
             // Load information about articles.
             string articlesPath = Path.Combine(directory, "Articles");
@@ -106,6 +113,13 @@ namespace Cogs.Dto
                 foreach (string name in itemTypeNames)
                 {
                     view.ItemTypes.Add(name);
+                }
+
+                string articlesIndexFileName = Path.Combine(viewDirectory, "toc.txt");
+                if (File.Exists(articlesIndexFileName))
+                {
+                    view.ArticlesPath = Path.Combine(viewDirectory, "Articles");
+                    view.ArticleTocEntries.AddRange(File.ReadAllLines(articlesIndexFileName));
                 }
 
                 model.TopicIndices.Add(view);

@@ -14,5 +14,7 @@ namespace Cogs.Model
         public string Description { get; set; }
         public List<string> ItemTypeNames { get; } = new List<string>();
         public List<DataType> ItemTypes { get; } = new List<DataType>();
+        public string ArticlesPath { get; set; }
+        public List<string> ArticleTocEntries { get; } = new List<string>();
     }
 }

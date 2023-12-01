@@ -59,6 +59,14 @@ namespace Cogs.Publishers
             var projName = model.Settings.Slug;
             StringBuilder res = new StringBuilder();
             res.AppendLine(@"<?xml version=""1.0""?>");
+
+            if (!string.IsNullOrWhiteSpace(this.model.HeaderInclude))
+            {
+                res.AppendLine("<!--");
+                res.AppendLine(this.model.HeaderInclude);
+                res.AppendLine("-->");
+            }
+
             res.AppendLine(@"<rdf:RDF xmlns=""" + TargetNamespace +@"""");
             res.AppendLine(@"   xml:base=""" + TargetNamespacePrefix + @"""");
             res.AppendLine(@"   xmlns:rdf=""http://www.w3.org/1999/02/22-rdf-syntax-ns#""");

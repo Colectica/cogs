@@ -16,7 +16,7 @@ namespace Cogs.Publishers
     {
         private string outputDirectory;
         private CogsModel cogsModel;
-        private string sourcePath;
+        private string sphinxSourcePath;
 
         public void Build(CogsModel cogsModel, string outputDirectory)
         {
@@ -24,7 +24,7 @@ namespace Cogs.Publishers
             this.outputDirectory = outputDirectory;
 
             CreateSphinxSkeleton();
-            CopyArticles();
+            CopyTopLevelArticles();
             BuildTopIndex();
             BuildItemTypePages();
             BuildReusableTypePages();
@@ -44,11 +44,11 @@ namespace Cogs.Publishers
             File.WriteAllText(makefileFileName, makefileContents);
 
             // source directory
-            sourcePath = Path.Combine(outputDirectory, "source");
-            Directory.CreateDirectory(sourcePath);
+            sphinxSourcePath = Path.Combine(outputDirectory, "source");
+            Directory.CreateDirectory(sphinxSourcePath);
 
             // source/_static directory
-            string staticPath = Path.Combine(sourcePath, "_static");
+            string staticPath = Path.Combine(sphinxSourcePath, "_static");
             Directory.CreateDirectory(staticPath);
 
             // source/_static/css directory
@@ -61,15 +61,26 @@ namespace Cogs.Publishers
             File.WriteAllText(customCssFileName, customCss);
 
             // source/conf.py
-            string confDotPyFileName = Path.Combine(sourcePath, "conf.py");
+            string confDotPyFileName = Path.Combine(sphinxSourcePath, "conf.py");
             string confDotPyContent = GetConfDotPyContents();
             File.WriteAllText(confDotPyFileName, confDotPyContent);
         }
 
-        private void CopyArticles()
+        private void CopyTopLevelArticles()
         {
             if (string.IsNullOrWhiteSpace(cogsModel.ArticlesPath) ||
                 !Directory.Exists(cogsModel.ArticlesPath))
+            {
+                return;
+            }
+
+            CopyArticles(cogsModel.ArticlesPath, sphinxSourcePath);
+        }
+
+        private void CopyArticles(string sourcePath, string targetPath)
+        {
+            if (string.IsNullOrWhiteSpace(sourcePath) ||
+                !Directory.Exists(sourcePath))
             {
                 return;
             }
@@ -79,7 +90,7 @@ namespace Cogs.Publishers
                 Process proc = new Process();
                 proc.StartInfo.UseShellExecute = false;
                 proc.StartInfo.FileName = @"C:\WINDOWS\system32\xcopy.exe";
-                proc.StartInfo.Arguments = $"{cogsModel.ArticlesPath} {sourcePath} /E /I";
+                proc.StartInfo.Arguments = $"{sourcePath} {targetPath} /E /I";
                 proc.Start();
                 proc.WaitForExit();
             }
@@ -88,7 +99,7 @@ namespace Cogs.Publishers
                 Process proc = new Process();
                 proc.StartInfo.UseShellExecute = false;
                 proc.StartInfo.FileName = @"cp";
-                proc.StartInfo.Arguments = $"-r {cogsModel.ArticlesPath}/. {sourcePath}";
+                proc.StartInfo.Arguments = $"-r \"{sourcePath}/.\" \"{targetPath}\"";
                 proc.Start();
                 proc.WaitForExit();
             }
@@ -303,15 +314,20 @@ namespace Cogs.Publishers
                 // Output the relationships graph
                 builder.AppendLine("Relationships");
                 builder.AppendLine("~~~~~~~~~~~~~");
-                builder.AppendLine("The following types reference this type.");
+                builder.AppendLine("The following identified item types reference this type.");
                 builder.AppendLine();
+                builder.AppendLine($".. csv-table::");
+                builder.AppendLine("   :header: \"Item Type\",\"Property\"");
+                builder.AppendLine("   :widths: 30,70");
+                builder.AppendLine();
+
                 foreach (var otherItemType in cogsModel.ItemTypes.OrderBy(x => x.Name))
                 {
                     var relationship = otherItemType.Relationships.FirstOrDefault(rel => rel.TargetItemType == itemType
                         || rel.TargetItemType.Name == itemType.ExtendsTypeName);
                     if (relationship != null)
                     {
-                        builder.AppendLine($"* :doc:`{otherItemType.Path}` ({relationship.PropertyName})");
+                        builder.AppendLine($"   :doc:`{otherItemType.Path}`,{relationship.PropertyName}");
                     }
                 }
                 builder.AppendLine();
@@ -490,37 +506,54 @@ namespace Cogs.Publishers
 
         private void BuildTopicPages()
         {
-            foreach (var view in cogsModel.TopicIndices)
+            foreach (TopicIndex topicIndex in cogsModel.TopicIndices)
             {
-                string viewDirectory = Path.Combine(outputDirectory, "source", "topics", view.Name);
-                string viewFileName = Path.Combine(viewDirectory, "index.rst");
-                Directory.CreateDirectory(viewDirectory);
+                string topicOutputDirectory = Path.Combine(outputDirectory, "source", "topics", topicIndex.Name);
+                string topicIndexName = Path.Combine(topicOutputDirectory, "index.rst");
+                Directory.CreateDirectory(topicOutputDirectory);
 
                 var builder = new StringBuilder();
 
-                builder.AppendLine(view.Name);
-                builder.AppendLine(GetRepeatedCharacters(view.Name, "-"));
+                builder.AppendLine(topicIndex.Name);
+                builder.AppendLine(GetRepeatedCharacters(topicIndex.Name, "-"));
                 builder.AppendLine();
 
-                builder.AppendLine(view.Description);
+                builder.AppendLine(topicIndex.Description);
                 builder.AppendLine();
+
+                // If there are any articles for this topic, output them in a toctree and copy the files into the topic directory.
+                if (topicIndex.ArticleTocEntries.Any())
+                {
+                    builder.AppendLine(".. toctree::");
+                    builder.AppendLine("   :maxdepth: 1");
+                    builder.AppendLine();
+
+                    foreach (string entry in topicIndex.ArticleTocEntries)
+                    {
+                        builder.AppendLine($"   {entry}");
+                    }
+
+                    builder.AppendLine();
+
+                    CopyArticles(topicIndex.ArticlesPath, topicOutputDirectory);
+                }
 
                 builder.AppendLine("Item Types");
                 builder.AppendLine("**********");
                 builder.AppendLine();
-                builder.AppendLine($"{cogsModel.Settings.ShortTitle} has {view.ItemTypes.Count} item types related to {view.Name}.");
+                builder.AppendLine($"{cogsModel.Settings.ShortTitle} has {topicIndex.ItemTypes.Count} item types related to {topicIndex.Name}.");
                 builder.AppendLine();
 
                 builder.AppendLine(".. toctree::");
                 builder.AppendLine("   :maxdepth: 1");
                 builder.AppendLine();
-                foreach (var type in view.ItemTypes)
+                foreach (var type in topicIndex.ItemTypes)
                 {
                     builder.AppendLine($"   ../../item-types/{type.Name}/index");
                 }
                 builder.AppendLine();
 
-                File.WriteAllText(viewFileName, builder.ToString());
+                File.WriteAllText(topicIndexName, builder.ToString());
             }
 
         }
