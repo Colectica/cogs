@@ -26,6 +26,7 @@ namespace Cogs.Validation
             errors = CheckReusedPropertyNamesShouldHaveSameDatatype(model, errors);
             errors = CheckPropertyNamesShouldBePascalCase(model, errors);
             errors = CheckAbstractDataTypePropertiesMustAllowSubtypes(model, errors);
+            errors = CheckDerivationOfPrimativeTypesNotAllowed(model, errors);
 
             errors = CheckOrderedCollectionsMustHaveCardinalityGreaterThanOne(model, errors);
 
@@ -234,6 +235,24 @@ namespace Cogs.Validation
             {
                 errors.Add(new CogsError(ErrorLevel.Error, "The slug cannot contain spaces"));
             }
+
+            return errors;
+        }
+
+        public static List<CogsError> CheckDerivationOfPrimativeTypesNotAllowed(CogsDtoModel model, List<CogsError> errors)
+        {
+            errors = errors ?? new List<CogsError>();
+
+            var primatives = CogsTypes.SimpleTypeNames.ToHashSet();
+
+            foreach (var item in model.ItemTypes.Union(model.ReusableDataTypes))
+            {
+                if (primatives.Contains(item.Extends))
+                {
+                    errors.Add(new CogsError(ErrorLevel.Error, $"Datatype name '{item.Name}' can not extend primative type {item.Extends}."));
+                }
+            }
+
 
             return errors;
         }

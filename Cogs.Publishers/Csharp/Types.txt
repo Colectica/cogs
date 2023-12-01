@@ -700,7 +700,7 @@ namespace Cogs.Converters
                 writer.WriteStartArray();
                 foreach (var off in offsets)
                 {
-                    writer.WriteValue(span.TotalMilliseconds);
+                    writer.WriteValue(off.TotalMilliseconds);
                 }
                 writer.WriteEndArray();
             }

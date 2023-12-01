@@ -63,4 +63,6 @@ Validation Tests
     Checks if any referenced data types are abstract, and do not allow subtypes to be used.
 * CheckOrderedCollectionsMustHaveCardinalityGreaterThanOne
     Checks if any properties are ordered that they allow for more than one relationship. 
+* CheckDerivationOfPrimativeTypesNotAllowed
+    Checks if any item types or composit types try to extend a primative type. 
     
