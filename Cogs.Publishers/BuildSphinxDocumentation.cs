@@ -303,15 +303,20 @@ namespace Cogs.Publishers
                 // Output the relationships graph
                 builder.AppendLine("Relationships");
                 builder.AppendLine("~~~~~~~~~~~~~");
-                builder.AppendLine("The following types reference this type.");
+                builder.AppendLine("The following identified item types reference this type.");
                 builder.AppendLine();
+                builder.AppendLine($".. csv-table::");
+                builder.AppendLine("   :header: \"Item Type\",\"Property\"");
+                builder.AppendLine("   :widths: 30,70");
+                builder.AppendLine();
+
                 foreach (var otherItemType in cogsModel.ItemTypes.OrderBy(x => x.Name))
                 {
                     var relationship = otherItemType.Relationships.FirstOrDefault(rel => rel.TargetItemType == itemType
                         || rel.TargetItemType.Name == itemType.ExtendsTypeName);
                     if (relationship != null)
                     {
-                        builder.AppendLine($"* :doc:`{otherItemType.Path}` ({relationship.PropertyName})");
+                        builder.AppendLine($"   :doc:`{otherItemType.Path}`,{relationship.PropertyName}");
                     }
                 }
                 builder.AppendLine();
