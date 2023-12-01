@@ -214,10 +214,12 @@ namespace Cogs.Publishers
             }
             //create document header based on format specified
             XDocument xDoc;
+            var headerElement = string.IsNullOrEmpty(model.HeaderInclude) ? null : new XComment(model.HeaderInclude);
             if (Normative)
             {
                 xDoc = new XDocument(
                    new XDeclaration("1.0", "utf-8", null),
+                   headerElement,
                    new XElement(xmins + "XMI", new XAttribute(XNamespace.Xmlns + "uml", "http://www.omg.org/spec/UML/20110701"),
                         new XAttribute(XNamespace.Xmlns + "xmi", "http://www.omg.org/spec/XMI/20110701"),
                         new XElement(xmins + "Documentation", new XElement("exporter", "Enterprise Architect"), new XElement("exporterVersion", "6.5")),
@@ -231,6 +233,7 @@ namespace Cogs.Publishers
                 // create header + structure of xml 2.5.1 (chunky and unpleasing, but works)
                 xDoc = new XDocument(
                    new XDeclaration("1.0", "utf-8", null),
+                   headerElement,
                    new XElement(xmins + "XMI", new XAttribute(XNamespace.Xmlns + "uml", "http://www.omg.org/spec/UML/20131001"),
                         new XAttribute(XNamespace.Xmlns + "xmi", "http://www.omg.org/spec/XMI/20131001"),
                         new XElement(xmins + "Documentation", new XAttribute("exporter", "Enterprise Architect"), new XAttribute("exporterVersion", "6.5")),

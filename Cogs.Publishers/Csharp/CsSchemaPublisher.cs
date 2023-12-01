@@ -81,16 +81,36 @@ namespace Cogs.Publishers.Csharp
 
             
             // copy types file
-            this.GetType().GetTypeInfo().Assembly.GetManifestResourceStream("Cogs.Publishers.Csharp.Types.txt").CopyTo(
-                new FileStream(Path.Combine(TargetDirectory, "Types.cs"), FileMode.Create));
+            using (Stream typeStream = this.GetType().GetTypeInfo().Assembly.GetManifestResourceStream("Cogs.Publishers.Csharp.Types.txt"))
+            using (StreamReader typeReader = new StreamReader(typeStream))
+            {
+                string typesContent = typeReader.ReadToEnd();
+                var typesBuilder = new StringBuilder();
 
-            // copy types file
+                if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
+                {
+                    typesBuilder.AppendLine("/*");
+                    typesBuilder.AppendLine(model.HeaderInclude);
+                    typesBuilder.AppendLine("*/");
+                    typesBuilder.AppendLine();
+                }
+
+                typesBuilder.AppendLine(typesContent);
+                File.WriteAllText(Path.Combine(TargetDirectory, "Types.cs"), typesBuilder.ToString());
+            }
+
+            
             using (Stream stream = this.GetType().GetTypeInfo().Assembly.GetManifestResourceStream("Cogs.Publishers.Csharp.DependantTypes.txt"))
             using (StreamReader reader = new StreamReader(stream))
             {
                 string fileContents = reader.ReadToEnd();
 
                 fileContents = fileContents.Replace("__CogsGeneratedNamespace", projName);
+
+                if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
+                {
+                    fileContents = "/*" + Environment.NewLine + model.HeaderInclude + Environment.NewLine + "*/" + Environment.NewLine + fileContents;
+                }
 
                 File.WriteAllText(Path.Combine(TargetDirectory, "DependantTypes.cs"), fileContents, Encoding.UTF8);
             }
@@ -100,8 +120,16 @@ namespace Cogs.Publishers.Csharp
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
                 // add class description using '$' for newline and '#' for tabs
-                var newClass = new StringBuilder("using System;");
-                newClass.AppendLine();
+                var newClass = new StringBuilder();
+
+                if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
+                {
+                    newClass.AppendLine("/*");
+                    newClass.AppendLine(model.HeaderInclude);
+                    newClass.AppendLine("*/");
+                    newClass.AppendLine();
+                }
+                newClass.AppendLine("using System;");
                 newClass.AppendLine("using System.Linq;");
                 newClass.AppendLine("using Newtonsoft.Json;");
                 newClass.AppendLine("using System.Xml.Linq;");
@@ -516,7 +544,15 @@ namespace Cogs.Publishers.Csharp
         // creates a file called IIdentifiable.cs which holds the IIdentifiable interface from which all item types descend
         private void CreatePartialIIdentifiable(CogsModel model, string projName)
         {
-            StringBuilder builder = new StringBuilder("using System;");
+            StringBuilder builder = new StringBuilder();
+            if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
+            {
+                builder.AppendLine("/*");
+                builder.AppendLine(model.HeaderInclude);
+                builder.AppendLine("*/");
+                builder.AppendLine();
+            }
+            builder.AppendLine("using System;");
             builder.AppendLine();
             builder.AppendLine("using System.Xml.Linq;");
             builder.AppendLine("using Newtonsoft.Json.Linq;");
@@ -573,7 +609,17 @@ namespace {projName}
         }}
     }}
 }}";
-            File.WriteAllText(Path.Combine(TargetDirectory, "ItemContainer.Xml.cs"), clss);
+            var builder = new StringBuilder();
+            if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
+            {
+                builder.AppendLine("/*");
+                builder.AppendLine(model.HeaderInclude);
+                builder.AppendLine("*/");
+                builder.AppendLine();
+            }
+
+            builder.AppendLine(clss);
+            File.WriteAllText(Path.Combine(TargetDirectory, "ItemContainer.Xml.cs"), builder.ToString());
         }
 
 

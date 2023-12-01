@@ -17,6 +17,7 @@ namespace Cogs.Dto
 
         public List<Property> Identification { get; } = new List<Property>();
         public List<Setting> Settings { get; } = new List<Setting>();
+        public string HeaderInclude { get; set; }
 
         public string ArticlesPath { get; set; }
         public List<string> ArticleTocEntries { get; } = new List<string>();

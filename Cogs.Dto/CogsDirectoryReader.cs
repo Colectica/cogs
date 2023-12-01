@@ -68,6 +68,13 @@ namespace Cogs.Dto
                 }
             }
 
+            // Read the HeaderInclude.txt file.
+            string headerIncludeFileName = Path.Combine(SettingsDirectoryName, "HeaderInclude.txt");
+            if (File.Exists(headerIncludeFileName))
+            {
+                model.HeaderInclude = File.ReadAllText(headerIncludeFileName);
+            }
+
 
             // Load information about articles.
             string articlesPath = Path.Combine(directory, "Articles");

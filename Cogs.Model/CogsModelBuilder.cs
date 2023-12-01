@@ -35,6 +35,7 @@ namespace Cogs.Model
             }
 
             // Settings
+            model.HeaderInclude = dto.HeaderInclude;
             model.Settings = new Settings();
             foreach (var setting in dto.Settings)
             {

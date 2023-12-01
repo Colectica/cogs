@@ -126,6 +126,10 @@ namespace Cogs.Publishers
             settings.IndentChars = "    ";
             using (XmlWriter writer = XmlWriter.Create(Path.Combine(TargetDirectory, "schema.xsd"), settings))
             {
+                if (!string.IsNullOrWhiteSpace(CogsModel.HeaderInclude))
+                {
+                    writer.WriteComment(CogsModel.HeaderInclude);
+                }
 
                 CogsSchema.Write(writer);
             }

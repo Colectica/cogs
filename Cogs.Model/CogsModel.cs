@@ -16,6 +16,7 @@ namespace Cogs.Model
 
         public List<Property> Identification { get; } = new List<Property>();
         public Settings Settings { get; set; }
+        public string HeaderInclude { get; set; }
 
         public string ArticlesPath { get; set; }
         public List<string> ArticleTocEntries { get; } = new List<string>();
