@@ -61,13 +61,13 @@ namespace Cogs.Publishers.Csharp
             XDocument project = new XDocument(
                 new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
                     new XElement("PropertyGroup", 
-                        new XElement("TargetFramework", "netstandard2.0"),
+                        new XElement("TargetFramework", "net6"),
                         new XElement("AssemblyName", projName), 
                         new XElement("RootNamespace", projName)),
                     new XElement("ItemGroup", 
                         new XElement("PackageReference", new XAttribute("Include", "System.ComponentModel.Annotations"), new XAttribute("Version", "5.0.0")),
                         new XElement("PackageReference", new XAttribute("Include", "Microsoft.CSharp"), new XAttribute("Version", "4.7.0")),
-                        new XElement("PackageReference", new XAttribute("Include", "Newtonsoft.Json"), new XAttribute("Version", "13.0.1")))));
+                        new XElement("PackageReference", new XAttribute("Include", "Newtonsoft.Json"), new XAttribute("Version", "13.0.3")))));
             XmlWriterSettings xws = new XmlWriterSettings
             {
                 OmitXmlDeclaration = true,

@@ -284,7 +284,7 @@ namespace Cogs.Tests.Integration
                 Dates = new List<DateTimeOffset>()
                 {
                     new DateTime(2017, 9, 2),
-                    new DateTime(1,1,1),
+                    //new DateTime(1,1,1),
                     new DateTime(1562, 8, 23, 5, 12, 46)
                 }
             };

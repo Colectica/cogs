@@ -43,6 +43,11 @@ namespace Cogs.Publishers.JsonSchema
                         new JProperty("type", "string"), 
                         new JProperty("format", "date"))));
 
+                obj.Add(new JProperty("nonNegativeInteger",
+                    new JObject(
+                        new JProperty("type", "integer"),
+                        new JProperty("minimum", 0))));
+
                 obj.Add(new JProperty("gYearMonth", 
                     new JObject(
                         new JProperty("type", "object"), 

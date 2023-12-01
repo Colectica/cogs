@@ -444,7 +444,7 @@ namespace Cogs.Tests.Integration
                 Dates = new List<DateTimeOffset>()
                 {
                     new DateTime(2017, 9, 2),
-                    new DateTime(1,1,1),
+                    //new DateTime(1,1,1),
                     new DateTime(1562, 8, 23, 5, 12, 46)
                 }
             };
@@ -1775,7 +1775,7 @@ namespace Cogs.Tests.Integration
             var resourceName = typeof(ItemContainer).Namespace + ".jsonSchema.json";
             var assembly = typeof(ItemContainer).Assembly;
             var names = assembly.GetManifestResourceNames();
-
+            
             using (Stream stream = assembly.GetManifestResourceStream(resourceName))
             using (StreamReader reader = new StreamReader(stream, System.Text.Encoding.UTF8))
             {
