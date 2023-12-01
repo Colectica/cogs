@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -19,10 +20,28 @@ namespace Cogs.Dto
         public string SettingsDirectoryName { get; set; }
         public List<CogsError> Errors { get; } = new List<CogsError>();
 
+        private List<Property> dcTerms;
+
         public CogsDtoModel Load(string directory)
         {
             var model = new CogsDtoModel();
 
+
+            // Add mixins (Dublin Core Terms)
+            using (Stream dcStream = this.GetType().GetTypeInfo().Assembly.GetManifestResourceStream("Cogs.Dto.DcTerms.csv"))
+            using (StreamReader dcReader = new StreamReader(dcStream))
+            {
+                try
+                {
+                    var csvReader = new CsvReader(dcReader, CultureInfo.InvariantCulture);
+                    dcTerms = csvReader.GetRecords<Property>().ToList();
+                }
+                catch (Exception e)
+                {
+                    Errors.Add(new CogsError(ErrorLevel.Error, e.Message + " on internal dc terms file ", e));
+                }
+            }
+            
             // create built in identification and reference types
             SettingsDirectoryName = Path.Combine(directory, "Settings");
             string identificationFile = Path.Combine(SettingsDirectoryName, "Identification.csv");
@@ -123,7 +142,7 @@ namespace Cogs.Dto
                 }
 
                 model.TopicIndices.Add(view);
-            }
+            }         
 
 
             return model;
@@ -168,6 +187,18 @@ namespace Cogs.Dto
                             var csvReader = new CsvReader(textReader, CultureInfo.InvariantCulture);
                             var records = csvReader.GetRecords<Property>().ToList();
                             itemType.Properties = records;
+
+                            // process mixins
+                            for(int i = 0; i < records.Count; ++i)
+                            {
+                                if (string.Compare(records[i].Name, "DcTerms", true) == 0)
+                                {
+                                    records.RemoveAt(i);
+                                    records.InsertRange(i, dcTerms);
+
+                                }
+                            }
+
                         }
                         catch (Exception e)
                         {
