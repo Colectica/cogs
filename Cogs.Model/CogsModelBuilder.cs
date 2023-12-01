@@ -377,6 +377,8 @@ namespace Cogs.Model
             topicIndex.Description = dto.Description;
 
             topicIndex.ItemTypeNames.AddRange(dto.ItemTypes);
+            topicIndex.ArticlesPath = dto.ArticlesPath;
+            topicIndex.ArticleTocEntries.AddRange(dto.ArticleTocEntries);
         }
 
     }

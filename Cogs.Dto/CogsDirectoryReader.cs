@@ -115,6 +115,13 @@ namespace Cogs.Dto
                     view.ItemTypes.Add(name);
                 }
 
+                string articlesIndexFileName = Path.Combine(viewDirectory, "toc.txt");
+                if (File.Exists(articlesIndexFileName))
+                {
+                    view.ArticlesPath = Path.Combine(viewDirectory, "Articles");
+                    view.ArticleTocEntries.AddRange(File.ReadAllLines(articlesIndexFileName));
+                }
+
                 model.TopicIndices.Add(view);
             }
 
