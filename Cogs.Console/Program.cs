@@ -264,7 +264,7 @@ namespace Cogs.Console
             app.Command("publish-cs", (command) =>
             {
 
-                command.Description = "Publish a c# class structure from a COGS data model";
+                command.Description = "Publish a C# class structure from a COGS data model";
                 command.HelpOption("-?|-h|--help");
 
 
@@ -274,13 +274,6 @@ namespace Cogs.Console
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
                                            CommandOptionType.NoValue);
-                var namespaceUri = command.Option("-n|--namespace",
-                                           "URI of the target XML namespace",
-                                           CommandOptionType.SingleValue);
-
-                var namespaceUriPrefix = command.Option("-p|--prefix",
-                                           "Namespace prefix to use for the target XML namespace",
-                                           CommandOptionType.SingleValue);
                 command.OnExecute(() =>
                 {
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
@@ -293,11 +286,9 @@ namespace Cogs.Console
                     var modelBuilder = new CogsModelBuilder();
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
 
-                    var targetNamespace = namespaceUri.Value() ?? cogsModel.Settings.CSharpNamespace;
-                    var prefix = namespaceUriPrefix.Value() ?? cogsModel.Settings.NamespacePrefix;
                     try
                     {
-                        XmlConvert.VerifyName(prefix);
+                        XmlConvert.VerifyName(cogsModel.Settings.NamespacePrefix);
                     }
                     catch (XmlException xmlEx)
                     {
@@ -308,8 +299,6 @@ namespace Cogs.Console
                     CsSchemaPublisher publisher = new CsSchemaPublisher
                     {
                         TargetDirectory = target,
-                        TargetNamespace = targetNamespace,
-                        TargetNamespacePrefix = prefix,
                         Overwrite = overwrite
                     };
                     publisher.Publish(cogsModel);

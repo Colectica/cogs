@@ -20,10 +20,12 @@ namespace Cogs.Publishers.Csharp
         /// path to write output in
         /// </summary>
         public string TargetDirectory { get; set; }
+
         /// <summary>
         /// Desired namespace for xml serialization
         /// </summary>
         public string TargetNamespace { get; set; }
+
         /// <summary>
         /// Desired namespace prefix for xml serialization
         /// </summary>
@@ -33,6 +35,7 @@ namespace Cogs.Publishers.Csharp
         /// boolean to determine whether to replace existing or not
         /// </summary>
         public bool Overwrite { get; set; }
+        
         /// <summary>
         /// dictionary for translating names to c# datatype representations
         /// </summary>
@@ -51,19 +54,28 @@ namespace Cogs.Publishers.Csharp
             // TODO: if Overwrite is false and Directory.Exists(TargetDirectory)) throw an error and exit
             Directory.CreateDirectory(TargetDirectory);
 
+            TargetNamespace = model.Settings.NamespaceUrl;
+            TargetNamespacePrefix = model.Settings.NamespacePrefix;
+
             InitializeDictionary();
 
             //get the project name
-            var projName = model.Settings.Slug;
-            CreatePartialIIdentifiable(model, projName);
-            CreatePartialItemContainer(model, projName);
+            string csNamespace = model.Settings.CSharpNamespace;
+            if (string.IsNullOrWhiteSpace(csNamespace))
+            {
+                csNamespace = "Cogs.Model";
+            }
+
+            CreatePartialIIdentifiable(model, csNamespace);
+            CreatePartialItemContainer(model, csNamespace);
+
             //create project file
             XDocument project = new XDocument(
                 new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
                     new XElement("PropertyGroup", 
                         new XElement("TargetFramework", "net6"),
-                        new XElement("AssemblyName", projName), 
-                        new XElement("RootNamespace", projName)),
+                        new XElement("AssemblyName", csNamespace), 
+                        new XElement("RootNamespace", csNamespace)),
                     new XElement("ItemGroup", 
                         new XElement("PackageReference", new XAttribute("Include", "System.ComponentModel.Annotations"), new XAttribute("Version", "5.0.0")),
                         new XElement("PackageReference", new XAttribute("Include", "Microsoft.CSharp"), new XAttribute("Version", "4.7.0")),
@@ -73,7 +85,7 @@ namespace Cogs.Publishers.Csharp
                 OmitXmlDeclaration = true,
                 Indent = true                
             };
-            using (FileStream s = new FileStream(Path.Combine(TargetDirectory, projName + ".csproj"), FileMode.Create, FileAccess.ReadWrite))
+            using (FileStream s = new FileStream(Path.Combine(TargetDirectory, csNamespace + ".csproj"), FileMode.Create, FileAccess.ReadWrite))
             using (XmlWriter xw = XmlWriter.Create(s, xws))
             {
                 project.Save(xw);
@@ -105,7 +117,7 @@ namespace Cogs.Publishers.Csharp
             {
                 string fileContents = reader.ReadToEnd();
 
-                fileContents = fileContents.Replace("__CogsGeneratedNamespace", projName);
+                fileContents = fileContents.Replace("__CogsGeneratedNamespace", csNamespace);
 
                 if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
                 {
@@ -142,7 +154,7 @@ namespace Cogs.Publishers.Csharp
                 newClass.AppendLine("using System.Collections.Generic;");                
                 newClass.AppendLine("using System.ComponentModel.DataAnnotations;");
                 newClass.AppendLine();
-                newClass.AppendLine($"namespace {projName}");
+                newClass.AppendLine($"namespace {csNamespace}");
                 newClass.AppendLine("{");
                 newClass.AppendLine( "    /// <summary>");
                 foreach(var line in item.Description.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None))
@@ -542,7 +554,7 @@ namespace Cogs.Publishers.Csharp
 
         
         // creates a file called IIdentifiable.cs which holds the IIdentifiable interface from which all item types descend
-        private void CreatePartialIIdentifiable(CogsModel model, string projName)
+        private void CreatePartialIIdentifiable(CogsModel model, string csNamespace)
         {
             StringBuilder builder = new StringBuilder();
             if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
@@ -558,7 +570,7 @@ namespace Cogs.Publishers.Csharp
             builder.AppendLine("using Newtonsoft.Json.Linq;");
             builder.AppendLine("using System.Collections.Generic;");
             builder.AppendLine();
-            builder.AppendLine($"namespace {projName}");
+            builder.AppendLine($"namespace {csNamespace}");
             builder.AppendLine("{");
             builder.AppendLine("    /// <summary>");
             builder.AppendLine("    /// IIdentifiable class which all object Inherit from. Used to Serialize to Json");
@@ -576,13 +588,13 @@ namespace Cogs.Publishers.Csharp
 
 
         // Creates the ItemContainer Class
-        private void CreatePartialItemContainer(CogsModel model, string projName)
+        private void CreatePartialItemContainer(CogsModel model, string csNamespace)
         {
 
             string clss = $@"using System;
 using System.Xml.Linq;
 
-namespace {projName}
+namespace {csNamespace}
 {{
     /// <summary>
     /// Partial class implementation for XML generation 
