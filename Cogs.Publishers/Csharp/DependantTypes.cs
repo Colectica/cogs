@@ -20,10 +20,9 @@ namespace __CogsGeneratedNamespace
 
         public T GetByReferenceId<T>(string referenceId) where T : class, new()
         {
-            object item = null;
-            if (cache.TryGetValue(referenceId, out item))
+            if (cache.TryGetValue(referenceId, out object? existingItem))
             {
-                if (item is T typedItem)
+                if (existingItem is T typedItem)
                 {
                     return typedItem;
                 }
@@ -32,27 +31,31 @@ namespace __CogsGeneratedNamespace
                     throw new InvalidOperationException("Id lookup found item of wrong type");
                 }
             }
-            item = new T();
+            T item = new T();
             cache.Add(referenceId, item);
             return item as T;
         }
 
-        public object GetByReferenceId(string referenceId, Type t)
+        public object? GetByReferenceId(string referenceId, Type t)
         {
-            object item = null;
-            if (cache.TryGetValue(referenceId, out item))
+            if (cache.TryGetValue(referenceId, out object? existingItem))
             {
-                if (item.GetType() == t)
+                if (existingItem.GetType() == t)
                 {
-                    return item;
+                    return existingItem;
                 }
                 else
                 {
                     throw new InvalidOperationException("Id lookup found item of wrong type");
                 }
             }
-            item = Activator.CreateInstance(t);
-            cache.Add(referenceId, item);
+            object? item = Activator.CreateInstance(t);
+
+            if (item != null)
+            {
+                cache.Add(referenceId, item);
+            }
+
             return item;
         }
     }
@@ -67,7 +70,7 @@ namespace __CogsGeneratedNamespace
         public override bool CanRead => true;
         public override bool CanWrite => true;
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
         {
             serializer.NullValueHandling = NullValueHandling.Ignore;
             serializer.DefaultValueHandling = DefaultValueHandling.Ignore;
@@ -111,7 +114,7 @@ namespace __CogsGeneratedNamespace
             }
         }
 
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
         {
             ItemContainer container = new ItemContainer();
             ItemContainer.AsyncLocalItemCache.Value = new CogsItemCacheFactory();
@@ -119,33 +122,54 @@ namespace __CogsGeneratedNamespace
             reader.DateParseHandling = DateParseHandling.None;
             JObject containerObject = JObject.Load(reader);
 
-            foreach (var type in containerObject)
+            foreach (KeyValuePair<string, JToken?> type in containerObject)
             {
                 if (string.Compare(type.Key, "topLevelReference", true) == 0)
                 {
-                    var topLevelJsonReferences = type.Value.ToObject<List<RawJsonReference>>();
+                    List<RawJsonReference>? topLevelJsonReferences = type.Value?.ToObject<List<RawJsonReference>>();
+                    if (topLevelJsonReferences == null)
+                    {
+                        continue;
+                    }
+
                     foreach (var r in topLevelJsonReferences)
                     {
-                        Type requestedType = Type.GetType($"{ ItemContainer.ModelNamespace}.{r.ItemType}");
-                        var item = ItemContainer.AsyncLocalItemCache.Value.GetByReferenceId(r.IdString, requestedType);
-                        if (item is IIdentifiable identifiableItem)
+                        Type? requestedType = Type.GetType($"{ ItemContainer.ModelNamespace}.{r.ItemType}");
+                        if (requestedType != null)
                         {
-                            container.TopLevelReferences.Add(identifiableItem);
+                            var item = ItemContainer.AsyncLocalItemCache.Value.GetByReferenceId(r.IdString, requestedType);
+                            if (item is IIdentifiable identifiableItem)
+                            {
+                                container.TopLevelReferences.Add(identifiableItem);
+                            }
                         }
                     }
                 }
                 else
                 {
-                    var containerType = type.Key;
-                    foreach (KeyValuePair<string, JToken> instance in (JObject)type.Value)
+                    if (type.Value == null)
                     {
-                        Type requestedType = Type.GetType($"{ItemContainer.ModelNamespace}.{containerType}");
-                        var item = ItemContainer.AsyncLocalItemCache.Value.GetByReferenceId(instance.Key, requestedType);
+                        continue;
+                    }
 
-                        JsonConvert.PopulateObject(instance.Value.ToString(), item);
-                        if (item is IIdentifiable identifiableItem)
+                    string containerType = type.Key;
+                    foreach (KeyValuePair<string, JToken?> instance in (JObject)type.Value)
+                    {
+                        Type? requestedType = Type.GetType($"{ItemContainer.ModelNamespace}.{containerType}");
+
+                        if (requestedType != null)
                         {
-                            container.Items.Add(identifiableItem);
+                            object? item = ItemContainer.AsyncLocalItemCache.Value.GetByReferenceId(instance.Key, requestedType);
+
+                            if (instance.Value != null && item != null)
+                            {
+                                JsonConvert.PopulateObject(instance.Value.ToString(), item);
+                                if (item is IIdentifiable identifiableItem)
+                                {
+                                    container.Items.Add(identifiableItem);
+                                }
+                            }
+
                         }
                     }
                 }
@@ -163,7 +187,7 @@ namespace __CogsGeneratedNamespace
             return objectType is IIdentifiable;
         }
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
         {
             if (value is IList list)
             {
@@ -201,20 +225,25 @@ namespace __CogsGeneratedNamespace
         public override bool CanRead => true;
         public override bool CanWrite => true;
 
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
         {
             if (reader.TokenType == JsonToken.StartArray)
             {
                 // Read a list of references
-                var multiReference = serializer.Deserialize<List<RawJsonReference>>(reader);
+                List<RawJsonReference>? multiReference = serializer.Deserialize<List<RawJsonReference>>(reader);
 
-                var result = Activator.CreateInstance(objectType);
-                if (result is IList list)
+                object? result = Activator.CreateInstance(objectType);
+                if (result is IList list && multiReference != null)
                 {
                     foreach (var r in multiReference)
                     {
-                        Type requestedType = Type.GetType($"{ ItemContainer.ModelNamespace}.{ r.ItemType}");
-                        var item = ItemContainer.AsyncLocalItemCache.Value.GetByReferenceId(r.IdString, requestedType);
+                        Type? requestedType = Type.GetType($"{ ItemContainer.ModelNamespace}.{ r.ItemType}");
+                        if (requestedType == null)
+                        {
+                            return null;
+                        }
+
+                        object? item = ItemContainer.AsyncLocalItemCache.Value?.GetByReferenceId(r.IdString, requestedType);
                         list.Add(item);
                     }
                 }
@@ -227,11 +256,19 @@ namespace __CogsGeneratedNamespace
             else
             {
                 // Read a single reference
-                var r = serializer.Deserialize<RawJsonReference>(reader);
+                RawJsonReference? r = serializer.Deserialize<RawJsonReference>(reader);
+                if (r == null)
+                {
+                    return null;
+                }
 
-                Type requestedType = Type.GetType($"{ ItemContainer.ModelNamespace}.{ r.ItemType}");
-                var item = ItemContainer.AsyncLocalItemCache.Value.GetByReferenceId(r.IdString, requestedType);
+                Type? requestedType = Type.GetType($"{ ItemContainer.ModelNamespace}.{ r.ItemType}");
+                if (requestedType == null)
+                {
+                    return null;
+                }
 
+                object? item = ItemContainer.AsyncLocalItemCache.Value?.GetByReferenceId(r.IdString, requestedType);
                 return item;
             }
         }
@@ -246,13 +283,13 @@ namespace __CogsGeneratedNamespace
 
         public override bool CanRead => true;
         public override bool CanWrite => false;
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
         {
             throw new NotImplementedException();
         }
 
 
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
         {
             if (reader.TokenType == JsonToken.StartArray)
             {
@@ -277,10 +314,15 @@ namespace __CogsGeneratedNamespace
             return FromTypeDiscriminatedObject(single);
         }
 
-        private object FromTypeDiscriminatedObject(JObject jsonObject)
+        private object? FromTypeDiscriminatedObject(JObject jsonObject)
         {
-            string typeDiscriminator = (string)jsonObject["$type"];
-            Type requestedType = Type.GetType($"{ ItemContainer.ModelNamespace}.{ typeDiscriminator}");
+            string? typeDiscriminator = (string?)jsonObject["$type"];
+            Type? requestedType = Type.GetType($"{ ItemContainer.ModelNamespace}.{ typeDiscriminator}");
+            if (requestedType == null)
+            {
+                return null;
+            }
+
             var result = jsonObject.ToObject(requestedType);
             return result;
         }
@@ -295,7 +337,7 @@ namespace __CogsGeneratedNamespace
         public string SpecialRefValue { get; set; } = "ref";
 
         [JsonProperty("value")]
-        public List<string> IdParts { get; set; }
+        public List<string> IdParts { get; set; } = new();
 
         [JsonIgnore]
         public string ItemType
@@ -327,7 +369,7 @@ namespace __CogsGeneratedNamespace
         public List<IIdentifiable> Items { get; } = new List<IIdentifiable>();
         public List<IIdentifiable> TopLevelReferences { get; } = new List<IIdentifiable>();
 
-        internal static AsyncLocal<CogsItemCacheFactory> AsyncLocalItemCache { get; } = new AsyncLocal<CogsItemCacheFactory>();
+        internal static AsyncLocal<CogsItemCacheFactory?> AsyncLocalItemCache { get; } = new AsyncLocal<CogsItemCacheFactory?>();
 
         internal static string ModelNamespace { get; set; } = "__CogsGeneratedNamespace";        
     }

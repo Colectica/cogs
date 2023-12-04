@@ -11,6 +11,7 @@ using System.Xml;
 using System.Reflection;
 using System.Collections;
 using Cogs.Common;
+using Cogs.Publishers.JsonSchema;
 
 namespace Cogs.Publishers.Csharp
 {
@@ -46,9 +47,6 @@ namespace Cogs.Publishers.Csharp
         /// </summary>
         public bool IsNullableEnabled { get; set; }
 
-        private string nullableStr;
-
-        
         /// <summary>
         /// dictionary for translating names to c# datatype representations
         /// </summary>
@@ -69,7 +67,6 @@ namespace Cogs.Publishers.Csharp
 
             TargetNamespace = model.Settings.NamespaceUrl;
             TargetNamespacePrefix = model.Settings.NamespacePrefix;
-            nullableStr = IsNullableEnabled ? "?" : "";
 
             InitializeDictionary();
 
@@ -428,7 +425,7 @@ namespace Cogs.Publishers.Csharp
                             }
                             else if (prop.DataTypeName.Equals("DateTimeOffset") || prop.DataTypeName.Equals("TimeSpan"))
                             {
-                                toXml.AppendLine($"            if ({prop.Name} != default({prop.DataTypeName}))");
+                                toXml.AppendLine($"            if ({prop.Name} != null &&{prop.Name} != default({prop.DataTypeName}))");
                             }
                             else
                             {
@@ -461,6 +458,11 @@ namespace Cogs.Publishers.Csharp
                             toXml.AppendLine($"                    new XElement(ns + \"TypeOfObject\", {prop.Name}.GetType().Name)));");
                             toXml.AppendLine("            }");
                         }
+
+                        // TODO Consider whether Identification properties in C# generator should be non-nullable 
+                        string nullableStr = IsNullableEnabled ? "?" : "";
+                        //bool isIdentificationProperty = model.Identification.Contains(prop);
+                        //string nullableStr = IsNullableEnabled && !isIdentificationProperty ? "?" : "";
                         newClass.AppendLine($"        public {prop.DataTypeName}{nullableStr} {prop.Name} {{ get; set; }}");
                     }
                     // otherwise, create a list object to allow multiple
@@ -556,9 +558,9 @@ namespace Cogs.Publishers.Csharp
                 return $"{start}.Add(new XElement(ns + \"{elname}\", string.Format(\"P{{00}}DT{{00}}H{{00}}M{{00}}S\", {Environment.NewLine}                    " +
                     $"{name}.ToString(\"%d\"), {name}.ToString(\"%h\"), {name}.ToString(\"%m\"), {name}.ToString(\"%s\"))));";
             }
-            if (origDataTypeName.ToLower().Equals("datetime")) { return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.ToString(\"yyyy-MM-dd\\\\THH:mm:ss.FFFFFFFK\")));"; }
-            if (origDataTypeName.ToLower().Equals("time")) { return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.ToString(\"u\").Split(' ')[1]));"; }
-            if (origDataTypeName.ToLower().Equals("date")){ return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.ToString(\"u\").Split(' ')[0]));"; }
+            if (origDataTypeName.ToLower().Equals("datetime")) { return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.Value.ToString(\"yyyy-MM-dd\\\\THH:mm:ss.FFFFFFFK\")));"; }
+            if (origDataTypeName.ToLower().Equals("time")) { return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.Value.ToString(\"u\").Split(' ')[1]));"; }
+            if (origDataTypeName.ToLower().Equals("date")){ return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.Value.ToString(\"u\").Split(' ')[0]));"; }
             if (origDataTypeName.ToLower().Equals("gyearmonth")) { return $"xEl.Add(new XElement(ns + \"{elname}\", {name}.ToString()));"; }
             if (origDataTypeName.ToLower().Equals("gmonthday")) { return $"xEl.Add(new XElement(ns + \"{elname}\", {name}.ToString()));"; }
             if (origDataTypeName.ToLower().Equals("gyear")) { return $"xEl.Add(new XElement(ns + \"{elname}\", {name}.ToString()));"; }
@@ -593,9 +595,13 @@ namespace Cogs.Publishers.Csharp
             builder.AppendLine("    /// <summary>");
             builder.AppendLine("    public partial interface IIdentifiable");
             builder.AppendLine("    {");
+
+            // TODO Consider whether Identification properties in C# generator should be non-nullable
+            // If so, then don't make this nullable here.
+            string nullableStr = IsNullableEnabled ? "?" : "";
             foreach (var prop in model.Identification)
             {
-                builder.AppendLine($"        {prop.DataTypeName} {prop.Name} {{ get; set; }}");
+                builder.AppendLine($"        {prop.DataTypeName}{nullableStr} {prop.Name} {{ get; set; }}");
             }
             builder.AppendLine("    }");
             builder.AppendLine("}");
@@ -622,16 +628,19 @@ namespace {csNamespace}
             XNamespace ns = ""{TargetNamespace}"";
             XDocument xDoc = new XDocument(new XElement(ns + ""ItemContainer"", new XAttribute(XNamespace.Xmlns + "
                 + $@"""{TargetNamespacePrefix}"", ""{TargetNamespace}"")));
-            if (TopLevelReferences != null && TopLevelReferences.Count > 0)
+            if (xDoc.Root != null)
             {{
-                foreach (var item in TopLevelReferences)
+                if (TopLevelReferences != null && TopLevelReferences.Count > 0)
                 {{
-                    xDoc.Root.Add(new XElement(ns + ""TopLevelReference"", new XElement(ns + ""ID"", item.ID), new XElement(ns + ""TypeOfObject"", item.GetType())));
+                    foreach (var item in TopLevelReferences)
+                    {{
+                        xDoc.Root.Add(new XElement(ns + ""TopLevelReference"", new XElement(ns + ""ID"", item.ID), new XElement(ns + ""TypeOfObject"", item.GetType())));
+                    }}
                 }}
-            }}
-            foreach (var item in Items)
-            {{
-                xDoc.Root.Add(item.ToXml());
+                foreach (var item in Items)
+                {{
+                    xDoc.Root.Add(item.ToXml());
+                }}
             }}
             return xDoc;
         }}
