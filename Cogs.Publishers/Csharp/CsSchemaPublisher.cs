@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2017 Colectica. All rights reserved
+﻿// Copyright (c) 2017 Colectica. All rights reservedbstr
 // See the LICENSE file in the project root for more information.
 using Cogs.Model;
 using System;
@@ -37,6 +37,19 @@ namespace Cogs.Publishers.Csharp
         public bool Overwrite { get; set; }
         
         /// <summary>
+        /// Determines whether a .csproj file should be written
+        /// </summary>
+        public bool WriteCsproj { get; set; }
+        
+        /// <summary>
+        /// Determines whether nullable types should be used
+        /// </summary>
+        public bool IsNullableEnabled { get; set; }
+
+        private string nullableStr;
+
+        
+        /// <summary>
         /// dictionary for translating names to c# datatype representations
         /// </summary>
         private Dictionary<string, string> Translator { get; set; }
@@ -56,6 +69,7 @@ namespace Cogs.Publishers.Csharp
 
             TargetNamespace = model.Settings.NamespaceUrl;
             TargetNamespacePrefix = model.Settings.NamespacePrefix;
+            nullableStr = IsNullableEnabled ? "?" : "";
 
             InitializeDictionary();
 
@@ -69,26 +83,28 @@ namespace Cogs.Publishers.Csharp
             CreatePartialIIdentifiable(model, csNamespace);
             CreatePartialItemContainer(model, csNamespace);
 
-            //create project file
-            XDocument project = new XDocument(
-                new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
-                    new XElement("PropertyGroup", 
-                        new XElement("TargetFramework", "net6"),
-                        new XElement("AssemblyName", csNamespace), 
-                        new XElement("RootNamespace", csNamespace)),
-                    new XElement("ItemGroup", 
-                        new XElement("PackageReference", new XAttribute("Include", "System.ComponentModel.Annotations"), new XAttribute("Version", "5.0.0")),
-                        new XElement("PackageReference", new XAttribute("Include", "Microsoft.CSharp"), new XAttribute("Version", "4.7.0")),
-                        new XElement("PackageReference", new XAttribute("Include", "Newtonsoft.Json"), new XAttribute("Version", "13.0.3")))));
-            XmlWriterSettings xws = new XmlWriterSettings
+            // Create the csproj project file
+            if (WriteCsproj)
             {
-                OmitXmlDeclaration = true,
-                Indent = true                
-            };
-            using (FileStream s = new FileStream(Path.Combine(TargetDirectory, csNamespace + ".csproj"), FileMode.Create, FileAccess.ReadWrite))
-            using (XmlWriter xw = XmlWriter.Create(s, xws))
-            {
-                project.Save(xw);
+                XDocument project = new XDocument(
+                    new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
+                        new XElement("PropertyGroup", 
+                            new XElement("TargetFramework", "net6"),
+                            IsNullableEnabled ? new XElement("Nullable", "enable") : null),
+                        new XElement("ItemGroup", 
+                            new XElement("PackageReference", new XAttribute("Include", "System.ComponentModel.Annotations"), new XAttribute("Version", "5.0.0")),
+                            new XElement("PackageReference", new XAttribute("Include", "Microsoft.CSharp"), new XAttribute("Version", "4.7.0")),
+                            new XElement("PackageReference", new XAttribute("Include", "Newtonsoft.Json"), new XAttribute("Version", "13.0.3")))));
+                XmlWriterSettings xws = new XmlWriterSettings
+                {
+                    OmitXmlDeclaration = true,
+                    Indent = true                
+                };
+                using (FileStream s = new FileStream(Path.Combine(TargetDirectory, csNamespace + ".csproj"), FileMode.Create, FileAccess.ReadWrite))
+                using (XmlWriter xw = XmlWriter.Create(s, xws))
+                {
+                    project.Save(xw);
+                }
             }
 
             
@@ -445,7 +461,7 @@ namespace Cogs.Publishers.Csharp
                             toXml.AppendLine($"                    new XElement(ns + \"TypeOfObject\", {prop.Name}.GetType().Name)));");
                             toXml.AppendLine("            }");
                         }
-                        newClass.AppendLine($"        public {prop.DataTypeName} {prop.Name} {{ get; set; }}");
+                        newClass.AppendLine($"        public {prop.DataTypeName}{nullableStr} {prop.Name} {{ get; set; }}");
                     }
                     // otherwise, create a list object to allow multiple
                     else
