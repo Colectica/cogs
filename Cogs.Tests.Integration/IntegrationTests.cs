@@ -1,4 +1,4 @@
-using cogsburger;
+using CogsBurger.Model;
 using Newtonsoft.Json;
 using NJsonSchema;
 using System;

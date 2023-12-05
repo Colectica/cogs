@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\generated\cogsBurger.csproj" />
+    <ProjectReference Include="..\generated\CogsBurger.Model.csproj" />
   </ItemGroup>
 
 </Project>
