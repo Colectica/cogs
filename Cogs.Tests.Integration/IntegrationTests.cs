@@ -121,8 +121,17 @@ namespace Cogs.Tests.Integration
                 ID = Guid.NewGuid().ToString(),
                 VegetableUsed = new List<string> { "garbonzo beans" }
             };
-
+            Cheese cheese = new Cheese
+            {
+                ID = Guid.NewGuid().ToString(),
+                CheeseRumors = new List<LangString>()
+                {
+                    new LangString("en","A very long time ago"),
+                    new LangString("en","In a galaxy far away")
+                }
+            };
             hamburger.Enclosure = roll;
+            hamburger.CheeseUsed = new List<Cheese>() { cheese };
             hamburger2.Enclosure = bread;
             hamburger.Patty = new List<Protein>
             {
@@ -143,6 +152,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(roll);
             container.Items.Add(meatPatty);
             container.Items.Add(meatPatty2);
+            container.Items.Add(cheese);
             //container 2
             container2.Items.Add(bread2);
             container2.Items.Add(meatPatty);
@@ -1072,6 +1082,76 @@ namespace Cogs.Tests.Integration
             Cheese cheese2 = container2.Items.First() as Cheese;
             Assert.Equal(cheese.Language, cheese2.Language);
         }
+
+
+        [Fact]
+        public async void SimpleTypeLangStringList()
+        {
+            ItemContainer container = new ItemContainer();
+            Cheese cheese = new Cheese
+            {
+                ID = Guid.NewGuid().ToString(),
+                CheeseRumors = new List<LangString>()
+                {
+                    new LangString("en","A very long time ago"),
+                    new LangString("en","In a galaxy far away")
+                }
+            };
+            container.Items.Add(cheese);
+
+            JsonSchema schema = await GetJsonSchema();
+            string json = JsonConvert.SerializeObject(container);
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
+            string json2 = JsonConvert.SerializeObject(container2);
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Cheese>(container2.Items.First());
+
+            Cheese cheese2 = container2.Items.First() as Cheese;
+            Assert.Equal(cheese.CheeseRumors.Count, cheese2.CheeseRumors.Count);
+            for (int i = 0; i < cheese.Years.Count; i++)
+            {
+                Assert.Equal(cheese.CheeseRumors[i], cheese2.CheeseRumors[i]);
+                Assert.Equal(cheese.CheeseRumors[i], cheese2.CheeseRumors[i]);
+            }
+        }
+
+        [Fact]
+        public async void SimpleTypeLangString()
+        {
+            ItemContainer container = new ItemContainer();
+            Cheese cheese = new Cheese
+            {
+                ID = Guid.NewGuid().ToString(),
+                Name = "Gouda George",
+                CheeseBio =  new LangString("en", @"Once there was a cheese from Nantucket named ""Gouda George."" Born amidst the salty breezes of Nantucket's shores, he was the cheesiest character in town—quite literally!
+With a mischievous aroma that could charm even the pickiest mice, Gouda George was a rebel among cheeses. He was aged to perfection, soaking up tales from the salty sea captains and whispering cheesy secrets to the seagulls.
+He once entered a cheese contest against the famed Cheddar Charles from Chesapeake Bay. The contest was fierce; the stakes were high. Legend has it that as they were being judged, a seagull swooped down and stole the trophy. Gouda George laughed, claiming the seagull simply had impeccable taste.
+But despite his cheesy escapades, Gouda George remained a beloved figure in Nantucket. He'd tell tall tales to anyone who'd listen, always adding a dash of humor to his cheesy wisdom.
+And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of the island's character, still spinning yarns and making everyone smile with his aged, cheesy wit.")
+            };
+            container.Items.Add(cheese);
+
+            JsonSchema schema = await GetJsonSchema();
+            string json = JsonConvert.SerializeObject(container);
+            var errors = schema.Validate(json);
+            Assert.Empty(errors);
+
+            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
+            string json2 = JsonConvert.SerializeObject(container2);
+            Assert.Equal(json, json2);
+
+            Assert.NotEmpty(container2.Items);
+            Assert.IsType<Cheese>(container2.Items.First());
+
+            Cheese cheese2 = container2.Items.First() as Cheese;
+            Assert.Equal(cheese.CheeseBio, cheese2.CheeseBio);
+        }
+
 
         [Fact]
         public async void SimpleTypeCogsDateDateTime()

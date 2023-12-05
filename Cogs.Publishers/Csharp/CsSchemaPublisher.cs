@@ -436,6 +436,10 @@ namespace Cogs.Publishers.Csharp
                             {
                                 toXml.AppendLine($"            if ({prop.Name} != null && {prop.Name}.UsedType != CogsDateType.None)");
                             }
+                            else if (prop.DataTypeName.Equals("LangString"))
+                            {
+                                toXml.AppendLine($"            if ({prop.Name} != null && {prop.Name}.Value != null && {prop.Name}.LanguageTag != null)");
+                            }
                             else if (prop.DataTypeName.Equals("DateTimeOffset") || prop.DataTypeName.Equals("TimeSpan"))
                             {
                                 toXml.AppendLine($"            if ({prop.Name} != null &&{prop.Name} != default({prop.DataTypeName}))");
@@ -576,6 +580,12 @@ namespace Cogs.Publishers.Csharp
                 return $"{start}.Add(new XElement(ns + \"{elname}\", string.Format(\"P{{00}}DT{{00}}H{{00}}M{{00}}S\", {Environment.NewLine}                    " +
                     $"{name}.{nullableValueStr}ToString(\"%d\"), {name}.{nullableValueStr}ToString(\"%h\"), {name}.{nullableValueStr}ToString(\"%m\"), {name}.{nullableValueStr}ToString(\"%s\"))));";
             }
+            if (origDataTypeName.ToLower().Equals("langstring"))
+            {
+                return $@"{start}.Add(new XElement(ns + ""{elname}"", {name}.Value, 
+                                        new XAttribute(""lang"", {name}.LanguageTag)));";
+            }
+
             if (origDataTypeName.ToLower().Equals("datetime")) { return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.{nullableValueStr}ToString(\"yyyy-MM-dd\\\\THH:mm:ss.FFFFFFFK\")));"; }
             if (origDataTypeName.ToLower().Equals("time")) { return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.{nullableValueStr}ToString(\"u\").Split(' ')[1]));"; }
             if (origDataTypeName.ToLower().Equals("date")){ return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.{nullableValueStr}ToString(\"u\").Split(' ')[0]));"; }
@@ -702,7 +712,7 @@ namespace {csNamespace}
                 { "unsignedLong", "ulong" },
                 { "positiveInteger", "int" },
                 { "cogsDate", "CogsDate" },
-                { "dcTerms", "DcTerms" }
+                { "langString", "LangString" }
             };
         }
     }

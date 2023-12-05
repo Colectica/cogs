@@ -144,6 +144,20 @@ namespace Cogs.Publishers.JsonSchema
                 obj.Add(new JProperty("language", 
                     new JObject(
                         new JProperty("type","string"))));
+
+                obj.Add(new JProperty("langString",
+                    new JObject(
+                        new JProperty("type", "object"),
+                        new JProperty("properties",
+                        new JObject(
+                            new JProperty("languageTag",
+                                new JObject(
+                                new JProperty("type", "string"))),
+                            new JProperty("value",
+                                new JObject(
+                                new JProperty("type", "string"))))), new JProperty("additionalProperties", false))));
+
+
                 obj.WriteTo(writer);
             }
         }

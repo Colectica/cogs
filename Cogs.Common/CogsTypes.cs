@@ -36,7 +36,8 @@ namespace Cogs.Common
             "unsignedLong",
             "positiveInteger",
             "cogsDate",
-            "dcTerms"
+            "dcTerms",
+            "langString"
         };
 
         public static readonly string CogsDate = "cogsDate";

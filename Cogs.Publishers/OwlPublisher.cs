@@ -474,7 +474,15 @@ namespace Cogs.Publishers
             {
                 if (!IsReusableType(prop.DataType.Name) && !IsItemType(prop.DataType.Name))
                 {
-                    OProp.AppendLine(@"      <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#" + prop.DataType.Name + @"""/>");
+                    if(prop.DataType.Name.ToLower() == "langstring")
+                    {
+                        OProp.AppendLine(@"      <rdfs:range rdf:resource=""http://www.w3.org/1999/02/22-rdf-syntax-ns#PlainLiteral""/>");
+                    }
+                    else
+                    {
+                        OProp.AppendLine(@"      <rdfs:range rdf:resource=""http://www.w3.org/2001/XMLSchema#" + prop.DataType.Name + @"""/>");
+                    }
+                    
                 }
                 else
                 {
@@ -492,7 +500,15 @@ namespace Cogs.Publishers
                     //OProp.AppendLine(@"            <owl:onClass rdf:resource=""http://www.semanticweb.org/clement/ontologies/2017/6/" + projName + "#" + prop.DataType.Name + @"""/>");
                     if (!IsReusableType(prop.DataType.Name) && !IsItemType(prop.DataType.Name))
                     {
-                        OProp.AppendLine(@"            <owl:onDataRange rdf:resource = ""http://www.w3.org/2001/XMLSchema#" + prop.DataType.Name + @"""/>");
+                        if (prop.DataType.Name.ToLower() == "langstring")
+                        {
+                            OProp.AppendLine(@"      <owl:onDataRange rdf:resource=""http://www.w3.org/1999/02/22-rdf-syntax-ns#PlainLiteral""/>");
+                        }
+                        else
+                        {
+                            OProp.AppendLine(@"      <owl:onDataRange rdf:resource = ""http://www.w3.org/2001/XMLSchema#" + prop.DataType.Name + @"""/>");
+
+                        }
                     }
                     else
                     {
@@ -510,7 +526,14 @@ namespace Cogs.Publishers
                     OProp.AppendLine(@"            <owl:maxQualifiedCardinality rdf:datatype = ""http://www.w3.org/2001/XMLSchema#nonNegativeInteger"">" + prop.MaxCardinality + @"</owl:maxQualifiedCardinality>");
                     if (!IsReusableType(prop.DataType.Name) && !IsItemType(prop.DataType.Name))
                     {
-                        OProp.AppendLine(@"            <owl:onDataRange rdf:resource = ""http://www.w3.org/2001/XMLSchema#" + prop.DataType.Name + @"""/>");
+                        if (prop.DataType.Name.ToLower() == "langstring")
+                        {
+                            OProp.AppendLine(@"      <owl:onDataRange rdf:resource=""http://www.w3.org/1999/02/22-rdf-syntax-ns#PlainLiteral""/>");
+                        }
+                        else
+                        {
+                            OProp.AppendLine(@"      <owl:onDataRange rdf:resource = ""http://www.w3.org/2001/XMLSchema#" + prop.DataType.Name + @"""/>");
+                        }
                     }
                     else
                     {

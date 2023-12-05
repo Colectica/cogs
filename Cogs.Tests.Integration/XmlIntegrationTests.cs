@@ -914,6 +914,24 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
+        public void ListOfSimpleLangString()
+        {
+            ItemContainer container = new ItemContainer();
+            Cheese cheese = new Cheese
+            {
+                ID = Guid.NewGuid().ToString(),
+                CheeseRumors = new List<LangString>()
+                {
+                    new LangString("en","A very long time ago"),
+                    new LangString("en","In a galaxy far away")
+                }
+            };
+            container.Items.Add(cheese);
+
+            XmlValidation(container.MakeXml());
+        }
+
+        [Fact]
         public void ListOfSimpleTypeGMonth()
         {
             ItemContainer container = new ItemContainer();

@@ -102,7 +102,8 @@ namespace Cogs.Publishers
                 itemChoices.Items.Add(elementRef);
             }
 
-            CreateCogsDataType();
+            CreateCogsDateType();
+            CreateCogsLangStringType();
 
             foreach (var dataType in CogsModel.ReusableDataTypes)
             {
@@ -139,7 +140,7 @@ namespace Cogs.Publishers
             
         }
 
-        public XmlSchemaSimpleType CreateCogsDataType()
+        public XmlSchemaSimpleType CreateCogsDateType()
         {
             XmlSchemaSimpleType simpleType = new XmlSchemaSimpleType();
             simpleType.Name = "cogsDate";
@@ -156,16 +157,35 @@ namespace Cogs.Publishers
                 XmlSchemaSimpleType.GetBuiltInSimpleType(XmlTypeCode.GYear).QualifiedName,
                 XmlSchemaSimpleType.GetBuiltInSimpleType(XmlTypeCode.Duration).QualifiedName
             };
-            /*
-            simpleTypeUnion.BaseTypes.Add(XmlSchemaSimpleType.GetBuiltInSimpleType(XmlTypeCode.DateTime));
-            simpleTypeUnion.BaseTypes.Add(XmlSchemaSimpleType.GetBuiltInSimpleType(XmlTypeCode.Date));
-            simpleTypeUnion.BaseTypes.Add(XmlSchemaSimpleType.GetBuiltInSimpleType(XmlTypeCode.GYearMonth));
-            simpleTypeUnion.BaseTypes.Add(XmlSchemaSimpleType.GetBuiltInSimpleType(XmlTypeCode.GYear));
-            simpleTypeUnion.BaseTypes.Add(XmlSchemaSimpleType.GetBuiltInSimpleType(XmlTypeCode.Duration));
-            */
+
             CogsSchema.Items.Add(simpleType);
 
             return simpleType;
+        }
+
+
+        public XmlSchemaComplexType CreateCogsLangStringType()
+        {
+            XmlSchemaComplexType complexType = new XmlSchemaComplexType();
+            complexType.Name = "LangString";
+            complexType.AddSchemaDocumentation("A language tagged string containing a string value paired with a BCP 47 language tag.");
+
+            XmlSchemaSimpleContent simpleContent = new XmlSchemaSimpleContent();            
+            complexType.ContentModel = simpleContent;
+
+            XmlSchemaSimpleContentExtension simpleContentExtension = new XmlSchemaSimpleContentExtension(); 
+            simpleContentExtension.BaseTypeName = new XmlQualifiedName("string", XmlSchema.Namespace);
+            simpleContent.Content = simpleContentExtension;
+
+            XmlSchemaAttribute langAttribute = new XmlSchemaAttribute();
+            langAttribute.Name = "lang";
+            langAttribute.SchemaTypeName = new XmlQualifiedName("language", XmlSchema.Namespace);
+            simpleContentExtension.Attributes.Add(langAttribute);
+
+
+            CogsSchema.Items.Add(complexType);
+
+            return complexType;
         }
 
         public XmlSchemaComplexType CreateDataType(DataType dataType)
@@ -237,6 +257,10 @@ namespace Cogs.Publishers
                         string xsTypeName = CogsTypes.SimpleTypeNames.First(x => x.Equals(property.DataTypeName, StringComparison.OrdinalIgnoreCase));
 
                         element.SchemaTypeName = new XmlQualifiedName(xsTypeName, TargetNamespace);
+                    }
+                    else if (string.Equals(property.DataTypeName, "langString", StringComparison.OrdinalIgnoreCase))
+                    {
+                        element.SchemaTypeName = new XmlQualifiedName("LangString", TargetNamespace);
                     }
                     else
                     {

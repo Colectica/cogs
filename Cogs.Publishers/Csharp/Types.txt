@@ -71,9 +71,45 @@ namespace Cogs.DataAnnotations
 
 namespace Cogs.SimpleTypes
 {
-    public class DcTerms
+    /// <summary>
+    /// Represents a string with associated language tag
+    /// </summary>
+    public class LangString : IEquatable<LangString>
     {
-        // TODO
+        /// <summary>
+        /// Create a language string
+        /// </summary>
+        public LangString(string languageTag, string value)
+        {
+            this.Value = value;
+            this.LanguageTag = languageTag;
+        }
+        /// <summary>
+        /// String Value
+        /// </summary>
+        public string Value { get; set; }
+
+        /// <summary>
+        /// BCP 47 language tag
+        /// </summary>
+        public string LanguageTag { get; set; }
+
+        public override bool Equals(object? obj)
+        {
+            return Equals(obj as LangString);
+        }
+
+        public bool Equals(LangString? other)
+        {
+            return other != null &&
+                   Value == other.Value &&
+                   LanguageTag == other.LanguageTag;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Value, LanguageTag);
+        }
     }
 
     public enum CogsDateType
