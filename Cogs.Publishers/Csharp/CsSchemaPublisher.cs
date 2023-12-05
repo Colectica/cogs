@@ -473,7 +473,7 @@ namespace Cogs.Publishers.Csharp
                         }
 
                         // TODO Consider whether Identification properties in C# generator should be non-nullable 
-                        string nullableStr = IsNullableEnabled ? "?" : "";
+                        string nullableStr = IsNullableEnabled && prop.MinCardinality == "0" && prop.MaxCardinality == "1" ? "?" : "";
                         //bool isIdentificationProperty = model.Identification.Contains(prop);
                         //string nullableStr = IsNullableEnabled && !isIdentificationProperty ? "?" : "";
                         newClass.AppendLine($"        public {prop.DataTypeName}{nullableStr} {prop.Name} {{ get; set; }}");
