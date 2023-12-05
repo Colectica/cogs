@@ -424,7 +424,7 @@ namespace Cogs.Tests.Integration
             Assert.IsType<Animal>(container2.Items.First());
 
             Animal animal2 = container2.Items.First() as Animal;
-            Assert.Equal(animal.Date.Date, animal2.Date.Date);
+            Assert.Equal(animal.Date.Value.Date, animal2.Date.Value.Date);
         }
 
         [Fact]
@@ -547,7 +547,7 @@ namespace Cogs.Tests.Integration
             Assert.IsType<Animal>(container2.Items.First());
 
             Animal animal2 = container2.Items.First() as Animal;
-            Assert.Equal(animal.Time.TimeOfDay, animal2.Time.TimeOfDay);
+            Assert.Equal(animal.Time.Value.TimeOfDay, animal2.Time.Value.TimeOfDay);
         }
 
         [Fact]
