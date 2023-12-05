@@ -411,7 +411,20 @@ namespace Cogs.Publishers.Csharp
                     {
                         if (Isboolintdoubleulong(prop.DataTypeName) || model.Identification.Contains(prop))
                         {
-                            toXml.AppendLine($"            xEl.Add(new XElement(ns + \"{prop.Name}\", {prop.Name}));");
+                            // If the property is optional (min cardinality is 0), and nullable is enabled, then only write an element when one exists.
+                            bool propertyIsOptional = prop.MinCardinality == "0" && IsNullableEnabled;
+                            string tab = "";
+                            if (propertyIsOptional)
+                            {
+                                toXml.AppendLine($"            if ({prop.Name} != null)");
+                                toXml.AppendLine("            {");
+                                tab = "    ";
+                            }
+                            toXml.AppendLine($"            {tab}xEl.Add(new XElement(ns + \"{prop.Name}\", {prop.Name}));");
+                            if (propertyIsOptional)
+                            {
+                                toXml.AppendLine("            }");
+                            }
                         }
                         else if (origDataTypeName != null)
                         {
@@ -432,7 +445,7 @@ namespace Cogs.Publishers.Csharp
                                 toXml.AppendLine($"            if ({prop.Name} != null)");
                             }
                             toXml.AppendLine("            {");
-                            toXml.AppendLine($"                {SimpleToXml(origDataTypeName, prop.Name, prop.Name, "xEl")}");
+                            toXml.AppendLine($"                {SimpleToXml(origDataTypeName, prop.Name, prop.Name, "xEl", false)}");
                             toXml.AppendLine("            }");
                         }
                         else if (model.ReusableDataTypes.Contains(prop.DataType))
@@ -480,7 +493,7 @@ namespace Cogs.Publishers.Csharp
                             toXml.AppendLine("            {");
                             toXml.AppendLine($"                foreach (var item in {prop.Name})");
                             toXml.AppendLine("                {");
-                            toXml.AppendLine($"                    {SimpleToXml(origDataTypeName, "item", prop.Name, "xEl")}");
+                            toXml.AppendLine($"                    {SimpleToXml(origDataTypeName, "item", prop.Name, "xEl", true)}");
                             toXml.AppendLine("                }");
                             toXml.AppendLine("            }");
 
@@ -550,17 +563,22 @@ namespace Cogs.Publishers.Csharp
             return false;
         }
 
-        private object SimpleToXml(string origDataTypeName, string name, string elname, string start)
+        private object SimpleToXml(string origDataTypeName, string name, string elname, string start, bool isInList)
         {
+            // TODO Consider whether Identification properties in C# generator should be non-nullable 
+            string nullableValueStr = IsNullableEnabled && !isInList ? "Value." : "";
+            //bool isIdentificationProperty = model.Identification.Contains(prop);
+            //string nullableValueStr = IsNullableEnabled && !isIdentificationProperty ? "Value. : "";
+
             if (origDataTypeName.ToLower().Equals("duration"))
             {
                 
                 return $"{start}.Add(new XElement(ns + \"{elname}\", string.Format(\"P{{00}}DT{{00}}H{{00}}M{{00}}S\", {Environment.NewLine}                    " +
-                    $"{name}.ToString(\"%d\"), {name}.ToString(\"%h\"), {name}.ToString(\"%m\"), {name}.ToString(\"%s\"))));";
+                    $"{name}.{nullableValueStr}ToString(\"%d\"), {name}.{nullableValueStr}ToString(\"%h\"), {name}.{nullableValueStr}ToString(\"%m\"), {name}.{nullableValueStr}ToString(\"%s\"))));";
             }
-            if (origDataTypeName.ToLower().Equals("datetime")) { return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.Value.ToString(\"yyyy-MM-dd\\\\THH:mm:ss.FFFFFFFK\")));"; }
-            if (origDataTypeName.ToLower().Equals("time")) { return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.Value.ToString(\"u\").Split(' ')[1]));"; }
-            if (origDataTypeName.ToLower().Equals("date")){ return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.Value.ToString(\"u\").Split(' ')[0]));"; }
+            if (origDataTypeName.ToLower().Equals("datetime")) { return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.{nullableValueStr}ToString(\"yyyy-MM-dd\\\\THH:mm:ss.FFFFFFFK\")));"; }
+            if (origDataTypeName.ToLower().Equals("time")) { return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.{nullableValueStr}ToString(\"u\").Split(' ')[1]));"; }
+            if (origDataTypeName.ToLower().Equals("date")){ return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.{nullableValueStr}ToString(\"u\").Split(' ')[0]));"; }
             if (origDataTypeName.ToLower().Equals("gyearmonth")) { return $"xEl.Add(new XElement(ns + \"{elname}\", {name}.ToString()));"; }
             if (origDataTypeName.ToLower().Equals("gmonthday")) { return $"xEl.Add(new XElement(ns + \"{elname}\", {name}.ToString()));"; }
             if (origDataTypeName.ToLower().Equals("gyear")) { return $"xEl.Add(new XElement(ns + \"{elname}\", {name}.ToString()));"; }
