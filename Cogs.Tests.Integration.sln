@@ -15,7 +15,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cogs.Publishers", "Cogs.Pub
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cogs.Validation", "Cogs.Validation\Cogs.Validation.csproj", "{C579B3B6-51D9-4274-B267-4C649F75B0D9}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "cogsBurger", "generated\cogsBurger.csproj", "{CC29DA55-A2A0-4FD0-99CC-1B3B652E7E2B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CogsBurger.Model", "generated\CogsBurger.Model.csproj", "{CC29DA55-A2A0-4FD0-99CC-1B3B652E7E2B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

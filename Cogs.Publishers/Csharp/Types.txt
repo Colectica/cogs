@@ -20,7 +20,7 @@ namespace Cogs.DataAnnotations
     {
         public ExclusiveRangeAttribute(int minimum, int maximum) : base(minimum, maximum) { }
 
-        public override bool IsValid(object value)
+        public override bool IsValid(object? value)
         {
             // Automatically pass if value is null or empty. RequiredAttribute should be used to assert a value is not empty.
             if (value == null)
@@ -45,24 +45,24 @@ namespace Cogs.DataAnnotations
     [AttributeUsage(AttributeTargets.All)]
     public class StringValidationAttribute : ValidationAttribute
     {
-        Regex Rgx;
-        List<string> Enumerations;
+        Regex? Rgx;
+        List<string>? Enumerations;
 
-        public StringValidationAttribute(string[] enumerations, string pattern = null)
+        public StringValidationAttribute(string[]? enumerations, string? pattern = null)
         {
             if (pattern != null) { this.Rgx = new Regex(pattern); }
             if (enumerations != null) { this.Enumerations = new List<string>(enumerations); }
         }
 
-        public override bool IsValid(object value)
+        public override bool IsValid(object? value)
         {
             if(value == null)
             {
                 return true;
             }
-            if (Enumerations != null && !Enumerations.Contains(value.ToString())) { return false; }
+            if (Enumerations != null && !Enumerations.Contains(value?.ToString() ?? "")) { return false; }
             // check regex Pattern
-            if (Rgx != null && !this.Rgx.IsMatch(value.ToString())) { return false; }
+            if (Rgx != null && !this.Rgx.IsMatch(value?.ToString() ?? "")) { return false; }
             return true;
         }
     }
@@ -88,8 +88,8 @@ namespace Cogs.SimpleTypes
     public class CogsDate
     {
         private DateTimeOffset dateTimeOffset;
-        private GYearMonth gYearMonth;
-        private GYear gYear;
+        private GYearMonth? gYearMonth;
+        private GYear? gYear;
         private TimeSpan timespan;
 
         private void Clear()
@@ -134,7 +134,7 @@ namespace Cogs.SimpleTypes
         }
 
         [JsonConverter(typeof(GYearMonthConverter))]
-        public GYearMonth GYearMonth
+        public GYearMonth? GYearMonth
         {
             get
             {
@@ -149,7 +149,7 @@ namespace Cogs.SimpleTypes
         }
 
         [JsonConverter(typeof(GYearConverter))]
-        public GYear GYear
+        public GYear? GYear
         {
             get
             {
@@ -214,7 +214,7 @@ namespace Cogs.SimpleTypes
             UsedType = CogsDateType.Duration;
         }
 
-        public string GetUsedType()
+        public string? GetUsedType()
         {
             switch (UsedType)
             {
@@ -227,7 +227,7 @@ namespace Cogs.SimpleTypes
             return null;
         }
 
-        public override string ToString()
+        public override string? ToString()
         {
             switch (UsedType)
             {
@@ -238,13 +238,13 @@ namespace Cogs.SimpleTypes
                         return string.Format("P{00}DT{00}H{00}M{00}S", Duration.ToString("%d"), Duration.ToString("%h"),
                             Duration.ToString("%m"), Duration.ToString("%s"));
                     }
-                case CogsDateType.GYear: { return GYear.ToString(); }
-                case CogsDateType.GYearMonth: { return GYearMonth.ToString(); }
+                case CogsDateType.GYear: { return GYear?.ToString(); }
+                case CogsDateType.GYearMonth: { return GYearMonth?.ToString(); }
             }
             return base.ToString();
         }
         
-        public object GetValue()
+        public object? GetValue()
         {
             switch (UsedType)
             {
@@ -279,14 +279,14 @@ namespace Cogs.SimpleTypes
     public class GYear : IComparable, IEquatable<GYear>
 	{
         public int Year { set; get; }
-        public string Timezone { set; get; }
+        public string? Timezone { set; get; }
 
 		public GYear(int year)
 		{
 			Year = year;
 		}
 
-		public GYear(int year, string timezone)
+		public GYear(int year, string? timezone)
 		{
 			Year = year;
 			Timezone = timezone;
@@ -308,7 +308,7 @@ namespace Cogs.SimpleTypes
             return new JObject(new JProperty("year", Year));
         }
 
-        public int CompareTo(object obj)
+        public int CompareTo(object? obj)
         {
             if (obj == null || obj.GetType() != typeof(GYear)) { return -1; }
             var other = (GYear)obj;
@@ -324,7 +324,7 @@ namespace Cogs.SimpleTypes
             return 1;
         }
 
-        public bool Equals(GYear other)
+        public bool Equals(GYear? other)
         {
             if (CompareTo(other) == 0) { return true; }
             return false;
@@ -335,14 +335,14 @@ namespace Cogs.SimpleTypes
     {
         [Range(1, 12)]
         public int Month { set; get; }
-        public string Timezone { set; get; }
+        public string? Timezone { set; get; }
 
         public GMonth(int month)
         {
             Month = month;
         }
 
-        public GMonth(int month, string timezone)
+        public GMonth(int month, string? timezone)
         {
             Month = month;
             Timezone = timezone;
@@ -364,7 +364,7 @@ namespace Cogs.SimpleTypes
             return new JObject(new JProperty("month", Month));
         }
 
-        public int CompareTo(object obj)
+        public int CompareTo(object? obj)
         {
             if (obj == null || obj.GetType() != typeof(GMonth)) { return -1; }
             var other = (GMonth)obj;
@@ -380,7 +380,7 @@ namespace Cogs.SimpleTypes
             return 1;
         }
 
-        public bool Equals(GMonth other)
+        public bool Equals(GMonth? other)
         {
             if (CompareTo(other) == 0) { return true; }
             return false;
@@ -391,14 +391,14 @@ namespace Cogs.SimpleTypes
     {
         [Range(1, 31)]
         public int Day { set; get; }
-        public string Timezone { set; get; }
+        public string? Timezone { set; get; }
 
         public GDay(int day)
         {
             Day = day;
         }
 
-        public GDay(int day, string timezone)
+        public GDay(int day, string? timezone)
         {
             Day = day;
             Timezone = timezone;
@@ -420,7 +420,7 @@ namespace Cogs.SimpleTypes
             return new JObject(new JProperty("day", Day));
         }
 
-        public int CompareTo(object obj)
+        public int CompareTo(object? obj)
         {
             if (obj == null || obj.GetType() != typeof(GDay)) { return -1; }
             var other = (GDay)obj;
@@ -436,7 +436,7 @@ namespace Cogs.SimpleTypes
             return 1;
         }
 
-        public bool Equals(GDay other)
+        public bool Equals(GDay? other)
         {
             if (CompareTo(other) == 0) { return true; }
             return false;
@@ -448,7 +448,7 @@ namespace Cogs.SimpleTypes
         public int Year { set; get; }
         [Range(1, 12)]
         public int Month { set; get; }
-        public string Timezone { set; get; }
+        public string? Timezone { set; get; }
 
         public GYearMonth(int year, int month)
         {
@@ -456,7 +456,7 @@ namespace Cogs.SimpleTypes
             Month = month;
         }
 
-        public GYearMonth(int year, int month, string timezone)
+        public GYearMonth(int year, int month, string? timezone)
         {
             Year = year;
             Month = month;
@@ -479,7 +479,7 @@ namespace Cogs.SimpleTypes
             return new JObject(new JProperty("year", Year), new JProperty("month", Month));
         }
 
-        public int CompareTo(object obj)
+        public int CompareTo(object? obj)
         {
             if (obj == null || obj.GetType() != typeof(GYearMonth)) { return -1; }
             var other = (GYearMonth)obj;
@@ -500,7 +500,7 @@ namespace Cogs.SimpleTypes
             return 1;
         }
 
-        public bool Equals(GYearMonth other)
+        public bool Equals(GYearMonth? other)
         {
             if (CompareTo(other) == 0) { return true; }
             return false;
@@ -513,7 +513,7 @@ namespace Cogs.SimpleTypes
         public int Month { set; get; }
         [Range(1, 31)]
         public int Day { set; get; }
-        public string Timezone { set; get; }
+        public string? Timezone { set; get; }
 
         public GMonthDay(int month, int day)
         {
@@ -521,7 +521,7 @@ namespace Cogs.SimpleTypes
             Day = day;
         }
 
-        public GMonthDay(int month, int day, string timezone)
+        public GMonthDay(int month, int day, string? timezone)
         {
             Month = month;
             Day = day;
@@ -544,7 +544,7 @@ namespace Cogs.SimpleTypes
             return new JObject(new JProperty("month", Month), new JProperty("day", Day));
         }
 
-        public int CompareTo(object obj)
+        public int CompareTo(object? obj)
         {
             if (obj == null || obj.GetType() != typeof(GMonthDay)) { return -1; }
             var other = (GMonthDay)obj;
@@ -565,7 +565,7 @@ namespace Cogs.SimpleTypes
             return 1;
         }
 
-        public bool Equals(GMonthDay other)
+        public bool Equals(GMonthDay? other)
         {
             if (CompareTo(other) == 0) { return true; }
             return false;
@@ -602,7 +602,7 @@ namespace Cogs.Converters
         public override bool CanRead => true;
         public override bool CanWrite => true;
 
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
         {
             if (reader.TokenType == JsonToken.StartArray)
             {
@@ -619,15 +619,15 @@ namespace Cogs.Converters
                 return results;
             }
 
-            var token = (string)reader.Value;
-            if (DateTimeOffset.TryParseExact(token.ToString(), DateTimeFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTimeOffset result))
+            string? token = (string?)reader.Value;
+            if (DateTimeOffset.TryParseExact(token?.ToString(), DateTimeFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTimeOffset result))
             {
                 return result;
             }
             return null;
         }
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
         {
             if (value is DateTimeOffset offset)
             {
@@ -656,7 +656,7 @@ namespace Cogs.Converters
         public override bool CanRead => true;
         public override bool CanWrite => true;
 
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
         {
             if (reader.TokenType == JsonToken.StartArray)
             {
@@ -681,7 +681,8 @@ namespace Cogs.Converters
             {
                 return new TimeSpan(0, 0, 0, 0, milli);
             }
-            var token = reader.Value.ToString();
+
+            string? token = reader?.Value?.ToString();
             if (int.TryParse(token, out int mill))
             {
                 return new TimeSpan(0, 0, 0, 0, mill);
@@ -689,7 +690,7 @@ namespace Cogs.Converters
             return null;
         }
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
         {
             if (value is TimeSpan span)
             {
@@ -718,16 +719,21 @@ namespace Cogs.Converters
         public override bool CanRead => true;
         public override bool CanWrite => true;
 
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
         {
             if (reader.TokenType == JsonToken.StartArray)
             {
-                var results = new List<T>();
-                var array = JArray.Load(reader);
+                List<T> results = new List<T>();
+                JArray array = JArray.Load(reader);
                 foreach (var item in array.Children())
                 {
-                    var jsonObject = (JObject)item;
-                    results.Add(FromObject(jsonObject));
+                    JObject jsonObject = (JObject)item;
+
+                    T? obj = FromObject(jsonObject);
+                    if (obj != null)
+                    {
+                        results.Add(obj);
+                    }
                 }
                 return results;
             }
@@ -736,11 +742,11 @@ namespace Cogs.Converters
             return FromObject(single);
         }
 
-        internal abstract T FromObject(JObject jsonObject);
+        internal abstract T? FromObject(JObject jsonObject);
 
         internal abstract void Write(JsonWriter writer, T item);
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
         {
             if (value is T item)
             {
@@ -760,11 +766,16 @@ namespace Cogs.Converters
 
     public class GDayConverter : BaseGConverter<GDay>
     {
-        internal override GDay FromObject(JObject jsonObject)
+        internal override GDay? FromObject(JObject jsonObject)
         {
-            int day = (int)jsonObject["day"];
-            string timezone = (string)jsonObject["timezone"];
-            return new GDay(day, timezone);
+            int? day = (int?)jsonObject["day"];
+            if (day == null)
+            {
+                return null;
+            }
+
+            string? timezone = (string?)jsonObject["timezone"];
+            return new GDay(day.Value, timezone);
         }
 
         internal override void Write(JsonWriter writer, GDay item)
@@ -784,11 +795,16 @@ namespace Cogs.Converters
 
     public class GMonthConverter : BaseGConverter<GMonth>
     {
-        internal override GMonth FromObject(JObject jsonObject)
+        internal override GMonth? FromObject(JObject jsonObject)
         {
-            int month = (int)jsonObject["month"];
-            string timezone = (string)jsonObject["timezone"];
-            return new GMonth(month, timezone);
+            int? month = (int?)jsonObject["month"];
+            if (month == null)
+            {
+                return null;
+            }
+
+            string? timezone = (string?)jsonObject["timezone"];
+            return new GMonth(month.Value, timezone);
         }
 
         internal override void Write(JsonWriter writer, GMonth item)
@@ -808,12 +824,18 @@ namespace Cogs.Converters
 
     public class GMonthDayConverter : BaseGConverter<GMonthDay>
     {
-        internal override GMonthDay FromObject(JObject jsonObject)
+        internal override GMonthDay? FromObject(JObject jsonObject)
         {
-            int month = (int)jsonObject["month"];
-            int day = (int)jsonObject["day"];
-            string timezone = (string)jsonObject["timezone"];
-            return new GMonthDay(month, day, timezone);
+            int? month = (int?)jsonObject["month"];
+            int? day = (int?)jsonObject["day"];
+            string? timezone = (string?)jsonObject["timezone"];
+
+            if (month == null || day == null)
+            {
+                return null;
+            }
+
+            return new GMonthDay(month.Value, day.Value, timezone);
         }
 
         internal override void Write(JsonWriter writer, GMonthDay item)
@@ -834,11 +856,17 @@ namespace Cogs.Converters
 
     public class GYearConverter : BaseGConverter<GYear>
     {      
-        internal override GYear FromObject(JObject jsonObject)
+        internal override GYear? FromObject(JObject jsonObject)
         {
-            int year = (int)jsonObject["year"];
-            string timezone = (string)jsonObject["timezone"];
-            return new GYear(year, timezone);
+            int? year = (int?)jsonObject["year"];
+            if (year == null)
+            {
+                return null;
+            }
+
+
+            string? timezone = (string?)jsonObject["timezone"];
+            return new GYear(year.Value, timezone);
         }
 
         internal override void Write(JsonWriter writer, GYear item)
@@ -859,12 +887,18 @@ namespace Cogs.Converters
 
     public class GYearMonthConverter : BaseGConverter<GYearMonth>
     {
-        internal override GYearMonth FromObject(JObject jsonObject)
+        internal override GYearMonth? FromObject(JObject jsonObject)
         {
-            int year = (int)jsonObject["year"];
-            int month = (int)jsonObject["month"];
-            string timezone = (string)jsonObject["timezone"];
-            return new GYearMonth(year, month, timezone);
+            int? year = (int?)jsonObject["year"];
+            int? month = (int?)jsonObject["month"];
+            string? timezone = (string?)jsonObject["timezone"];
+
+            if (year == null || month == null)
+            {
+                return null;
+            }
+
+            return new GYearMonth(year.Value, month.Value, timezone);
         }
 
         internal override void Write(JsonWriter writer, GYearMonth item)

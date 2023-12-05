@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2017 Colectica. All rights reserved
+﻿// Copyright (c) 2017 Colectica. All rights reservedbstr
 // See the LICENSE file in the project root for more information.
 using Cogs.Model;
 using System;
@@ -11,6 +11,7 @@ using System.Xml;
 using System.Reflection;
 using System.Collections;
 using Cogs.Common;
+using Cogs.Publishers.JsonSchema;
 
 namespace Cogs.Publishers.Csharp
 {
@@ -20,10 +21,12 @@ namespace Cogs.Publishers.Csharp
         /// path to write output in
         /// </summary>
         public string TargetDirectory { get; set; }
+
         /// <summary>
         /// Desired namespace for xml serialization
         /// </summary>
         public string TargetNamespace { get; set; }
+
         /// <summary>
         /// Desired namespace prefix for xml serialization
         /// </summary>
@@ -33,6 +36,17 @@ namespace Cogs.Publishers.Csharp
         /// boolean to determine whether to replace existing or not
         /// </summary>
         public bool Overwrite { get; set; }
+        
+        /// <summary>
+        /// Determines whether a .csproj file should be written
+        /// </summary>
+        public bool WriteCsproj { get; set; }
+        
+        /// <summary>
+        /// Determines whether nullable types should be used
+        /// </summary>
+        public bool IsNullableEnabled { get; set; }
+
         /// <summary>
         /// dictionary for translating names to c# datatype representations
         /// </summary>
@@ -51,32 +65,43 @@ namespace Cogs.Publishers.Csharp
             // TODO: if Overwrite is false and Directory.Exists(TargetDirectory)) throw an error and exit
             Directory.CreateDirectory(TargetDirectory);
 
+            TargetNamespace = model.Settings.NamespaceUrl;
+            TargetNamespacePrefix = model.Settings.NamespacePrefix;
+
             InitializeDictionary();
 
             //get the project name
-            var projName = model.Settings.Slug;
-            CreatePartialIIdentifiable(model, projName);
-            CreatePartialItemContainer(model, projName);
-            //create project file
-            XDocument project = new XDocument(
-                new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
-                    new XElement("PropertyGroup", 
-                        new XElement("TargetFramework", "net6"),
-                        new XElement("AssemblyName", projName), 
-                        new XElement("RootNamespace", projName)),
-                    new XElement("ItemGroup", 
-                        new XElement("PackageReference", new XAttribute("Include", "System.ComponentModel.Annotations"), new XAttribute("Version", "5.0.0")),
-                        new XElement("PackageReference", new XAttribute("Include", "Microsoft.CSharp"), new XAttribute("Version", "4.7.0")),
-                        new XElement("PackageReference", new XAttribute("Include", "Newtonsoft.Json"), new XAttribute("Version", "13.0.3")))));
-            XmlWriterSettings xws = new XmlWriterSettings
+            string csNamespace = model.Settings.CSharpNamespace;
+            if (string.IsNullOrWhiteSpace(csNamespace))
             {
-                OmitXmlDeclaration = true,
-                Indent = true                
-            };
-            using (FileStream s = new FileStream(Path.Combine(TargetDirectory, projName + ".csproj"), FileMode.Create, FileAccess.ReadWrite))
-            using (XmlWriter xw = XmlWriter.Create(s, xws))
+                csNamespace = "Cogs.Model";
+            }
+
+            CreatePartialIIdentifiable(model, csNamespace);
+            CreatePartialItemContainer(model, csNamespace);
+
+            // Create the csproj project file
+            if (WriteCsproj)
             {
-                project.Save(xw);
+                XDocument project = new XDocument(
+                    new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
+                        new XElement("PropertyGroup", 
+                            new XElement("TargetFramework", "net6"),
+                            IsNullableEnabled ? new XElement("Nullable", "enable") : null),
+                        new XElement("ItemGroup", 
+                            new XElement("PackageReference", new XAttribute("Include", "System.ComponentModel.Annotations"), new XAttribute("Version", "5.0.0")),
+                            new XElement("PackageReference", new XAttribute("Include", "Microsoft.CSharp"), new XAttribute("Version", "4.7.0")),
+                            new XElement("PackageReference", new XAttribute("Include", "Newtonsoft.Json"), new XAttribute("Version", "13.0.3")))));
+                XmlWriterSettings xws = new XmlWriterSettings
+                {
+                    OmitXmlDeclaration = true,
+                    Indent = true                
+                };
+                using (FileStream s = new FileStream(Path.Combine(TargetDirectory, csNamespace + ".csproj"), FileMode.Create, FileAccess.ReadWrite))
+                using (XmlWriter xw = XmlWriter.Create(s, xws))
+                {
+                    project.Save(xw);
+                }
             }
 
             
@@ -105,7 +130,7 @@ namespace Cogs.Publishers.Csharp
             {
                 string fileContents = reader.ReadToEnd();
 
-                fileContents = fileContents.Replace("__CogsGeneratedNamespace", projName);
+                fileContents = fileContents.Replace("__CogsGeneratedNamespace", csNamespace);
 
                 if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
                 {
@@ -142,7 +167,7 @@ namespace Cogs.Publishers.Csharp
                 newClass.AppendLine("using System.Collections.Generic;");                
                 newClass.AppendLine("using System.ComponentModel.DataAnnotations;");
                 newClass.AppendLine();
-                newClass.AppendLine($"namespace {projName}");
+                newClass.AppendLine($"namespace {csNamespace}");
                 newClass.AppendLine("{");
                 newClass.AppendLine( "    /// <summary>");
                 foreach(var line in item.Description.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None))
@@ -386,7 +411,20 @@ namespace Cogs.Publishers.Csharp
                     {
                         if (Isboolintdoubleulong(prop.DataTypeName) || model.Identification.Contains(prop))
                         {
-                            toXml.AppendLine($"            xEl.Add(new XElement(ns + \"{prop.Name}\", {prop.Name}));");
+                            // If the property is optional (min cardinality is 0), and nullable is enabled, then only write an element when one exists.
+                            bool propertyIsOptional = prop.MinCardinality == "0" && IsNullableEnabled;
+                            string tab = "";
+                            if (propertyIsOptional)
+                            {
+                                toXml.AppendLine($"            if ({prop.Name} != null)");
+                                toXml.AppendLine("            {");
+                                tab = "    ";
+                            }
+                            toXml.AppendLine($"            {tab}xEl.Add(new XElement(ns + \"{prop.Name}\", {prop.Name}));");
+                            if (propertyIsOptional)
+                            {
+                                toXml.AppendLine("            }");
+                            }
                         }
                         else if (origDataTypeName != null)
                         {
@@ -400,14 +438,14 @@ namespace Cogs.Publishers.Csharp
                             }
                             else if (prop.DataTypeName.Equals("DateTimeOffset") || prop.DataTypeName.Equals("TimeSpan"))
                             {
-                                toXml.AppendLine($"            if ({prop.Name} != default({prop.DataTypeName}))");
+                                toXml.AppendLine($"            if ({prop.Name} != null &&{prop.Name} != default({prop.DataTypeName}))");
                             }
                             else
                             {
                                 toXml.AppendLine($"            if ({prop.Name} != null)");
                             }
                             toXml.AppendLine("            {");
-                            toXml.AppendLine($"                {SimpleToXml(origDataTypeName, prop.Name, prop.Name, "xEl")}");
+                            toXml.AppendLine($"                {SimpleToXml(origDataTypeName, prop.Name, prop.Name, "xEl", false)}");
                             toXml.AppendLine("            }");
                         }
                         else if (model.ReusableDataTypes.Contains(prop.DataType))
@@ -433,7 +471,12 @@ namespace Cogs.Publishers.Csharp
                             toXml.AppendLine($"                    new XElement(ns + \"TypeOfObject\", {prop.Name}.GetType().Name)));");
                             toXml.AppendLine("            }");
                         }
-                        newClass.AppendLine($"        public {prop.DataTypeName} {prop.Name} {{ get; set; }}");
+
+                        // TODO Consider whether Identification properties in C# generator should be non-nullable 
+                        string nullableStr = IsNullableEnabled && prop.MinCardinality == "0" && prop.MaxCardinality == "1" ? "?" : "";
+                        //bool isIdentificationProperty = model.Identification.Contains(prop);
+                        //string nullableStr = IsNullableEnabled && !isIdentificationProperty ? "?" : "";
+                        newClass.AppendLine($"        public {prop.DataTypeName}{nullableStr} {prop.Name} {{ get; set; }}");
                     }
                     // otherwise, create a list object to allow multiple
                     else
@@ -450,7 +493,7 @@ namespace Cogs.Publishers.Csharp
                             toXml.AppendLine("            {");
                             toXml.AppendLine($"                foreach (var item in {prop.Name})");
                             toXml.AppendLine("                {");
-                            toXml.AppendLine($"                    {SimpleToXml(origDataTypeName, "item", prop.Name, "xEl")}");
+                            toXml.AppendLine($"                    {SimpleToXml(origDataTypeName, "item", prop.Name, "xEl", true)}");
                             toXml.AppendLine("                }");
                             toXml.AppendLine("            }");
 
@@ -520,17 +563,22 @@ namespace Cogs.Publishers.Csharp
             return false;
         }
 
-        private object SimpleToXml(string origDataTypeName, string name, string elname, string start)
+        private object SimpleToXml(string origDataTypeName, string name, string elname, string start, bool isInList)
         {
+            // TODO Consider whether Identification properties in C# generator should be non-nullable 
+            string nullableValueStr = IsNullableEnabled && !isInList ? "Value." : "";
+            //bool isIdentificationProperty = model.Identification.Contains(prop);
+            //string nullableValueStr = IsNullableEnabled && !isIdentificationProperty ? "Value. : "";
+
             if (origDataTypeName.ToLower().Equals("duration"))
             {
                 
                 return $"{start}.Add(new XElement(ns + \"{elname}\", string.Format(\"P{{00}}DT{{00}}H{{00}}M{{00}}S\", {Environment.NewLine}                    " +
-                    $"{name}.ToString(\"%d\"), {name}.ToString(\"%h\"), {name}.ToString(\"%m\"), {name}.ToString(\"%s\"))));";
+                    $"{name}.{nullableValueStr}ToString(\"%d\"), {name}.{nullableValueStr}ToString(\"%h\"), {name}.{nullableValueStr}ToString(\"%m\"), {name}.{nullableValueStr}ToString(\"%s\"))));";
             }
-            if (origDataTypeName.ToLower().Equals("datetime")) { return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.ToString(\"yyyy-MM-dd\\\\THH:mm:ss.FFFFFFFK\")));"; }
-            if (origDataTypeName.ToLower().Equals("time")) { return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.ToString(\"u\").Split(' ')[1]));"; }
-            if (origDataTypeName.ToLower().Equals("date")){ return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.ToString(\"u\").Split(' ')[0]));"; }
+            if (origDataTypeName.ToLower().Equals("datetime")) { return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.{nullableValueStr}ToString(\"yyyy-MM-dd\\\\THH:mm:ss.FFFFFFFK\")));"; }
+            if (origDataTypeName.ToLower().Equals("time")) { return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.{nullableValueStr}ToString(\"u\").Split(' ')[1]));"; }
+            if (origDataTypeName.ToLower().Equals("date")){ return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.{nullableValueStr}ToString(\"u\").Split(' ')[0]));"; }
             if (origDataTypeName.ToLower().Equals("gyearmonth")) { return $"xEl.Add(new XElement(ns + \"{elname}\", {name}.ToString()));"; }
             if (origDataTypeName.ToLower().Equals("gmonthday")) { return $"xEl.Add(new XElement(ns + \"{elname}\", {name}.ToString()));"; }
             if (origDataTypeName.ToLower().Equals("gyear")) { return $"xEl.Add(new XElement(ns + \"{elname}\", {name}.ToString()));"; }
@@ -542,7 +590,7 @@ namespace Cogs.Publishers.Csharp
 
         
         // creates a file called IIdentifiable.cs which holds the IIdentifiable interface from which all item types descend
-        private void CreatePartialIIdentifiable(CogsModel model, string projName)
+        private void CreatePartialIIdentifiable(CogsModel model, string csNamespace)
         {
             StringBuilder builder = new StringBuilder();
             if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
@@ -558,16 +606,20 @@ namespace Cogs.Publishers.Csharp
             builder.AppendLine("using Newtonsoft.Json.Linq;");
             builder.AppendLine("using System.Collections.Generic;");
             builder.AppendLine();
-            builder.AppendLine($"namespace {projName}");
+            builder.AppendLine($"namespace {csNamespace}");
             builder.AppendLine("{");
             builder.AppendLine("    /// <summary>");
             builder.AppendLine("    /// IIdentifiable class which all object Inherit from. Used to Serialize to Json");
             builder.AppendLine("    /// <summary>");
             builder.AppendLine("    public partial interface IIdentifiable");
             builder.AppendLine("    {");
+
+            // TODO Consider whether Identification properties in C# generator should be non-nullable
+            // If so, then don't make this nullable here.
+            string nullableStr = IsNullableEnabled ? "?" : "";
             foreach (var prop in model.Identification)
             {
-                builder.AppendLine($"        {prop.DataTypeName} {prop.Name} {{ get; set; }}");
+                builder.AppendLine($"        {prop.DataTypeName}{nullableStr} {prop.Name} {{ get; set; }}");
             }
             builder.AppendLine("    }");
             builder.AppendLine("}");
@@ -576,13 +628,13 @@ namespace Cogs.Publishers.Csharp
 
 
         // Creates the ItemContainer Class
-        private void CreatePartialItemContainer(CogsModel model, string projName)
+        private void CreatePartialItemContainer(CogsModel model, string csNamespace)
         {
 
             string clss = $@"using System;
 using System.Xml.Linq;
 
-namespace {projName}
+namespace {csNamespace}
 {{
     /// <summary>
     /// Partial class implementation for XML generation 
@@ -594,16 +646,19 @@ namespace {projName}
             XNamespace ns = ""{TargetNamespace}"";
             XDocument xDoc = new XDocument(new XElement(ns + ""ItemContainer"", new XAttribute(XNamespace.Xmlns + "
                 + $@"""{TargetNamespacePrefix}"", ""{TargetNamespace}"")));
-            if (TopLevelReferences != null && TopLevelReferences.Count > 0)
+            if (xDoc.Root != null)
             {{
-                foreach (var item in TopLevelReferences)
+                if (TopLevelReferences != null && TopLevelReferences.Count > 0)
                 {{
-                    xDoc.Root.Add(new XElement(ns + ""TopLevelReference"", new XElement(ns + ""ID"", item.ID), new XElement(ns + ""TypeOfObject"", item.GetType())));
+                    foreach (var item in TopLevelReferences)
+                    {{
+                        xDoc.Root.Add(new XElement(ns + ""TopLevelReference"", new XElement(ns + ""ID"", item.ID), new XElement(ns + ""TypeOfObject"", item.GetType())));
+                    }}
                 }}
-            }}
-            foreach (var item in Items)
-            {{
-                xDoc.Root.Add(item.ToXml());
+                foreach (var item in Items)
+                {{
+                    xDoc.Root.Add(item.ToXml());
+                }}
             }}
             return xDoc;
         }}

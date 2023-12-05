@@ -1,4 +1,4 @@
-using cogsburger;
+using CogsBurger.Model;
 using Newtonsoft.Json;
 using NJsonSchema;
 using System;
@@ -159,14 +159,7 @@ namespace Cogs.Tests.Integration
             container4.Items.Add(bread);
 
             // evaluation
-            string schemaPath = Path.Combine(Path.Combine(Path.Combine(Path.Combine(Directory.GetCurrentDirectory(), ".."), ".."), ".."), "..");
-            string jsonSchema = File.ReadAllText(Path.Combine(Path.Combine(schemaPath, "generated"), "jsonSchema.json"));
-            JsonConvert.DefaultSettings = () => new JsonSerializerSettings
-            {
-                MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
-                DateParseHandling = DateParseHandling.None
-            };
-            JsonSchema schema = await JsonSchema.FromJsonAsync(jsonSchema);
+            JsonSchema schema = await GetJsonSchema();
             var containers = new ItemContainer[] { container, container2, container3, container4 };
 
             for (int i = 0; i < 4; i++)
@@ -431,7 +424,7 @@ namespace Cogs.Tests.Integration
             Assert.IsType<Animal>(container2.Items.First());
 
             Animal animal2 = container2.Items.First() as Animal;
-            Assert.Equal(animal.Date.Date, animal2.Date.Date);
+            Assert.Equal(animal.Date.Value.Date, animal2.Date.Value.Date);
         }
 
         [Fact]
@@ -554,7 +547,7 @@ namespace Cogs.Tests.Integration
             Assert.IsType<Animal>(container2.Items.First());
 
             Animal animal2 = container2.Items.First() as Animal;
-            Assert.Equal(animal.Time.TimeOfDay, animal2.Time.TimeOfDay);
+            Assert.Equal(animal.Time.Value.TimeOfDay, animal2.Time.Value.TimeOfDay);
         }
 
         [Fact]
@@ -1772,22 +1765,16 @@ namespace Cogs.Tests.Integration
 
         private async Task<JsonSchema> GetJsonSchema()
         {
-            var resourceName = typeof(ItemContainer).Namespace + ".jsonSchema.json";
-            var assembly = typeof(ItemContainer).Assembly;
-            var names = assembly.GetManifestResourceNames();
-            
-            using (Stream stream = assembly.GetManifestResourceStream(resourceName))
-            using (StreamReader reader = new StreamReader(stream, System.Text.Encoding.UTF8))
+            string schemaPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..");
+            string jsonSchemaFileName = Path.Combine(schemaPath, "generated", "jsonSchema.json");
+            string jsonSchema = File.ReadAllText(jsonSchemaFileName);
+            JsonConvert.DefaultSettings = () => new JsonSerializerSettings
             {
-                string jsonSchema = reader.ReadToEnd();
-                JsonConvert.DefaultSettings = () => new JsonSerializerSettings
-                {
-                    MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
-                    DateParseHandling = DateParseHandling.None
-                };
-                JsonSchema schema = await JsonSchema.FromJsonAsync(jsonSchema);
-                return schema;
-            }            
+                MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
+                DateParseHandling = DateParseHandling.None
+            };
+            JsonSchema schema = await JsonSchema.FromJsonAsync(jsonSchema);
+            return schema;
         }
     }
 }

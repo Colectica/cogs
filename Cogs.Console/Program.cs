@@ -264,28 +264,24 @@ namespace Cogs.Console
             app.Command("publish-cs", (command) =>
             {
 
-                command.Description = "Publish a c# class structure from a COGS data model";
+                command.Description = "Publish a C# class structure from a COGS data model";
                 command.HelpOption("-?|-h|--help");
 
 
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
                 var targetArgument = command.Argument("[targetLocation]", "Directory where the c# schema is generated.");
 
-                var overwriteOption = command.Option("-o|--overwrite",
-                                           "If the target directory exists, delete and overwrite the location",
-                                           CommandOptionType.NoValue);
-                var namespaceUri = command.Option("-n|--namespace",
-                                           "URI of the target XML namespace",
-                                           CommandOptionType.SingleValue);
+                var overwriteOption = command.Option("-o|--overwrite", "If the target directory exists, delete and overwrite the location", CommandOptionType.NoValue);
+                var writeCsprojOption = command.Option("--csproj", "Determines whether to generate a .csproj project file", CommandOptionType.NoValue);
+                var isNullableEnabledOption = command.Option("--nullable", "Determines whether to use C# nullable types", CommandOptionType.NoValue);
 
-                var namespaceUriPrefix = command.Option("-p|--prefix",
-                                           "Namespace prefix to use for the target XML namespace",
-                                           CommandOptionType.SingleValue);
                 command.OnExecute(() =>
                 {
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
+                    bool writeCsproj = writeCsprojOption.HasValue();
+                    bool isNullableEnabled = isNullableEnabledOption.HasValue();
 
                     var directoryReader = new CogsDirectoryReader();
                     var cogsDtoModel = directoryReader.Load(location);
@@ -293,11 +289,9 @@ namespace Cogs.Console
                     var modelBuilder = new CogsModelBuilder();
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
 
-                    var targetNamespace = namespaceUri.Value() ?? cogsModel.Settings.CSharpNamespace;
-                    var prefix = namespaceUriPrefix.Value() ?? cogsModel.Settings.NamespacePrefix;
                     try
                     {
-                        XmlConvert.VerifyName(prefix);
+                        XmlConvert.VerifyName(cogsModel.Settings.NamespacePrefix);
                     }
                     catch (XmlException xmlEx)
                     {
@@ -308,9 +302,9 @@ namespace Cogs.Console
                     CsSchemaPublisher publisher = new CsSchemaPublisher
                     {
                         TargetDirectory = target,
-                        TargetNamespace = targetNamespace,
-                        TargetNamespacePrefix = prefix,
-                        Overwrite = overwrite
+                        Overwrite = overwrite,
+                        WriteCsproj = writeCsproj,
+                        IsNullableEnabled = isNullableEnabled
                     };
                     publisher.Publish(cogsModel);
 
