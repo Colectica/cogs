@@ -1,11 +1,18 @@
-FROM microsoft/dotnet
+FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build-env
 
-COPY . /app
+WORKDIR /App
 
-WORKDIR /app
+# Copy everything
+COPY . ./
 
+# Restore as distinct layers
 RUN dotnet restore ./Cogs.Console.sln
-
+# Build and publish a release
 RUN dotnet build ./Cogs.Console.sln -c Release -o out
 
-ENTRYPOINT ["dotnet", "/app/Cogs.Console/out/Cogs.Console.dll"]
+# Build runtime image
+FROM mcr.microsoft.com/dotnet/aspnet:6.0
+WORKDIR /App
+COPY --from=build-env /App/out .
+
+ENTRYPOINT ["dotnet", "cogs.dll"]
