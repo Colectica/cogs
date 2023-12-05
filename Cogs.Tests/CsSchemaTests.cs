@@ -32,20 +32,7 @@ namespace Cogs.Tests
             publisher.Publish(cogsModel);
 
             // get the dotnet filepath
-            string dotLoc = null;
-            if (File.Exists("dotnet.exe")) { dotLoc = Path.GetFullPath("dotnet.exe"); }
-            else
-            {
-                var values = Environment.GetEnvironmentVariable("PATH");
-                foreach (var exe in values.Split(Path.PathSeparator))
-                {
-                    var fullPath = Path.Combine(exe, "dotnet.exe");
-                    if (File.Exists(fullPath)) { dotLoc = fullPath; }
-                }
-            }
-            if (dotLoc == null) { throw new InvalidOperationException(); }
-
-            Build("cogsburger", outputPath, dotLoc);
+            Build("cogsburger", outputPath, "dotnet");
         }
 
         // builds the created project
