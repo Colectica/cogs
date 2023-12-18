@@ -89,9 +89,14 @@ namespace Cogs.Console
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
                 var targetArgument = command.Argument("[targetLocation]", "Directory where the LinkML yaml is generated.");
 
+                var namespaceUri = command.Option("-n|--namespace",
+                           "URI of the target XML namespace",
+                           CommandOptionType.SingleValue);
+
                 var namespaceUriPrefix = command.Option("-p|--namespacePrefix",
                                            "Namespace prefix to use for the target namespace",
                                            CommandOptionType.SingleValue);
+
                 var name = command.Option("-n|--name",
                             "Name of the model",
                             CommandOptionType.SingleValue);
@@ -117,6 +122,7 @@ namespace Cogs.Console
                         TargetDirectory = target,
                         Name = name.Value() ?? cogsModel.Settings.ShortTitle,
                         NamespaceUriPrefix = namespaceUriPrefix.Value() ?? cogsModel.Settings.NamespacePrefix,
+                        NamespaceUri = namespaceUri.Value() ?? cogsModel.Settings.NamespaceUrl
                     };
 
                     publisher.Publish(cogsModel);
