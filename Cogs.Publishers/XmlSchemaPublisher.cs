@@ -386,6 +386,10 @@ namespace Cogs.Publishers
             {
                 return string.Empty;
             }
+            // special case acronyms
+            if(str == "URN") { return "urn"; }
+            if(str == "ID") { return "id"; }
+            if (str.StartsWith("URL")) { return str.Replace("URL", "url"); }
 
             if (str.Length == 1)
             {
