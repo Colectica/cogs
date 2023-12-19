@@ -97,6 +97,10 @@ namespace Cogs.Console
                                            "Namespace prefix to use for the target namespace",
                                            CommandOptionType.SingleValue);
 
+                var overwriteOption = command.Option("-o|--overwrite",
+                           "If the target directory exists, delete and overwrite the location",
+                           CommandOptionType.NoValue);
+
                 var name = command.Option("-n|--name",
                             "Name of the model",
                             CommandOptionType.SingleValue);
@@ -105,6 +109,7 @@ namespace Cogs.Console
                 {
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
+                    bool overwrite = overwriteOption.HasValue();
 
                     // read cogs directory and validate the contents
                     var directoryReader = new CogsDirectoryReader();                    
@@ -122,7 +127,8 @@ namespace Cogs.Console
                         TargetDirectory = target,
                         Name = name.Value() ?? cogsModel.Settings.ShortTitle,
                         NamespaceUriPrefix = namespaceUriPrefix.Value() ?? cogsModel.Settings.NamespacePrefix,
-                        NamespaceUri = namespaceUri.Value() ?? cogsModel.Settings.NamespaceUrl
+                        NamespaceUri = namespaceUri.Value() ?? cogsModel.Settings.NamespaceUrl,
+                        Overwrite = overwrite
                     };
 
                     publisher.Publish(cogsModel);

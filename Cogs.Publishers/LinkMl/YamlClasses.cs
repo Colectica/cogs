@@ -52,6 +52,7 @@ namespace Cogs.Publishers.LinkMl
         public bool required { get; set; }
         public bool? multivalued { get; set; }
         public bool? inlined_as_list { get; set; }
+        public bool? list_elements_ordered { get; set; }
     }
 
     public class LinkMLType
@@ -59,6 +60,9 @@ namespace Cogs.Publishers.LinkMl
         public string description { get; set; }
         public string type_uri { get; set; }
         public string uri { get; set; }
+
+        [YamlMember(Alias = "base")]
+        public string PythonType { get; set; } = "string";
         public List<string> union_of { get; set; } = new List<string>();
     }
 

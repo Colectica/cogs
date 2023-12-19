@@ -21,6 +21,8 @@ namespace Cogs.Publishers.LinkMl
  
         public void Publish(CogsModel model)
         {
+            var target = Path.Combine(TargetDirectory, "linkml.yml");
+
             if (Overwrite && Directory.Exists(TargetDirectory))
             {
                 Directory.Delete(TargetDirectory, true);
@@ -153,7 +155,7 @@ namespace Cogs.Publishers.LinkMl
                                     .Build();
             var yaml = serializer.Serialize(linkml);
             
-            File.WriteAllText(Path.Combine(TargetDirectory, "linkml.yml"), yaml);
+            File.WriteAllText(target, yaml);
         }
 
         private LinkMLSlot PropertyToSlot(Model.Property property)
@@ -166,6 +168,9 @@ namespace Cogs.Publishers.LinkMl
 
             if (property.Ordered)
             {
+                // https://w3id.org/linkml/list_elements_ordered Doesn't appear to change owl generation
+
+                slot.list_elements_ordered = true;
                 slot.inlined_as_list = true;
             }
             return slot;
