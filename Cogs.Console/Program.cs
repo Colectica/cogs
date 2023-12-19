@@ -115,6 +115,7 @@ namespace Cogs.Console
                     var directoryReader = new CogsDirectoryReader();                    
                     var cogsDtoModel = directoryReader.Load(location);
                     HandleErrors(directoryReader.Errors);
+                    CreateOrderedEnumerables(cogsDtoModel);
                     HandleErrors(DtoValidation.Validate(cogsDtoModel));
 
                     var modelBuilder = new CogsModelBuilder();
@@ -538,6 +539,7 @@ namespace Cogs.Console
                     var directoryReader = new CogsDirectoryReader();
                     var cogsDtoModel = directoryReader.Load(location);
                     HandleErrors(directoryReader.Errors);
+                    CreateOrderedEnumerables(cogsDtoModel);
                     HandleErrors(DtoValidation.Validate(cogsDtoModel));
 
                     var modelBuilder = new CogsModelBuilder();
@@ -630,6 +632,67 @@ namespace Cogs.Console
             var result = app.Execute(args);
             Environment.Exit(result);
         }
+
+
+        private static void CreateOrderedEnumerables(CogsDtoModel model)
+        {
+            // create enumeraded slot properties
+            bool hasOrderedSlots = false;
+            string slotDatatypeName = "EnumerableOrderedSlot";
+
+            foreach (var item in model.ItemTypes.Union(model.ReusableDataTypes))
+            {
+                for (int i = 0; i < item.Properties.Count; ++i)
+                {
+                    var property = item.Properties[i];
+
+                    if (string.IsNullOrEmpty(property.Ordered) || string.Equals(property.Ordered, "false", StringComparison.OrdinalIgnoreCase)) {  continue; }
+                    if(property.MaxCardinality == "1") {  continue; }
+
+                    hasOrderedSlots = true;
+                    var propertyName = property.Name;
+
+                    var orderedProperty = new Dto.Property();
+                    orderedProperty.Name = propertyName + "OrderedSlots";
+                    orderedProperty.DataType = slotDatatypeName;
+                    orderedProperty.MinCardinality = "0";
+                    orderedProperty.MaxCardinality = "n";
+                    orderedProperty.Description = $"Ranked slots for the ordered enumerable list designated by {propertyName}";
+
+                    i++;
+                    item.Properties.Insert(i, orderedProperty);                    
+                }
+            }
+
+            if (hasOrderedSlots)
+            {
+                // shared ordered slots container
+                var orderedSlotDatatype = new Dto.DataType();
+                orderedSlotDatatype.Description = "Slot for ordered enumerable property definitions";
+                orderedSlotDatatype.Name = slotDatatypeName;
+
+                var referenceProperty = new Dto.Property();
+                referenceProperty.Name = "OrderedItemReference";
+                referenceProperty.DataType = "anyURI";
+                referenceProperty.MinCardinality = "0";
+                referenceProperty.MaxCardinality = "1";
+                referenceProperty.Description = $"URI of the item being ordered.";
+                orderedSlotDatatype.Properties.Add(referenceProperty);
+
+                var rankProperty = new Dto.Property();
+                rankProperty.Name = "OrderedItemRank";
+                rankProperty.DataType = "nonNegativeInteger";
+                rankProperty.MinCardinality = "0";
+                rankProperty.MaxCardinality = "1";
+                rankProperty.Description = $"Zero based ranking order of the item's position in the enumerated list.";
+                orderedSlotDatatype.Properties.Add(rankProperty);
+
+                model.ReusableDataTypes.Add(orderedSlotDatatype);
+            }
+
+
+        }
+
 
         private static void HandleErrors(List<CogsError> errors)
         {
