@@ -91,11 +91,13 @@ namespace Cogs.Publishers.LinkMl
             var types = new Dictionary<string, LinkMLType>();
             var cogsDate = new LinkMLType();
             cogsDate.description = "A union of the xsd date types";
-            cogsDate.union_of.Add("date");
-            cogsDate.union_of.Add("dateTime");
-            cogsDate.union_of.Add("duration");
-            cogsDate.union_of.Add("gYear");
-            cogsDate.union_of.Add("gYearMonth");
+            cogsDate.union_of = new List<string>();
+            cogsDate.union_of.Add("xsd:date");
+            cogsDate.union_of.Add("xsd:dateTime");
+            cogsDate.union_of.Add("xsd:duration");
+            cogsDate.union_of.Add("xsd:gYear");
+            cogsDate.union_of.Add("xsd:gYearMonth");
+            cogsDate.uri = "xsd:string";
             types.Add("cogsDate", cogsDate);
 
             var language = new LinkMLType();
@@ -116,17 +118,18 @@ namespace Cogs.Publishers.LinkMl
             var uri = new LinkMLType();
             uri.description = "A URI";
             uri.uri = "xsd:anyURI";
+            uri.PythonType = "URI";
             types.Add("anyURI", uri);
 
             var langString = new LinkMLType();
             langString.description = "A language tagged string";
             langString.uri = "rdf:langString";
-            types.Add("langString", uri);
+            types.Add("langString", langString);
 
             var nonNegativeInteger = new LinkMLType();
             nonNegativeInteger.description = "A nonNegativeInteger";
             nonNegativeInteger.uri = "xsd:nonNegativeInteger";
-            types.Add("nonNegativeInteger", uri);
+            types.Add("nonNegativeInteger", nonNegativeInteger);
 
             var modelName = "model";
             if (model.Settings.Slug != null)
@@ -145,6 +148,7 @@ namespace Cogs.Publishers.LinkMl
             };
             linkml.prefixes.Add(NamespaceUriPrefix, NamespaceUri);
             linkml.prefixes.Add("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#");
+            linkml.prefixes.Add("xsd", "http://www.w3.org/2001/XMLSchema#");
 
 
 

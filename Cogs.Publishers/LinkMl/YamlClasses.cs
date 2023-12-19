@@ -63,7 +63,7 @@ namespace Cogs.Publishers.LinkMl
 
         [YamlMember(Alias = "base")]
         public string PythonType { get; set; } = "string";
-        public List<string> union_of { get; set; } = new List<string>();
+        public List<string> union_of { get; set; }
     }
 
     public class LinkMLUniqueKeySlots
