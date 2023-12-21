@@ -241,8 +241,8 @@ namespace Cogs.Publishers
                         new XElement("ownedComment",
                             new XAttribute(xmins + "type", "uml:Comment"),
                             new XAttribute(xmins + "id", CreateId(id + "-ownedComment")),
-                            new XElement(xmins + "annotatedElement", new XAttribute(xmins + "idref", id)),
-                            new XElement(xmins + "body", item.Description)));
+                            new XElement("annotatedElement", new XAttribute(xmins + "idref", id)),
+                            new XElement("body", item.Description)));
 
                     if (property.MinCardinality != null)
                     {
@@ -334,8 +334,8 @@ namespace Cogs.Publishers
                         new XElement("ownedComment",
                             new XAttribute(xmins + "type", "uml:Comment"),
                             new XAttribute(xmins + "id", CreateId(id + ".association" + "-ownedComment")),
-                            new XElement(xmins + "annotatedElement", new XAttribute(xmins + "idref", id + ".association")),
-                            new XElement(xmins + "body", property.Description)));
+                            new XElement("annotatedElement", new XAttribute(xmins + "idref", id + ".association")),
+                            new XElement("body", property.Description)));
 
                     
                     link.Add(new XElement("lowerValue", new XAttribute(xmins + "type", "uml:LiteralInteger"),
