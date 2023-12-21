@@ -242,7 +242,7 @@ namespace Cogs.Publishers
                             new XAttribute(xmins + "type", "uml:Comment"),
                             new XAttribute(xmins + "id", CreateId(id + "-ownedComment")),
                             new XElement("annotatedElement", new XAttribute(xmins + "idref", id)),
-                            new XElement("body", item.Description)));
+                            new XElement("body", property.Description)));
 
                     if (property.MinCardinality != null)
                     {
