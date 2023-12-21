@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2024 Colectica. All rights reserved
+﻿// Copyright (c) 2017 Colectica. All rights reserved
 // See the LICENSE file in the project root for more information.
 using Cogs.Model;
 using System;
@@ -11,14 +11,13 @@ using System.Xml;
 using System.Diagnostics;
 using System.Reflection;
 using Cogs.Common;
-using Cogs.Dto;
 
 namespace Cogs.Publishers
 {
     /// <summary>
-    /// Generate an uml schema using
+    /// Generate an uml schema using the Garden of Eden approach, all elements and type definitions are declared globally
     /// </summary>
-    public class UmlSchemaPublisher
+    public class UmlEaSchemaPublisher
     {
         /// <summary>
         /// path to write output in
@@ -34,12 +33,10 @@ namespace Cogs.Publishers
         /// boolean to determine whether to replace existing or not
         /// </summary>
         public bool Overwrite { get; set; }
-
         /// <summary>
         /// boolean to determine whether to output normative xmi. If false, outputs xmi 2.5.1
         /// </summary>
         public bool Normative { get; set; }
-
         /// <summary>
         /// string that specifies path to dot executable file
         /// </summary>
@@ -48,29 +45,8 @@ namespace Cogs.Publishers
         // list of all IDs created. Used to ensure no duplicates
         private HashSet<string> IdList = new HashSet<string>();
 
-        XNamespace xmins = "http://www.omg.org/spec/XMI/20131001";
-        XNamespace umlns = "http://www.omg.org/spec/UML/20131001";
-
-        private XElement CreatePackageElement(string id, string name, string description)
-        {
-            XElement result = new XElement("packagedElement", 
-                new XAttribute(xmins + "type", "uml:Package"),
-                new XAttribute(xmins + "id", id));
-
-            if(description != null)
-            {
-                var ownedComment = new XElement("ownedComment",
-                    new XAttribute(xmins + "type", "uml:Comment"),
-                    new XAttribute(xmins + "id", CreateId(id + "-ownedComment")),
-                    new XElement(xmins + "annotatedElement", new XAttribute(xmins + "idref", id)),
-                    new XElement(xmins + "body", description));
-                result.Add(ownedComment);
-            }
-
-            result.Add(new XElement("name", name));
-
-            return result;
-        }
+        XNamespace xmins = "http://www.omg.org/spec/XMI/20110701";
+        XNamespace umlns = "http://www.omg.org/spec/UML/20110701";
 
         public void Publish(CogsModel model)
         {
@@ -87,11 +63,15 @@ namespace Cogs.Publishers
             Directory.CreateDirectory(TargetDirectory);
 
 
+            // set namespaces based on output format            
+            if (!Normative)
+            {
+                xmins = "http://www.omg.org/spec/XMI/20131001";
+                umlns = "http://www.omg.org/spec/UML/20131001";
+            }
 
-            var itemPackage = CreatePackageElement("ItemTypes", "ItemTypes", "Identified items within the model.");
-            var complexPackage = CreatePackageElement("ComplexDataTypes", "ComplexDataTypes", "ComplexDataTypes are classes that are not identified and contain relationships to identified items or other complex data types.");
-            var datatypePackage = CreatePackageElement("DataTypes", "DataTypes", "DataTypes are classes that are not identified and contain no relations to identified items or complex types.");
-
+            XElement xmodel = new XElement("packagedElement", new XAttribute(xmins + "type", "uml:Package"), 
+                new XAttribute(xmins + "id", model.Settings.Slug), new XAttribute("name", model.Settings.Slug));
 
             lowerPrimatives = CogsTypes.SimpleTypeNames.Select(x => x.ToLower()).ToHashSet();
 
@@ -131,54 +111,44 @@ namespace Cogs.Publishers
             foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
                 bool isDatatype = dataTypeNames.Contains(item.Name);
-
-                if(isDatatype)
-                {
-                    datatypePackage.Add(CreateClassDescription(item, model, isDatatype));
-                }
-                else if(item is Model.ItemType)
-                {
-                    itemPackage.Add(CreateClassDescription(item, model, isDatatype));
-                }
-                else 
-                {
-                    complexPackage.Add(CreateClassDescription(item, model, isDatatype));
-                }
-
+                xmodel.Add(CreateClassDescription(item, model, isDatatype));
             }
 
             //create document header based on format specified
             XDocument xDoc;
             var headerElement = string.IsNullOrEmpty(model.HeaderInclude) ? null : new XComment(model.HeaderInclude);
-
-            XElement modelOwnedComment = null;
-            if (!string.IsNullOrEmpty(model.Settings.Description))
+            if (Normative)
             {
-                modelOwnedComment = new XElement("ownedComment",
-                    new XAttribute(xmins + "type", "uml:Comment"),
-                    new XAttribute(xmins + "id", CreateId(model.Settings.Slug + "-ownedComment")),
-                    new XElement("annotatedElement", new XAttribute(xmins + "idref", model.Settings.Slug)),
-                    new XElement("body", model.Settings.Description));
+                xDoc = new XDocument(
+                   new XDeclaration("1.0", "utf-8", null),
+                   headerElement,
+                   new XElement(xmins + "XMI", new XAttribute(XNamespace.Xmlns + "uml", "http://www.omg.org/spec/UML/20110701"),
+                        new XAttribute(XNamespace.Xmlns + "xmi", "http://www.omg.org/spec/XMI/20110701"),
+                        new XElement(xmins + "Documentation", new XElement("exporter", "Enterprise Architect"), new XElement("exporterVersion", "6.5")),
+                        new XElement(umlns + "Model", new XAttribute(xmins + "type", "uml:Model"), new XAttribute("name", "EA_Model"), xmodel)));
             }
+            else
+            {
 
-            var xmiModel = new XElement(umlns + "Model",
-                            new XAttribute(xmins + "id", CreateId(model.Settings.Slug)),
-                            modelOwnedComment,
-                            new XElement("name", model.Settings.Slug));
+                var extensions = new XElement(xmins + "Extension", new XAttribute("extender", "Enterprise Architect"), new XAttribute("extenderID", "6.5"),
+                          CreateDiagram("all", null, model));
 
-            xDoc = new XDocument(
-                new XDeclaration("1.0", "utf-8", null),
-                headerElement,
-                new XElement(xmins + "XMI", 
-                    new XAttribute(XNamespace.Xmlns + "uml", "http://www.omg.org/spec/UML/20131001"),
-                    new XAttribute(XNamespace.Xmlns + "xmi", "http://www.omg.org/spec/XMI/20131001"),
-                    xmiModel));
 
-            xmiModel.Add(itemPackage, complexPackage, datatypePackage);
+                // create header + structure of xml 2.5.1 (chunky and unpleasing, but works)
+                xDoc = new XDocument(
+                   new XDeclaration("1.0", "utf-8", null),
+                   headerElement,
+                   new XElement(xmins + "XMI", new XAttribute(XNamespace.Xmlns + "uml", "http://www.omg.org/spec/UML/20131001"),
+                        new XAttribute(XNamespace.Xmlns + "xmi", "http://www.omg.org/spec/XMI/20131001"),
+                        new XElement(xmins + "Documentation", new XAttribute("exporter", "Enterprise Architect"), new XAttribute("exporterVersion", "6.5")),
+                        new XElement(umlns + "Model", new XAttribute(xmins + "type", "uml:Model"), new XAttribute("name", "EA_Model"), xmodel),
+                        extensions));
+
+            }
 
 
             //write collection to file
-            using (StreamWriter outputFile = new StreamWriter(Path.Combine(TargetDirectory, model.Settings.Slug + ".xmi")))
+            using (StreamWriter outputFile = new StreamWriter(Path.Combine(TargetDirectory, "uml" + ".xmi.xml")))
             {
                 XmlTextWriter writer = new XmlTextWriter(outputFile);
                 writer.Formatting = Formatting.Indented;
@@ -191,7 +161,7 @@ namespace Cogs.Publishers
         HashSet<string> dataTypeNames = new HashSet<string>();
         HashSet<string> complexTypeNames = new HashSet<string>();
         HashSet<string> lowerPrimatives = new HashSet<string>();
-        private List<XElement> CreateClassDescription(Model.DataType item, CogsModel model, bool isDatatype = false)
+        private List<XElement> CreateClassDescription(DataType item, CogsModel model, bool isDatatype = false)
         {
             var results = new List<XElement>();
 
@@ -205,13 +175,18 @@ namespace Cogs.Publishers
             var newItem = new XElement("packagedElement", 
                 new XAttribute(xmins + "type", umlType),
                 new XAttribute(xmins + "id", CreateId(item.Name)),
-                new XElement("ownedComment",
-                    new XAttribute(xmins + "type", "uml:Comment"),
-                    new XAttribute(xmins + "id", CreateId(item.Name + "-ownedComment")),
-                    new XElement("annotatedElement", new XAttribute(xmins + "idref", item.Name)),
-                    new XElement("body", item.Description)),
-                new XElement("name", item.Name)
-                );                        
+                new XAttribute("name", item.Name)
+                );
+            /*
+            var ownedComment = new XElement("ownedComment");
+            ownedComment.Add(
+                new XAttribute(xmins + "type", "uml:Comment"),
+                new XAttribute(xmins + "id", CreateId(item.Name + "-ownedComment")));
+            ownedComment.Add(
+                new XElement(xmins + "annotatedElement", new XAttribute(xmins + "idref", item.Name)),
+                new XElement(xmins + "body", item.Description));
+            newItem.Add(ownedComment);
+            */
 
             // adds pointers for inheritance where applicable
             if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
@@ -219,8 +194,7 @@ namespace Cogs.Publishers
                 newItem.Add(new XElement("generalization",
                     new XAttribute(xmins + "type", "uml:Generalization"),
                     new XAttribute(xmins + "id", CreateId(item.Name + ".Generalization")),
-                    new XElement("general", 
-                        new XAttribute(xmins + "idref", item.ExtendsTypeName))));
+                    new XAttribute("general", item.ExtendsTypeName)));
             }
 
             // loop through properties of class and add to class
@@ -238,11 +212,16 @@ namespace Cogs.Publishers
                     var newProperty = new XElement("ownedAttribute", 
                         new XAttribute(xmins + "type", "uml:Property"),
                         new XAttribute(xmins + "id", CreateId(id)),
-                        new XElement("ownedComment",
-                            new XAttribute(xmins + "type", "uml:Comment"),
-                            new XAttribute(xmins + "id", CreateId(id + "-ownedComment")),
+                        new XAttribute("name", property.Name));
+                    /*
+                    newProperty.Add(new XElement("ownedComment",
+                        new XAttribute(xmins + "type", "uml:Comment"),
+                        new XAttribute(xmins + "id", CreateId(id + "-ownedComment"))),
                             new XElement(xmins + "annotatedElement", new XAttribute(xmins + "idref", id)),
-                            new XElement(xmins + "body", item.Description)));
+                            new XElement(xmins + "body", item.Description));
+                    */
+
+                    newProperty.Add(new XElement("type", new XAttribute(xmins + "idref", property.DataTypeName))); // TODO primative types
 
                     if (property.MinCardinality != null)
                     {
@@ -262,20 +241,6 @@ namespace Cogs.Publishers
                             new XAttribute(xmins + "id", CreateId(id + ".upperValue")),
                             attribute));
                     }
-
-                    newProperty.Add(new XElement("name", property.Name));
-                    if (isPrimative)
-                    {
-                        newProperty.Add(new XElement("type", 
-                            new XAttribute("href", $"http://www.w3.org/2001/XMLSchema#{property.DataTypeName.ToLowerInvariant()}"),
-                            new XAttribute(xmins + "type", "uml:PrimitiveType")));
-                    }
-                    else
-                    {
-                        newProperty.Add(new XElement("type", new XAttribute(xmins + "idref", property.DataTypeName)));
-                    }
-                    
-
                     newItem.Add(newProperty);
                 }
                 else
@@ -285,8 +250,6 @@ namespace Cogs.Publishers
                     var classLink = new XElement("packagedElement", 
                         new XAttribute(xmins + "type", "uml:Association"),
                         new XAttribute(xmins + "id", CreateId("Association.from" + id + ".to." + property.DataTypeName)));
-
-                    classLink.Add(new XElement("name", property.Name));
 
                     classLink.Add(new XElement("memberEnd", 
                         new XAttribute(xmins + "idref", id + ".association")));
@@ -298,14 +261,15 @@ namespace Cogs.Publishers
 
                     var ownedEnd = new XElement("ownedEnd", 
                         new XAttribute(xmins + "type", "uml:Property"),
-                        new XAttribute(xmins + "id", CreateId("Association.from" + id + ".to." + property.DataTypeName + ".ownedEnd")));
+                        new XAttribute(xmins + "id", CreateId("Association.from" + id + ".to." + property.DataTypeName + ".ownedEnd")),
+                        new XAttribute("association", "Association.from" + id + ".to." + property.DataTypeName),
+                        new XAttribute("isOrdered", isOrdered));
 
-                    
-                    // item types are always 0..* since they can be referenced
+                    ownedEnd.Add(new XElement("type", new XAttribute(xmins + "idref", item.Name)));
                     var min = "0";
                     var max = "*";
                     // check to see if item being referenced is a ReusableDataType
-                    if (dataTypeNames.Contains(property.DataTypeName) || complexTypeNames.Contains(property.DataTypeName))
+                    if (dataTypeNames.Contains(property.DataTypeName))
                     {
                         min = "1";
                         max = "1";
@@ -316,10 +280,6 @@ namespace Cogs.Publishers
                     ownedEnd.Add(new XElement("upperValue", new XAttribute(xmins + "type", "uml:LiteralUnlimitedNatural"),
                         new XAttribute(xmins + "id", CreateId("Association.from" + id + ".to." + property.DataTypeName + ".ownedEnd.MaxCardinality")),
                         new XAttribute("value", max)));
-
-                    ownedEnd.Add(new XElement("association", new XAttribute(xmins + "idref", "Association.from" + id + ".to." + property.DataTypeName)));
-                    ownedEnd.Add(new XElement("type", new XAttribute(xmins + "idref", item.Name)));
-
                     classLink.Add(ownedEnd);
 
                     results.Add(classLink);
@@ -330,26 +290,40 @@ namespace Cogs.Publishers
                         new XAttribute(xmins + "id", CreateId(id + ".association")),
                         new XAttribute("name", property.Name),
                         new XAttribute("association", "Association.from" + property.Name + ".to." + property.DataTypeName),
-                        new XAttribute("isOrdered", "true"),
-                        new XElement("ownedComment",
-                            new XAttribute(xmins + "type", "uml:Comment"),
-                            new XAttribute(xmins + "id", CreateId(id + ".association" + "-ownedComment")),
-                            new XElement(xmins + "annotatedElement", new XAttribute(xmins + "idref", id + ".association")),
-                            new XElement(xmins + "body", property.Description)));
-
-                    
+                        new XAttribute("isOrdered", "true"));
+                    link.Add(new XElement("type", new XAttribute(xmins + "idref", property.DataTypeName)));
                     link.Add(new XElement("lowerValue", new XAttribute(xmins + "type", "uml:LiteralInteger"),
                         new XAttribute(xmins + "id", CreateId(id + ".association.lowerValue")),
                         new XAttribute("value", property.MinCardinality)));
                     link.Add(new XElement("upperValue", new XAttribute(xmins + "type", "uml:LiteralUnlimitedNatural"),
                         new XAttribute(xmins + "id", CreateId(id + ".association.upperValue")),
                         new XAttribute("value", property.MaxCardinality)));
-                    link.Add(new XElement("name", property.Name));
-                    link.Add(new XElement("isOrdered", isOrdered));
-                    link.Add(new XElement("type", new XAttribute(xmins + "idref", property.DataTypeName)));
                     newItem.Add(link);
                 }
 
+
+                /*
+                // see if property is a type of class
+                if (model.ItemTypes.Contains(property.DataType) && !IdList.Contains("Association.from" + property.Name + ".to." + property.DataTypeName))
+                {
+
+
+                    
+                    // reference link from current class as attribute
+                    var link = new XElement("ownedAttribute", new XAttribute(xmins + "type", "uml:Property"),
+                        new XAttribute(xmins + "id", CreateId(item.Name + "." + property.Name + ".association")),
+                        new XAttribute("name", property.Name),
+                        new XAttribute("association", "Association.from" + property.Name + ".to." + property.DataTypeName),
+                        new XAttribute("isOrdered", "true"));
+                    link.Add(new XElement("type", new XAttribute(xmins + "idref", property.DataTypeName)));
+                    link.Add(new XElement("lowerValue", new XAttribute(xmins + "type", "uml:LiteralInteger"),
+                        new XAttribute(xmins + "id", CreateId(item.Name + "." + property.Name + ".association.MinCardinality")),
+                        new XAttribute("value", min)));
+                    link.Add(new XElement("upperValue", new XAttribute(xmins + "type", "uml:LiteralUnlimitedNatural"),
+                        new XAttribute(xmins + "id", CreateId(item.Name + "." + property.Name + ".association.MaxCardinality")),
+                        new XAttribute("value", max)));
+                    newItem.Add(link);
+            }*/
 
             }
 
@@ -360,7 +334,7 @@ namespace Cogs.Publishers
         }
 
 
-        private XElement CreateDiagram(string diagramName, List<Model.ItemType> items, CogsModel model)
+        private XElement CreateDiagram(string diagramName, List<ItemType> items, CogsModel model)
         {
 
             // run svg publisher to create svg file to use for positioning
