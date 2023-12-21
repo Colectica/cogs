@@ -21,11 +21,14 @@ COGS is for domain experts and groups who value **ease of collaboration** and **
 Publishable formats include:
 
 * XML Schema
+* JSON Schema
 * OWL 2 (RDF Schema)
+* ShEx
+* SHACL
+* LinkML
 * OMG's UML Normative XMI 2.4.2
 * OMG's UML XMI 2.5 with Diagrams and Diagram Exchange
 * Sphinx HTML documentation and visualizations
-* JSON Schema
 * C# class library with JSON and XML serialization
 * SVG and dot visualizations
 * GraphQL schema language
