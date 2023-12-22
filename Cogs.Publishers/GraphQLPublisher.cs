@@ -107,7 +107,7 @@ namespace Cogs.Publishers
         }
         public void WriteToFile(List<GraphQLItems> items)
         {
-            FileStream fs = new FileStream(Path.Combine(TargetDirectory, "GraphQL" + ".json"), FileMode.OpenOrCreate, FileAccess.Write);
+            FileStream fs = new FileStream(Path.Combine(TargetDirectory, "GraphQL" + ".graphqls"), FileMode.OpenOrCreate, FileAccess.Write);
             TextWriter tmp = Console.Out;
             StreamWriter sw = new StreamWriter(fs);
             Console.SetOut(sw);
