@@ -100,6 +100,11 @@ namespace Cogs.Publishers.LinkMl
             cogsDate.uri = "xsd:string";
             types.Add("cogsDate", cogsDate);
 
+            var duration = new LinkMLType();
+            duration.description = "The duration data type is used to specify a time interval.";
+            duration.uri = "xsd:duration";
+            types.Add("duration", duration);
+
             var language = new LinkMLType();
             language.description = "A BCP47 language tag code";
             language.uri = "xsd:string";
