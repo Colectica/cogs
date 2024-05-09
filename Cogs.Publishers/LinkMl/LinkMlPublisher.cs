@@ -110,6 +110,11 @@ namespace Cogs.Publishers.LinkMl
             integer.uri = "xsd:integer";
             types.Add("int", integer);
 
+            var integer64 = new LinkMLType();
+            integer64.description = "An 64 bit integer";
+            integer64.uri = "xsd:long";
+            types.Add("long", integer64);
+
             var dateTime = new LinkMLType();
             dateTime.description = "A dateTime";
             dateTime.uri = "xsd:dateTime";
