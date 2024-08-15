@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Diagnostics;
 using Cogs.Model;
+using Markdig;
 
 namespace Cogs.Publishers
 {
@@ -353,10 +354,22 @@ namespace Cogs.Publishers
                 // TODO Markdown to RST
                 foreach(var extraText in itemType.AdditionalText)
                 {
-                    builder.AppendLine(extraText.Key);
-                    builder.AppendLine(new string('~',extraText.Key.Length));
+                    builder.AppendLine(extraText.Name);
+                    builder.AppendLine(new string('~',extraText.Name.Length));
                     builder.AppendLine();
-                    builder.AppendLine(extraText.Value);
+
+                    var html = Markdown.ToHtml(extraText.Content);
+                    builder.AppendLine(".. raw:: html");
+                    builder.AppendLine();
+
+                    using (var reader = new StringReader(html))
+                    {
+                        for (string? line = reader.ReadLine(); line != null; line = reader.ReadLine())
+                        {
+                            builder.AppendLine("   " + line);
+                        }
+                    }
+                    
 
                     builder.AppendLine();
                 }

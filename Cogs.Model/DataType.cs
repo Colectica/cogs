@@ -1,5 +1,6 @@
 ﻿// Copyright (c) 2017 Colectica. All rights reserved
 // See the LICENSE file in the project root for more information.
+using Cogs.Dto;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,7 +17,7 @@ namespace Cogs.Model
         public string Name { get; set; }
         public string Description { get; set; }
 
-        public Dictionary<string, string> AdditionalText = new Dictionary<string, string>();
+        public List<AdditionalText> AdditionalText = new List<AdditionalText>();
 
         public string ExtendsTypeName { get; set; }
         public List<DataType> ParentTypes { get; } = new List<DataType>();

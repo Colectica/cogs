@@ -218,7 +218,14 @@ namespace Cogs.Dto
                     }
                     if(markdownName == "readme") { continue; }
 
-                    itemType.AdditionalText[markdownName] = markdownContent;
+                    var additional = new AdditionalText()
+                    {
+                        FilePath = markdown,
+                        Content = markdownContent,
+                        Format = "markdown",
+                        Name = markdownName
+                    };
+                    itemType.AdditionalText.Add(additional);
                 }
 
                 // TODO DeprecatedNamespace
