@@ -690,7 +690,14 @@ namespace {csNamespace}
                 {{
                     foreach (var item in TopLevelReferences)
                     {{
-                        xDoc.Root.Add(new XElement(ns + ""TopLevelReference"", new XElement(ns + ""ID"", item.ID), new XElement(ns + ""TypeOfObject"", item.GetType())));
+                        xDoc.Root.Add(
+                            new XElement(ns + ""TopLevelReference"", 
+                                new XElement(ns + ""URN"", item.URN),
+                                new XElement(ns + ""Agency"", item.Agency),
+                                new XElement(ns + ""ID"", item.ID),
+                                new XElement(ns + ""Version"", item.Version),
+                                new XElement(ns + ""TypeOfObject"", item.GetType().Name)
+                            ));
                     }}
                 }}
                 foreach (var item in Items)
