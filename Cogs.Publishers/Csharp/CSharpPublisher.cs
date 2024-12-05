@@ -95,7 +95,7 @@ namespace Cogs.Publishers.Csharp
                 XDocument project = new XDocument(
                     new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
                         new XElement("PropertyGroup", 
-                            new XElement("TargetFramework", "net6"),
+                            new XElement("TargetFramework", "net8.0"),
                             IsNullableEnabled ? new XElement("Nullable", "enable") : null),
                         new XElement("ItemGroup", 
                             new XElement("PackageReference", new XAttribute("Include", "System.ComponentModel.Annotations"), new XAttribute("Version", "5.0.0")),
