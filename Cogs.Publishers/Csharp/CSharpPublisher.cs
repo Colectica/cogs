@@ -80,7 +80,7 @@ namespace Cogs.Publishers.Csharp
 
 
             //get the project name
-            string csNamespace = model.Settings.CSharpNamespace;
+            string? csNamespace = model.Settings.CSharpNamespace;
             if (string.IsNullOrWhiteSpace(csNamespace))
             {
                 csNamespace = "Cogs.Model";
@@ -106,15 +106,13 @@ namespace Cogs.Publishers.Csharp
                     OmitXmlDeclaration = true,
                     Indent = true                
                 };
-                using (FileStream s = new FileStream(Path.Combine(TargetDirectory, csNamespace + ".csproj"), FileMode.Create, FileAccess.ReadWrite))
-                using (XmlWriter xw = XmlWriter.Create(s, xws))
-                {
-                    project.Save(xw);
-                }
+                using FileStream s = new(Path.Combine(TargetDirectory, csNamespace + ".csproj"), FileMode.Create, FileAccess.ReadWrite);
+                using XmlWriter xw = XmlWriter.Create(s, xws);
+                project.Save(xw);
             }
 
             
-            // copy types file
+            // Copy Types.cs file.
             using Stream? typeStream = (GetType()?.GetTypeInfo().Assembly.GetManifestResourceStream("Cogs.Publishers.Csharp.Types.txt")) 
                 ?? throw new Exception("Could not find Types.txt resource");
             using StreamReader typeReader = new(typeStream);
@@ -132,8 +130,7 @@ namespace Cogs.Publishers.Csharp
             typesBuilder.AppendLine(typesContent);
             File.WriteAllText(Path.Combine(TargetDirectory, "Types.cs"), typesBuilder.ToString());
         
-
-            
+            // Copy the DependantTypes.cs file.
             using Stream? stream = GetType().GetTypeInfo().Assembly.GetManifestResourceStream("Cogs.Publishers.Csharp.DependantTypes.txt")
                 ?? throw new Exception("Could not find DependantTypes.txt resource");
             using StreamReader reader = new(stream);
@@ -148,62 +145,66 @@ namespace Cogs.Publishers.Csharp
 
             File.WriteAllText(Path.Combine(TargetDirectory, "DependantTypes.cs"), fileContents, Encoding.UTF8);
 
-            
-
-            foreach (var item in model.ItemTypes.Concat(model.ReusableDataTypes))
+            // Write a C# class for every item type.
+            foreach (DataType? item in model.ItemTypes.Concat(model.ReusableDataTypes))
             {
-                // add class description using '$' for newline and '#' for tabs
-                var newClass = new StringBuilder();
+                if (item == null)
+                {
+                    continue;
+                }
+
+                StringBuilder classBuilder = new();
 
                 if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
                 {
-                    newClass.AppendLine("/*");
-                    newClass.AppendLine(model.HeaderInclude);
-                    newClass.AppendLine("*/");
-                    newClass.AppendLine();
+                    classBuilder.AppendLine("/*");
+                    classBuilder.AppendLine(model.HeaderInclude);
+                    classBuilder.AppendLine("*/");
+                    classBuilder.AppendLine();
                 }
-                newClass.AppendLine("using System;");
-                newClass.AppendLine("using System.Linq;");
-                newClass.AppendLine("using Newtonsoft.Json;");
-                newClass.AppendLine("using System.Xml.Linq;");
-                newClass.AppendLine("using Cogs.SimpleTypes;");
-                newClass.AppendLine("using System.Reflection;");
-                newClass.AppendLine("using System.Collections;");
-                newClass.AppendLine("using Newtonsoft.Json.Linq;");
-                newClass.AppendLine("using Cogs.DataAnnotations;");
-                newClass.AppendLine("using Cogs.Converters;");
-                newClass.AppendLine("using System.Collections.Generic;");                
-                newClass.AppendLine("using System.ComponentModel.DataAnnotations;");
-                newClass.AppendLine();
-                newClass.AppendLine($"namespace {csNamespace}");
-                newClass.AppendLine("{");
-                newClass.AppendLine( "    /// <summary>");
-                foreach(var line in item.Description.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None))
+                classBuilder.AppendLine("using System;");
+                classBuilder.AppendLine("using System.Linq;");
+                classBuilder.AppendLine("using Newtonsoft.Json;");
+                classBuilder.AppendLine("using System.Xml.Linq;");
+                classBuilder.AppendLine("using Cogs.SimpleTypes;");
+                classBuilder.AppendLine("using System.Reflection;");
+                classBuilder.AppendLine("using System.Collections;");
+                classBuilder.AppendLine("using Newtonsoft.Json.Linq;");
+                classBuilder.AppendLine("using Cogs.DataAnnotations;");
+                classBuilder.AppendLine("using Cogs.Converters;");
+                classBuilder.AppendLine("using System.Collections.Generic;");                
+                classBuilder.AppendLine("using System.ComponentModel.DataAnnotations;");
+                classBuilder.AppendLine();
+                classBuilder.AppendLine($"namespace {csNamespace}");
+                classBuilder.AppendLine("{");
+                classBuilder.AppendLine( "    /// <summary>");
+                foreach(var line in item.Description.Split(["\r\n", "\r", "\n"], StringSplitOptions.None))
                 {
-                    newClass.AppendLine($"    /// {line}");
+                    classBuilder.AppendLine($"    /// {line}");
                 }
                 
-                newClass.AppendLine( "    /// <summary>");
-                newClass.Append("    public ");
-                
+                classBuilder.AppendLine( "    /// <summary>");
+                classBuilder.Append("    public ");
 
-                var helpers = new StringBuilder();
-                var toXml = new StringBuilder();
-                string n = "";
-                if (model.ReusableDataTypes.Contains(item)) { n = "string name"; }
+
+                // Build the ToXml method.
+                StringBuilder helpers = new();
+                StringBuilder toXml = new();
+                string parameterStr = "";
+                if (model.ReusableDataTypes.Contains(item)) { parameterStr = "string name"; }
                 if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName) && !CogsTypes.SimpleTypeNames.Contains(item.ExtendsTypeName) )
                 {
-                    toXml.AppendLine($"        public override XElement ToXml({n})");
+                    toXml.AppendLine($"        public override XElement ToXml({parameterStr})");
                 }
                 else
                 {
-                    toXml.AppendLine($"        public virtual XElement ToXml({n})");
+                    toXml.AppendLine($"        public virtual XElement ToXml({parameterStr})");
                 }
                 toXml.AppendLine("        {");
                 toXml.AppendLine($"            XNamespace ns = \"{TargetNamespace}\";");
-                if (n.Equals(""))
+                if (string.IsNullOrWhiteSpace(parameterStr))
                 {
-                    toXml.AppendLine($"            XElement xEl = new XElement(ns + \"{item.Name}\");");
+                    toXml.AppendLine($"""            XElement xEl = new XElement(ns + "{item.Name}");""");
                 }
                 else
                 {
@@ -211,39 +212,45 @@ namespace Cogs.Publishers.Csharp
                 }
                 
 
-                // add abstract to class title if relevant
-                if (item.IsAbstract) { newClass.Append("abstract "); }
-                newClass.Append("partial class " + item.Name);
+                // Add abstract to class title if relevant
+                if (item.IsAbstract) { classBuilder.Append("abstract "); }
+                classBuilder.Append("partial class " + item.Name);
 
-                // allow inheritance when relevant
-                string nameArgument = model.ReusableDataTypes.Contains(item) ? "\"" + item.ExtendsTypeName + "\"" : string.Empty;
+                // Allow inheritance when relevant
+                string nameArgument = model.ReusableDataTypes.Contains(item) ?
+                    $"\"{item.ExtendsTypeName}\"" : string.Empty;
                 if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
                 {
                     if(CogsTypes.SimpleTypeNames.Contains(item.ExtendsTypeName))
                     {
                         // TODO should we allow subclassing simple types? add others and handle serialization, or eliminate
-                        newClass.AppendLine($"");
-                        newClass.AppendLine("    {");
-                        newClass.AppendLine("        /// <summary>");
-                        newClass.AppendLine($"        /// The value of the item");
-                        newClass.AppendLine("        /// <summary>");                        
+                        classBuilder.AppendLine($"");
+                        classBuilder.AppendLine("    {");
+                        classBuilder.AppendLine("        /// <summary>");
+                        classBuilder.AppendLine($"        /// The value of the item");
+                        classBuilder.AppendLine("        /// <summary>");                        
                         if(string.Compare(item.ExtendsTypeName, "string") == 0)
                         {
-                            newClass.AppendLine($"        public string Value {{ get; set; }}");
+                            classBuilder.AppendLine($"        public string Value {{ get; set; }}");
                         }
                         else
                         {
                             // TODO other types?
-                            newClass.AppendLine($"        public string Value {{ get; set; }}");
+                            classBuilder.AppendLine($"        public string Value {{ get; set; }}");
                         }
 
-                        newClass.AppendLine();
+                        classBuilder.AppendLine();
 
                     }
                     else
                     {
-                        newClass.AppendLine($" : {item.ExtendsTypeName}");
-                        newClass.AppendLine("    {");
+                        // This type extends another type.
+
+                        // Add the inheritance to the class declaration.
+                        classBuilder.AppendLine($" : {item.ExtendsTypeName}");
+                        classBuilder.AppendLine("    {");
+
+                        // Add the base class descendants to the ToXml method.
                         toXml.AppendLine($"            foreach (var el in base.ToXml({nameArgument}).Descendants())");
                         toXml.AppendLine("            {");
                         toXml.AppendLine("                xEl.Add(el);");
@@ -253,18 +260,18 @@ namespace Cogs.Publishers.Csharp
                 }
                 else if (!model.ReusableDataTypes.Contains(item))
                 {
-                    newClass.AppendLine(" : IIdentifiable");
-                    newClass.AppendLine("    {");
-                    newClass.AppendLine("        [JsonIgnore]");                    
+                    classBuilder.AppendLine(" : IIdentifiable");
+                    classBuilder.AppendLine("    {");
+                    classBuilder.AppendLine("        [JsonIgnore]");                    
                     string format = string.Join(":", model.Identification.Select(x => "{" + x.Name + "}"));
-                    newClass.AppendLine($"        public string ReferenceId {{ get {{ return $\"{format}\"; }} }}");                    
+                    classBuilder.AppendLine($"        public string ReferenceId {{ get {{ return $\"{format}\"; }} }}");                    
 
                 }
-                else { newClass.AppendLine($"{Environment.NewLine}    {{"); }
+                else { classBuilder.AppendLine($"{Environment.NewLine}    {{"); }
 
 
                 // insert a type descriminator that will be output for json serialization
-                if (item.IsSubstitute && item is DataType)
+                if (item.IsSubstitute)
                 {
                     bool isFirst = true;
                     if(item.ParentTypes.Count > 0)
@@ -278,70 +285,74 @@ namespace Cogs.Publishers.Csharp
                     }
                     if (isFirst)
                     {
-                        newClass.AppendLine();
-                        newClass.AppendLine("        /// <summary>");
-                        newClass.AppendLine("        /// Set the TypeDescriminator");
-                        newClass.AppendLine("        /// <summary>");
-                        newClass.AppendLine("        public " + item.Name + "() { this.TypeDescriminator = this.GetType().Name; }");
-                        newClass.AppendLine();
-                        newClass.AppendLine("        /// <summary>");
-                        newClass.AppendLine("        /// Type descriminator for json serialization");
-                        newClass.AppendLine("        /// <summary>");
-                        newClass.AppendLine("        [JsonProperty(\"$type\")]");
-                        newClass.AppendLine("        public string TypeDescriminator { get; set; }");
-                        newClass.AppendLine();
+                        classBuilder.AppendLine();
+                        classBuilder.AppendLine("        /// <summary>");
+                        classBuilder.AppendLine("        /// Set the TypeDescriminator");
+                        classBuilder.AppendLine("        /// <summary>");
+                        classBuilder.AppendLine($"        public {item.Name}() {{ this.TypeDescriminator = this.GetType().Name; }}");
+                        classBuilder.AppendLine();
+                        classBuilder.AppendLine("        /// <summary>");
+                        classBuilder.AppendLine("        /// Type descriminator for json serialization");
+                        classBuilder.AppendLine("        /// <summary>");
+                        classBuilder.AppendLine("        [JsonProperty(\"$type\")]");
+                        classBuilder.AppendLine("        public string TypeDescriminator { get; set; }");
+                        classBuilder.AppendLine();
                     }
                 }
 
-
-                foreach (var prop in item.Properties)
+                // For every property in the model, add a C# property.
+                foreach (Property? prop in item!.Properties)
                 {
+                    if (prop == null)
+                    {
+                        continue;
+                    }
 
                     // create documentation for property
-                    newClass.AppendLine("        /// <summary>");
+                    classBuilder.AppendLine("        /// <summary>");
                     foreach (var line in prop.Description.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None))
                     {
-                        newClass.AppendLine($"        /// {line}");
+                        classBuilder.AppendLine($"        /// {line}");
                     }                    
-                    newClass.AppendLine("        /// <summary>");
+                    classBuilder.AppendLine("        /// <summary>");
 
                     
                     // Add type converters for specific serialization
                     if(prop.DataTypeName.Equals("date", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        newClass.AppendLine("        [JsonConverter(typeof(DateConverter))]");
+                        classBuilder.AppendLine("        [JsonConverter(typeof(DateConverter))]");
                     }
                     else if (prop.DataTypeName.Equals("time", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        newClass.AppendLine("        [JsonConverter(typeof(TimeConverter))]");
+                        classBuilder.AppendLine("        [JsonConverter(typeof(TimeConverter))]");
                     }
                     else if (prop.DataTypeName.Equals("datetime", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        newClass.AppendLine("        [JsonConverter(typeof(DateTimeConverter))]");
+                        classBuilder.AppendLine("        [JsonConverter(typeof(DateTimeConverter))]");
                     }
                     else if (prop.DataTypeName.Equals("gday", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        newClass.AppendLine("        [JsonConverter(typeof(GDayConverter))]");
+                        classBuilder.AppendLine("        [JsonConverter(typeof(GDayConverter))]");
                     }
                     else if (prop.DataTypeName.Equals("gmonth", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        newClass.AppendLine("        [JsonConverter(typeof(GMonthConverter))]");
+                        classBuilder.AppendLine("        [JsonConverter(typeof(GMonthConverter))]");
                     }
                     else if (prop.DataTypeName.Equals("gmonthday", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        newClass.AppendLine("        [JsonConverter(typeof(GMonthDayConverter))]");
+                        classBuilder.AppendLine("        [JsonConverter(typeof(GMonthDayConverter))]");
                     }
                     else if (prop.DataTypeName.Equals("gyear", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        newClass.AppendLine("        [JsonConverter(typeof(GYearConverter))]");
+                        classBuilder.AppendLine("        [JsonConverter(typeof(GYearConverter))]");
                     }
                     else if (prop.DataTypeName.Equals("gyearmonth", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        newClass.AppendLine("        [JsonConverter(typeof(GYearMonthConverter))]");
+                        classBuilder.AppendLine("        [JsonConverter(typeof(GYearMonthConverter))]");
                     }
                     else if (prop.DataTypeName.Equals("duration", StringComparison.CurrentCultureIgnoreCase))
                     {
-                        newClass.AppendLine("        [JsonConverter(typeof(DurationConverter))]");
+                        classBuilder.AppendLine("        [JsonConverter(typeof(DurationConverter))]");
                     }
 
                     // set c# datatype representation while saving original so can tell what type it is
@@ -357,35 +368,35 @@ namespace Cogs.Publishers.Csharp
                     {
                         if (prop.MinLength != null && prop.MaxLength != null)
                         {
-                            newClass.AppendLine($"        [StringLength({prop.MaxLength}, MinimumLength = {prop.MinLength})]");
+                            classBuilder.AppendLine($"        [StringLength({prop.MaxLength}, MinimumLength = {prop.MinLength})]");
                         }
                         else if (prop.MaxLength != null)
                         {
-                            newClass.AppendLine($"        [StringLength({prop.MaxLength})]");
+                            classBuilder.AppendLine($"        [StringLength({prop.MaxLength})]");
                         }
                         else if (prop.MinLength != null)
                         {
-                            newClass.AppendLine($"        [StringLength({int.MaxValue}, MinimumLength = {prop.MinLength})]");
+                            classBuilder.AppendLine($"        [StringLength({int.MaxValue}, MinimumLength = {prop.MinLength})]");
                         }
                         if (prop.DataTypeName.Equals("string"))
                         {
                             // work with Enum and pattern
                             if (prop.Enumeration.Count > 0)
                             {
-                                newClass.AppendLine("        [StringValidation(new string[] {");
+                                classBuilder.AppendLine("        [StringValidation(new string[] {");
                                 bool useComma = false;
                                 foreach (var option in prop.Enumeration)
                                 {
-                                    if (useComma) { newClass.Append(", "); }
-                                    newClass.AppendLine($"            \"{option}\"");
+                                    if (useComma) { classBuilder.Append(", "); }
+                                    classBuilder.AppendLine($"            \"{option}\"");
                                     useComma = true;
                                 }
-                                if (!string.IsNullOrWhiteSpace(prop.Pattern)) { newClass.AppendLine($"        }}, {prop.Pattern})]"); }
-                                else { newClass.AppendLine("        })]"); }
+                                if (!string.IsNullOrWhiteSpace(prop.Pattern)) { classBuilder.AppendLine($"        }}, {prop.Pattern})]"); }
+                                else { classBuilder.AppendLine("        })]"); }
                             }
                             else if (!string.IsNullOrWhiteSpace(prop.Pattern))
                             {
-                                newClass.AppendLine($"        [StringValidation(null, @\"{prop.Pattern}\")]");
+                                classBuilder.AppendLine($"        [StringValidation(null, @\"{prop.Pattern}\")]");
                             }
                         }
                     }
@@ -393,24 +404,24 @@ namespace Cogs.Publishers.Csharp
                     {                        
                         if (prop.MinInclusive != null || prop.MaxInclusive != null)
                         {
-                            newClass.AppendLine($"        [Range({prop.MinInclusive}, {prop.MaxInclusive})]");
+                            classBuilder.AppendLine($"        [Range({prop.MinInclusive}, {prop.MaxInclusive})]");
                         }
                         if (prop.MinExclusive != null || prop.MaxExclusive != null)
                         {
-                            newClass.AppendLine($"        [ExclusiveRange({prop.MinInclusive}, {prop.MaxInclusive})]");
+                            classBuilder.AppendLine($"        [ExclusiveRange({prop.MinInclusive}, {prop.MaxInclusive})]");
                         }
                     }
                     
                     
                     if (model.ItemTypes.Contains(prop.DataType) && !item.IsAbstract)
                     {
-                        newClass.AppendLine("        [JsonConverter(typeof(IIdentifiableConverter))]");
+                        classBuilder.AppendLine("        [JsonConverter(typeof(IIdentifiableConverter))]");
                     }
 
                     // allow substitution of reusable datatypes
                     if (prop.AllowSubtypes && model.ReusableDataTypes.Contains(prop.DataType))
                     {
-                        newClass.AppendLine("        [JsonConverter(typeof(SubstitutionConverter))]");
+                        classBuilder.AppendLine("        [JsonConverter(typeof(SubstitutionConverter))]");
                     }
 
 
@@ -488,37 +499,42 @@ namespace Cogs.Publishers.Csharp
                         string nullableStr = IsNullableEnabled && prop.MinCardinality == "0" && prop.MaxCardinality == "1" ? "?" : "";
                         //bool isIdentificationProperty = model.Identification.Contains(prop);
                         //string nullableStr = IsNullableEnabled && !isIdentificationProperty ? "?" : "";
-                        newClass.AppendLine($"        public {prop.DataTypeName}{nullableStr} {prop.Name} {{ get; set; }}");
+                        classBuilder.AppendLine($"        public {prop.DataTypeName}{nullableStr} {prop.Name} {{ get; set; }}");
                     }
                     // otherwise, create a list object to allow multiple
                     else
                     {
                         if (Isboolintdoubleulong(prop.DataTypeName) || model.Identification.Contains(prop))
                         {
-                            toXml.AppendLine($"            xEl.Add(");
-                            toXml.AppendLine($"                from item in {prop.Name}");
-                            toXml.AppendLine($"                select new XElement(ns + \"{prop.Name}\", item));");
+                            toXml.AppendLine($""""
+                                xEl.Add(
+                                    from item in {prop.Name}
+                                    select new XElement(ns + \"{prop.Name}\", item));
+                            """");
                         }
                         else if (origDataTypeName != null)
                         {
-                            toXml.AppendLine($"            if ({prop.Name} != null && {prop.Name}.Count > 0)");
-                            toXml.AppendLine("            {");
-                            toXml.AppendLine($"                foreach (var item in {prop.Name})");
-                            toXml.AppendLine("                {");
-                            toXml.AppendLine($"                    {SimpleToXml(origDataTypeName, "item", prop.Name, "xEl", true)}");
-                            toXml.AppendLine("                }");
-                            toXml.AppendLine("            }");
-
+                            toXml.AppendLine($$"""
+                                if ({{prop.Name}} != null && {{prop.Name}}.Count > 0)
+                                {
+                                    foreach (var item in {prop.Name})
+                                    {
+                                        {SimpleToXml(origDataTypeName, "item", prop.Name, "xEl", true)}
+                                    }
+                                }
+                            """);
                         }
                         else if (model.ReusableDataTypes.Contains(prop.DataType))
                         {
-                            toXml.AppendLine($"            if ({prop.Name} != null && {prop.Name}.Count > 0)");
-                            toXml.AppendLine("            {");
-                            toXml.AppendLine($"                foreach (var item in {prop.Name})");
-                            toXml.AppendLine("                {");
-                            toXml.AppendLine($"                    xEl.Add(item.ToXml(\"{prop.Name}\"));");
-                            toXml.AppendLine("                }");
-                            toXml.AppendLine("            }");
+                            toXml.AppendLine($$"""
+                                        if ({{prop.Name}} != null && {{prop.Name}}.Count > 0)
+                                        {
+                                            foreach (var item in {{prop.Name}})
+                                            {
+                                                xEl.Add(item.ToXml(\"{{prop.Name}}\"));
+                                            }
+                                        }
+                            """);
                         }
                         else if (!model.ItemTypes.Contains(prop.DataType))
                         {
@@ -545,24 +561,25 @@ namespace Cogs.Publishers.Csharp
                             toXml.AppendLine("            }");
                         }
 
-                        newClass.AppendLine($"        public List<{prop.DataTypeName}> {prop.Name} {{ get; set; }} = new List<{prop.DataTypeName}>();");
-                        newClass.AppendLine($"        public bool ShouldSerialize{prop.Name}() {{ return {prop.Name}.Count > 0; }}");
+                        classBuilder.AppendLine($"        public List<{prop.DataTypeName}> {prop.Name} {{ get; set; }} = new List<{prop.DataTypeName}>();");
+                        classBuilder.AppendLine($"        public bool ShouldSerialize{prop.Name}() {{ return {prop.Name}.Count > 0; }}");
 
                     }
                 }
                 
-                newClass.AppendLine();
-                newClass.AppendLine("        /// <summary>");
-                newClass.AppendLine("        /// Used to Serialize this object to XML");
-                newClass.AppendLine("        /// <summary>");
-                newClass.Append(toXml.ToString());
-                newClass.AppendLine("            return xEl;");
-                newClass.AppendLine("        }");
-                newClass.AppendLine("    }");
-                newClass.AppendLine("}");
-                newClass.AppendLine();
-                // write class to out folder
-                File.WriteAllText(Path.Combine(TargetDirectory, item.Name + ".cs"), newClass.ToString());
+                classBuilder.AppendLine();
+                classBuilder.AppendLine("        /// <summary>");
+                classBuilder.AppendLine("        /// Used to Serialize this object to XML");
+                classBuilder.AppendLine("        /// <summary>");
+                classBuilder.Append(toXml.ToString());
+                classBuilder.AppendLine("            return xEl;");
+                classBuilder.AppendLine("        }");
+                classBuilder.AppendLine("    }");
+                classBuilder.AppendLine("}");
+                classBuilder.AppendLine();
+
+                // Write class to out folder
+                File.WriteAllText(Path.Combine(TargetDirectory, item.Name + ".cs"), classBuilder.ToString());
             }
         }
 
@@ -575,7 +592,7 @@ namespace Cogs.Publishers.Csharp
             return false;
         }
 
-        private object SimpleToXml(string origDataTypeName, string name, string elname, string start, bool isInList)
+        private string SimpleToXml(string origDataTypeName, string name, string elname, string start, bool isInList)
         {
             // TODO Consider whether Identification properties in C# generator should be non-nullable 
             string nullableValueStr = IsNullableEnabled && !isInList ? "Value." : "";
