@@ -329,6 +329,10 @@ namespace Cogs.Console
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
                 var targetArgument = command.Argument("[targetLocation]", "Directory where the c# schema is generated.");
 
+                var namespaceUri = command.Option("-n|--namespace",
+                                           "URI of the target XML namespace",
+                                           CommandOptionType.SingleValue);
+
                 var overwriteOption = command.Option("-o|--overwrite", "If the target directory exists, delete and overwrite the location", CommandOptionType.NoValue);
                 var writeCsprojOption = command.Option("--csproj", "Determines whether to generate a .csproj project file", CommandOptionType.NoValue);
                 var isNullableEnabledOption = command.Option("--nullable", "Determines whether to use C# nullable types", CommandOptionType.NoValue);
@@ -357,11 +361,14 @@ namespace Cogs.Console
                         HandleErrors(new List<CogsError>() { xmlPrefixError });
                     }
 
+                    var targetNamespace = namespaceUri.Value() ?? cogsModel.Settings.NamespaceUrl;
+
                     CSharpPublisher publisher = new CSharpPublisher(target)
                     {
                         Overwrite = overwrite,
                         WriteCsproj = writeCsproj,
-                        IsNullableEnabled = isNullableEnabled
+                        IsNullableEnabled = isNullableEnabled,
+                        TargetNamespace = targetNamespace,
                     };
                     publisher.Publish(cogsModel);
 

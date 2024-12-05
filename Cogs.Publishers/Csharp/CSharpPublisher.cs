@@ -75,7 +75,10 @@ namespace Cogs.Publishers.Csharp
             }
             Directory.CreateDirectory(TargetDirectory);
 
-            TargetNamespace = model.Settings.NamespaceUrl;
+            if (string.IsNullOrWhiteSpace(TargetDirectory))
+            {
+                TargetNamespace = model.Settings.NamespaceUrl;
+            }
             TargetNamespacePrefix = model.Settings.NamespacePrefix;
 
 
