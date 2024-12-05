@@ -139,6 +139,49 @@ namespace Cogs.Console
                 });
             });
 
+            app.Command("publish-dctap", (command) => {
+                command.Description = "Publish DCTAP Dublin Core Tabular Application Profile from a COGS data model";
+                command.HelpOption("-?|-h|--help");
+
+                var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
+                var targetArgument = command.Argument("[targetLocation]", "Directory where the DCTAP csv is generated.");
+
+
+                var overwriteOption = command.Option("-o|--overwrite",
+                           "If the target directory exists, delete and overwrite the location",
+                           CommandOptionType.NoValue);
+
+                command.OnExecute(() =>
+                {
+                    var location = locationArgument.Value ?? Environment.CurrentDirectory;
+                    var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
+                    bool overwrite = overwriteOption.HasValue();
+
+                    // read cogs directory and validate the contents
+                    var directoryReader = new CogsDirectoryReader();
+                    var cogsDtoModel = directoryReader.Load(location);
+                    HandleErrors(directoryReader.Errors);
+                    CreateOrderedEnumerables(cogsDtoModel);
+                    HandleErrors(DtoValidation.Validate(cogsDtoModel));
+
+                    var modelBuilder = new CogsModelBuilder();
+                    var cogsModel = modelBuilder.Build(cogsDtoModel);
+                    HandleErrors(modelBuilder.Errors);
+
+
+                    DcTapPublisher publisher = new DcTapPublisher
+                    {
+                        TargetDirectory = target,
+                        Overwrite = overwrite
+                    };
+
+                    publisher.Publish(cogsModel);
+
+
+                    return 0;
+                });
+            });
+
             app.Command("publish-xsd", (command) =>
             {
 

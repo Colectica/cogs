@@ -263,8 +263,46 @@ namespace Cogs.Publishers
                         element.SchemaTypeName = new XmlQualifiedName("LangString", TargetNamespace);
                     }
                     else
-                    {
-                        element.SchemaTypeName = new XmlQualifiedName(property.DataTypeName, XmlSchema.Namespace);
+                    {                      
+
+                        if(property.DataTypeName == "string" && (!string.IsNullOrWhiteSpace(property.Pattern) || property.MinLength.HasValue || property.MaxLength.HasValue))
+                        {
+                            var simpleType = new XmlSchemaSimpleType();
+
+                            var restriction = new XmlSchemaSimpleTypeRestriction();
+                            restriction.BaseTypeName = new XmlQualifiedName("string", "http://www.w3.org/2001/XMLSchema");
+                            if (!string.IsNullOrWhiteSpace(property.Pattern))
+                            {
+                                var pattern = new XmlSchemaPatternFacet();
+                                pattern.Value = property.Pattern;
+                                restriction.Facets.Add(pattern);
+                            }
+                            if (property.MinLength.HasValue)
+                            {
+                                var min = new XmlSchemaMinLengthFacet();
+                                min.Value = property.MinLength.Value.ToString();
+                                restriction.Facets.Add(min);
+                            }
+                            if (property.MaxLength.HasValue)
+                            {
+                                var max = new XmlSchemaMaxLengthFacet();
+                                max.Value = property.MaxLength.Value.ToString();
+                                restriction.Facets.Add(max);
+                            }
+                            foreach(var enumValue in property.Enumeration)
+                            {
+                                var enumeration = new XmlSchemaEnumerationFacet();
+                                enumeration.Value = enumValue;
+                                restriction.Facets.Add(enumeration);
+                            }
+
+                            simpleType.Content = restriction;
+                            element.SchemaType = simpleType;
+                        }
+                        else
+                        {
+                            element.SchemaTypeName = new XmlQualifiedName(property.DataTypeName, XmlSchema.Namespace);
+                        }
                     }                    
                 }
                 else

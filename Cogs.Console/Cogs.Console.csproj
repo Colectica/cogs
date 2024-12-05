@@ -8,7 +8,7 @@
     <AssemblyName>cogs</AssemblyName>
     <StartupObject>Cogs.Console.Program</StartupObject>
     <GenerateProgramFile>false</GenerateProgramFile>
-    <Version>1.0.313</Version>
+    <Version>1.0.539</Version>
     <Copyright>Colectica</Copyright>
     <PackageId>cogs</PackageId>
     <Authors>Colectica</Authors>
