@@ -531,7 +531,7 @@ namespace Cogs.Publishers.Csharp
                                         {
                                             foreach (var item in {{prop.Name}})
                                             {
-                                                xEl.Add(item.ToXml(\"{{prop.Name}}\"));
+                                                xEl.Add(item.ToXml("{{prop.Name}}"));
                                             }
                                         }
                             """);
