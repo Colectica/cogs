@@ -251,7 +251,7 @@ namespace Cogs.Publishers.Csharp
                         classBuilder.AppendLine("    {");
 
                         // Add the base class descendants to the ToXml method.
-                        toXml.AppendLine($"            foreach (var el in base.ToXml({nameArgument}).Descendants())");
+                        toXml.AppendLine($"            foreach (var el in base.ToXml({nameArgument}).Elements())");
                         toXml.AppendLine("            {");
                         toXml.AppendLine("                xEl.Add(el);");
                         toXml.AppendLine("            }");
