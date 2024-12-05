@@ -509,19 +509,19 @@ namespace Cogs.Publishers.Csharp
                             toXml.AppendLine($""""
                                 xEl.Add(
                                     from item in {prop.Name}
-                                    select new XElement(ns + \"{prop.Name}\", item));
+                                    select new XElement(ns + "{prop.Name}", item));
                             """");
                         }
                         else if (origDataTypeName != null)
                         {
                             toXml.AppendLine($$"""
-                                if ({{prop.Name}} != null && {{prop.Name}}.Count > 0)
-                                {
-                                    foreach (var item in {prop.Name})
-                                    {
-                                        {SimpleToXml(origDataTypeName, "item", prop.Name, "xEl", true)}
-                                    }
-                                }
+                                        if ({{prop.Name}} != null && {{prop.Name}}.Count > 0)
+                                        {
+                                            foreach (var item in {{prop.Name}})
+                                            {
+                                                {{SimpleToXml(origDataTypeName, "item", prop.Name, "xEl", true)}}
+                                            }
+                                        }
                             """);
                         }
                         else if (model.ReusableDataTypes.Contains(prop.DataType))
