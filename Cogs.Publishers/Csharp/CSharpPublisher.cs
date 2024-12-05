@@ -15,7 +15,7 @@ using Cogs.Publishers.JsonSchema;
 
 namespace Cogs.Publishers.Csharp
 {
-    public class CsSchemaPublisher
+    public class CSharpPublisher
     {
         /// <summary>
         /// path to write output in

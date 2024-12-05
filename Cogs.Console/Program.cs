@@ -357,7 +357,7 @@ namespace Cogs.Console
                         HandleErrors(new List<CogsError>() { xmlPrefixError });
                     }
 
-                    CsSchemaPublisher publisher = new CsSchemaPublisher
+                    CSharpPublisher publisher = new CSharpPublisher()
                     {
                         TargetDirectory = target,
                         Overwrite = overwrite,
