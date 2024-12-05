@@ -266,8 +266,12 @@ namespace Cogs.Publishers.Csharp
                     classBuilder.AppendLine(" : IIdentifiable");
                     classBuilder.AppendLine("    {");
                     classBuilder.AppendLine("        [JsonIgnore]");                    
-                    string format = string.Join(":", model.Identification.Select(x => "{" + x.Name + "}"));
-                    classBuilder.AppendLine($"        public string ReferenceId {{ get {{ return $\"{format}\"; }} }}");                    
+                    string? identifierForReference = model.Identification.FirstOrDefault()?.Name;
+                    if (string.IsNullOrWhiteSpace(identifierForReference))
+                    {
+                        identifierForReference = "null";
+                    }
+                    classBuilder.AppendLine($"        public string ReferenceId => {identifierForReference};");
 
                 }
                 else { classBuilder.AppendLine($"{Environment.NewLine}    {{"); }
