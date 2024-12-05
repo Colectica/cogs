@@ -69,7 +69,10 @@ namespace Cogs.Publishers.Csharp
             {
                 Directory.Delete(TargetDirectory, true);
             }
-            // TODO: if Overwrite is false and Directory.Exists(TargetDirectory)) throw an error and exit
+            if (!Overwrite && Directory.Exists(TargetDirectory))
+            {
+                throw new InvalidOperationException("Target directory already exists");
+            }
             Directory.CreateDirectory(TargetDirectory);
 
             TargetNamespace = model.Settings.NamespaceUrl;
