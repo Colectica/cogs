@@ -680,8 +680,7 @@ namespace {csNamespace}
         public XDocument MakeXml()
         {{
             XNamespace ns = ""{TargetNamespace}"";
-            XDocument xDoc = new XDocument(new XElement(ns + ""ItemContainer"", new XAttribute(XNamespace.Xmlns + "
-                + $@"""{TargetNamespacePrefix}"", ""{TargetNamespace}"")));
+            XDocument xDoc = new XDocument(new XElement(ns + ""ItemContainer""));
             if (xDoc.Root != null)
             {{
                 if (TopLevelReferences != null && TopLevelReferences.Count > 0)
