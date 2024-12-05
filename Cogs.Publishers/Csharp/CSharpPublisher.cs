@@ -25,12 +25,12 @@ namespace Cogs.Publishers.Csharp
         /// <summary>
         /// Desired namespace for xml serialization
         /// </summary>
-        public string TargetNamespace { get; set; }
+        public string? TargetNamespace { get; set; }
 
         /// <summary>
         /// Desired namespace prefix for xml serialization
         /// </summary>
-        public string TargetNamespacePrefix { get; set; }
+        public string? TargetNamespacePrefix { get; set; }
 
         /// <summary>
         /// boolean to determine whether to replace existing or not
@@ -50,7 +50,14 @@ namespace Cogs.Publishers.Csharp
         /// <summary>
         /// dictionary for translating names to c# datatype representations
         /// </summary>
-        private Dictionary<string, string> Translator { get; set; }
+        private Dictionary<string, string>? Translator { get; set; }
+
+
+        public CSharpPublisher(string targetDirectory)
+        {
+            TargetDirectory = targetDirectory;
+            InitializeDictionary();
+        }
 
         public void Publish(CogsModel model)
         {
@@ -68,7 +75,6 @@ namespace Cogs.Publishers.Csharp
             TargetNamespace = model.Settings.NamespaceUrl;
             TargetNamespacePrefix = model.Settings.NamespacePrefix;
 
-            InitializeDictionary();
 
             //get the project name
             string csNamespace = model.Settings.CSharpNamespace;
@@ -106,39 +112,38 @@ namespace Cogs.Publishers.Csharp
 
             
             // copy types file
-            using (Stream typeStream = this.GetType().GetTypeInfo().Assembly.GetManifestResourceStream("Cogs.Publishers.Csharp.Types.txt"))
-            using (StreamReader typeReader = new StreamReader(typeStream))
+            using Stream? typeStream = (GetType()?.GetTypeInfo().Assembly.GetManifestResourceStream("Cogs.Publishers.Csharp.Types.txt")) 
+                ?? throw new Exception("Could not find Types.txt resource");
+            using StreamReader typeReader = new(typeStream);
+            string typesContent = typeReader.ReadToEnd();
+            var typesBuilder = new StringBuilder();
+
+            if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
             {
-                string typesContent = typeReader.ReadToEnd();
-                var typesBuilder = new StringBuilder();
-
-                if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
-                {
-                    typesBuilder.AppendLine("/*");
-                    typesBuilder.AppendLine(model.HeaderInclude);
-                    typesBuilder.AppendLine("*/");
-                    typesBuilder.AppendLine();
-                }
-
-                typesBuilder.AppendLine(typesContent);
-                File.WriteAllText(Path.Combine(TargetDirectory, "Types.cs"), typesBuilder.ToString());
+                typesBuilder.AppendLine("/*");
+                typesBuilder.AppendLine(model.HeaderInclude);
+                typesBuilder.AppendLine("*/");
+                typesBuilder.AppendLine();
             }
+
+            typesBuilder.AppendLine(typesContent);
+            File.WriteAllText(Path.Combine(TargetDirectory, "Types.cs"), typesBuilder.ToString());
+        
 
             
-            using (Stream stream = this.GetType().GetTypeInfo().Assembly.GetManifestResourceStream("Cogs.Publishers.Csharp.DependantTypes.txt"))
-            using (StreamReader reader = new StreamReader(stream))
+            using Stream? stream = GetType().GetTypeInfo().Assembly.GetManifestResourceStream("Cogs.Publishers.Csharp.DependantTypes.txt")
+                ?? throw new Exception("Could not find DependantTypes.txt resource");
+            using StreamReader reader = new(stream);
+            string fileContents = reader.ReadToEnd();
+
+            fileContents = fileContents.Replace("__CogsGeneratedNamespace", csNamespace);
+
+            if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
             {
-                string fileContents = reader.ReadToEnd();
-
-                fileContents = fileContents.Replace("__CogsGeneratedNamespace", csNamespace);
-
-                if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
-                {
-                    fileContents = "/*" + Environment.NewLine + model.HeaderInclude + Environment.NewLine + "*/" + Environment.NewLine + fileContents;
-                }
-
-                File.WriteAllText(Path.Combine(TargetDirectory, "DependantTypes.cs"), fileContents, Encoding.UTF8);
+                fileContents = "/*" + Environment.NewLine + model.HeaderInclude + Environment.NewLine + "*/" + Environment.NewLine + fileContents;
             }
+
+            File.WriteAllText(Path.Combine(TargetDirectory, "DependantTypes.cs"), fileContents, Encoding.UTF8);
 
             
 
@@ -337,8 +342,8 @@ namespace Cogs.Publishers.Csharp
                     }
 
                     // set c# datatype representation while saving original so can tell what type it is
-                    string origDataTypeName = null;
-                    if (Translator.ContainsKey(prop.DataTypeName))
+                    string? origDataTypeName = null;
+                    if (Translator?.ContainsKey(prop.DataTypeName) == true)
                     {
                         origDataTypeName = prop.DataTypeName;
                         prop.DataTypeName = Translator[prop.DataTypeName];                        
