@@ -289,7 +289,7 @@ namespace Cogs.Publishers.Csharp
                         classBuilder.AppendLine("        /// <summary>");
                         classBuilder.AppendLine("        /// Set the TypeDescriminator");
                         classBuilder.AppendLine("        /// <summary>");
-                        classBuilder.AppendLine($"        public {item.Name}() {{ this.TypeDescriminator = this.GetType().Name; }}");
+                        classBuilder.AppendLine($"        public {item.Name}() {{ this.TypeDescriminator = this.GetType().Name; Initialize(); }}");
                         classBuilder.AppendLine();
                         classBuilder.AppendLine("        /// <summary>");
                         classBuilder.AppendLine("        /// Type descriminator for json serialization");
@@ -567,6 +567,7 @@ namespace Cogs.Publishers.Csharp
                     }
                 }
                 
+                classBuilder.AppendLine("        partial void Initialize();");
                 classBuilder.AppendLine();
                 classBuilder.AppendLine("        /// <summary>");
                 classBuilder.AppendLine("        /// Used to Serialize this object to XML");
