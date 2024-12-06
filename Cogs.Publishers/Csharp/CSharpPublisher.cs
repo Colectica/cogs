@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Colectica. All rights reservedbstr
+﻿// Copyright (c) 2017 Colectica. All rights reservedbstr
 // See the LICENSE file in the project root for more information.
 using Cogs.Model;
 using System;
@@ -10,7 +10,7 @@ using System.Xml.Linq;
 using System.Xml;
 using System.Reflection;
 using Cogs.Common;
-using Cogs.Publishers.JsonSchema;
+using VDS.RDF;
 
 namespace Cogs.Publishers.Csharp
 {
@@ -76,7 +76,10 @@ namespace Cogs.Publishers.Csharp
             }
             Directory.CreateDirectory(TargetDirectory);
 
-            TargetNamespace = model.Settings.NamespaceUrl;
+            if (string.IsNullOrWhiteSpace(TargetDirectory))
+            {
+                TargetNamespace = model.Settings.NamespaceUrl;
+            }
             TargetNamespacePrefix = model.Settings.NamespacePrefix;
 
 
@@ -96,11 +99,12 @@ namespace Cogs.Publishers.Csharp
                 XDocument project = new XDocument(
                     new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
                         new XElement("PropertyGroup", 
-                            new XElement("TargetFramework", "net6"),
+                            new XElement("TargetFramework", "net8.0"),
                             IsNullableEnabled ? new XElement("Nullable", "enable") : null),
                         new XElement("ItemGroup", 
                             new XElement("PackageReference", new XAttribute("Include", "System.ComponentModel.Annotations"), new XAttribute("Version", "5.0.0")),
                             new XElement("PackageReference", new XAttribute("Include", "Microsoft.CSharp"), new XAttribute("Version", "4.7.0")),
+                            new XElement("PackageReference", new XAttribute("Include", "dotNetRdf.Core"), new XAttribute("Version", "3.3.0")),
                             new XElement("PackageReference", new XAttribute("Include", "Newtonsoft.Json"), new XAttribute("Version", "13.0.3")))));
                 XmlWriterSettings xws = new XmlWriterSettings
                 {
@@ -109,42 +113,42 @@ namespace Cogs.Publishers.Csharp
                 };
                 using FileStream s = new(Path.Combine(TargetDirectory, csNamespace + ".csproj"), FileMode.Create, FileAccess.ReadWrite);
                 using XmlWriter xw = XmlWriter.Create(s, xws);
-                    project.Save(xw);
-                }
+                project.Save(xw);
+            }
 
             
             // Copy Types.cs file.
             using Stream? typeStream = (GetType()?.GetTypeInfo().Assembly.GetManifestResourceStream("Cogs.Publishers.Csharp.Types.txt")) 
                 ?? throw new Exception("Could not find Types.txt resource");
             using StreamReader typeReader = new(typeStream);
-                string typesContent = typeReader.ReadToEnd();
-                var typesBuilder = new StringBuilder();
+            string typesContent = typeReader.ReadToEnd();
+            var typesBuilder = new StringBuilder();
 
-                if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
-                {
-                    typesBuilder.AppendLine("/*");
-                    typesBuilder.AppendLine(model.HeaderInclude);
-                    typesBuilder.AppendLine("*/");
-                    typesBuilder.AppendLine();
-                }
+            if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
+            {
+                typesBuilder.AppendLine("/*");
+                typesBuilder.AppendLine(model.HeaderInclude);
+                typesBuilder.AppendLine("*/");
+                typesBuilder.AppendLine();
+            }
 
-                typesBuilder.AppendLine(typesContent);
-                File.WriteAllText(Path.Combine(TargetDirectory, "Types.cs"), typesBuilder.ToString());
+            typesBuilder.AppendLine(typesContent);
+            File.WriteAllText(Path.Combine(TargetDirectory, "Types.cs"), typesBuilder.ToString());
         
             // Copy the DependantTypes.cs file.
             using Stream? stream = GetType().GetTypeInfo().Assembly.GetManifestResourceStream("Cogs.Publishers.Csharp.DependantTypes.txt")
                 ?? throw new Exception("Could not find DependantTypes.txt resource");
             using StreamReader reader = new(stream);
-                string fileContents = reader.ReadToEnd();
+            string fileContents = reader.ReadToEnd();
 
-                fileContents = fileContents.Replace("__CogsGeneratedNamespace", csNamespace);
+            fileContents = fileContents.Replace("__CogsGeneratedNamespace", csNamespace);
 
-                if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
-                {
-                    fileContents = "/*" + Environment.NewLine + model.HeaderInclude + Environment.NewLine + "*/" + Environment.NewLine + fileContents;
-                }
+            if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
+            {
+                fileContents = "/*" + Environment.NewLine + model.HeaderInclude + Environment.NewLine + "*/" + Environment.NewLine + fileContents;
+            }
 
-                File.WriteAllText(Path.Combine(TargetDirectory, "DependantTypes.cs"), fileContents, Encoding.UTF8);
+            File.WriteAllText(Path.Combine(TargetDirectory, "DependantTypes.cs"), fileContents, Encoding.UTF8);
 
             // Write a C# class for every item type.
             foreach (DataType? item in model.ItemTypes.Concat(model.ReusableDataTypes))
@@ -185,7 +189,7 @@ namespace Cogs.Publishers.Csharp
                 
                 classBuilder.AppendLine( "    /// <summary>");
                 classBuilder.Append("    public ");
-                
+
 
                 // Start building the ToXml method.
                 StringBuilder toXml = new();
@@ -210,10 +214,47 @@ namespace Cogs.Publishers.Csharp
                     toXml.AppendLine($"            XElement xEl = new XElement(ns + name);");
                 }
                 
+                // Start building the AddTriples method.
+                StringBuilder addTriplesMethodBuilder = new();
+                if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName) && !CogsTypes.SimpleTypeNames.Contains(item.ExtendsTypeName) )
+                {
+                    addTriplesMethodBuilder.AppendLine("        public override INode AddTriples(IGraph graph, INode itemNode = null)");
+                }
+                else
+                {
+                    addTriplesMethodBuilder.AppendLine("        public virtual INode AddTriples(IGraph graph, INode? itemNode = null)");
+                }
+                addTriplesMethodBuilder.AppendLine("        {");
 
-                // add abstract to class title if relevant
-                if (item.IsAbstract) { newClass.Append("abstract "); }
-                newClass.Append("partial class " + item.Name);
+
+                bool typeExtendsAnotherType = !string.IsNullOrWhiteSpace(item.ExtendsTypeName);
+                bool isReusableItem = model.ItemTypes.Contains(item);
+                if (isReusableItem)
+                {
+                    addTriplesMethodBuilder.AppendLine($"            itemNode ??= graph.CreateUriNode(UriFactory.Create(URN));");
+                }
+                else
+                {
+                    addTriplesMethodBuilder.AppendLine($"            itemNode ??= graph.CreateBlankNode();");
+                }
+                addTriplesMethodBuilder.AppendLine($$"""
+                            IUriNode typePredicate = graph.CreateUriNode(UriFactory.Create("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"));
+                            IUriNode typeUriNode = graph.CreateUriNode(UriFactory.Create("ddi:{{item.Name}}"));
+                            graph.Assert(new Triple(itemNode, typePredicate, typeUriNode));
+                """);
+
+                if (typeExtendsAnotherType)
+                {
+                    addTriplesMethodBuilder.AppendLine();
+                    addTriplesMethodBuilder.AppendLine($"            base.AddTriples(graph, itemNode);");
+                    addTriplesMethodBuilder.AppendLine();
+                }
+
+
+
+                // Add abstract to class title if relevant
+                if (item.IsAbstract) { classBuilder.Append("abstract "); }
+                classBuilder.Append("partial class " + item.Name);
 
                 // Allow inheritance when relevant
                 string nameArgument = model.ReusableDataTypes.Contains(item) ?
@@ -302,6 +343,12 @@ namespace Cogs.Publishers.Csharp
                 // For every property in the model, add a C# property.
                 foreach (Property? prop in item!.Properties)
                 {
+                    if (prop == null)
+                    {
+                        continue;
+                    }
+
+                    AddPropertyToGetTriplesMethod(item, prop, addTriplesMethodBuilder);
 
                     // create documentation for property
                     classBuilder.AppendLine("        /// <summary>");
@@ -562,19 +609,177 @@ namespace Cogs.Publishers.Csharp
                     }
                 }
                 
-                newClass.AppendLine();
-                newClass.AppendLine("        /// <summary>");
-                newClass.AppendLine("        /// Used to Serialize this object to XML");
-                newClass.AppendLine("        /// <summary>");
-                newClass.Append(toXml.ToString());
-                newClass.AppendLine("            return xEl;");
-                newClass.AppendLine("        }");
-                newClass.AppendLine("    }");
-                newClass.AppendLine("}");
-                newClass.AppendLine();
-                // write class to out folder
-                File.WriteAllText(Path.Combine(TargetDirectory, item.Name + ".cs"), newClass.ToString());
+                classBuilder.AppendLine("        partial void Initialize();");
+                classBuilder.AppendLine();
+                classBuilder.AppendLine("        /// <summary>");
+                classBuilder.AppendLine("        /// Used to Serialize this object to XML");
+                classBuilder.AppendLine("        /// <summary>");
+                classBuilder.Append(toXml.ToString());
+                classBuilder.AppendLine("            return xEl;");
+                classBuilder.AppendLine("        }");
+                classBuilder.AppendLine();
+                classBuilder.Append(addTriplesMethodBuilder.ToString());
+                classBuilder.AppendLine("            return itemNode;");
+                classBuilder.AppendLine("        }");
+                classBuilder.AppendLine("    }");
+                classBuilder.AppendLine("}");
+                classBuilder.AppendLine();
+
+                // Write class to out folder
+                File.WriteAllText(Path.Combine(TargetDirectory, item.Name + ".cs"), classBuilder.ToString());
             }
+        }
+
+        private void AddPropertyToGetTriplesMethod(DataType item, Property prop, StringBuilder addTriplesMethodBuilder)
+        {
+            bool isIdentificationProperty = model.Identification.Contains(prop);
+            if (isIdentificationProperty)
+            {
+                return;
+            }
+
+            bool isSingular = !prop.MaxCardinality.Equals("n") && int.Parse(prop.MaxCardinality) == 1;
+            if (isSingular)
+            {
+                // We have itemNode accessible here already.
+
+                // Make a predicate for the property.
+                if (model.ItemTypes.Contains(prop.DataType))
+                {
+                    // For an item type, make a triple from this item, property-predicate, to the URI of the referenced item.
+                    addTriplesMethodBuilder.AppendLine($$"""            
+                                if ({{prop.Name}} != null)
+                                {
+                                    {{GetStringToAddTripleForReferencedItem(prop.Name, prop.Name)}}
+                                }
+                    """);
+                }
+                else if (model.ReusableDataTypes.Contains(prop.DataType))
+                {
+                    // For a nested, non-identified type, make a triple from this item, property-predicate, to ... something.
+                    addTriplesMethodBuilder.AppendLine($$"""
+                                if ({{prop.Name}} != null)
+                                {
+                                    {{GetStringToAddTripleForCompositeObject(prop.Name, prop.Name)}}
+                                }
+                    """);
+
+                    addTriplesMethodBuilder.AppendLine();
+                }
+                else
+                {
+                    // This must be a primitive property. Put out the actual value.
+                    addTriplesMethodBuilder.AppendLine($$"""
+                                if ({{prop.Name}} != null)
+                                {
+                                    {{GetStringToAddTripleForPrimitive(prop.Name, prop.Name, prop.DataType)}}
+                                }
+                    """);
+                    addTriplesMethodBuilder.AppendLine();
+                }
+
+            }
+            else
+            {
+                // This is a list property.
+                if (model.ItemTypes.Contains(prop.DataType))
+                {
+                    // If the reference is to a versionsed item, add a reference for each one.
+                    addTriplesMethodBuilder.AppendLine($$"""            
+                                foreach (var referencedItem in {{prop.Name}})
+                                {
+                                    if (referencedItem != null)
+                                    {
+                                        {{GetStringToAddTripleForReferencedItem(prop.Name, "referencedItem")}}
+                                    }
+                                }
+                    """);
+                }
+                else if (model.ReusableDataTypes.Contains(prop.DataType))
+                {
+                    addTriplesMethodBuilder.AppendLine($$"""            
+                                foreach (var referencedItem in {{prop.Name}})
+                                {
+                                    if (referencedItem != null)
+                                    {
+                                        {{GetStringToAddTripleForCompositeObject(prop.Name, "referencedItem")}}
+                                    }
+                                }
+                    """);
+                }
+                else
+                {
+                    // This must be a primitive property. Put out the actual value.
+                    addTriplesMethodBuilder.AppendLine($$"""
+                                foreach (var obj in {{prop.Name}})
+                                {
+                                    if (obj != null)
+                                    {
+                                        {{GetStringToAddTripleForPrimitive(prop.Name, "obj", prop.DataType)}}
+                                    }
+                                }
+                    """);
+                    addTriplesMethodBuilder.AppendLine();
+                }
+
+            }
+        }
+
+        private string GetStringToAddTripleForReferencedItem(string predicateName, string variableName)
+        {
+            return $"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("ddi:{predicateName}")), graph.CreateUriNode(UriFactory.Create({variableName}.URN))));""";
+        }
+
+        private string GetStringToAddTripleForCompositeObject(string predicateName, string variableName)
+        {
+            return $"""
+            INode node = {variableName}.AddTriples(graph);
+                                graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("ddi:{predicateName}")), node));
+            """;
+        }
+
+        private string GetStringToAddTripleForPrimitive(string predicateName, string variableName, DataType dataType)
+        {
+            // Graph graph = new Graph();
+            // string primitiveDataType = GetValueDataType(dataType.Name);
+            // graph.CreateLiteralNode(literal, new Uri(primitiveDataType));
+
+            if (dataType.Name == "langString")
+            {
+                return $$"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("ddi:{{predicateName}}")), graph.CreateLiteralNode({{variableName}}.Value, {{variableName}}.LanguageTag)));""";
+            }
+            else if (dataType.Name == "string")
+            {
+                return $$"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("ddi:{{predicateName}}")), graph.CreateLiteralNode({{variableName}})));   """;
+            }
+            else if (dataType.Name == "cogsdate")
+            {
+                // TODO
+                return $$"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("ddi:{{predicateName}}")), graph.CreateLiteralNode({{variableName}}.ToString())));""";
+            }
+            else
+            {
+                return $$"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("ddi:{{predicateName}}")), graph.CreateLiteralNode({{variableName}}.ToString())));""";
+            }
+        }
+
+        private string GetValueDataType(string cogsType)
+        {
+            string lower = cogsType.ToLower();
+            if (lower == "cogsdate")
+            {
+                return "xsd:date xsd:dateTime xsd:duration xsd:gYear xsd:gYearMonth";
+            }
+            else if (lower == "langstring")
+            {
+                return "rdf:langString";
+            }
+            else if (lower == "dcterms")
+            {
+
+            }
+            return "xsd:" + cogsType;
+            //TODO implement
         }
 
         private bool Isboolintdoubleulong(string name)
@@ -698,9 +903,23 @@ namespace {{csNamespace}}
                 }
             }
             return xDoc;
-        }}
-    }}
-}}";
+        }
+
+        public IGraph MakeRdfGraph()
+        {
+            IGraph graph = new Graph();
+            graph.NamespaceMap.AddNamespace("ddi", UriFactory.Create("http://rdf-vocabulary.ddialliance.org/lifecycle##"));
+
+            foreach (var item in Items)
+            {
+                item.AddTriples(graph);
+            }
+
+            return graph;
+        }
+    }
+}
+""";
             var builder = new StringBuilder();
             if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
             {
