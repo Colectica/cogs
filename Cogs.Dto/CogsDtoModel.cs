@@ -16,6 +16,7 @@ namespace Cogs.Dto
         public List<TopicIndex> TopicIndices { get; } = new List<TopicIndex>();
 
         public List<Property> Identification { get; } = new List<Property>();
+        public List<Property> IdentificationMixin { get; } = new List<Property>();
         public List<Setting> Settings { get; } = new List<Setting>();
         public string HeaderInclude { get; set; }
 

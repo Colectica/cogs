@@ -248,7 +248,7 @@ namespace Cogs.Publishers.Csharp
                     newClass.AppendLine(" : IIdentifiable");
                     newClass.AppendLine("    {");
                     newClass.AppendLine("        [JsonIgnore]");                    
-                    string format = string.Join(":", model.Identification.Select(x => "{" + x.Name + "}"));
+                    string format = string.Join(":", model.Identification.Where(x => x.FromMixin == false).Select(x => "{" + x.Name + "}"));
                     newClass.AppendLine($"        public string ReferenceId {{ get {{ return $\"{format}\"; }} }}");                    
 
                 }

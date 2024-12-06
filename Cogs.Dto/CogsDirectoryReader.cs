@@ -69,6 +69,27 @@ namespace Cogs.Dto
                 }
             }
 
+            string identificationMixinFile = Path.Combine(SettingsDirectoryName, "Identification.Mixin.csv");
+            if (File.Exists(identificationMixinFile))
+            {
+                string mixinLines = File.ReadAllText(identificationMixinFile, Encoding.UTF8);
+                using (var textReader = new StringReader(mixinLines))
+                {
+                    try
+                    {
+                        var csvReader = new CsvReader(textReader, CultureInfo.InvariantCulture);
+                        var records = csvReader.GetRecords<Property>();
+                        model.IdentificationMixin.AddRange(records);
+                    }
+                    catch (Exception e)
+                    {
+                        Errors.Add(new CogsError(ErrorLevel.Error, e.Message + " " + identificationMixinFile, e));
+                        return model;
+                    }
+                }
+            }
+
+
             // Load settings
             string settingsFileName = Path.Combine(SettingsDirectoryName, "Settings.csv");
             string settingsCsvStr = File.ReadAllText(settingsFileName, Encoding.UTF8);

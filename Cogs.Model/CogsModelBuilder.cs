@@ -33,6 +33,14 @@ namespace Cogs.Model
                 MapProperty(id, property);
                 model.Identification.Add(property);
             }
+            // Identification Mixin
+            foreach (var id in dto.IdentificationMixin)
+            {
+                var property = new Property();
+                MapProperty(id, property);
+                property.FromMixin = true;
+                model.Identification.Add(property);
+            }
 
             // Settings
             model.HeaderInclude = dto.HeaderInclude;
