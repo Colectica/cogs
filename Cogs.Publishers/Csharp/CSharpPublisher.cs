@@ -9,9 +9,8 @@ using System.Text;
 using System.Xml.Linq;
 using System.Xml;
 using System.Reflection;
-using System.Collections;
 using Cogs.Common;
-using Cogs.Publishers.JsonSchema;
+using VDS.RDF;
 
 namespace Cogs.Publishers.Csharp
 {
@@ -52,14 +51,16 @@ namespace Cogs.Publishers.Csharp
         /// </summary>
         private Dictionary<string, string>? Translator { get; set; }
 
+        CogsModel model;
 
-        public CSharpPublisher(string targetDirectory)
+        public CSharpPublisher(CogsModel model, string targetDirectory)
         {
+            this.model = model;
             TargetDirectory = targetDirectory;
             InitializeDictionary();
         }
 
-        public void Publish(CogsModel model)
+        public void Publish()
         {
             if (TargetDirectory == null)
             {
@@ -103,6 +104,7 @@ namespace Cogs.Publishers.Csharp
                         new XElement("ItemGroup", 
                             new XElement("PackageReference", new XAttribute("Include", "System.ComponentModel.Annotations"), new XAttribute("Version", "5.0.0")),
                             new XElement("PackageReference", new XAttribute("Include", "Microsoft.CSharp"), new XAttribute("Version", "4.7.0")),
+                            new XElement("PackageReference", new XAttribute("Include", "dotNetRdf.Core"), new XAttribute("Version", "3.3.0")),
                             new XElement("PackageReference", new XAttribute("Include", "Newtonsoft.Json"), new XAttribute("Version", "13.0.3")))));
                 XmlWriterSettings xws = new XmlWriterSettings
                 {
@@ -165,8 +167,6 @@ namespace Cogs.Publishers.Csharp
                     classBuilder.AppendLine("*/");
                     classBuilder.AppendLine();
                 }
-                classBuilder.AppendLine("using System;");
-                classBuilder.AppendLine("using System.Linq;");
                 classBuilder.AppendLine("using Newtonsoft.Json;");
                 classBuilder.AppendLine("using System.Xml.Linq;");
                 classBuilder.AppendLine("using Cogs.SimpleTypes;");
@@ -177,6 +177,7 @@ namespace Cogs.Publishers.Csharp
                 classBuilder.AppendLine("using Cogs.Converters;");
                 classBuilder.AppendLine("using System.Collections.Generic;");                
                 classBuilder.AppendLine("using System.ComponentModel.DataAnnotations;");
+                classBuilder.AppendLine("using VDS.RDF;");
                 classBuilder.AppendLine();
                 classBuilder.AppendLine($"namespace {csNamespace}");
                 classBuilder.AppendLine("{");
@@ -190,8 +191,7 @@ namespace Cogs.Publishers.Csharp
                 classBuilder.Append("    public ");
 
 
-                // Build the ToXml method.
-                StringBuilder helpers = new();
+                // Start building the ToXml method.
                 StringBuilder toXml = new();
                 string parameterStr = "";
                 if (model.ReusableDataTypes.Contains(item)) { parameterStr = "string name"; }
@@ -214,6 +214,43 @@ namespace Cogs.Publishers.Csharp
                     toXml.AppendLine($"            XElement xEl = new XElement(ns + name);");
                 }
                 
+                // Start building the AddTriples method.
+                StringBuilder addTriplesMethodBuilder = new();
+                if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName) && !CogsTypes.SimpleTypeNames.Contains(item.ExtendsTypeName) )
+                {
+                    addTriplesMethodBuilder.AppendLine("        public override INode AddTriples(IGraph graph, INode itemNode = null)");
+                }
+                else
+                {
+                    addTriplesMethodBuilder.AppendLine("        public virtual INode AddTriples(IGraph graph, INode? itemNode = null)");
+                }
+                addTriplesMethodBuilder.AppendLine("        {");
+
+
+                bool typeExtendsAnotherType = !string.IsNullOrWhiteSpace(item.ExtendsTypeName);
+                bool isReusableItem = model.ItemTypes.Contains(item);
+                if (isReusableItem)
+                {
+                    addTriplesMethodBuilder.AppendLine($"            itemNode ??= graph.CreateUriNode(UriFactory.Create(URN));");
+                }
+                else
+                {
+                    addTriplesMethodBuilder.AppendLine($"            itemNode ??= graph.CreateBlankNode();");
+                }
+                addTriplesMethodBuilder.AppendLine($$"""
+                            IUriNode typePredicate = graph.CreateUriNode(UriFactory.Create("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"));
+                            IUriNode typeUriNode = graph.CreateUriNode(UriFactory.Create("ddi:{{item.Name}}"));
+                            graph.Assert(new Triple(itemNode, typePredicate, typeUriNode));
+                """);
+
+                if (typeExtendsAnotherType)
+                {
+                    addTriplesMethodBuilder.AppendLine();
+                    addTriplesMethodBuilder.AppendLine($"            base.AddTriples(graph, itemNode);");
+                    addTriplesMethodBuilder.AppendLine();
+                }
+
+
 
                 // Add abstract to class title if relevant
                 if (item.IsAbstract) { classBuilder.Append("abstract "); }
@@ -314,6 +351,8 @@ namespace Cogs.Publishers.Csharp
                     {
                         continue;
                     }
+
+                    AddPropertyToGetTriplesMethod(item, prop, addTriplesMethodBuilder);
 
                     // create documentation for property
                     classBuilder.AppendLine("        /// <summary>");
@@ -582,6 +621,10 @@ namespace Cogs.Publishers.Csharp
                 classBuilder.Append(toXml.ToString());
                 classBuilder.AppendLine("            return xEl;");
                 classBuilder.AppendLine("        }");
+                classBuilder.AppendLine();
+                classBuilder.Append(addTriplesMethodBuilder.ToString());
+                classBuilder.AppendLine("            return itemNode;");
+                classBuilder.AppendLine("        }");
                 classBuilder.AppendLine("    }");
                 classBuilder.AppendLine("}");
                 classBuilder.AppendLine();
@@ -589,6 +632,158 @@ namespace Cogs.Publishers.Csharp
                 // Write class to out folder
                 File.WriteAllText(Path.Combine(TargetDirectory, item.Name + ".cs"), classBuilder.ToString());
             }
+        }
+
+        private void AddPropertyToGetTriplesMethod(DataType item, Property prop, StringBuilder addTriplesMethodBuilder)
+        {
+            bool isIdentificationProperty = model.Identification.Contains(prop);
+            if (isIdentificationProperty)
+            {
+                return;
+            }
+
+            bool isSingular = !prop.MaxCardinality.Equals("n") && int.Parse(prop.MaxCardinality) == 1;
+            if (isSingular)
+            {
+                // We have itemNode accessible here already.
+
+                // Make a predicate for the property.
+                if (model.ItemTypes.Contains(prop.DataType))
+                {
+                    // For an item type, make a triple from this item, property-predicate, to the URI of the referenced item.
+                    addTriplesMethodBuilder.AppendLine($$"""            
+                                if ({{prop.Name}} != null)
+                                {
+                                    {{GetStringToAddTripleForReferencedItem(prop.Name, prop.Name)}}
+                                }
+                    """);
+                }
+                else if (model.ReusableDataTypes.Contains(prop.DataType))
+                {
+                    // For a nested, non-identified type, make a triple from this item, property-predicate, to ... something.
+                    addTriplesMethodBuilder.AppendLine($$"""
+                                if ({{prop.Name}} != null)
+                                {
+                                    {{GetStringToAddTripleForCompositeObject(prop.Name, prop.Name)}}
+                                }
+                    """);
+
+                    addTriplesMethodBuilder.AppendLine();
+                }
+                else
+                {
+                    // This must be a primitive property. Put out the actual value.
+                    addTriplesMethodBuilder.AppendLine($$"""
+                                if ({{prop.Name}} != null)
+                                {
+                                    {{GetStringToAddTripleForPrimitive(prop.Name, prop.Name, prop.DataType)}}
+                                }
+                    """);
+                    addTriplesMethodBuilder.AppendLine();
+                }
+
+            }
+            else
+            {
+                // This is a list property.
+                if (model.ItemTypes.Contains(prop.DataType))
+                {
+                    // If the reference is to a versionsed item, add a reference for each one.
+                    addTriplesMethodBuilder.AppendLine($$"""            
+                                foreach (var referencedItem in {{prop.Name}})
+                                {
+                                    if (referencedItem != null)
+                                    {
+                                        {{GetStringToAddTripleForReferencedItem(prop.Name, "referencedItem")}}
+                                    }
+                                }
+                    """);
+                }
+                else if (model.ReusableDataTypes.Contains(prop.DataType))
+                {
+                    addTriplesMethodBuilder.AppendLine($$"""            
+                                foreach (var referencedItem in {{prop.Name}})
+                                {
+                                    if (referencedItem != null)
+                                    {
+                                        {{GetStringToAddTripleForCompositeObject(prop.Name, "referencedItem")}}
+                                    }
+                                }
+                    """);
+                }
+                else
+                {
+                    // This must be a primitive property. Put out the actual value.
+                    addTriplesMethodBuilder.AppendLine($$"""
+                                foreach (var obj in {{prop.Name}})
+                                {
+                                    if (obj != null)
+                                    {
+                                        {{GetStringToAddTripleForPrimitive(prop.Name, "obj", prop.DataType)}}
+                                    }
+                                }
+                    """);
+                    addTriplesMethodBuilder.AppendLine();
+                }
+
+            }
+        }
+
+        private string GetStringToAddTripleForReferencedItem(string predicateName, string variableName)
+        {
+            return $"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("ddi:{predicateName}")), graph.CreateUriNode(UriFactory.Create({variableName}.URN))));""";
+        }
+
+        private string GetStringToAddTripleForCompositeObject(string predicateName, string variableName)
+        {
+            return $"""
+            INode node = {variableName}.AddTriples(graph);
+                                graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("ddi:{predicateName}")), node));
+            """;
+        }
+
+        private string GetStringToAddTripleForPrimitive(string predicateName, string variableName, DataType dataType)
+        {
+            // Graph graph = new Graph();
+            // string primitiveDataType = GetValueDataType(dataType.Name);
+            // graph.CreateLiteralNode(literal, new Uri(primitiveDataType));
+
+            if (dataType.Name == "langString")
+            {
+                return $$"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("ddi:{{predicateName}}")), graph.CreateLiteralNode({{variableName}}.Value, {{variableName}}.LanguageTag)));""";
+            }
+            else if (dataType.Name == "string")
+            {
+                return $$"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("ddi:{{predicateName}}")), graph.CreateLiteralNode({{variableName}})));   """;
+            }
+            else if (dataType.Name == "cogsdate")
+            {
+                // TODO
+                return $$"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("ddi:{{predicateName}}")), graph.CreateLiteralNode({{variableName}}.ToString())));""";
+            }
+            else
+            {
+                return $$"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("ddi:{{predicateName}}")), graph.CreateLiteralNode({{variableName}}.ToString())));""";
+            }
+        }
+
+        private string GetValueDataType(string cogsType)
+        {
+            string lower = cogsType.ToLower();
+            if (lower == "cogsdate")
+            {
+                return "xsd:date xsd:dateTime xsd:duration xsd:gYear xsd:gYearMonth";
+            }
+            else if (lower == "langstring")
+            {
+                return "rdf:langString";
+            }
+            else if (lower == "dcterms")
+            {
+
+            }
+            return "xsd:" + cogsType;
+            //TODO implement
         }
 
         private bool Isboolintdoubleulong(string name)
@@ -674,45 +869,61 @@ namespace Cogs.Publishers.Csharp
         private void CreatePartialItemContainer(CogsModel model, string csNamespace)
         {
 
-            string clss = $@"using System;
+            string clss = $$"""
+using System;
 using System.Xml.Linq;
+using VDS.RDF;
 
-namespace {csNamespace}
-{{
+namespace {{csNamespace}}
+{
     /// <summary>
     /// Partial class implementation for XML generation 
     /// <summary>
     public partial class ItemContainer
-    {{ 
+    { 
         public XDocument MakeXml()
-        {{
-            XNamespace ns = ""{TargetNamespace}"";
-            XDocument xDoc = new XDocument(new XElement(ns + ""ItemContainer""));
+        {
+            XNamespace ns = "{{TargetNamespace}}";
+            XDocument xDoc = new XDocument(new XElement(ns + "ItemContainer"));
             if (xDoc.Root != null)
-            {{
+            {
                 if (TopLevelReferences != null && TopLevelReferences.Count > 0)
-                {{
+                {
                     foreach (var item in TopLevelReferences)
-                    {{
+                    {
                         xDoc.Root.Add(
-                            new XElement(ns + ""TopLevelReference"", 
-                                new XElement(ns + ""URN"", item.URN),
-                                new XElement(ns + ""Agency"", item.Agency),
-                                new XElement(ns + ""ID"", item.ID),
-                                new XElement(ns + ""Version"", item.Version),
-                                new XElement(ns + ""TypeOfObject"", item.GetType().Name)
+                            new XElement(ns + "TopLevelReference", 
+                                new XElement(ns + "URN", item.URN),
+                                new XElement(ns + "Agency", item.Agency),
+                                new XElement(ns + "ID", item.ID),
+                                new XElement(ns + "Version", item.Version),
+                                new XElement(ns + "TypeOfObject", item.GetType().Name)
                             ));
-                    }}
-                }}
+                    }
+                }
                 foreach (var item in Items)
-                {{
+                {
                     xDoc.Root.Add(item.ToXml());
-                }}
-            }}
+                }
+            }
             return xDoc;
-        }}
-    }}
-}}";
+        }
+
+        public IGraph MakeRdfGraph()
+        {
+            IGraph graph = new Graph();
+            graph.NamespaceMap.AddNamespace("ddi", UriFactory.Create("http://rdf-vocabulary.ddialliance.org/lifecycle##"));
+
+            foreach (var item in Items)
+            {
+                item.AddTriples(graph);
+            }
+
+            return graph;
+        }
+    }
+}
+""";
             var builder = new StringBuilder();
             if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
             {

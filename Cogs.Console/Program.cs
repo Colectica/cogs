@@ -363,14 +363,14 @@ namespace Cogs.Console
 
                     var targetNamespace = namespaceUri.Value() ?? cogsModel.Settings.NamespaceUrl;
 
-                    CSharpPublisher publisher = new CSharpPublisher(target)
+                    CSharpPublisher publisher = new CSharpPublisher(cogsModel, target)
                     {
                         Overwrite = overwrite,
                         WriteCsproj = writeCsproj,
                         IsNullableEnabled = isNullableEnabled,
                         TargetNamespace = targetNamespace,
                     };
-                    publisher.Publish(cogsModel);
+                    publisher.Publish();
 
                     return 0;
                 });
