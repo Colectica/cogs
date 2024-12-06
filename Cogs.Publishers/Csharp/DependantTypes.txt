@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Xml.Linq;
+using VDS.RDF;
 
 namespace __CogsGeneratedNamespace
 {
@@ -358,6 +359,7 @@ namespace __CogsGeneratedNamespace
     {
         string ReferenceId { get; }
         XElement ToXml();
+        INode AddTriples(IGraph graph, INode? itemNode = null);
     }
 
     /// <summary>

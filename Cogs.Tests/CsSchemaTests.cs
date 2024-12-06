@@ -25,11 +25,8 @@ namespace Cogs.Tests
             var modelBuilder = new CogsModelBuilder();
             var cogsModel = modelBuilder.Build(cogsDtoModel);
 
-            var publisher = new CsSchemaPublisher
-            {
-                TargetDirectory = outputPath
-            };
-            publisher.Publish(cogsModel);
+            CSharpPublisher publisher = new CSharpPublisher(cogsModel, outputPath);
+            publisher.Publish();
 
             // get the dotnet filepath
             Build("cogsburger", outputPath, "dotnet");
