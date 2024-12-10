@@ -44,6 +44,9 @@ namespace Cogs.Publishers.FluentJson
 
             // create the schema
             var builder = new JsonSchemaBuilder();
+            builder.Schema("https://json-schema.org/draft/2020-12/schema");
+            builder.Comment(CogsModel.Settings.Title);
+
             // create the simple types
             var defs = SimpleTypeDefinitions();
 
@@ -67,7 +70,20 @@ namespace Cogs.Publishers.FluentJson
             builder.Defs(defs);
 
             // create the top level reference, item container with pattern properties
+            var container = new Dictionary<string, Json.Schema.JsonSchema>();
 
+            var topLevel = new JsonSchemaBuilder().Type(SchemaValueType.Array).Items(new JsonSchemaBuilder().Ref("#/$defs/reference")).MinItems(0);
+            container["topLevelReference"] = topLevel;
+
+            foreach (var item in model.ItemTypes)
+            {
+                if(item.IsAbstract) { continue; }
+
+                var itemType = new JsonSchemaBuilder().PatternProperties(("^(?!\\s*$).+", new JsonSchemaBuilder().Ref($"#/$defs/{item.Name}")));
+                container[item.Name] = itemType;
+            }
+
+            builder.Properties(container).AdditionalProperties(false);
 
             var schema = builder.Build();
 
@@ -206,7 +222,7 @@ namespace Cogs.Publishers.FluentJson
                     ("timezone", new JsonSchemaBuilder().Type(SchemaValueType.String).Pattern(timezonePattern))
                 ).Required("month").AdditionalProperties(false));
 
-            results.Add("anyUri", new JsonSchemaBuilder().Type(SchemaValueType.String).Format(Formats.Uri));
+            results.Add("anyURI", new JsonSchemaBuilder().Type(SchemaValueType.String).Format(Formats.Uri));
             results.Add("cogsDate", new JsonSchemaBuilder().Type(SchemaValueType.Object)
                 .Properties(
                     ("dateTime", new JsonSchemaBuilder().Ref("#/$defs/dateTime")),

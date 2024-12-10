@@ -1,6 +1,5 @@
 using CogsBurger.Model;
 using Newtonsoft.Json;
-using NJsonSchema;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -13,13 +12,16 @@ using Xunit;
 using Cogs.SimpleTypes;
 using Cogs.DataAnnotations;
 using System.Reflection;
+using Json.Schema;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace Cogs.Tests.Integration
 {
     public class IntegrationTests
     {
         [Fact]
-        public async void CsharpWritesValidJson()
+        public async Task CsharpWritesValidJson()
         {
             Hamburger hamburger = new Hamburger
             {
@@ -193,9 +195,67 @@ namespace Cogs.Tests.Integration
             }
         }
 
+        [Fact]
+        public async Task TestsFindInvalidJson()
+        {
+
+            var invalidJson = """
+                {
+                    "BadHamburger": {
+                        "d21cd9c7-93ba-4f1f-b193-66cf25c565be": {
+                            "ID": "d21cd9c7-93ba-4f1f-b193-66cf25c565be",
+                            "HamburgerName": "Four Corners Burger",
+                            "Description": "Large Special",
+                            "Date": "2017-09-02"
+                        }
+                    },
+                    "Roll": {
+                        "7a7ab809-a4c3-4787-afa4-df9d115e6186": {
+                            "ID1": "7a7ab809-a4c3-4787-afa4-df9d115e6186",
+                            "Name": "Sesame seed bun",
+                            "Description": "A nice bun"
+                        }
+                    },
+                    "MeatPatty": {
+                        "884db7b1-0503-44e2-863b-ef9e40ed4985": {
+                            "$type": "MeatPatty",
+                            "ID": "884db7b1-0503-44e2-863b-ef9e40ed4985"
+                        },
+                        "709d8ad5-85c7-4b3e-9f29-1fb3d5c175d6": {
+                            "$type": "MeatPatty",
+                            "ID": "709d8ad5-85c7-4b3e-9f29-1fb3d5c175d6"
+                        }
+                    },
+                    "OldCheese": {
+                        "57651281-87e2-48df-a5c4-bc831610dcf7": {
+                            "ID": "57651281-87e2-48df-a5c4-bc831610dcf7",
+                            "CheeseRumors": [
+                                {
+                                    "Value": "A very long time ago",
+                                    "LanguageTag": "en"
+                                },
+                                {
+                                    "Value": "In a galaxy far away",
+                                    "LanguageTag": "en"
+                                }
+                            ]
+                        }
+                    }
+                }
+                """;
+
+            // evaluation
+            JsonSchema schema = await GetJsonSchema();
+            var errors = schema.Validate(invalidJson);
+
+            Assert.NotEmpty(errors);
+
+        }
+
+
 
         [Fact]
-        public async void JsonCreatesOneInstancePerIdentifiedItem()
+        public async Task JsonCreatesOneInstancePerIdentifiedItem()
         {
             Hamburger hamburger = new Hamburger
             {
@@ -240,7 +300,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeGMonthYear()
+        public async Task SimpleTypeGMonthYear()
         {
 
             ItemContainer container = new ItemContainer();
@@ -267,7 +327,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeGMonthYearWithoutTimezone()
+        public async Task SimpleTypeGMonthYearWithoutTimezone()
         {
 
             ItemContainer container = new ItemContainer();
@@ -294,7 +354,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeGMonthYearList()
+        public async Task SimpleTypeGMonthYearList()
         {
 
             ItemContainer container = new ItemContainer();
@@ -327,7 +387,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeBoolean()
+        public async Task SimpleTypeBoolean()
         {
 
             ItemContainer container = new ItemContainer();
@@ -355,7 +415,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeDuration()
+        public async Task SimpleTypeDuration()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -380,7 +440,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeDurationList()
+        public async Task SimpleTypeDurationList()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -411,7 +471,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeDate()
+        public async Task SimpleTypeDate()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -434,11 +494,11 @@ namespace Cogs.Tests.Integration
             Assert.IsType<Animal>(container2.Items.First());
 
             Animal animal2 = container2.Items.First() as Animal;
-            Assert.Equal(animal.Date.Value.Date, animal2.Date.Value.Date);
+            Assert.Equal(animal.Date, animal2.Date);
         }
 
         [Fact]
-        public async void SimpleTypeDateList()
+        public async Task SimpleTypeDateList()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -474,7 +534,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeDateTime()
+        public async Task SimpleTypeDateTime()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -501,7 +561,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeDateTimeList()
+        public async Task SimpleTypeDateTimeList()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -534,7 +594,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeTime()
+        public async Task SimpleTypeTime()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -557,11 +617,11 @@ namespace Cogs.Tests.Integration
             Assert.IsType<Animal>(container2.Items.First());
 
             Animal animal2 = container2.Items.First() as Animal;
-            Assert.Equal(animal.Time.Value.TimeOfDay, animal2.Time.Value.TimeOfDay);
+            Assert.Equal(animal.Time.TimeOfDay, animal2.Time.TimeOfDay);
         }
 
         [Fact]
-        public async void SimpleTypeTimeList()
+        public async Task SimpleTypeTimeList()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -596,7 +656,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeGyear()
+        public async Task SimpleTypeGyear()
         {
             ItemContainer container = new ItemContainer();
             VeggiePatty patty = new VeggiePatty
@@ -623,7 +683,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeGyearWithoutTimeZone()
+        public async Task SimpleTypeGyearWithoutTimeZone()
         {
             ItemContainer container = new ItemContainer();
             VeggiePatty patty = new VeggiePatty
@@ -650,7 +710,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeGyearList()
+        public async Task SimpleTypeGyearList()
         {
             ItemContainer container = new ItemContainer();
             Cheese cheese = new Cheese
@@ -686,7 +746,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeGMonthDay()
+        public async Task SimpleTypeGMonthDay()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -713,7 +773,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeGMonthDayWithoutTimeZone()
+        public async Task SimpleTypeGMonthDayWithoutTimeZone()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -740,7 +800,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeGMonthDayList()
+        public async Task SimpleTypeGMonthDayList()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -774,7 +834,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeGDay()
+        public async Task SimpleTypeGDay()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -802,7 +862,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeGDayWithoutTimeZone()
+        public async Task SimpleTypeGDayWithoutTimeZone()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -830,7 +890,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeGDayList()
+        public async Task SimpleTypeGDayList()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -865,7 +925,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeGMonth()
+        public async Task SimpleTypeGMonth()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -892,7 +952,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeGMonthWihtoutTimeZone()
+        public async Task SimpleTypeGMonthWihtoutTimeZone()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -919,7 +979,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeGMonthList()
+        public async Task SimpleTypeGMonthList()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -952,7 +1012,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeAnyURI()
+        public async Task SimpleTypeAnyURI()
         {
             ItemContainer container = new ItemContainer();
             Condiment condiment = new Condiment
@@ -997,7 +1057,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeString()
+        public async Task SimpleTypeString()
         {
             ItemContainer container = new ItemContainer();
             Condiment condiment = new Condiment
@@ -1024,7 +1084,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeAnyURIList()
+        public async Task SimpleTypeAnyURIList()
         {
             ItemContainer container = new ItemContainer();
             Condiment condiment = new Condiment
@@ -1057,7 +1117,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeLanguage()
+        public async Task SimpleTypeLanguage()
         {
             ItemContainer container = new ItemContainer();
             Cheese cheese = new Cheese
@@ -1085,7 +1145,7 @@ namespace Cogs.Tests.Integration
 
 
         [Fact]
-        public async void SimpleTypeLangStringList()
+        public async Task SimpleTypeLangStringList()
         {
             ItemContainer container = new ItemContainer();
             Cheese cheese = new Cheese
@@ -1121,7 +1181,7 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
-        public async void SimpleTypeLangString()
+        public async Task SimpleTypeLangString()
         {
             ItemContainer container = new ItemContainer();
             Cheese cheese = new Cheese
@@ -1154,7 +1214,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
 
 
         [Fact]
-        public async void SimpleTypeCogsDateDateTime()
+        public async Task SimpleTypeCogsDateDateTime()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -1182,7 +1242,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
         }
 
         [Fact]
-        public async void SimpleTypeCogsDateDate()
+        public async Task SimpleTypeCogsDateDate()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -1209,7 +1269,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
         }
 
         [Fact]
-        public async void SimpleTypeCogsDateYearMonth()
+        public async Task SimpleTypeCogsDateYearMonth()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -1236,7 +1296,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
         }
 
         [Fact]
-        public async void SimpleTypeCogsDateYearMonthNoTimeZone()
+        public async Task SimpleTypeCogsDateYearMonthNoTimeZone()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -1263,7 +1323,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
         }
 
         [Fact]
-        public async void SimpleTypeCogsDateYear()
+        public async Task SimpleTypeCogsDateYear()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -1290,7 +1350,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
         }
 
         [Fact]
-        public async void SimpleTypeCogsDateYearNoTimeZone()
+        public async Task SimpleTypeCogsDateYearNoTimeZone()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -1317,7 +1377,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
         }
 
         [Fact]
-        public async void SimpleTypeCogsDateDuration()
+        public async Task SimpleTypeCogsDateDuration()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -1344,7 +1404,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
         }
 
         [Fact]
-        public async void SimpleTypeCogsDateList()
+        public async Task SimpleTypeCogsDateList()
         {
             ItemContainer container = new ItemContainer();
             Condiment condiment = new Condiment
@@ -1386,7 +1446,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
         }
 
         [Fact]
-        public async void ReusableToItem()
+        public async Task ReusableToItem()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -1421,7 +1481,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
         }
 
         [Fact]
-        public async void ReusabletoSimple()
+        public async Task ReusabletoSimple()
         {
             ItemContainer container = new ItemContainer();
             Bread bread = new Bread
@@ -1451,7 +1511,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
         }
 
         [Fact]
-        public async void ReusabletoSimpleList()
+        public async Task ReusabletoSimpleList()
         {
             ItemContainer container = new ItemContainer();
             Bread bread = new Bread
@@ -1484,7 +1544,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
         }
 
         [Fact]
-        public async void SubstitutionsInReusableItem()
+        public async Task SubstitutionsInReusableItem()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -1523,7 +1583,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             Assert.IsType<SubPart>(animal2.MeatPieces[1]);
         }
         [Fact]
-        public async void NestedReusableItem()
+        public async Task NestedReusableItem()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -1574,7 +1634,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
         }
 
         [Fact]
-        public async void NestedReusableItemLists()
+        public async Task NestedReusableItemLists()
         {
             ItemContainer container = new ItemContainer();
             Animal animal = new Animal
@@ -1643,7 +1703,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
         }
 
         [Fact]
-        public async void ListOfReusableType()
+        public async Task ListOfReusableType()
         {
             ItemContainer container = new ItemContainer();
             MultilingualString describe1 = new MultilingualString
@@ -1684,7 +1744,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
         }
 
         [Fact]
-        public async void ListOfSimpleTypeGyear()
+        public async Task ListOfSimpleTypeGyear()
         {
             ItemContainer container = new ItemContainer();
             GYear year1 = new GYear(1997, "+09:00");
@@ -1716,7 +1776,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
         }
 
         [Fact]
-        public async void ListOfSimpleTypeGMonth()
+        public async Task ListOfSimpleTypeGMonth()
         {
             ItemContainer container = new ItemContainer();
             GMonth month1 = new GMonth(6, "Z");
@@ -1748,7 +1808,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
         }
 
         [Fact]
-        public async void ListOfSimpleTypeGDay()
+        public async Task ListOfSimpleTypeGDay()
         {
             ItemContainer container = new ItemContainer();
             GDay day1 = new GDay(1, "Z");
@@ -1780,7 +1840,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
         }
 
         [Fact]
-        public async void ListOfSimpleTypeGMonthDay()
+        public async Task ListOfSimpleTypeGMonthDay()
         {
             ItemContainer container = new ItemContainer();
             GMonthDay day1 = new GMonthDay(1, 2, "+09:00");
@@ -1812,7 +1872,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
         }
 
         [Fact]
-        public async void ListOfSimpleTypeGYearMonth()
+        public async Task ListOfSimpleTypeGYearMonth()
         {
             ItemContainer container = new ItemContainer();
             GYearMonth ym1 = new GYearMonth(1996, 2, "Z");
@@ -1853,8 +1913,34 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
                 MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
                 DateParseHandling = DateParseHandling.None
             };
-            JsonSchema schema = await JsonSchema.FromJsonAsync(jsonSchema);
+            var options = new JsonSerializerOptions() { };
+            JsonSchema schema = JsonSchema.FromFile(jsonSchemaFileName, options);
             return schema;
+        }
+    }
+
+    public static class TestExtensions
+    {
+        public static List<string> Validate(this JsonSchema schema, string json)
+        {
+            var jsonDocument = JsonDocument.Parse(json);
+
+            var result = new List<string>();    
+
+            var options = new EvaluationOptions() { OutputFormat = OutputFormat.List };
+            var results = schema.Evaluate(jsonDocument, options);
+            if (!results.IsValid) 
+            { 
+                foreach(var detail in results.Details)
+                {
+                    if (detail.HasErrors)
+                    {
+                        result.Add(string.Join(" ", detail.Errors.Select(x => x.Key + ":" + x.Value)));
+                    }
+                }
+            }
+
+            return result;
         }
     }
 }
