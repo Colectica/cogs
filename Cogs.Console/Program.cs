@@ -5,6 +5,7 @@ using Cogs.Dto;
 using Cogs.Model;
 using Cogs.Publishers;
 using Cogs.Publishers.Csharp;
+using Cogs.Publishers.FluentJson;
 using Cogs.Publishers.JsonSchema;
 using Cogs.Publishers.LinkMl;
 using Cogs.Validation;
@@ -495,12 +496,12 @@ namespace Cogs.Console
                     var modelBuilder = new CogsModelBuilder();
                     var cogsModel = modelBuilder.Build(cogsDtoModel);
 
-                    JsonPublisher publisher = new JsonPublisher
+                    FluentJsonSchemaPublisher publisher = new FluentJsonSchemaPublisher
                     {
                         CogsLocation = location,
                         TargetDirectory = target,
                         Overwrite = overwrite,
-                        AdditionalProp = addprop
+                        AdditionalProperties = addprop
                     };
 
                     publisher.Publish(cogsModel);
