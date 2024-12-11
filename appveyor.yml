@@ -37,7 +37,7 @@ build:
 test: off
 
 artifacts:
-- path: .\Cogs.Console\bin\Release\net6.0\publish\
+- path: .\Cogs.Console\bin\Release\net8.0\publish\
   name: CogsRelease
 
 - path: '**\*.nupkg'

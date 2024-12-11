@@ -28,6 +28,7 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
     <PackageReference Include="YamlDotNet" Version="16.2.1" />
+    <PackageReference Include="dotNetRdf.Core" Version="3.3.0" />
   </ItemGroup>
 
   <ItemGroup>
