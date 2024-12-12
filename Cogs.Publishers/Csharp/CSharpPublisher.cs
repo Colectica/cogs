@@ -167,6 +167,8 @@ namespace Cogs.Publishers.Csharp
                     classBuilder.AppendLine("*/");
                     classBuilder.AppendLine();
                 }
+                classBuilder.AppendLine("using System;");
+                classBuilder.AppendLine("using System.Linq;");
                 classBuilder.AppendLine("using Newtonsoft.Json;");
                 classBuilder.AppendLine("using System.Xml.Linq;");
                 classBuilder.AppendLine("using Cogs.SimpleTypes;");
@@ -231,7 +233,7 @@ namespace Cogs.Publishers.Csharp
                 bool isReusableItem = model.ItemTypes.Contains(item);
                 if (isReusableItem)
                 {
-                    addTriplesMethodBuilder.AppendLine($"            itemNode ??= graph.CreateUriNode(UriFactory.Create(URN));");
+                    addTriplesMethodBuilder.AppendLine($"            itemNode ??= graph.CreateUriNode(UriFactory.Create(RdfUriFactory.GetUri(this)));");
                 }
                 else
                 {
@@ -239,7 +241,7 @@ namespace Cogs.Publishers.Csharp
                 }
                 addTriplesMethodBuilder.AppendLine($$"""
                             IUriNode typePredicate = graph.CreateUriNode(UriFactory.Create("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"));
-                            IUriNode typeUriNode = graph.CreateUriNode(UriFactory.Create("ddi:{{item.Name}}"));
+                            IUriNode typeUriNode = graph.CreateUriNode(UriFactory.Create("{{model.Settings.NamespacePrefix}}:{{item.Name}}"));
                             graph.Assert(new Triple(itemNode, typePredicate, typeUriNode));
                 """);
 
@@ -727,14 +729,14 @@ namespace Cogs.Publishers.Csharp
 
         private string GetStringToAddTripleForReferencedItem(string predicateName, string variableName)
         {
-            return $"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("ddi:{predicateName}")), graph.CreateUriNode(UriFactory.Create({variableName}.URN))));""";
+            return $"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("{model.Settings.NamespacePrefix}:{predicateName}")), graph.CreateUriNode(UriFactory.Create(RdfUriFactory.GetUri({variableName})))));""";
         }
 
         private string GetStringToAddTripleForCompositeObject(string predicateName, string variableName)
         {
             return $"""
             INode node = {variableName}.AddTriples(graph);
-                                graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("ddi:{predicateName}")), node));
+                                graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("{model.Settings.NamespacePrefix}:{predicateName}")), node));
             """;
         }
 
@@ -746,20 +748,20 @@ namespace Cogs.Publishers.Csharp
 
             if (dataType.Name == "langString")
             {
-                return $$"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("ddi:{{predicateName}}")), graph.CreateLiteralNode({{variableName}}.Value, {{variableName}}.LanguageTag)));""";
+                return $$"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("{{model.Settings.NamespacePrefix}}:{{predicateName}}")), graph.CreateLiteralNode({{variableName}}.Value, {{variableName}}.LanguageTag)));""";
             }
             else if (dataType.Name == "string")
             {
-                return $$"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("ddi:{{predicateName}}")), graph.CreateLiteralNode({{variableName}})));   """;
+                return $$"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("{{model.Settings.NamespacePrefix}}:{{predicateName}}")), graph.CreateLiteralNode({{variableName}})));   """;
             }
             else if (dataType.Name == "cogsdate")
             {
                 // TODO
-                return $$"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("ddi:{{predicateName}}")), graph.CreateLiteralNode({{variableName}}.ToString())));""";
+                return $$"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("{{model.Settings.NamespacePrefix}}:{{predicateName}}")), graph.CreateLiteralNode({{variableName}}.ToString())));""";
             }
             else
             {
-                return $$"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("ddi:{{predicateName}}")), graph.CreateLiteralNode({{variableName}}.ToString())));""";
+                return $$"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("{{model.Settings.NamespacePrefix}}:{{predicateName}}")), graph.CreateLiteralNode({{variableName}}.ToString())));""";
             }
         }
 
@@ -889,10 +891,15 @@ namespace {{csNamespace}}
                     {
                         xDoc.Root.Add(
                             new XElement(ns + "TopLevelReference", 
-                                new XElement(ns + "URN", item.URN),
-                                new XElement(ns + "Agency", item.Agency),
-                                new XElement(ns + "ID", item.ID),
-                                new XElement(ns + "Version", item.Version),
+""";
+            foreach(var idProperty in model.Identification)
+            {
+                clss += $"""
+                            new XElement(ns + "{idProperty.Name}", item.{idProperty.Name}),
+""";
+            }
+
+string clssFooter = $$"""
                                 new XElement(ns + "TypeOfObject", item.GetType().Name)
                             ));
                     }
@@ -908,7 +915,7 @@ namespace {{csNamespace}}
         public IGraph MakeRdfGraph()
         {
             IGraph graph = new Graph();
-            graph.NamespaceMap.AddNamespace("ddi", UriFactory.Create("http://rdf-vocabulary.ddialliance.org/lifecycle##"));
+            graph.NamespaceMap.AddNamespace("{{model.Settings.NamespacePrefix}}", UriFactory.Create("{{model.Settings.NamespaceUrl}}"));
 
             foreach (var item in Items)
             {
@@ -930,6 +937,9 @@ namespace {{csNamespace}}
             }
 
             builder.AppendLine(clss);
+
+            builder.AppendLine(clssFooter);
+
             File.WriteAllText(Path.Combine(TargetDirectory, "ItemContainer.Xml.cs"), builder.ToString());
         }
 

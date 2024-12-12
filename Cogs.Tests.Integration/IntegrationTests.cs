@@ -617,7 +617,7 @@ namespace Cogs.Tests.Integration
             Assert.IsType<Animal>(container2.Items.First());
 
             Animal animal2 = container2.Items.First() as Animal;
-            Assert.Equal(animal.Time.TimeOfDay, animal2.Time.TimeOfDay);
+            Assert.Equal(animal.Time.Value.TimeOfDay, animal2.Time.Value.TimeOfDay);
         }
 
         [Fact]
@@ -1906,7 +1906,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
         private async Task<JsonSchema> GetJsonSchema()
         {
             string schemaPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..");
-            string jsonSchemaFileName = Path.Combine(schemaPath, "generated", "jsonSchema.json");
+            string jsonSchemaFileName = Path.Combine(schemaPath, "generated", "json", "jsonSchema.json");
             string jsonSchema = File.ReadAllText(jsonSchemaFileName);
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings
             {
@@ -1935,7 +1935,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
                 {
                     if (detail.HasErrors)
                     {
-                        result.Add(string.Join(" ", detail.Errors.Select(x => x.Key + ":" + x.Value)));
+                        result.Add(detail.InstanceLocation.ToString() + string.Join(" ", detail.Errors.Select(x => x.Key + ":" + x.Value)));
                     }
                 }
             }

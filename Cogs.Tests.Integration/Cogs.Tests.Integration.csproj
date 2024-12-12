@@ -25,7 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\generated\CogsBurger.Model.csproj" />
+    <ProjectReference Include="..\generated\src\CogsBurger.Model.csproj" />
   </ItemGroup>
 
 </Project>

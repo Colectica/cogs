@@ -196,47 +196,47 @@ namespace Cogs.Publishers.FluentJson
             results.Add("nonNegativeInteger", new JsonSchemaBuilder().Type(SchemaValueType.Integer).Minimum(0));
             results.Add("gYearMonth", new JsonSchemaBuilder().Type(SchemaValueType.Object)
                 .Properties(
-                    ("year", new JsonSchemaBuilder().Type(SchemaValueType.Integer)),
-                    ("month", new JsonSchemaBuilder().Type(SchemaValueType.Integer)),
-                    ("timezone", new JsonSchemaBuilder().Type(SchemaValueType.String).Pattern(timezonePattern))
-                ).Required("year", "month").AdditionalProperties(false));
+                    ("Year", new JsonSchemaBuilder().Type(SchemaValueType.Integer)),
+                    ("Month", new JsonSchemaBuilder().Type(SchemaValueType.Integer)),
+                    ("Timezone", new JsonSchemaBuilder().Type(SchemaValueType.String).Pattern(timezonePattern))
+                ).Required("Year", "Month").AdditionalProperties(false));
             results.Add("gYear", new JsonSchemaBuilder().Type(SchemaValueType.Object)
                 .Properties(
-                    ("year", new JsonSchemaBuilder().Type(SchemaValueType.Integer)),
-                    ("timezone", new JsonSchemaBuilder().Type(SchemaValueType.String).Pattern(timezonePattern))
-                ).Required("year").AdditionalProperties(false));
+                    ("Year", new JsonSchemaBuilder().Type(SchemaValueType.Integer)),
+                    ("Timezone", new JsonSchemaBuilder().Type(SchemaValueType.String).Pattern(timezonePattern))
+                ).Required("Year").AdditionalProperties(false));
             results.Add("gMonthDay", new JsonSchemaBuilder().Type(SchemaValueType.Object)
                 .Properties(
-                    ("month", new JsonSchemaBuilder().Type(SchemaValueType.Integer)),
-                    ("day", new JsonSchemaBuilder().Type(SchemaValueType.Integer)),
-                    ("timezone", new JsonSchemaBuilder().Type(SchemaValueType.String).Pattern(timezonePattern))
-                ).Required("month", "day").AdditionalProperties(false));
+                    ("Month", new JsonSchemaBuilder().Type(SchemaValueType.Integer)),
+                    ("Day", new JsonSchemaBuilder().Type(SchemaValueType.Integer)),
+                    ("Timezone", new JsonSchemaBuilder().Type(SchemaValueType.String).Pattern(timezonePattern))
+                ).Required("Month", "Day").AdditionalProperties(false));
             results.Add("gDay", new JsonSchemaBuilder().Type(SchemaValueType.Object)
                 .Properties(
-                    ("day", new JsonSchemaBuilder().Type(SchemaValueType.Integer)),
-                    ("timezone", new JsonSchemaBuilder().Type(SchemaValueType.String).Pattern(timezonePattern))
-                ).Required("day").AdditionalProperties(false));
+                    ("Day", new JsonSchemaBuilder().Type(SchemaValueType.Integer)),
+                    ("Timezone", new JsonSchemaBuilder().Type(SchemaValueType.String).Pattern(timezonePattern))
+                ).Required("Day").AdditionalProperties(false));
             results.Add("gMonth", new JsonSchemaBuilder().Type(SchemaValueType.Object)
                 .Properties(
-                    ("month", new JsonSchemaBuilder().Type(SchemaValueType.Integer)),
-                    ("timezone", new JsonSchemaBuilder().Type(SchemaValueType.String).Pattern(timezonePattern))
-                ).Required("month").AdditionalProperties(false));
+                    ("Month", new JsonSchemaBuilder().Type(SchemaValueType.Integer)),
+                    ("Timezone", new JsonSchemaBuilder().Type(SchemaValueType.String).Pattern(timezonePattern))
+                ).Required("Month").AdditionalProperties(false));
 
             results.Add("anyURI", new JsonSchemaBuilder().Type(SchemaValueType.String).Format(Formats.Uri));
             results.Add("cogsDate", new JsonSchemaBuilder().Type(SchemaValueType.Object)
                 .Properties(
-                    ("dateTime", new JsonSchemaBuilder().Ref("#/$defs/dateTime")),
-                    ("date", new JsonSchemaBuilder().Ref("#/$defs/date")),
-                    ("gYearMonth", new JsonSchemaBuilder().Ref("#/$defs/gYearMonth")),
-                    ("gYear", new JsonSchemaBuilder().Ref("#/$defs/gYear")),
-                    ("duration", new JsonSchemaBuilder().Ref("#/$defs/duration"))
+                    ("DateTime", new JsonSchemaBuilder().Ref("#/$defs/dateTime")),
+                    ("Date", new JsonSchemaBuilder().Ref("#/$defs/date")),
+                    ("GYearMonth", new JsonSchemaBuilder().Ref("#/$defs/gYearMonth")),
+                    ("GYear", new JsonSchemaBuilder().Ref("#/$defs/gYear")),
+                    ("Duration", new JsonSchemaBuilder().Ref("#/$defs/duration"))
                 ).AdditionalProperties(false));
             results.Add("language", new JsonSchemaBuilder().Type(SchemaValueType.String));
             results.Add("langString", new JsonSchemaBuilder().Type(SchemaValueType.Object)
                 .Properties(
-                    ("languageTag", new JsonSchemaBuilder().Type(SchemaValueType.String)),
-                    ("value", new JsonSchemaBuilder().Type(SchemaValueType.String))
-                ).Required("languageTag", "value").AdditionalProperties(false));
+                    ("LanguageTag", new JsonSchemaBuilder().Type(SchemaValueType.String)),
+                    ("Value", new JsonSchemaBuilder().Type(SchemaValueType.String))
+                ).Required("LanguageTag", "Value").AdditionalProperties(false));
 
             results.Add("reference", new JsonSchemaBuilder().Type(SchemaValueType.Object)
                 .Properties(

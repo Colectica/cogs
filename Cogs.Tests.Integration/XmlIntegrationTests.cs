@@ -160,7 +160,8 @@ namespace Cogs.Tests.Integration
             var containers = new ItemContainer[] { container, container2, container3, container4 };
             for (int i = 0; i < 4; i++)
             {
-                XmlValidation(containers[i].MakeXml());
+                var xdoc = containers[i].MakeXml();
+                XmlValidation(xdoc);
             }
         }
 
@@ -1031,7 +1032,7 @@ namespace Cogs.Tests.Integration
         private XmlSchemaSet GetXmlSchema()
         {
             // TODO build the json schema into the generated assembly as a resource
-            string schemaPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "generated", "schema.xsd");
+            string schemaPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "generated","xsd", "schema.xsd");
             
 
             XmlSchemaSet xmlSchemaSet = new XmlSchemaSet();

@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Cogs.Converters;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
@@ -360,6 +361,18 @@ namespace __CogsGeneratedNamespace
         string ReferenceId { get; }
         XElement ToXml();
         INode AddTriples(IGraph graph, INode? itemNode = null);
+        string GetUri() { return RdfUriFactory.GetUri(this); }
+    }
+
+
+    public static class RdfUriFactory
+    {
+        public static string Prefix { get; set; } = "https://example.org";
+
+        public static string GetUri(IIdentifiable identifiable)
+        {
+            return Prefix + identifiable.ReferenceId;
+        }
     }
 
     /// <summary>

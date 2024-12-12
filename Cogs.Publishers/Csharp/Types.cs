@@ -199,6 +199,7 @@ namespace Cogs.SimpleTypes
             }
         }
 
+        [JsonConverter(typeof(DurationConverter))]
         public TimeSpan Duration
         {
             get
@@ -340,8 +341,8 @@ namespace Cogs.SimpleTypes
 
 		public JObject ToJson()
 		{
-            if (Timezone != null) { return new JObject(new JProperty("year", Year), new JProperty("timezone", Timezone)); }
-            return new JObject(new JProperty("year", Year));
+            if (Timezone != null) { return new JObject(new JProperty("Year", Year), new JProperty("Timezone", Timezone)); }
+            return new JObject(new JProperty("Year", Year));
         }
 
         public int CompareTo(object? obj)
@@ -396,8 +397,8 @@ namespace Cogs.SimpleTypes
 
         public JObject ToJson()
         {
-            if (Timezone != null) { return new JObject(new JProperty("month", Month), new JProperty("timezone", Timezone)); }
-            return new JObject(new JProperty("month", Month));
+            if (Timezone != null) { return new JObject(new JProperty("Month", Month), new JProperty("Timezone", Timezone)); }
+            return new JObject(new JProperty("Month", Month));
         }
 
         public int CompareTo(object? obj)
@@ -452,8 +453,8 @@ namespace Cogs.SimpleTypes
 
         public JObject ToJson()
         {
-            if (Timezone != null) { return new JObject(new JProperty("day", Day), new JProperty("timezone", Timezone)); }
-            return new JObject(new JProperty("day", Day));
+            if (Timezone != null) { return new JObject(new JProperty("Day", Day), new JProperty("Timezone", Timezone)); }
+            return new JObject(new JProperty("Day", Day));
         }
 
         public int CompareTo(object? obj)
@@ -511,8 +512,8 @@ namespace Cogs.SimpleTypes
 
         public JObject ToJson()
         {
-            if (Timezone != null) { return new JObject(new JProperty("year", Year), new JProperty("month", Month), new JProperty("timezone", Timezone)); }
-            return new JObject(new JProperty("year", Year), new JProperty("month", Month));
+            if (Timezone != null) { return new JObject(new JProperty("Year", Year), new JProperty("Month", Month), new JProperty("Timezone", Timezone)); }
+            return new JObject(new JProperty("Year", Year), new JProperty("Month", Month));
         }
 
         public int CompareTo(object? obj)
@@ -576,8 +577,8 @@ namespace Cogs.SimpleTypes
 
         public JObject ToJson()
         {
-            if (Timezone != null) { return new JObject(new JProperty("month", Month), new JProperty("day", Day), new JProperty("timezone", Timezone)); }
-            return new JObject(new JProperty("month", Month), new JProperty("day", Day));
+            if (Timezone != null) { return new JObject(new JProperty("Month", Month), new JProperty("Day", Day), new JProperty("Timezone", Timezone)); }
+            return new JObject(new JProperty("Month", Month), new JProperty("Day", Day));
         }
 
         public int CompareTo(object? obj)
@@ -692,6 +693,8 @@ namespace Cogs.Converters
         public override bool CanRead => true;
         public override bool CanWrite => true;
 
+        // UTC milliseconds
+
         public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
         {
             if (reader.TokenType == JsonToken.StartArray)
@@ -701,9 +704,10 @@ namespace Cogs.Converters
                 foreach (var item in array.Children())
                 {
                     var itemValue = item.ToString();
-                    if (int.TryParse(itemValue, out int milliseconds))
+                    if (long.TryParse(itemValue, out long milliseconds))
                     {
-                        results.Add(new TimeSpan(0, 0, 0, 0, milliseconds));
+                        
+                        results.Add(TimeSpan.FromMilliseconds(milliseconds));
                     }
                 }
                 return results;
@@ -711,17 +715,21 @@ namespace Cogs.Converters
 
             if (reader.Value is Int64 largeMilli)
             {
-                return new TimeSpan(0, 0, 0, 0, (int)largeMilli);
+                return TimeSpan.FromMilliseconds(largeMilli);
             }
             if (reader.Value is int milli)
             {
-                return new TimeSpan(0, 0, 0, 0, milli);
+                return TimeSpan.FromMilliseconds(milli);
+            }
+            if (reader.Value is double d)
+            {
+                return TimeSpan.FromMilliseconds(d);
             }
 
             string? token = reader?.Value?.ToString();
-            if (int.TryParse(token, out int mill))
+            if (double.TryParse(token, out double mill))
             {
-                return new TimeSpan(0, 0, 0, 0, mill);
+                return TimeSpan.FromMilliseconds(mill);
             }
             return null;
         }
@@ -804,24 +812,24 @@ namespace Cogs.Converters
     {
         internal override GDay? FromObject(JObject jsonObject)
         {
-            int? day = (int?)jsonObject["day"];
+            int? day = (int?)jsonObject["Day"];
             if (day == null)
             {
                 return null;
             }
 
-            string? timezone = (string?)jsonObject["timezone"];
+            string? timezone = (string?)jsonObject["Timezone"];
             return new GDay(day.Value, timezone);
         }
 
         internal override void Write(JsonWriter writer, GDay item)
         {
             writer.WriteStartObject();
-            writer.WritePropertyName("day");
+            writer.WritePropertyName("Day");
             writer.WriteValue(item.Day);
             if (!string.IsNullOrWhiteSpace(item.Timezone))
             {
-                writer.WritePropertyName("timezone");
+                writer.WritePropertyName("Timezone");
                 writer.WriteValue(item.Timezone);
             }
             writer.WriteEndObject();
@@ -833,24 +841,24 @@ namespace Cogs.Converters
     {
         internal override GMonth? FromObject(JObject jsonObject)
         {
-            int? month = (int?)jsonObject["month"];
+            int? month = (int?)jsonObject["Month"];
             if (month == null)
             {
                 return null;
             }
 
-            string? timezone = (string?)jsonObject["timezone"];
+            string? timezone = (string?)jsonObject["Timezone"];
             return new GMonth(month.Value, timezone);
         }
 
         internal override void Write(JsonWriter writer, GMonth item)
         {
             writer.WriteStartObject();
-            writer.WritePropertyName("month");
+            writer.WritePropertyName("Month");
             writer.WriteValue(item.Month);
             if (!string.IsNullOrWhiteSpace(item.Timezone))
             {
-                writer.WritePropertyName("timezone");
+                writer.WritePropertyName("Timezone");
                 writer.WriteValue(item.Timezone);
             }
             writer.WriteEndObject();
@@ -862,9 +870,9 @@ namespace Cogs.Converters
     {
         internal override GMonthDay? FromObject(JObject jsonObject)
         {
-            int? month = (int?)jsonObject["month"];
-            int? day = (int?)jsonObject["day"];
-            string? timezone = (string?)jsonObject["timezone"];
+            int? month = (int?)jsonObject["Month"];
+            int? day = (int?)jsonObject["Day"];
+            string? timezone = (string?)jsonObject["Timezone"];
 
             if (month == null || day == null)
             {
@@ -877,13 +885,13 @@ namespace Cogs.Converters
         internal override void Write(JsonWriter writer, GMonthDay item)
         {
             writer.WriteStartObject();
-            writer.WritePropertyName("month");
+            writer.WritePropertyName("Month");
             writer.WriteValue(item.Month);
-            writer.WritePropertyName("day");
+            writer.WritePropertyName("Day");
             writer.WriteValue(item.Day);
             if (!string.IsNullOrWhiteSpace(item.Timezone))
             {
-                writer.WritePropertyName("timezone");
+                writer.WritePropertyName("Timezone");
                 writer.WriteValue(item.Timezone);
             }
             writer.WriteEndObject();
@@ -894,26 +902,26 @@ namespace Cogs.Converters
     {      
         internal override GYear? FromObject(JObject jsonObject)
         {
-            int? year = (int?)jsonObject["year"];
+            int? year = (int?)jsonObject["Year"];
             if (year == null)
             {
                 return null;
             }
 
 
-            string? timezone = (string?)jsonObject["timezone"];
+            string? timezone = (string?)jsonObject["Timezone"];
             return new GYear(year.Value, timezone);
         }
 
         internal override void Write(JsonWriter writer, GYear item)
         {
             writer.WriteStartObject();
-            writer.WritePropertyName("year");
+            writer.WritePropertyName("Year");
             writer.WriteValue(item.Year);
 
             if (!string.IsNullOrWhiteSpace(item.Timezone))
             {
-                writer.WritePropertyName("timezone");
+                writer.WritePropertyName("Timezone");
                 writer.WriteValue(item.Timezone);
             }
 
@@ -925,9 +933,9 @@ namespace Cogs.Converters
     {
         internal override GYearMonth? FromObject(JObject jsonObject)
         {
-            int? year = (int?)jsonObject["year"];
-            int? month = (int?)jsonObject["month"];
-            string? timezone = (string?)jsonObject["timezone"];
+            int? year = (int?)jsonObject["Year"];
+            int? month = (int?)jsonObject["Month"];
+            string? timezone = (string?)jsonObject["Timezone"];
 
             if (year == null || month == null)
             {
@@ -940,18 +948,19 @@ namespace Cogs.Converters
         internal override void Write(JsonWriter writer, GYearMonth item)
         {
             writer.WriteStartObject();
-            writer.WritePropertyName("year");
+            writer.WritePropertyName("Year");
             writer.WriteValue(item.Year);
-            writer.WritePropertyName("month");
+            writer.WritePropertyName("Month");
             writer.WriteValue(item.Month);
 
             if (!string.IsNullOrWhiteSpace(item.Timezone))
             {
-                writer.WritePropertyName("timezone");
+                writer.WritePropertyName("Timezone");
                 writer.WriteValue(item.Timezone);
             }
 
             writer.WriteEndObject();
         }
     }
+
 }
