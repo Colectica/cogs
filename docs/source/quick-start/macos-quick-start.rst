@@ -4,7 +4,7 @@ MacOS Quick Start
 1. Download COGS
 ~~~~~~~~~~~~~~~~
 
-COGS runs on the open source .NET Core platform. You will need to `Download .NET Core 2.1 <https://www.microsoft.com/net/download?initial-os=macos>`_
+COGS runs on the open source .NET Core platform. You will need to `Download .NET Core <https://www.microsoft.com/net/download?initial-os=macos>`_
 and install it
 
 Next, install COGS as a dotnet tool on your system by downloading the latest stable version.
