@@ -38,7 +38,7 @@ Upcoming formats include:
 * Class libraries for other languages
 
 ## Platform
-COGS runs on Windows, Linux, and macOS on the .NET Core 6 platform.
+COGS runs on Windows, Linux, and macOS on the .NET Core 9 platform.
 * https://www.microsoft.com/net/core/
 
 ## Documentation
