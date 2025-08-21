@@ -9,11 +9,11 @@ COGS is for domain experts and groups who value **ease of collaboration** and **
 ## Highlighted projects using COGS
 
 * SDTL - Structured Data Transformation Language
-  * https://gitlab.com/c2metadata/sdtl-cogs [cogs]
-  * https://ddialliance.org/products/sdtl/1.0
-* DDI Lifecycle 3.4
+  * https://github.com/ddialliance/sdtl [cogs]
+  * https://ddialliance.org/sdtl
+* DDI Lifecycle 4.0
   * https://github.com/ddialliance/ddimodel [cogs]
-  * https://ddialliance.org/Specification/DDI-Lifecycle/3.3/
+  * https://ddialliance.org/ddi-lifecycle
 
 
 ## Output Formats
