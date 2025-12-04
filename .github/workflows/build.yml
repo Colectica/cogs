@@ -61,16 +61,9 @@ jobs:
         -p:FileVersion=${{ steps.version.outputs.BUILD_VERSION }}
         -p:InformationalVersion=${{ steps.version.outputs.BUILD_VERSION }}
 
-    - name: Publish app (creates the publish folder you artifact)
-      run: >
-        dotnet publish ./Cogs.Console.sln
-        --configuration ${{ env.BUILD_CONFIGURATION }}
-        --no-build
-        --no-restore
-
-    - name: Upload NuGet package
+    - name: Upload NuGet package as artifact (now only ONE package)
       uses: actions/upload-artifact@v4
       with:
-        name: Cogs.Console.${{ steps.version.outputs.BUILD_VERSION }}.nupkg
-        path: Cogs.Console/bin/Release/Cogs.Console.${{ steps.version.outputs.BUILD_VERSION }}.nupkg
+        name: CogsNuGetPackage
+        path: Cogs.Console/bin/Release/*.nupkg
         if-no-files-found: error
