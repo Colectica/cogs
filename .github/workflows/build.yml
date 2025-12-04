@@ -45,7 +45,7 @@ jobs:
 
     - name: Pack NuGet packages 
       run: >
-        dotnet pack ./Cogs.Console.sln
+        dotnet pack Cogs.Console/Cogs.Console.csproj
         --configuration ${{ env.BUILD_CONFIGURATION }}
         --no-build
         --no-restore
