@@ -68,16 +68,9 @@ jobs:
         --no-build
         --no-restore
 
-    - name: Upload published app as artifact (CogsRelease)
+    - name: Upload NuGet package
       uses: actions/upload-artifact@v4
       with:
-        name: CogsRelease
-        path: Cogs.Console/bin/Release/net10.0/publish/
+        name: Cogs.Console.${{ steps.version.outputs.BUILD_VERSION }}.nupkg
+        path: Cogs.Console/bin/Release/Cogs.Console.${{ steps.version.outputs.BUILD_VERSION }}.nupkg
         if-no-files-found: error
-
-    - name: Upload NuGet packages as artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: NuGetPackages
-        path: '**/*.nupkg'
-        if-no-files-found: warn   
