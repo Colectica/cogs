@@ -6,7 +6,6 @@ using Cogs.Model;
 using Cogs.Publishers;
 using Cogs.Publishers.Csharp;
 using Cogs.Publishers.FluentJson;
-using Cogs.Publishers.JsonSchema;
 using Cogs.Publishers.LinkMl;
 using Cogs.Validation;
 using Microsoft.Extensions.CommandLineUtils;
@@ -170,13 +169,14 @@ namespace Cogs.Console
                     HandleErrors(modelBuilder.Errors);
 
 
-                    DcTapPublisher publisher = new DcTapPublisher
+                    DcTapPublisher publisher = new DcTapPublisher()
                     {
                         TargetDirectory = target,
-                        Overwrite = overwrite
+                        Overwrite = overwrite,
+                        CogsModel = cogsModel
                     };
 
-                    publisher.Publish(cogsModel);
+                    publisher.Publish();
 
 
                     return 0;

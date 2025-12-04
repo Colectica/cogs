@@ -1,5 +1,4 @@
 ﻿using Cogs.Model;
-using Cogs.Publishers.JsonSchema;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System;
@@ -38,7 +37,6 @@ namespace Cogs.Publishers
             Directory.CreateDirectory(TargetDirectory);
             settings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
             settings.Formatting = Formatting.Indented;
-            settings.Converters.Add(new JsonSchemaConverter());
             settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
             settings.DefaultValueHandling = DefaultValueHandling.Ignore;
             GraphQLList root = new GraphQLList();

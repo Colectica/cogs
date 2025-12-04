@@ -53,7 +53,7 @@ namespace Cogs.Publishers.FluentJson
             // create the datatypes and itemtypes
             foreach (var item in model.ReusableDataTypes)
             {
-                if (item.IsAbstract) { continue; } // json schema doesn't do inheritance
+                //if (item.IsAbstract) { continue; } // json schema doesn't do inheritance
 
                 var dataTypeDefSchema = GetJsonSchema(item);
                 defs[item.Name] = dataTypeDefSchema;
@@ -61,7 +61,7 @@ namespace Cogs.Publishers.FluentJson
 
             foreach (var item in model.ItemTypes)
             {
-                if (item.IsAbstract) { continue; } // json schema doesn't do inheritance
+                //if (item.IsAbstract) { continue; } // json schema doesn't do inheritance
 
                 var dataTypeDefSchema = GetJsonSchema(item);
                 defs[item.Name] = dataTypeDefSchema;
@@ -94,14 +94,28 @@ namespace Cogs.Publishers.FluentJson
 
         public Json.Schema.JsonSchema GetJsonSchema(DataType datatype)
         {
+            var builder = new JsonSchemaBuilder()
+                .Type(SchemaValueType.Object)
+                .Description(datatype.Description);
+
             var properties = new List<Property>();
 
+            // This includes inherited properties inline
+            /*            
             foreach (var parent in datatype.ParentTypes)
             {
                 properties.AddRange(parent.Properties);
-            }
-            properties.AddRange(datatype.Properties);
+            }            
+            */
 
+            // This includes inherited properties using AllOf and refs            
+            var parent = datatype.ParentTypes.FirstOrDefault();
+            if (parent != null)
+            {
+                builder.AllOf(new JsonSchemaBuilder().Ref($"#/$defs/{parent.Name}"));
+            }
+
+            properties.AddRange(datatype.Properties);
             var jsonProperties = new Dictionary<string, Json.Schema.JsonSchema>();
             foreach (var property in properties)
             {
@@ -109,7 +123,7 @@ namespace Cogs.Publishers.FluentJson
                 jsonProperties[property.Name] = propBuilder;
             }            
 
-            var builder = new JsonSchemaBuilder().Properties(jsonProperties);
+            builder.Properties(jsonProperties);
 
             var required = properties.Where(x => x.MinCardinality != "0").Select(x => x.Name).ToList();
             builder.Required(required);
@@ -122,7 +136,7 @@ namespace Cogs.Publishers.FluentJson
             if (property.MaxCardinality != "1")
             {
                 builder.Type(SchemaValueType.Array);
-                var typeBuilder = GetBuilderForType(property.DataTypeName);
+                var typeBuilder = GetBuilderForType(property);
                 builder.Items(typeBuilder);
 
                 if(uint.TryParse(property.MinCardinality, out uint minCardinatlity))
@@ -136,7 +150,7 @@ namespace Cogs.Publishers.FluentJson
             }
             else
             {
-                builder = GetBuilderForType(property.DataTypeName);
+                builder = GetBuilderForType(property);
             }
             if(!string.IsNullOrWhiteSpace(property.Pattern))
             {
@@ -155,9 +169,10 @@ namespace Cogs.Publishers.FluentJson
             return builder;
         }
 
-        public JsonSchemaBuilder GetBuilderForType(string dataTypeName)
+        public JsonSchemaBuilder GetBuilderForType(Property property)
         {
-            if(CogsModel.ItemTypes.Any(t => t.Name == dataTypeName))
+            var dataTypeName = property.DataTypeName;
+            if (CogsModel.ItemTypes.Any(t => t.Name == dataTypeName))
             {
                 return new JsonSchemaBuilder().Ref($"#/$defs/reference");
             }
@@ -179,6 +194,26 @@ namespace Cogs.Publishers.FluentJson
             }
             else
             {
+                // if a composite type, check to see if it has any subclasses and allow any of those
+                if (property.AllowSubtypes)
+                {
+                    var dataType = property.DataType;
+                    var subTypes = CogsModel.ReusableDataTypes.Where(t => t.ParentTypes.Contains(dataType)).ToList();
+                    if (subTypes.Count > 0)
+                    {
+                        var anyOfBuilders = new List<Json.Schema.JsonSchema>();
+                        if(dataType.IsAbstract == false)
+                        {
+                            anyOfBuilders.Add(new JsonSchemaBuilder().Ref($"#/$defs/{dataTypeName}"));
+                        }
+                        
+                        foreach (var subType in subTypes)
+                        {
+                            anyOfBuilders.Add(new JsonSchemaBuilder().Ref($"#/$defs/{subType.Name}"));
+                        }
+                        return new JsonSchemaBuilder().AnyOf(anyOfBuilders);
+                    }
+                }
                 return new JsonSchemaBuilder().Ref($"#/$defs/{dataTypeName}");
             }
         }

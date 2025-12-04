@@ -1,2 +1,0 @@
-Name,DataType,MinCardinality,MaxCardinality,Description,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
-isAlcoholic,boolean,0,1,Whether the drink has alcohol in it,,,

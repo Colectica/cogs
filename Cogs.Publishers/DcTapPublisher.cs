@@ -1,6 +1,5 @@
 ﻿using Cogs.Common;
 using Cogs.Model;
-using Cogs.Publishers.JsonSchema;
 using Cogs.SimpleTypes;
 using CsvHelper;
 using CsvHelper.Configuration.Attributes;
@@ -18,17 +17,15 @@ namespace Cogs.Publishers
 {
     public class DcTapPublisher
     {
-        public string CogsLocation { get; set; }
-        public string TargetDirectory { get; set; }
+        public required string TargetDirectory { get; set; }
         public bool Overwrite { get; set; }
 
-        private CogsModel CogsModel { get; set; }
+        public required CogsModel CogsModel { get; set; }
 
-        private HashSet<string> LowerCaseSimpleTypes { get; set; }
+        private HashSet<string> LowerCaseSimpleTypes { get; set; } = new HashSet<string>();
         private string NamespacePrefix { get; set; } = ":";
-        public void Publish(CogsModel model)
+        public void Publish()
         {
-            CogsModel = model;
             LowerCaseSimpleTypes = CogsTypes.SimpleTypeNames.Select(x => x.ToLower()).ToHashSet();
 
             if (!string.IsNullOrWhiteSpace(CogsModel.Settings.NamespacePrefix))
@@ -56,7 +53,7 @@ namespace Cogs.Publishers
             var lastShapeId = string.Empty;
 
             // create all the datatype shapes
-            foreach (var item in model.ReusableDataTypes)
+            foreach (var item in CogsModel.ReusableDataTypes)
             {
                 if (item.IsAbstract) { continue; } // DCTAP doesn't do inheritance
 
@@ -84,7 +81,7 @@ namespace Cogs.Publishers
             }
 
             // create all the item type shapes
-            foreach(var item in model.ItemTypes)
+            foreach(var item in CogsModel.ItemTypes)
             {
                 if (item.IsAbstract) { continue; } // DCTAP doesn't do inheritance
 

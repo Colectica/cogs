@@ -1,2 +1,0 @@
-Name,DataType,MinCardinality,MaxCardinality,Description,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
-Calories,int,0,1,How many calories are in the food,,,
