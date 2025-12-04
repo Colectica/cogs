@@ -24,6 +24,7 @@
 COGS is for domain experts and groups who value ease of collaboration and low technical barriers for participation.</Description>
     <PackageIcon>colectica-seal-128x128.png</PackageIcon>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -35,6 +36,7 @@ COGS is for domain experts and groups who value ease of collaboration and low te
   <ItemGroup>
     <None Include="..\Cogs.licenseheader" Link="Cogs.licenseheader" />
     <None Include="images\colectica-seal-128x128.png" Pack="true" PackagePath="" />
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>
