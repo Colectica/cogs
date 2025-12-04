@@ -12,9 +12,15 @@ jobs:
     env:
       DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
       BUILD_CONFIGURATION: Release
-      BUILD_VERSION: 1.0.${{ github.run_number }}
 
     steps:
+    - name: Calculate version (run_number + 550)
+      id: version
+      shell: pwsh
+      run: |
+        $number = [int]$env:GITHUB_RUN_NUMBER + 550
+        echo "BUILD_VERSION=1.0.$number" >> $env:GITHUB_OUTPUT
+
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
@@ -37,11 +43,11 @@ jobs:
         --configuration ${{ env.BUILD_CONFIGURATION }}
         --verbosity minimal
         --no-restore
-        -p:Version=${{ env.BUILD_VERSION }}
-        -p:PackageVersion=${{ env.BUILD_VERSION }}
-        -p:AssemblyVersion=${{ env.BUILD_VERSION }}
-        -p:FileVersion=${{ env.BUILD_VERSION }}
-        -p:InformationalVersion=${{ env.BUILD_VERSION }}
+        -p:Version=${{ steps.version.outputs.BUILD_VERSION }}
+        -p:PackageVersion=${{ steps.version.outputs.BUILD_VERSION }}
+        -p:AssemblyVersion=${{ steps.version.outputs.BUILD_VERSION }}
+        -p:FileVersion=${{ steps.version.outputs.BUILD_VERSION }}
+        -p:InformationalVersion=${{ steps.version.outputs.BUILD_VERSION }}
 
     - name: Pack NuGet packages 
       run: >
@@ -49,11 +55,11 @@ jobs:
         --configuration ${{ env.BUILD_CONFIGURATION }}
         --no-build
         --no-restore
-        -p:Version=${{ env.BUILD_VERSION }}
-        -p:PackageVersion=${{ env.BUILD_VERSION }}
-        -p:AssemblyVersion=${{ env.BUILD_VERSION }}
-        -p:FileVersion=${{ env.BUILD_VERSION }}
-        -p:InformationalVersion=${{ env.BUILD_VERSION }}
+        -p:Version=${{ steps.version.outputs.BUILD_VERSION }}
+        -p:PackageVersion=${{ steps.version.outputs.BUILD_VERSION }}
+        -p:AssemblyVersion=${{ steps.version.outputs.BUILD_VERSION }}
+        -p:FileVersion=${{ steps.version.outputs.BUILD_VERSION }}
+        -p:InformationalVersion=${{ steps.version.outputs.BUILD_VERSION }}
 
     - name: Publish app (creates the publish folder you artifact)
       run: >
