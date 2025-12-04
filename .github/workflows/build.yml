@@ -1,0 +1,77 @@
+name: Build and Publish
+
+on:
+  push:
+    branches: [ main, master ]  # Adjust if your default branch is different
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+      BUILD_CONFIGURATION: Release
+      BUILD_VERSION: 1.0.${{ github.run_number }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET 10 SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'  
+
+    - name: Display .NET version 
+      run: dotnet --version
+
+    - name: Restore dependencies
+      run: dotnet restore ./Cogs.Console.sln --verbosity minimal
+
+    - name: Build solution 
+      run: >
+        dotnet build ./Cogs.Console.sln
+        --configuration ${{ env.BUILD_CONFIGURATION }}
+        --verbosity minimal
+        --no-restore
+        -p:Version=${{ env.BUILD_VERSION }}
+        -p:PackageVersion=${{ env.BUILD_VERSION }}
+        -p:AssemblyVersion=${{ env.BUILD_VERSION }}
+        -p:FileVersion=${{ env.BUILD_VERSION }}
+        -p:InformationalVersion=${{ env.BUILD_VERSION }}
+
+    - name: Pack NuGet packages 
+      run: >
+        dotnet pack ./Cogs.Console.sln
+        --configuration ${{ env.BUILD_CONFIGURATION }}
+        --no-build
+        --no-restore
+        -p:Version=${{ env.BUILD_VERSION }}
+        -p:PackageVersion=${{ env.BUILD_VERSION }}
+        -p:AssemblyVersion=${{ env.BUILD_VERSION }}
+        -p:FileVersion=${{ env.BUILD_VERSION }}
+        -p:InformationalVersion=${{ env.BUILD_VERSION }}
+
+    - name: Publish app (creates the publish folder you artifact)
+      run: >
+        dotnet publish ./Cogs.Console.sln
+        --configuration ${{ env.BUILD_CONFIGURATION }}
+        --no-build
+        --no-restore
+
+    - name: Upload published app as artifact (CogsRelease)
+      uses: actions/upload-artifact@v4
+      with:
+        name: CogsRelease
+        path: Cogs.Console/bin/Release/net10.0/publish/
+        if-no-files-found: error
+
+    - name: Upload NuGet packages as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: NuGetPackages
+        path: '**/*.nupkg'
+        if-no-files-found: warn   
