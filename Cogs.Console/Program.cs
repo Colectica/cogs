@@ -238,10 +238,11 @@ namespace Cogs.Console
                         TargetDirectory = target,
                         Overwrite = overwrite,
                         TargetNamespace = targetNamespace,
-                        TargetNamespacePrefix = prefix
+                        TargetNamespacePrefix = prefix,
+                        CogsModel = cogsModel
                     };
 
-                    publisher.Publish(cogsModel);
+                    publisher.Publish();
                     HandleErrors(publisher.Errors);
 
 

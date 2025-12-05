@@ -20,19 +20,19 @@ namespace Cogs.Publishers
     {
         public List<CogsError> Errors { get; } = new List<CogsError>();
 
-        public string CogsLocation { get; set; }
-        public string TargetDirectory { get; set; }
+        public required string CogsLocation { get; set; }
+        public required string TargetDirectory { get; set; }
         public bool Overwrite { get; set; }
 
-        public string TargetNamespace { get; set; }
-        public string TargetNamespacePrefix { get; set; }
+        public required string TargetNamespace { get; set; }
+        public required string TargetNamespacePrefix { get; set; }
 
         Dictionary<string, string> createdElements = new Dictionary<string, string>();
 
-        private CogsModel CogsModel { get; set; }
-        private XmlSchema CogsSchema { get; set; }
+        public required CogsModel CogsModel { get; set; }
+        private XmlSchema CogsSchema { get; set; } = new XmlSchema();
 
-        public void Publish(CogsModel model2)
+        public void Publish()
         {
             if (CogsLocation == null)
             {
@@ -52,7 +52,6 @@ namespace Cogs.Publishers
             Directory.CreateDirectory(TargetDirectory);
 
 
-            CogsModel = model2;
             CogsSchema = new XmlSchema();
 
             CogsSchema.TargetNamespace = TargetNamespace;
@@ -75,7 +74,7 @@ namespace Cogs.Publishers
             containerType.Particle = containerSequence;
             */
 
-            XmlSchemaChoice itemChoices = null;
+            XmlSchemaChoice? itemChoices = null;
             XmlSchemaComplexType containerType = CreateItemContainerType(out itemChoices);
             CogsSchema.Items.Add(containerType);
 
@@ -158,7 +157,7 @@ namespace Cogs.Publishers
                 XmlSchemaSimpleType.GetBuiltInSimpleType(XmlTypeCode.Duration).QualifiedName
             };
 
-            CogsSchema.Items.Add(simpleType);
+            CogsSchema?.Items.Add(simpleType);
 
             return simpleType;
         }
@@ -183,7 +182,7 @@ namespace Cogs.Publishers
             simpleContentExtension.Attributes.Add(langAttribute);
 
 
-            CogsSchema.Items.Add(complexType);
+            CogsSchema?.Items.Add(complexType);
 
             return complexType;
         }
@@ -195,7 +194,7 @@ namespace Cogs.Publishers
             XmlSchemaComplexType complexType = new XmlSchemaComplexType();
             complexType.Name = dataType.Name;
             complexType.AddSchemaDocumentation(dataType.Description);
-            CogsSchema.Items.Add(complexType);
+            CogsSchema?.Items.Add(complexType);
 
             XmlSchemaSequence itemElements = new XmlSchemaSequence();
 
@@ -309,7 +308,7 @@ namespace Cogs.Publishers
                 {
                     element.SchemaTypeName = new XmlQualifiedName(property.DataTypeName, TargetNamespace);
                 }
-                CogsSchema.Items.Add(element);
+                CogsSchema?.Items.Add(element);
                 createdElements[property.Name] = property.DataTypeName;
             }
 
@@ -337,7 +336,7 @@ namespace Cogs.Publishers
             element.Name = "TopLevelReference";
             element.SchemaTypeName = new XmlQualifiedName("ReferenceType", TargetNamespace);
             element.AddSchemaDocumentation("Denote which items in the Fragment Instance are the main items of interest.");
-            CogsSchema.Items.Add(element);
+            CogsSchema?.Items.Add(element);
 
             // include top level reference
             XmlSchemaElement elementRef = new XmlSchemaElement();
@@ -379,15 +378,15 @@ namespace Cogs.Publishers
             return CreateDataType(reference);
         }
 
-        void ValidationCallback(object sender, ValidationEventArgs args)
+        void ValidationCallback(object? sender, ValidationEventArgs e)
         {
-            if (args.Severity == XmlSeverityType.Warning)
+            if (e.Severity == XmlSeverityType.Warning)
             {
-                Errors.Add(new CogsError(ErrorLevel.Warning, args.Message));
+                Errors.Add(new CogsError(ErrorLevel.Warning, e.Message));
             }
-            else if (args.Severity == XmlSeverityType.Error)
+            else if (e.Severity == XmlSeverityType.Error)
             {
-                Errors.Add(new CogsError(ErrorLevel.Error, args.Message));
+                Errors.Add(new CogsError(ErrorLevel.Error, e.Message));
             }
         }
 
