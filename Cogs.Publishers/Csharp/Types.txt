@@ -124,6 +124,7 @@ namespace Cogs.SimpleTypes
     public class CogsDate
     {
         private DateTimeOffset dateTimeOffset;
+        private DateOnly dateOnly;
         private GYearMonth? gYearMonth;
         private GYear? gYear;
         private TimeSpan timespan;
@@ -131,6 +132,7 @@ namespace Cogs.SimpleTypes
         private void Clear()
         {
             dateTimeOffset = default(DateTimeOffset);
+            dateOnly = default(DateOnly);
             gYearMonth = null;
             gYear = null;
             timespan = default(TimeSpan);
@@ -154,17 +156,17 @@ namespace Cogs.SimpleTypes
         }
 
         [JsonConverter(typeof(DateConverter))]
-        public DateTimeOffset Date
+        public DateOnly Date
         {
             get
             {
-                if (this.UsedType == CogsDateType.Date) { return dateTimeOffset; }
-                return default(DateTimeOffset);
+                if (this.UsedType == CogsDateType.Date) { return dateOnly; }
+                return default(DateOnly);
             }
             set
             {
                 Clear();
-                dateTimeOffset = value;
+                dateOnly = value;
                 this.UsedType = CogsDateType.Date;
             }
         }
@@ -219,18 +221,16 @@ namespace Cogs.SimpleTypes
 
         public CogsDate() { }
 
-        public CogsDate(DateTimeOffset item, bool isDate = false)
+        public CogsDate(DateTimeOffset item)
         {
-            if (isDate)
-            {
-                Date = item;
-                UsedType = CogsDateType.Date;
-            }
-            else
-            {
-                DateTime = item;
-                UsedType = CogsDateType.DateTime;
-            }
+            DateTime = item;
+            UsedType = CogsDateType.DateTime;
+        }
+
+        public CogsDate(DateOnly item)
+        {
+            Date = item;
+            UsedType = CogsDateType.Date;
         }
 
         public CogsDate(GYearMonth item)
@@ -268,7 +268,7 @@ namespace Cogs.SimpleTypes
         {
             switch (UsedType)
             {
-                case CogsDateType.Date: { return Date.ToString("u").Split(' ')[0]; }
+                case CogsDateType.Date: { return Date.ToString("yyyy-MM-dd"); }
                 case CogsDateType.DateTime: { return DateTime.ToString("yyyy-MM-dd\\THH:mm:ss.FFFFFFFK"); }
                 case CogsDateType.Duration:
                     {
@@ -292,7 +292,7 @@ namespace Cogs.SimpleTypes
                     }
                 case CogsDateType.Date:
                     {
-                        if (Date == default(DateTimeOffset)) { return null; }
+                        if (Date == default(DateOnly)) { return null; }
                         return Date;
                     }
                 case CogsDateType.GYearMonth:
@@ -614,11 +614,107 @@ namespace Cogs.Converters
 {
     public class DateConverter : BaseDateTimeConverter
     {
+        public override bool CanConvert(Type objectType)
+        {
+            return objectType == typeof(DateOnly) || objectType == typeof(List<DateOnly>);
+        }
+        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
+        {
+            if (reader.TokenType == JsonToken.StartArray)
+            {
+                var results = new List<DateOnly>();
+                var array = JArray.Load(reader);
+                foreach (var item in array.Children())
+                {
+                    var itemValue = item.ToString();
+                    if (DateOnly.TryParseExact(itemValue.ToString(), DateTimeFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly itemResult))
+                    {
+                        results.Add(itemResult);
+                    }
+                }
+                return results;
+            }
+
+            string? token = (string?)reader.Value;
+            if (DateOnly.TryParseExact(token?.ToString(), DateTimeFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly result))
+            {
+                return result;
+            }
+            return null;
+        }
+
+
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
+        {
+            if (value is DateOnly offset)
+            {
+                writer.WriteValue(offset.ToString(DateTimeFormat));
+            }
+            else if (value is List<DateOnly> offsets)
+            {
+                writer.WriteStartArray();
+                foreach (var off in offsets)
+                {
+                    writer.WriteValue(off.ToString(DateTimeFormat));
+                }
+                writer.WriteEndArray();
+            }
+        }
         public override string DateTimeFormat { get; } = "yyyy-MM-dd";   
     }
 
     public class TimeConverter : BaseDateTimeConverter
     {
+
+        public override bool CanConvert(Type objectType)
+        {
+            return objectType == typeof(TimeOnly) || objectType == typeof(List<TimeOnly>);
+        }
+
+        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
+        {
+            if (reader.TokenType == JsonToken.StartArray)
+            {
+                var results = new List<TimeOnly>();
+                var array = JArray.Load(reader);
+                foreach (var item in array.Children())
+                {
+                    var itemValue = item.ToString();
+                    if (TimeOnly.TryParseExact(itemValue.ToString(), DateTimeFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out TimeOnly itemResult))
+                    {
+                        results.Add(itemResult);
+                    }
+                }
+                return results;
+            }
+
+            string? token = (string?)reader.Value;
+            if (TimeOnly.TryParseExact(token?.ToString(), parseFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out TimeOnly result))
+            {
+                return result;
+            }
+            return null;
+
+
+        }
+        string[] parseFormats = { "HH:mm:ss", "HH:mm:ss.fffffff" };
+
+        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
+        {
+            if (value is TimeOnly offset)
+            {
+                writer.WriteValue(offset.ToString(DateTimeFormat));
+            }
+            else if (value is List<TimeOnly> offsets)
+            {
+                writer.WriteStartArray();
+                foreach (var off in offsets)
+                {
+                    writer.WriteValue(off.ToString(DateTimeFormat));
+                }
+                writer.WriteEndArray();
+            }
+        }
         public override string DateTimeFormat { get; } = "HH:mm:ss.FFFFFFFK";
     }
 

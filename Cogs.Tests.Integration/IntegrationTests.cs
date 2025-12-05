@@ -28,7 +28,7 @@ namespace Cogs.Tests.Integration
                 ID = Guid.NewGuid().ToString(),
                 Description = "Large Special",
                 HamburgerName = "Four Corners Burger",
-                Date = new DateTime(2017, 9, 2),
+                Date = new DateOnly(2017, 9, 2),
                 DateTime = new DateTimeOffset(new DateTime(2017, 9, 2, 13, 23, 32), new TimeSpan(+1, 0, 0))
             };
 
@@ -53,8 +53,8 @@ namespace Cogs.Tests.Integration
                 Name = "Cow",
                 LingualDescription = new List<MultilingualString> { describe },
                 CountryOfOrigin = "USA",
-                Date = new DateTime(2017, 6, 9),
-                Time = new DateTimeOffset(2017, 6, 9, 2, 32, 32, new TimeSpan(+1, 0, 0)),
+                Date = new DateOnly(2017, 6, 9),
+                Time = new TimeOnly(2, 32, 32),
                 GMonthDay = mDay
             };
 
@@ -477,7 +477,7 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                Date = new DateTime(2017, 9, 2)
+                Date = new DateOnly(2017, 9, 2)
             };
             container.Items.Add(animal);
 
@@ -504,11 +504,12 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                Dates = new List<DateTimeOffset>()
+                Dates = new List<DateOnly>()
                 {
-                    new DateTime(2017, 9, 2),
+                    new DateOnly(2017, 9, 2),
                     //new DateTime(1,1,1),
-                    new DateTime(1562, 8, 23, 5, 12, 46)
+                    //new DateTime(1562, 8, 23, 5, 12, 46)
+                    new DateOnly(1562, 8, 23)
                 }
             };
             container.Items.Add(animal);
@@ -529,7 +530,7 @@ namespace Cogs.Tests.Integration
             Assert.Equal(animal.Dates.Count, animal2.Dates.Count);
             for (int i = 0; i < animal.Dates.Count; i++)
             {
-                Assert.Equal(animal.Dates[i].Date, animal2.Dates[i].Date);
+                Assert.Equal(animal.Dates[i], animal2.Dates[i]);
             }
         }
 
@@ -600,7 +601,7 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                Time = new DateTimeOffset(2017, 6, 9, 2, 32, 32, new TimeSpan())
+                Time = new TimeOnly(2, 32, 32)
             };
             container.Items.Add(animal);
 
@@ -617,7 +618,7 @@ namespace Cogs.Tests.Integration
             Assert.IsType<Animal>(container2.Items.First());
 
             Animal animal2 = container2.Items.First() as Animal;
-            Assert.Equal(animal.Time.Value.TimeOfDay, animal2.Time.Value.TimeOfDay);
+            Assert.Equal(animal.Time.Value, animal2.Time.Value);
         }
 
         [Fact]
@@ -627,10 +628,10 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                Times = new List<DateTimeOffset>
+                Times = new List<TimeOnly>
                 {
-                    new DateTimeOffset(2017, 6, 9, 2, 32, 32, new TimeSpan()),
-                    new DateTimeOffset(1996, 8, 23, 4, 32, 3, new TimeSpan())
+                    new TimeOnly(2, 32, 32),
+                    new TimeOnly( 4, 32, 3)
                 }
             };
             container.Items.Add(animal);
@@ -651,7 +652,7 @@ namespace Cogs.Tests.Integration
             Assert.Equal(animal.Times.Count, animal2.Times.Count);
             for (int i = 0; i < animal.Times.Count; i++)
             {
-                Assert.Equal(animal.Times[i].TimeOfDay, animal2.Times[i].TimeOfDay);
+                Assert.Equal(animal.Times[i], animal2.Times[i]);
             }
         }
 
@@ -1221,7 +1222,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             {
                 ID = Guid.NewGuid().ToString(),
                 CDate = new CogsDate(new DateTimeOffset(new DateTime(1996, 8, 23, 4, 37, 4), 
-                    new TimeSpan(+3, 0, 0)), false)
+                    new TimeSpan(+3, 0, 0)))
             };
             container.Items.Add(animal);
 
@@ -1248,7 +1249,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                CDate = new CogsDate(new DateTime(2017, 9, 2), true)
+                CDate = new CogsDate(new DateOnly(2017, 9, 2))
             };
             container.Items.Add(animal);
 
@@ -1415,8 +1416,8 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
                     new CogsDate(new TimeSpan(1562)),
                     new CogsDate(new GYear(2017, "+01:00")),
                     new CogsDate(new DateTimeOffset(new DateTime(1996, 8, 23, 4, 37, 4),
-                        new TimeSpan(+3, 0, 0)), false),
-                    new CogsDate(new DateTime(2017, 9, 2), true),
+                        new TimeSpan(+3, 0, 0))),
+                    new CogsDate(new DateOnly(2017, 9, 2)),
                     new CogsDate(new GYearMonth(2017, 7, "+02:00")),
                     new CogsDate(new GYearMonth(2017, 7, null)),
                     new CogsDate(new GYear(2017, null))

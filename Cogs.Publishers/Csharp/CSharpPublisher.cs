@@ -99,13 +99,12 @@ namespace Cogs.Publishers.Csharp
                 XDocument project = new XDocument(
                     new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
                         new XElement("PropertyGroup", 
-                            new XElement("TargetFramework", "net8.0"),
+                            new XElement("TargetFramework", "net10.0"),
                             IsNullableEnabled ? new XElement("Nullable", "enable") : null),
                         new XElement("ItemGroup", 
                             new XElement("PackageReference", new XAttribute("Include", "System.ComponentModel.Annotations"), new XAttribute("Version", "5.0.0")),
-                            new XElement("PackageReference", new XAttribute("Include", "Microsoft.CSharp"), new XAttribute("Version", "4.7.0")),
-                            new XElement("PackageReference", new XAttribute("Include", "dotNetRdf.Core"), new XAttribute("Version", "3.3.0")),
-                            new XElement("PackageReference", new XAttribute("Include", "Newtonsoft.Json"), new XAttribute("Version", "13.0.3")))));
+                            new XElement("PackageReference", new XAttribute("Include", "dotNetRdf.Core"), new XAttribute("Version", "3.4.1")),
+                            new XElement("PackageReference", new XAttribute("Include", "Newtonsoft.Json"), new XAttribute("Version", "13.0.4")))));
                 XmlWriterSettings xws = new XmlWriterSettings
                 {
                     OmitXmlDeclaration = true,
@@ -180,6 +179,7 @@ namespace Cogs.Publishers.Csharp
                 classBuilder.AppendLine("using System.Collections.Generic;");                
                 classBuilder.AppendLine("using System.ComponentModel.DataAnnotations;");
                 classBuilder.AppendLine("using VDS.RDF;");
+                classBuilder.AppendLine("using System.Globalization;");
                 classBuilder.AppendLine();
                 classBuilder.AppendLine($"namespace {csNamespace}");
                 classBuilder.AppendLine("{");
@@ -813,8 +813,8 @@ namespace Cogs.Publishers.Csharp
             }
 
             if (origDataTypeName.ToLower().Equals("datetime")) { return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.{nullableValueStr}ToString(\"yyyy-MM-dd\\\\THH:mm:ss.FFFFFFFK\")));"; }
-            if (origDataTypeName.ToLower().Equals("time")) { return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.{nullableValueStr}ToString(\"u\").Split(' ')[1]));"; }
-            if (origDataTypeName.ToLower().Equals("date")){ return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.{nullableValueStr}ToString(\"u\").Split(' ')[0]));"; }
+            if (origDataTypeName.ToLower().Equals("time")) { return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.{nullableValueStr}ToString(\"HH:mm:ss.FFFFFFFK\", CultureInfo.InvariantCulture)));"; }
+            if (origDataTypeName.ToLower().Equals("date")){ return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.{nullableValueStr}ToString(\"yyyy-MM-dd\", CultureInfo.InvariantCulture)));"; }
             if (origDataTypeName.ToLower().Equals("gyearmonth")) { return $"xEl.Add(new XElement(ns + \"{elname}\", {name}.ToString()));"; }
             if (origDataTypeName.ToLower().Equals("gmonthday")) { return $"xEl.Add(new XElement(ns + \"{elname}\", {name}.ToString()));"; }
             if (origDataTypeName.ToLower().Equals("gyear")) { return $"xEl.Add(new XElement(ns + \"{elname}\", {name}.ToString()));"; }
@@ -954,8 +954,8 @@ string clssFooter = $$"""
                 { "language", "string" },
                 { "duration", "TimeSpan" },
                 { "dateTime", "DateTimeOffset" },
-                { "time", "DateTimeOffset" },
-                { "date", "DateTimeOffset" },
+                { "time", "TimeOnly" },
+                { "date", "DateOnly" },
                 { "gYearMonth", "GYearMonth" },
                 { "gMonthDay", "GMonthDay" },
                 { "gYear", "GYear" },
