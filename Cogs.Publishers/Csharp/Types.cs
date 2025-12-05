@@ -648,7 +648,7 @@ namespace Cogs.Converters
                 foreach (var item in array.Children())
                 {
                     var itemValue = item.ToString();
-                    if (DateTimeOffset.TryParseExact(itemValue.ToString(), DateTimeFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTimeOffset itemResult))
+                    if (DateTimeOffset.TryParseExact(itemValue.ToString(), DateTimeFormat, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTimeOffset itemResult))
                     {
                         results.Add(itemResult);
                     }
@@ -657,7 +657,7 @@ namespace Cogs.Converters
             }
 
             string? token = (string?)reader.Value;
-            if (DateTimeOffset.TryParseExact(token?.ToString(), DateTimeFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTimeOffset result))
+            if (DateTimeOffset.TryParseExact(token?.ToString(), DateTimeFormat, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTimeOffset result))
             {
                 return result;
             }
