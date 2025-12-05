@@ -13,10 +13,10 @@ namespace Cogs.Publishers.LinkMl
     
     public class LinkMlPublisher
     {
-        public string Name { get; set; }
-        public string NamespaceUriPrefix { get; set; }
-        public string NamespaceUri { get; set; }
-        public string TargetDirectory { get; set; }
+        public required string Name { get; set; }
+        public required string NamespaceUriPrefix { get; set; }
+        public required string NamespaceUri { get; set; }
+        public required string TargetDirectory { get; set; }
         public bool Overwrite { get; set; }
  
         public void Publish(CogsModel model)
