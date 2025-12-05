@@ -34,6 +34,14 @@ jobs:
     - name: Display .NET version 
       run: dotnet --version
 
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json', '**/*.csproj', '**/*.props', '**/*.targets') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
     - name: Restore dependencies
       run: dotnet restore ./Cogs.Console.sln --verbosity minimal
 
@@ -54,16 +62,18 @@ jobs:
         dotnet pack Cogs.Console/Cogs.Console.csproj
         --configuration ${{ env.BUILD_CONFIGURATION }}
         --no-build
-        --no-restore
+        -o ./nupkg
         -p:Version=${{ steps.version.outputs.BUILD_VERSION }}
         -p:PackageVersion=${{ steps.version.outputs.BUILD_VERSION }}
         -p:AssemblyVersion=${{ steps.version.outputs.BUILD_VERSION }}
         -p:FileVersion=${{ steps.version.outputs.BUILD_VERSION }}
         -p:InformationalVersion=${{ steps.version.outputs.BUILD_VERSION }}
+        -p:IncludeSymbols=true
+        -p:SymbolPackageFormat=snupkg
 
     - name: Upload NuGet package as artifact (now only ONE package)
       uses: actions/upload-artifact@v4
       with:
         name: CogsNuGetPackage
-        path: Cogs.Console/bin/Release/*.nupkg
+        path: ./nupkg/*.nupkg
         if-no-files-found: error
