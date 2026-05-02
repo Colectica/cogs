@@ -20,9 +20,10 @@ namespace __CogsGeneratedNamespace
     {
         private Dictionary<string, object> cache = new Dictionary<string, object>();
 
-        public T GetByReferenceId<T>(string referenceId) where T : class, new()
+        public T GetByReference<T>(RawJsonReference reference) where T : class, new()
         {
-            if (cache.TryGetValue(referenceId, out object? existingItem))
+            var cacheKey = JsonReferenceHelper.GetCacheKey(reference);
+            if (cache.TryGetValue(cacheKey, out object? existingItem))
             {
                 if (existingItem is T typedItem)
                 {
@@ -34,13 +35,14 @@ namespace __CogsGeneratedNamespace
                 }
             }
             T item = new T();
-            cache.Add(referenceId, item);
+            cache.Add(cacheKey, item);
             return item as T;
         }
 
-        public object? GetByReferenceId(string referenceId, Type t)
+        public object? GetByReference(RawJsonReference reference, Type t)
         {
-            if (cache.TryGetValue(referenceId, out object? existingItem))
+            var cacheKey = JsonReferenceHelper.GetCacheKey(reference);
+            if (cache.TryGetValue(cacheKey, out object? existingItem))
             {
                 if (existingItem.GetType() == t)
                 {
@@ -55,10 +57,76 @@ namespace __CogsGeneratedNamespace
 
             if (item != null)
             {
-                cache.Add(referenceId, item);
+                cache.Add(cacheKey, item);
             }
 
             return item;
+        }
+    }
+
+    public static class JsonReferenceHelper
+    {
+        public static JObject CreateReferenceObject(IIdentifiable item, JsonSerializer serializer)
+        {
+            var reference = new JObject
+            {
+                ["$type"] = item.GetType().Name
+            };
+
+            foreach (var propertyName in ItemContainer.JsonReferencePropertyNames)
+            {
+                var propertyInfo = item.GetType().GetProperty(propertyName);
+                var value = propertyInfo?.GetValue(item);
+                reference[propertyName] = value == null ? JValue.CreateNull() : JToken.FromObject(value, serializer);
+            }
+
+            return reference;
+        }
+
+        public static RawJsonReference ToReference(JObject jsonObject)
+        {
+            var reference = new RawJsonReference
+            {
+                ItemType = (string?)jsonObject["$type"] ?? string.Empty
+            };
+
+            foreach (var propertyName in ItemContainer.JsonReferencePropertyNames)
+            {
+                if (jsonObject.TryGetValue(propertyName, StringComparison.OrdinalIgnoreCase, out JToken? value))
+                {
+                    reference.ReferenceValues[propertyName] = value;
+                }
+            }
+
+            return reference;
+        }
+
+        public static string GetCacheKey(RawJsonReference reference)
+        {
+            var parts = new List<string> { reference.ItemType };
+            foreach (var propertyName in ItemContainer.JsonReferencePropertyNames)
+            {
+                if (reference.ReferenceValues.TryGetValue(propertyName, out JToken? value))
+                {
+                    parts.Add(value?.Type == JTokenType.Null ? string.Empty : value?.ToString() ?? string.Empty);
+                }
+                else
+                {
+                    parts.Add(string.Empty);
+                }
+            }
+
+            return string.Join("|", parts);
+        }
+
+        public static Type? ResolveItemType(string itemTypeName)
+        {
+            if (string.IsNullOrWhiteSpace(itemTypeName))
+            {
+                return null;
+            }
+
+            return Type.GetType($"{ItemContainer.ModelNamespace}.{itemTypeName}");
         }
     }
 
@@ -83,34 +151,18 @@ namespace __CogsGeneratedNamespace
 
                 if (container.TopLevelReferences.Count > 0)
                 {
-                    var topLevel = new JProperty("topLevelReference",
+                    var topLevel = new JProperty("topLevelReferences",
                         new JArray(
                             from obj in container.TopLevelReferences
-                            select new JObject(
-                                new JProperty("$type", "ref"),
-                                new JProperty("value", new JArray(
-                                    obj.GetType().Name.ToString(),
-                                    obj.ReferenceId)))));
+                            select JsonReferenceHelper.CreateReferenceObject(obj, serializer)));
                     topLevel.WriteTo(writer);
                 }
 
-                var groups = container.Items.GroupBy(x => x.GetType().Name);
-                if (groups.Count() > 0)
-                {
-                    foreach (var group in groups)
-                    {
-                        var classGrouping = new JObject();
-                        foreach (var element in group)
-                        {
-                            JObject itemObject = JObject.FromObject(element, serializer);
-                            JProperty json = new JProperty(element.ReferenceId, itemObject);
-                            classGrouping.Add(json);
-                        }
-
-                        writer.WritePropertyName(group.Key);
-                        classGrouping.WriteTo(writer);
-                    }
-                }
+                var items = new JProperty("items",
+                    new JArray(
+                        from obj in container.Items
+                        select CreateSerializedItemObject(obj, serializer)));
+                items.WriteTo(writer);
 
                 writer.WriteEndObject();
             }
@@ -121,64 +173,84 @@ namespace __CogsGeneratedNamespace
             ItemContainer container = new ItemContainer();
             ItemContainer.AsyncLocalItemCache.Value = new CogsItemCacheFactory();
 
-            reader.DateParseHandling = DateParseHandling.None;
-            JObject containerObject = JObject.Load(reader);
-
-            foreach (KeyValuePair<string, JToken?> type in containerObject)
+            try
             {
-                if (string.Compare(type.Key, "topLevelReference", true) == 0)
-                {
-                    List<RawJsonReference>? topLevelJsonReferences = type.Value?.ToObject<List<RawJsonReference>>();
-                    if (topLevelJsonReferences == null)
-                    {
-                        continue;
-                    }
+                reader.DateParseHandling = DateParseHandling.None;
+                JObject containerObject = JObject.Load(reader);
 
-                    foreach (var r in topLevelJsonReferences)
+                if (containerObject["items"] is JArray items)
+                {
+                    foreach (var itemToken in items.Children<JObject>())
                     {
-                        Type? requestedType = Type.GetType($"{ ItemContainer.ModelNamespace}.{r.ItemType}");
-                        if (requestedType != null)
+                        var reference = JsonReferenceHelper.ToReference(itemToken);
+                        Type? requestedType = JsonReferenceHelper.ResolveItemType(reference.ItemType);
+                        if (requestedType == null)
                         {
-                            var item = ItemContainer.AsyncLocalItemCache.Value.GetByReferenceId(r.IdString, requestedType);
+                            continue;
+                        }
+
+                        object? item = ItemContainer.AsyncLocalItemCache.Value?.GetByReference(reference, requestedType);
+                        if (itemToken != null && item != null)
+                        {
+                            JsonConvert.PopulateObject(itemToken.ToString(), item);
                             if (item is IIdentifiable identifiableItem)
                             {
-                                container.TopLevelReferences.Add(identifiableItem);
+                                container.Items.Add(identifiableItem);
                             }
                         }
                     }
                 }
-                else
+
+                if (containerObject["topLevelReferences"] is JArray topLevelReferences)
                 {
-                    if (type.Value == null)
+                    foreach (var topLevelToken in topLevelReferences.Children())
                     {
-                        continue;
-                    }
-
-                    string containerType = type.Key;
-                    foreach (KeyValuePair<string, JToken?> instance in (JObject)type.Value)
-                    {
-                        Type? requestedType = Type.GetType($"{ItemContainer.ModelNamespace}.{containerType}");
-
-                        if (requestedType != null)
+                        RawJsonReference? reference = topLevelToken.ToObject<RawJsonReference>();
+                        if (reference == null)
                         {
-                            object? item = ItemContainer.AsyncLocalItemCache.Value.GetByReferenceId(instance.Key, requestedType);
+                            continue;
+                        }
 
-                            if (instance.Value != null && item != null)
-                            {
-                                JsonConvert.PopulateObject(instance.Value.ToString(), item);
-                                if (item is IIdentifiable identifiableItem)
-                                {
-                                    container.Items.Add(identifiableItem);
-                                }
-                            }
+                        Type? requestedType = JsonReferenceHelper.ResolveItemType(reference.ItemType);
+                        if (requestedType == null)
+                        {
+                            continue;
+                        }
 
+                        var item = ItemContainer.AsyncLocalItemCache.Value?.GetByReference(reference, requestedType);
+                        if (item is IIdentifiable identifiableItem)
+                        {
+                            container.TopLevelReferences.Add(identifiableItem);
                         }
                     }
                 }
+
+                return container;
+            }
+            finally
+            {
+                ItemContainer.AsyncLocalItemCache.Value = null;
+            }
+        }
+
+        private static JObject CreateSerializedItemObject(IIdentifiable item, JsonSerializer serializer)
+        {
+            var itemObject = new JObject
+            {
+                ["$type"] = item.GetType().Name
+            };
+
+            foreach (var property in JObject.FromObject(item, serializer).Properties())
+            {
+                if (string.Equals(property.Name, "$type", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                itemObject.Add(property.Name, property.Value);
             }
 
-            ItemContainer.AsyncLocalItemCache.Value = null;
-            return container;
+            return itemObject;
         }
     }
 
@@ -199,28 +271,14 @@ namespace __CogsGeneratedNamespace
                 {                   
                     if (i is IIdentifiable item)
                     {
-                        var reference = new JObject(
-                            new JProperty("$type", "ref"),
-                            new JProperty("value",
-                                new JArray(
-                                    item.GetType().Name,
-                                    item.ReferenceId)));
-
-                        reference.WriteTo(writer);
+                        JsonReferenceHelper.CreateReferenceObject(item, serializer).WriteTo(writer);
                     }
                 }
                 writer.WriteEndArray();
             }
             else if (value is IIdentifiable item)
             {
-                var reference = new JObject(
-                            new JProperty("$type", "ref"),
-                            new JProperty("value",
-                                new JArray(
-                                    item.GetType().Name,
-                                    item.ReferenceId)));
-
-                reference.WriteTo(writer);
+                JsonReferenceHelper.CreateReferenceObject(item, serializer).WriteTo(writer);
             }
         }
 
@@ -239,13 +297,13 @@ namespace __CogsGeneratedNamespace
                 {
                     foreach (var r in multiReference)
                     {
-                        Type? requestedType = Type.GetType($"{ ItemContainer.ModelNamespace}.{ r.ItemType}");
+                        Type? requestedType = JsonReferenceHelper.ResolveItemType(r.ItemType);
                         if (requestedType == null)
                         {
                             return null;
                         }
 
-                        object? item = ItemContainer.AsyncLocalItemCache.Value?.GetByReferenceId(r.IdString, requestedType);
+                        object? item = ItemContainer.AsyncLocalItemCache.Value?.GetByReference(r, requestedType);
                         list.Add(item);
                     }
                 }
@@ -264,13 +322,13 @@ namespace __CogsGeneratedNamespace
                     return null;
                 }
 
-                Type? requestedType = Type.GetType($"{ ItemContainer.ModelNamespace}.{ r.ItemType}");
+                Type? requestedType = JsonReferenceHelper.ResolveItemType(r.ItemType);
                 if (requestedType == null)
                 {
                     return null;
                 }
 
-                object? item = ItemContainer.AsyncLocalItemCache.Value?.GetByReferenceId(r.IdString, requestedType);
+                object? item = ItemContainer.AsyncLocalItemCache.Value?.GetByReference(r, requestedType);
                 return item;
             }
         }
@@ -319,7 +377,7 @@ namespace __CogsGeneratedNamespace
         private object? FromTypeDiscriminatedObject(JObject jsonObject)
         {
             string? typeDiscriminator = (string?)jsonObject["$type"];
-            Type? requestedType = Type.GetType($"{ ItemContainer.ModelNamespace}.{ typeDiscriminator}");
+            Type? requestedType = JsonReferenceHelper.ResolveItemType(typeDiscriminator ?? string.Empty);
             if (requestedType == null)
             {
                 return null;
@@ -336,21 +394,10 @@ namespace __CogsGeneratedNamespace
     public class RawJsonReference
     {
         [JsonProperty("$type")]
-        public string SpecialRefValue { get; set; } = "ref";
+        public string ItemType { get; set; } = string.Empty;
 
-        [JsonProperty("value")]
-        public List<string> IdParts { get; set; } = new();
-
-        [JsonIgnore]
-        public string ItemType
-        {
-            get { return IdParts[0]; }
-        }
-        [JsonIgnore]
-        public string IdString
-        {
-            get { return IdParts[1]; }
-        }
+        [JsonExtensionData]
+        public IDictionary<string, JToken?> ReferenceValues { get; set; } = new Dictionary<string, JToken?>(StringComparer.OrdinalIgnoreCase);
     }
     
     /// <summary>
@@ -383,6 +430,7 @@ namespace __CogsGeneratedNamespace
     {
         public List<IIdentifiable> Items { get; } = new List<IIdentifiable>();
         public List<IIdentifiable> TopLevelReferences { get; } = new List<IIdentifiable>();
+        internal static string[] JsonReferencePropertyNames { get; } = new string[] { "__JsonReferencePropertyNames__" };
 
         internal static AsyncLocal<CogsItemCacheFactory?> AsyncLocalItemCache { get; } = new AsyncLocal<CogsItemCacheFactory?>();
 

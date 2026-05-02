@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Cogs.Publishers.FluentJson
@@ -69,26 +70,37 @@ namespace Cogs.Publishers.FluentJson
 
             builder.Defs(defs);
 
-            // create the top level reference, item container with pattern properties
+            // create the top level reference and flat item container
             var container = new Dictionary<string, Json.Schema.JsonSchema>();
 
             var topLevel = new JsonSchemaBuilder().Type(SchemaValueType.Array).Items(new JsonSchemaBuilder().Ref("#/$defs/reference")).MinItems(0);
-            container["topLevelReference"] = topLevel;
+            container["topLevelReferences"] = topLevel;
 
+            var itemAlternatives = new List<Json.Schema.JsonSchema>();
             foreach (var item in model.ItemTypes)
             {
-                if(item.IsAbstract) { continue; }
+                if (item.IsAbstract) { continue; }
 
-                var itemType = new JsonSchemaBuilder().PatternProperties(("^(?!\\s*$).+", new JsonSchemaBuilder().Ref($"#/$defs/{item.Name}")));
-                container[item.Name] = itemType;
+                itemAlternatives.Add(new JsonSchemaBuilder().Ref($"#/$defs/{item.Name}"));
             }
 
-            builder.Properties(container).AdditionalProperties(false);
+            container["items"] = new JsonSchemaBuilder()
+                .Type(SchemaValueType.Array)
+                .Items(new JsonSchemaBuilder().AnyOf(itemAlternatives))
+                .MinItems(0);
+
+            builder.Type(SchemaValueType.Object)
+                .Properties(container)
+                .Required("items")
+                .AdditionalProperties(false);
 
             var schema = builder.Build();
 
             var outputFile = Path.Combine(TargetDirectory, "jsonSchema.json");
-            var output = JsonSerializer.Serialize(schema);
+            var output = JsonSerializer.Serialize(schema, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
             File.WriteAllText(outputFile, output, Encoding.UTF8);
         }
 
@@ -109,14 +121,20 @@ namespace Cogs.Publishers.FluentJson
             */
 
             // This includes inherited properties using AllOf and refs            
-            var parent = datatype.ParentTypes.FirstOrDefault();
+            var parent = datatype.ParentTypes.Where(x => x.Name == datatype.ExtendsTypeName).FirstOrDefault();
             if (parent != null)
             {
                 builder.AllOf(new JsonSchemaBuilder().Ref($"#/$defs/{parent.Name}"));
             }
-
+            
             properties.AddRange(datatype.Properties);
             var jsonProperties = new Dictionary<string, Json.Schema.JsonSchema>();
+
+            if (ShouldAddTypeDiscriminator(datatype))
+            {
+                jsonProperties["$type"] = BuildTypeDiscriminatorSchema(datatype);
+            }
+
             foreach (var property in properties)
             {
                 var propBuilder = GetBuilderForProperty(property);
@@ -126,6 +144,10 @@ namespace Cogs.Publishers.FluentJson
             builder.Properties(jsonProperties);
 
             var required = properties.Where(x => x.MinCardinality != "0").Select(x => x.Name).ToList();
+            if (ShouldAddTypeDiscriminator(datatype))
+            {
+                required.Insert(0, "$type");
+            }
             builder.Required(required);
 
             return builder;
@@ -273,12 +295,105 @@ namespace Cogs.Publishers.FluentJson
                     ("Value", new JsonSchemaBuilder().Type(SchemaValueType.String))
                 ).Required("LanguageTag", "Value").AdditionalProperties(false));
 
-            results.Add("reference", new JsonSchemaBuilder().Type(SchemaValueType.Object)
-                .Properties(
-                    ("$type", new JsonSchemaBuilder().Type(SchemaValueType.String)),
-                    ("value", new JsonSchemaBuilder().Type(SchemaValueType.Array).Items(new JsonSchemaBuilder().Type(SchemaValueType.String)))
-                ).Required("$type", "value").AdditionalProperties(false));
+            results.Add("reference", BuildReferenceSchema());
             return results;
+        }
+
+        private Json.Schema.JsonSchema BuildReferenceSchema()
+        {
+            var properties = new Dictionary<string, Json.Schema.JsonSchema>
+            {
+                ["$type"] = BuildItemTypeSchema()
+            };
+
+            foreach (var property in CogsModel.Identification)
+            {
+                properties[property.Name] = GetBuilderForProperty(property);
+            }
+
+            var required = new List<string> { "$type" };
+            required.AddRange(CogsModel.Identification.Select(x => x.Name));
+
+            return new JsonSchemaBuilder()
+                .Type(SchemaValueType.Object)
+                .Properties(properties)
+                .Required(required)
+                .AdditionalProperties(false)
+                .Build();
+        }
+
+        private JsonSchemaBuilder BuildItemTypeSchema(string? exactItemType = null)
+        {
+            var builder = new JsonSchemaBuilder().Type(SchemaValueType.String);
+            if (!string.IsNullOrWhiteSpace(exactItemType))
+            {
+                return builder.Enum(exactItemType);
+            }
+
+            var concreteItemTypes = CogsModel.ItemTypes
+                .Where(x => !x.IsAbstract)
+                .Select(x => x.Name)
+                .ToList();
+
+            if (concreteItemTypes.Count > 0)
+            {
+                builder.Enum(concreteItemTypes);
+            }
+
+            return builder;
+        }
+
+        private JsonSchemaBuilder BuildTypeDiscriminatorSchema(DataType dataType)
+        {
+            var concreteTypes = GetDiscriminatorTypes(dataType)
+                .Select(x => x.Name)
+                .ToList();
+
+            var builder = new JsonSchemaBuilder().Type(SchemaValueType.String);
+            if (concreteTypes.Count > 0)
+            {
+                return builder.Enum(concreteTypes);
+            }
+
+            return builder;
+        }
+
+        private IEnumerable<DataType> GetDiscriminatorTypes(DataType dataType)
+        {
+            IEnumerable<DataType> scope;
+            if (dataType is ItemType)
+            {
+                scope = CogsModel.ItemTypes;
+            }
+            else
+            {
+                scope = CogsModel.ReusableDataTypes;
+            }
+
+            return scope.Where(x => !x.IsAbstract && (x == dataType || HasAncestor(x, dataType)));
+        }
+
+        private static bool HasAncestor(DataType dataType, DataType ancestor)
+        {
+            foreach (var parent in dataType.ParentTypes)
+            {
+                if (parent == ancestor || HasAncestor(parent, ancestor))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool ShouldAddTypeDiscriminator(DataType dataType)
+        {
+            if (dataType is ItemType itemType)
+            {
+                return !itemType.IsAbstract;
+            }
+
+            return dataType.IsSubstitute;
         }
 
         public bool IsInteger(string type)

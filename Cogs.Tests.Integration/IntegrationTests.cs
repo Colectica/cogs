@@ -183,6 +183,40 @@ namespace Cogs.Tests.Integration
 
                 Assert.Empty(errors);
 
+                var root = JsonNode.Parse(json)?.AsObject();
+                Assert.NotNull(root);
+                Assert.True(root!["items"] is JsonArray);
+                foreach (var serializedItem in root["items"]!.AsArray())
+                {
+                    Assert.NotNull(serializedItem?["$type"]);
+                }
+
+                if (containers[i].TopLevelReferences.Count > 0)
+                {
+                    Assert.True(root["topLevelReferences"] is JsonArray);
+                    var firstTopLevelReference = root["topLevelReferences"]!.AsArray()[0]?.AsObject();
+                    Assert.NotNull(firstTopLevelReference);
+                    Assert.NotNull(firstTopLevelReference!["$type"]);
+                    Assert.NotNull(firstTopLevelReference["ID"]);
+                }
+
+                var serializedHamburger = root["items"]!
+                    .AsArray()
+                    .Select(x => x?.AsObject())
+                    .FirstOrDefault(x => x?["$type"]?.GetValue<string>() == nameof(Hamburger));
+                if (serializedHamburger != null)
+                {
+                    var firstPattyReference = serializedHamburger["Patty"]?
+                        .AsArray()
+                        .FirstOrDefault()?
+                        .AsObject();
+                    if (firstPattyReference != null)
+                    {
+                        Assert.NotNull(firstPattyReference["$type"]);
+                        Assert.NotNull(firstPattyReference["ID"]);
+                    }
+                }
+
                 // test parsing
                 ItemContainer newContainer = JsonConvert.DeserializeObject<ItemContainer>(json);
                 var newJson = JsonConvert.SerializeObject(newContainer);
@@ -201,46 +235,31 @@ namespace Cogs.Tests.Integration
 
             var invalidJson = """
                 {
-                    "BadHamburger": {
-                        "d21cd9c7-93ba-4f1f-b193-66cf25c565be": {
+                    "topLevelReferences": [
+                        {
+                            "$type": "Hamburger",
+                            "ID": "d21cd9c7-93ba-4f1f-b193-66cf25c565be"
+                        }
+                    ],
+                    "items": [
+                        {
+                            "$type": "BadHamburger",
                             "ID": "d21cd9c7-93ba-4f1f-b193-66cf25c565be",
                             "HamburgerName": "Four Corners Burger",
                             "Description": "Large Special",
                             "Date": "2017-09-02"
-                        }
-                    },
-                    "Roll": {
-                        "7a7ab809-a4c3-4787-afa4-df9d115e6186": {
+                        },
+                        {
+                            "$type": "Roll",
                             "ID1": "7a7ab809-a4c3-4787-afa4-df9d115e6186",
                             "Name": "Sesame seed bun",
                             "Description": "A nice bun"
-                        }
-                    },
-                    "MeatPatty": {
-                        "884db7b1-0503-44e2-863b-ef9e40ed4985": {
+                        },
+                        {
                             "$type": "MeatPatty",
                             "ID": "884db7b1-0503-44e2-863b-ef9e40ed4985"
-                        },
-                        "709d8ad5-85c7-4b3e-9f29-1fb3d5c175d6": {
-                            "$type": "MeatPatty",
-                            "ID": "709d8ad5-85c7-4b3e-9f29-1fb3d5c175d6"
                         }
-                    },
-                    "OldCheese": {
-                        "57651281-87e2-48df-a5c4-bc831610dcf7": {
-                            "ID": "57651281-87e2-48df-a5c4-bc831610dcf7",
-                            "CheeseRumors": [
-                                {
-                                    "Value": "A very long time ago",
-                                    "LanguageTag": "en"
-                                },
-                                {
-                                    "Value": "In a galaxy far away",
-                                    "LanguageTag": "en"
-                                }
-                            ]
-                        }
-                    }
+                    ]
                 }
                 """;
 
@@ -1189,7 +1208,7 @@ namespace Cogs.Tests.Integration
             {
                 ID = Guid.NewGuid().ToString(),
                 Name = "Gouda George",
-                CheeseBio =  new LangString("en", @"Once there was a cheese from Nantucket named ""Gouda George."" Born amidst the salty breezes of Nantucket's shores, he was the cheesiest character in town—quite literally!
+                CheeseBio =  new LangString("en", @"Once there was a cheese from Nantucket named ""Gouda George."" Born amidst the salty breezes of Nantucket's shores, he was the cheesiest character in townï¿½quite literally!
 With a mischievous aroma that could charm even the pickiest mice, Gouda George was a rebel among cheeses. He was aged to perfection, soaking up tales from the salty sea captains and whispering cheesy secrets to the seagulls.
 He once entered a cheese contest against the famed Cheddar Charles from Chesapeake Bay. The contest was fierce; the stakes were high. Legend has it that as they were being judged, a seagull swooped down and stole the trophy. Gouda George laughed, claiming the seagull simply had impeccable taste.
 But despite his cheesy escapades, Gouda George remained a beloved figure in Nantucket. He'd tell tall tales to anyone who'd listen, always adding a dash of humor to his cheesy wisdom.
@@ -1569,6 +1588,18 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             string json = JsonConvert.SerializeObject(container);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
+
+            var root = JsonNode.Parse(json)?.AsObject();
+            Assert.NotNull(root);
+            var serializedAnimal = root!["items"]?
+                .AsArray()
+                .Select(x => x?.AsObject())
+                .FirstOrDefault(x => x?["$type"]?.GetValue<string>() == nameof(Animal));
+            Assert.NotNull(serializedAnimal);
+            var serializedMeatPieces = serializedAnimal!["MeatPieces"]?.AsArray();
+            Assert.NotNull(serializedMeatPieces);
+            Assert.Equal(nameof(Part), serializedMeatPieces![0]?["$type"]?.GetValue<string>());
+            Assert.Equal(nameof(SubPart), serializedMeatPieces[1]?["$type"]?.GetValue<string>());
 
             ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
             string json2 = JsonConvert.SerializeObject(container2);

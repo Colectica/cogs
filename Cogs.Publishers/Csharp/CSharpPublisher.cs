@@ -51,6 +51,13 @@ namespace Cogs.Publishers.Csharp
         /// </summary>
         private Dictionary<string, string>? Translator { get; set; }
 
+        private static readonly (string Include, string Version)[] GeneratedProjectPackages =
+        {
+            ("System.ComponentModel.Annotations", "5.0.0"),
+            ("dotNetRdf.Core", "3.4.1"),
+            ("Newtonsoft.Json", "13.0.4")
+        };
+
         CogsModel model;
 
         public CSharpPublisher(CogsModel model, string targetDirectory)
@@ -101,18 +108,21 @@ namespace Cogs.Publishers.Csharp
                         new XElement("PropertyGroup", 
                             new XElement("TargetFramework", "net10.0"),
                             IsNullableEnabled ? new XElement("Nullable", "enable") : null),
-                        new XElement("ItemGroup", 
-                            new XElement("PackageReference", new XAttribute("Include", "System.ComponentModel.Annotations"), new XAttribute("Version", "5.0.0")),
-                            new XElement("PackageReference", new XAttribute("Include", "dotNetRdf.Core"), new XAttribute("Version", "3.4.1")),
-                            new XElement("PackageReference", new XAttribute("Include", "Newtonsoft.Json"), new XAttribute("Version", "13.0.4")))));
-                XmlWriterSettings xws = new XmlWriterSettings
-                {
-                    OmitXmlDeclaration = true,
-                    Indent = true                
-                };
-                using FileStream s = new(Path.Combine(TargetDirectory, csNamespace + ".csproj"), FileMode.Create, FileAccess.ReadWrite);
-                using XmlWriter xw = XmlWriter.Create(s, xws);
-                project.Save(xw);
+                        new XElement("ItemGroup",
+                            GeneratedProjectPackages.Select(x =>
+                                new XElement("PackageReference", new XAttribute("Include", x.Include))))));
+                SaveXmlDocument(project, Path.Combine(TargetDirectory, csNamespace + ".csproj"));
+
+                XDocument directoryPackages = new XDocument(
+                    new XElement("Project",
+                        new XElement("PropertyGroup",
+                            new XElement("ManagePackageVersionsCentrally", "true")),
+                        new XElement("ItemGroup",
+                            GeneratedProjectPackages.Select(x =>
+                                new XElement("PackageVersion",
+                                    new XAttribute("Include", x.Include),
+                                    new XAttribute("Version", x.Version))))));
+                SaveXmlDocument(directoryPackages, Path.Combine(TargetDirectory, "Directory.Packages.props"));
             }
 
             
@@ -141,6 +151,9 @@ namespace Cogs.Publishers.Csharp
             string fileContents = reader.ReadToEnd();
 
             fileContents = fileContents.Replace("__CogsGeneratedNamespace", csNamespace);
+            var referencePropertyNames = string.Join(", ", model.Identification
+                .Select(x => $"\"{x.Name}\""));
+            fileContents = fileContents.Replace("\"__JsonReferencePropertyNames__\"", referencePropertyNames);
 
             if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
             {
@@ -305,7 +318,7 @@ namespace Cogs.Publishers.Csharp
                     classBuilder.AppendLine(" : IIdentifiable");
                     classBuilder.AppendLine("    {");
                     classBuilder.AppendLine("        [JsonIgnore]");                    
-                    string format = string.Join(":", model.Identification.Where(x => x.FromMixin == false).Select(x => "{" + x.Name + "}"));
+                    string format = string.Join(":", model.Identification.Select(x => "{" + x.Name + "}"));
                     classBuilder.AppendLine($"        public string ReferenceId {{ get {{ return $\"{format}\"; }} }}");                    
 
                 }
@@ -329,12 +342,12 @@ namespace Cogs.Publishers.Csharp
                     {
                         classBuilder.AppendLine();
                         classBuilder.AppendLine("        /// <summary>");
-                        classBuilder.AppendLine("        /// Set the TypeDescriminator");
+                        classBuilder.AppendLine("        /// Set the item type discriminator");
                         classBuilder.AppendLine("        /// <summary>");
                         classBuilder.AppendLine($"        public {item.Name}() {{ this.TypeDescriminator = this.GetType().Name; Initialize(); }}");
                         classBuilder.AppendLine();
                         classBuilder.AppendLine("        /// <summary>");
-                        classBuilder.AppendLine("        /// Type descriminator for json serialization");
+                        classBuilder.AppendLine("        /// Item type discriminator for json serialization");
                         classBuilder.AppendLine("        /// <summary>");
                         classBuilder.AppendLine("        [JsonProperty(\"$type\")]");
                         classBuilder.AppendLine("        public string TypeDescriminator { get; set; }");
@@ -630,6 +643,18 @@ namespace Cogs.Publishers.Csharp
                 // Write class to out folder
                 File.WriteAllText(Path.Combine(TargetDirectory, item.Name + ".cs"), classBuilder.ToString());
             }
+        }
+
+        private static void SaveXmlDocument(XDocument document, string path)
+        {
+            XmlWriterSettings xws = new XmlWriterSettings
+            {
+                OmitXmlDeclaration = true,
+                Indent = true
+            };
+            using FileStream s = new(path, FileMode.Create, FileAccess.ReadWrite);
+            using XmlWriter xw = XmlWriter.Create(s, xws);
+            document.Save(xw);
         }
 
         private void AddPropertyToGetTriplesMethod(DataType item, Property prop, StringBuilder addTriplesMethodBuilder)
