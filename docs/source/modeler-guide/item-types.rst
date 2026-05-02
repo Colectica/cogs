@@ -59,10 +59,10 @@ DeprecatedNamespace, DeprecatedElementOrAttribute, DeprecatedChoiceGroup
 
 
 
-Extends.*
+extends.*
 ~~~~~~~~~
 
-The :file:`{baseDirectory}/ItemTypes/{ItemTypeName}/Extends.{BaseItemTypeName}` file acts as
+The :file:`{baseDirectory}/ItemTypes/{ItemTypeName}/extends.{BaseItemTypeName}` file acts as
 a marker to indicate that the item type derives from another item type. Derived item
 types inherit all properties from their parent item type. Be sure to replace
 *BaseItemTypeName* with the name of another item type.

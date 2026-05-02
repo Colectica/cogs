@@ -61,10 +61,10 @@ DeprecatedNamespace, DeprecatedElementOrAttribute, DeprecatedChoiceGroup
 
 
 
-Extends.*
+extends.*
 ~~~~~~~~~
 
-The :file:`{baseDirectory}/CompositeTypes/{TypeName}/Extends.{BaseTypeName}` file acts as
+The :file:`{baseDirectory}/CompositeTypes/{TypeName}/extends.{BaseTypeName}` file acts as
 a marker to indicate that the type derives from another type. Derived 
 types inherit all properties from their parent type. Be sure to replace
 *BaseTypeName* with the name of another type.

@@ -7,6 +7,9 @@ subversion or git. Outputs can automatically be built whenever the model
 changes using a continuous integration system. This allows for a 
 transparent development process and fast iterations.
 
+This repository currently uses GitHub Actions for its own build automation, but
+the same validate-and-publish workflow can be implemented in any CI system.
+
 Scenario
 ----------------
 

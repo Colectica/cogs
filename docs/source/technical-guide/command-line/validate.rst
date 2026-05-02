@@ -10,7 +10,7 @@ Requires that `dotnet <../../installation/dotnet/index.html>`_ is installed.
 
 Command Line Arguments
 ----------------------
-Required inputs for the publish-cs command (must be specified in order).
+Required inputs for the validate command (must be specified in order).
 
 * ``[CogsLocation]`` 
 
@@ -18,7 +18,7 @@ Required inputs for the publish-cs command (must be specified in order).
 
 Command Line Flags
 ----------------------
-Optional inputs for the publish-sphinx command.
+Optional inputs for the validate command.
 
 * ``-?|-h|--help``
 
@@ -30,7 +30,7 @@ Command Line Usage
 
     .. code-block:: bash
 
-        $ validate (-h) [CogsLocation]
+        $ cogs validate (-h) [CogsLocation]
 
 **Examples**
 
@@ -38,8 +38,8 @@ Command Line Usage
 
     .. code-block:: bash
 
-        $ validate -h
-        $ validate MyCogsModelDirectory
+        $ cogs validate -h
+        $ cogs validate MyCogsModelDirectory
 
 Validation Tests
 -----------------

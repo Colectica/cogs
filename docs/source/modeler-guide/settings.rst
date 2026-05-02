@@ -42,6 +42,14 @@ You can add additional settings to the :file:`Settings.csv` file by creating
 additional rows. These settings may not be used by the built-in publishers,
 but it can be a useful way to track information about your model.
 
+Identification Settings
+~~~~~~~~~~~~~~~~~~~~~~~
+
+The :file:`{baseDirectory}/Settings/Identification.csv` file is required and
+defines the identification properties that are injected into root item types.
+An optional :file:`Identification.Mixin.csv` file can be used to add more
+identification properties alongside the required set.
+
 Header Text
 ~~~~~~~~~~~
 

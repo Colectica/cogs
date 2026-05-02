@@ -5,7 +5,8 @@ COGS is a command line application. It performs its work in two steps.
 
 #. Read a model as specified according to the :doc:`/modeler-guide/index`.
 #. Generate many outputs by invoking a publisher. Each publisher
-   is described in the :doc:`/technical-guide/command-line/index` section.
+   is described in the :doc:`/technical-guide/command-line/index` section, with
+   format-specific mapping details in :doc:`/technical-guide/generation/index`.
 
 Since a COGS model is just plain text, many people can collaborate on the 
 same model and synchronize their work using version control software like
@@ -19,6 +20,7 @@ for a transparent development process and fast iterations.
 
    installation/index
    command-line/index
+   generation/index
    continuous-integration/index
 
 

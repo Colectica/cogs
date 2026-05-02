@@ -6,7 +6,12 @@ Introduction
 Generate a json schema file that defines all `Item types <../../../modeler-guide/item-types/index.html>`_, 
 `Composite types <../../../modeler-guide/composite-types/index.html>`_, and 
 `Primitive types <../../../modeler-guide/primitive-types/index.html>`_ in the model
-as well as defines connections between items. 
+as well as defines connections between items.
+
+The generated schema now describes a flat ``ItemContainer`` with
+``topLevelReferences`` and ``items``. References are simple objects containing
+``$type`` plus the configured identification properties, and item or substitute
+datatype polymorphism is expressed using ``$type`` discriminators in the schema.
 
 Requires that `dotnet <../../installation/dotnet/index.html>`_ is installed.
 
@@ -44,7 +49,7 @@ Command Line Usage
 
     .. code-block:: bash
 
-        $ publish-json (-h) (-o) (-a) [CogsLocation] [TargetLocation]
+        $ cogs publish-json (-h) (-o) (-a) [CogsLocation] [TargetLocation]
 
 **Examples**
 
@@ -52,6 +57,9 @@ Command Line Usage
 
     .. code-block:: bash
 
-        $ publish-json -h
-        $ publish-json MyCogsModelDirectory MyOutputDirectory
-        $ publish-json -o -a MyCogsModelDirectory MyOutputDirectory
+        $ cogs publish-json -h
+        $ cogs publish-json MyCogsModelDirectory MyOutputDirectory
+        $ cogs publish-json -o -a MyCogsModelDirectory MyOutputDirectory
+
+The generated JSON schema file is written in pretty-printed form to make it
+easier to inspect and review.

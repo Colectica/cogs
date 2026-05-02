@@ -35,7 +35,7 @@ Optional inputs for the publish-xsd command.
 
     Allows the user to specify the XMI of the desired XML namespace.
 
-* ``-p|--prefix``
+* ``-p|--namespacePrefix``
 
     Allows the user to specify the prefix for the XML namespace.
 
@@ -45,7 +45,7 @@ Command Line Usage
 
     .. code-block:: bash
 
-        $ publish-xsd (-h) (-o) (-n [namespace]) (-p [prefix]) [CogsLocation] [TargetLocation]
+        $ cogs publish-xsd (-h) (-o) (-n [namespace]) (-p [prefix]) [CogsLocation] [TargetLocation]
 
 **Examples**
 
@@ -53,10 +53,10 @@ Command Line Usage
 
     .. code-block:: bash
 
-        $ publish-xsd -h
-        $ publish-xsd MyCogsModelDirectory MyOutputDirectory
-        $ publish-xsd -o MyCogsModelDirectory MyOutputDirectory
-        $ publish-xsd -n http://example.org/cogs -p cogs -o MyCogsModelDirectory MyOutputDirectory
+        $ cogs publish-xsd -h
+        $ cogs publish-xsd MyCogsModelDirectory MyOutputDirectory
+        $ cogs publish-xsd -o MyCogsModelDirectory MyOutputDirectory
+        $ cogs publish-xsd -n http://example.org/cogs -p cogs -o MyCogsModelDirectory MyOutputDirectory
 
 Primitive Type Mappings to XML
 -------------------------------

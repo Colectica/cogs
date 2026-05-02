@@ -39,7 +39,7 @@ create your model. Then, run the following.
 
 .. code-block:: doscon
 
-    user$ dotnet cogs cogs-new MyModel
+    user$ cogs cogs-new MyModel
 
 Let's see what's in the directory that COGS created
 

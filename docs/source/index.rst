@@ -29,6 +29,8 @@ Publishable formats include:
 * C# class library
 * SVG and dot visualizations
 * GraphQL schema language
+* LinkML
+* DCTAP
 
 Upcoming formats include:
 
@@ -45,6 +47,7 @@ Platform  Quick Start
 Windows   :doc:`COGS Quick Start for Windows <quick-start/windows-quick-start>`
 Linux     :doc:`COGS Quick Start for Linux <quick-start/linux-quick-start>`
 macOS     :doc:`COGS Quick Start for macOS <quick-start/macos-quick-start>`
+Docker    :doc:`COGS Quick Start with Docker <quick-start/docker-quick-start>`
 ========  =====================================================================
 
 Modeler's Guide

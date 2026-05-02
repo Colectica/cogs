@@ -16,15 +16,19 @@ author = u'COGS Team'
 version = u'1.0'
 release = u'1.0'
 
-language = None
+language = 'en'
 exclude_patterns = []
 pygments_style = 'sphinx'
 todo_include_todos = True
 
 # HTML
-html_theme = "sphinx_rtd_theme"
-html_theme_path = ["themes" ]
-html_static_path = ['_static']
+html_theme = "pydata_sphinx_theme"
+html_theme_options = {
+    "show_nav_level": 2,
+    "navigation_depth": 2,
+    "navbar_align": "left",
+}
+html_static_path = []
 
 
 # HTMLHelp

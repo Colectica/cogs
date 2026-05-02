@@ -6,6 +6,8 @@ Introduction
 Generates C# classes for all `Item types <../../../modeler-guide/item-types/index.html>`_ 
 and `Composite types <../../../modeler-guide/composite-types/index.html>`_ in the model. 
 The generated classes can be serialized to JSON, populated from JSON, and serialized to XML.
+The generated JSON uses the current flat ``ItemContainer`` shape and ``$type``
+discriminators where polymorphic values are required.
 
 Requires that `dotnet <../../installation/dotnet/index.html>`_ is installed.
 
@@ -37,9 +39,13 @@ Optional inputs for the publish-cs command.
 
     Allows the user to specify the XMI of desired XML namespace used in XML creation from generated C# classes.
 
-* ``-p|--prefix``
+* ``--csproj``
 
-    Allows the user to specify the prefix for XML namespace used in XML creation from generated C# classes.
+    Generates a companion ``.csproj`` file and a sibling ``Directory.Packages.props`` file for the generated code.
+
+* ``--nullable``
+
+    Enables nullable-aware generated C# types.
 
 Command Line Usage
 -------------------
@@ -47,7 +53,7 @@ Command Line Usage
 
     .. code-block:: bash
 
-        $ publish-cs (-h) (-o) (-n [namespace]) (-p [prefix]) [CogsLocation] [TargetLocation]
+        $ cogs publish-cs (-h) (-o) (-n [namespace]) (--csproj) (--nullable) [CogsLocation] [TargetLocation]
 
 **Examples**
 
@@ -55,10 +61,10 @@ Command Line Usage
 
     .. code-block:: bash
 
-        $ publish-cs -h
-        $ publish-cs MyCogsModelDirectory MyOutputDirectory
-        $ publish-cs -o MyCogsModelDirectory MyOutputDirectory
-        $ publish-cs -n http://example.org/cogs -p cogs -o MyCogsModelDirectory MyOutputDirectory
+        $ cogs publish-cs -h
+        $ cogs publish-cs MyCogsModelDirectory MyOutputDirectory
+        $ cogs publish-cs -o MyCogsModelDirectory MyOutputDirectory
+        $ cogs publish-cs -n http://example.org/cogs --csproj --nullable -o MyCogsModelDirectory MyOutputDirectory
 
 Primitive Type Mappings to C#
 -------------------------------
