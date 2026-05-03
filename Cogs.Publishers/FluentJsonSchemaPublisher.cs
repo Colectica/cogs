@@ -71,12 +71,12 @@ namespace Cogs.Publishers.FluentJson
             builder.Defs(defs);
 
             // create the top level reference and flat item container
-            var container = new Dictionary<string, Json.Schema.JsonSchema>();
+            var container = new Dictionary<string, Json.Schema.JsonSchemaBuilder>();
 
             var topLevel = new JsonSchemaBuilder().Type(SchemaValueType.Array).Items(new JsonSchemaBuilder().Ref("#/$defs/reference")).MinItems(0);
             container["topLevelReferences"] = topLevel;
 
-            var itemAlternatives = new List<Json.Schema.JsonSchema>();
+            var itemAlternatives = new List<Json.Schema.JsonSchemaBuilder>();
             foreach (var item in model.ItemTypes)
             {
                 if (item.IsAbstract) { continue; }
@@ -104,7 +104,7 @@ namespace Cogs.Publishers.FluentJson
             File.WriteAllText(outputFile, output, Encoding.UTF8);
         }
 
-        public Json.Schema.JsonSchema GetJsonSchema(DataType datatype)
+        public Json.Schema.JsonSchemaBuilder GetJsonSchema(DataType datatype)
         {
             var builder = new JsonSchemaBuilder()
                 .Type(SchemaValueType.Object)
@@ -128,7 +128,7 @@ namespace Cogs.Publishers.FluentJson
             }
             
             properties.AddRange(datatype.Properties);
-            var jsonProperties = new Dictionary<string, Json.Schema.JsonSchema>();
+            var jsonProperties = new Dictionary<string, Json.Schema.JsonSchemaBuilder>();
 
             if (ShouldAddTypeDiscriminator(datatype))
             {
@@ -223,7 +223,7 @@ namespace Cogs.Publishers.FluentJson
                     var subTypes = CogsModel.ReusableDataTypes.Where(t => t.ParentTypes.Contains(dataType)).ToList();
                     if (subTypes.Count > 0)
                     {
-                        var anyOfBuilders = new List<Json.Schema.JsonSchema>();
+                        var anyOfBuilders = new List<Json.Schema.JsonSchemaBuilder>();
                         if(dataType.IsAbstract == false)
                         {
                             anyOfBuilders.Add(new JsonSchemaBuilder().Ref($"#/$defs/{dataTypeName}"));
@@ -240,12 +240,11 @@ namespace Cogs.Publishers.FluentJson
             }
         }
 
-        private Dictionary<string, Json.Schema.JsonSchema> SimpleTypeDefinitions()
+        private Dictionary<string, Json.Schema.JsonSchemaBuilder> SimpleTypeDefinitions()
         {
             const string timezonePattern = "^(Z)|((\\+|\\-)(00|0[0-9]|1[0-9]|2[0-3]):([0-9]|[0-5][0-9]))$";
 
-            var results = new Dictionary<string, Json.Schema.JsonSchema>();
-
+            var results = new Dictionary<string, Json.Schema.JsonSchemaBuilder>();
             results.Add("duration", new JsonSchemaBuilder().Type(SchemaValueType.Number).Format("utc-millisec"));
             results.Add("dateTime", new JsonSchemaBuilder().Type(SchemaValueType.String).Format(Formats.DateTime));
             results.Add("time", new JsonSchemaBuilder().Type(SchemaValueType.String).Format(Formats.Time));
@@ -299,9 +298,9 @@ namespace Cogs.Publishers.FluentJson
             return results;
         }
 
-        private Json.Schema.JsonSchema BuildReferenceSchema()
+        private Json.Schema.JsonSchemaBuilder BuildReferenceSchema()
         {
-            var properties = new Dictionary<string, Json.Schema.JsonSchema>
+            var properties = new Dictionary<string, Json.Schema.JsonSchemaBuilder>
             {
                 ["$type"] = BuildItemTypeSchema()
             };
@@ -318,8 +317,7 @@ namespace Cogs.Publishers.FluentJson
                 .Type(SchemaValueType.Object)
                 .Properties(properties)
                 .Required(required)
-                .AdditionalProperties(false)
-                .Build();
+                .AdditionalProperties(false);
         }
 
         private JsonSchemaBuilder BuildItemTypeSchema(string? exactItemType = null)

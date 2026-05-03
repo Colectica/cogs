@@ -54,7 +54,7 @@ namespace Cogs.Publishers.Csharp
         private static readonly (string Include, string Version)[] GeneratedProjectPackages =
         {
             ("System.ComponentModel.Annotations", "5.0.0"),
-            ("dotNetRdf.Core", "3.4.1"),
+            ("dotNetRdf.Core", "3.5.1"),
             ("Newtonsoft.Json", "13.0.4")
         };
 

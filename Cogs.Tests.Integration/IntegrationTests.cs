@@ -235,7 +235,7 @@ namespace Cogs.Tests.Integration
 
             var invalidJson = """
                 {
-                    "topLevelReferences": [
+                    "topLevelReferencesError": [
                         {
                             "$type": "Hamburger",
                             "ID": "d21cd9c7-93ba-4f1f-b193-66cf25c565be"
@@ -1934,20 +1934,22 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
                 Assert.Equal(roll.GYearMonth[i], roll2.GYearMonth[i]);
             }
         }
-
+        private static readonly JsonSchema Schema = JsonSchema.FromFile(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "generated", "json", "jsonSchema.json"));
         private async Task<JsonSchema> GetJsonSchema()
         {
-            string schemaPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..");
-            string jsonSchemaFileName = Path.Combine(schemaPath, "generated", "json", "jsonSchema.json");
-            string jsonSchema = File.ReadAllText(jsonSchemaFileName);
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings
             {
                 MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
                 DateParseHandling = DateParseHandling.None
             };
-            var options = new JsonSerializerOptions() { };
-            JsonSchema schema = JsonSchema.FromFile(jsonSchemaFileName, options);
-            return schema;
+            return await Task.FromResult(Schema);
+            //string schemaPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..");
+            //string jsonSchemaFileName = Path.Combine(schemaPath, "generated", "json", "jsonSchema.json");
+            //string jsonSchema = File.ReadAllText(jsonSchemaFileName);
+
+            //var options = new BuildOptions() { };
+            //JsonSchema schema = JsonSchema.FromFile(jsonSchemaFileName, options);
+            //return schema;
         }
     }
 
@@ -1960,12 +1962,12 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             var result = new List<string>();    
 
             var options = new EvaluationOptions() { OutputFormat = OutputFormat.List };
-            var results = schema.Evaluate(jsonDocument, options);
+            var results = schema.Evaluate(jsonDocument.RootElement, options);
             if (!results.IsValid) 
             { 
                 foreach(var detail in results.Details)
                 {
-                    if (detail.HasErrors)
+                    if (detail.Errors?.Count > 0)
                     {
                         result.Add(detail.InstanceLocation.ToString() + string.Join(" ", detail.Errors.Select(x => x.Key + ":" + x.Value)));
                     }
