@@ -24,6 +24,7 @@ dotnet build Cogs.Console.sln --configuration Debug
 dotnet Cogs.Console\bin\Debug\net10.0\cogs.dll validate cogsburger
 dotnet Cogs.Console\bin\Debug\net10.0\cogs.dll publish-xsd --overwrite cogsburger generated\xsd
 dotnet Cogs.Console\bin\Debug\net10.0\cogs.dll publish-cs --overwrite --csproj --nullable cogsburger generated\src
+dotnet restore generated\src\CogsBurger.Model.csproj
 dotnet Cogs.Console\bin\Debug\net10.0\cogs.dll publish-json --overwrite cogsburger generated\json
 dotnet Cogs.Console\bin\Debug\net10.0\cogs.dll publish-owl --overwrite cogsburger generated\owl
 dotnet test Cogs.Tests.Integration\Cogs.Tests.Integration.csproj --no-restore
@@ -32,7 +33,11 @@ dotnet test Cogs.Tests.Integration\Cogs.Tests.Integration.csproj --no-restore --
 
 Generated C# output is now self-contained when `publish-cs --csproj` is used: the publisher writes both the generated `.csproj` and a sibling `Directory.Packages.props` into the output directory. If you change generated-package dependencies or versions, update the generator and then regenerate `generated\src` so the emitted project and local props file stay in sync.
 
+Because `generateIntegrationTest.bat` deletes and recreates `generated\src`, the generated model project must be restored again before running `--no-restore` integration tests. Keep that restore step in any equivalent manual workflow.
+
 There is no dedicated repo lint command. Analyzer and warning feedback comes through `dotnet build` and the xUnit analyzer packages referenced by the test projects.
+
+The docs site under `docs\` is a Sphinx project that currently installs from `docs\requirements.txt`, uses `pydata_sphinx_theme`, and is validated with `docs\make.bat dirhtml`.
 
 ## High-level architecture
 
@@ -63,6 +68,7 @@ Recent generator behavior that future edits should preserve:
 - The JSON schema now puts `$type` on the item or datatype definitions themselves and constrains discriminator values with `enum`, not regex patterns.
 - Root item definitions are emitted directly into the `items` union; the schema should not reintroduce per-item `allOf` wrappers just to add a discriminator.
 - Reusable datatype substitution is driven by `AllowSubtypes` in properties and `IsSubstitute` in the built model; generated C# deserializes those cases through `SubstitutionConverter`, so schema changes in this area should keep `$type` requirements aligned with that runtime behavior.
+- The XML Schema publisher now models `langString` as a `LangString` complex type with required `xml:lang`, and the generated XSD imports the official W3C XML namespace schema (`http://www.w3.org/2001/xml.xsd`). Generated C# XML output should continue to serialize language tags as `xml:lang`, not a local `lang` attribute.
 
 ## Repository-specific conventions
 

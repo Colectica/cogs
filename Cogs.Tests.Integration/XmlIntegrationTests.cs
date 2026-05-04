@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
@@ -935,6 +936,27 @@ namespace Cogs.Tests.Integration
         }
 
         [Fact]
+        public void LangStringUsesRequiredXmlLangAttribute()
+        {
+            ItemContainer container = new ItemContainer();
+            Cheese cheese = new Cheese
+            {
+                ID = Guid.NewGuid().ToString(),
+                CheeseBio = new LangString("en", "A very long time ago")
+            };
+            container.Items.Add(cheese);
+
+            var doc = container.MakeXml();
+            XNamespace ns = "http://example.org/cogsburger";
+            var cheeseBio = doc.Descendants(ns + "CheeseBio").Single();
+
+            Assert.Equal("en", cheeseBio.Attribute(XNamespace.Xml + "lang")?.Value);
+
+            cheeseBio.Attribute(XNamespace.Xml + "lang")?.Remove();
+            Assert.NotEmpty(GetXmlValidationErrors(doc));
+        }
+
+        [Fact]
         public void ListOfSimpleTypeGMonth()
         {
             ItemContainer container = new ItemContainer();
@@ -1004,6 +1026,11 @@ namespace Cogs.Tests.Integration
 
         private void XmlValidation(XDocument doc)
         {
+            Assert.Empty(GetXmlValidationErrors(doc));
+        }
+
+        private List<ValidationEventArgs> GetXmlValidationErrors(XDocument doc)
+        {
             XmlSchemaSet schemas = GetXmlSchema();
 
             List<ValidationEventArgs> errors = new List<ValidationEventArgs>();
@@ -1022,7 +1049,8 @@ namespace Cogs.Tests.Integration
             {
                 while (xr.Read()) { }
             }
-            Assert.Empty(errors);
+
+            return errors;
         }
 
         private static void ValidationCallback(object sender, ValidationEventArgs args)
@@ -1035,13 +1063,20 @@ namespace Cogs.Tests.Integration
         {
             // TODO build the json schema into the generated assembly as a resource
             string schemaPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "generated","xsd", "schema.xsd");
-            
+            string xmlSchemaPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "generated","xsd", "xml.xsd");
+             
 
             XmlSchemaSet xmlSchemaSet = new XmlSchemaSet();
             xmlSchemaSet.ValidationEventHandler += new ValidationEventHandler(ValidationCallback);
             
             XmlReaderSettings settings = new XmlReaderSettings();
             settings.DtdProcessing = DtdProcessing.Parse;
+
+            using (XmlReader reader = XmlReader.Create(xmlSchemaPath, settings))
+            {
+                XmlSchema xmlSchema = XmlSchema.Read(reader, new ValidationEventHandler(ValidationCallback));
+                xmlSchemaSet.Add(xmlSchema);
+            }
 
             using (XmlReader reader = XmlReader.Create(schemaPath, settings))
             {

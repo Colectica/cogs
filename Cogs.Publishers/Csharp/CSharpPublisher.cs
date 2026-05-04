@@ -834,7 +834,7 @@ namespace Cogs.Publishers.Csharp
             if (origDataTypeName.ToLower().Equals("langstring"))
             {
                 return $@"{start}.Add(new XElement(ns + ""{elname}"", {name}.Value, 
-                                        new XAttribute(""lang"", {name}.LanguageTag)));";
+                                        new XAttribute(XNamespace.Xml + ""lang"", {name}.LanguageTag)));";
             }
 
             if (origDataTypeName.ToLower().Equals("datetime")) { return $"{start}.Add(new XElement(ns + \"{elname}\", {name}.{nullableValueStr}ToString(\"yyyy-MM-dd\\\\THH:mm:ss.FFFFFFFK\")));"; }

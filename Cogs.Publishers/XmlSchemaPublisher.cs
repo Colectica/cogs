@@ -5,6 +5,7 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Text;
 using System.Xml;
 using System.Xml.Schema;
@@ -18,6 +19,10 @@ namespace Cogs.Publishers
     /// </summary>
     public class XmlSchemaPublisher
     {
+        private const string XmlNamespace = "http://www.w3.org/XML/1998/namespace";
+        private const string XmlSchemaLocation = "xml.xsd";
+        private const string XmlSchemaResourceName = "Cogs.Publishers.xml.xsd";
+
         public List<CogsError> Errors { get; } = new List<CogsError>();
 
         public required string CogsLocation { get; set; }
@@ -56,8 +61,17 @@ namespace Cogs.Publishers
 
             CogsSchema.TargetNamespace = TargetNamespace;
             CogsSchema.Namespaces.Add(TargetNamespacePrefix, TargetNamespace);
+            CogsSchema.Namespaces.Add("xml", XmlNamespace);
             CogsSchema.ElementFormDefault = XmlSchemaForm.Qualified;
             CogsSchema.AttributeFormDefault = XmlSchemaForm.Unqualified;
+
+            var xmlNamespaceSchema = LoadXmlNamespaceSchema();
+            var xmlImport = new XmlSchemaImport
+            {
+                Namespace = XmlNamespace,
+                SchemaLocation = XmlSchemaLocation,
+            };
+            CogsSchema.Includes.Add(xmlImport);
 
             // create built in types
             XmlSchemaComplexType referenceType = CreateReferenceType();
@@ -111,6 +125,7 @@ namespace Cogs.Publishers
 
             XmlSchemaSet schemaSet = new XmlSchemaSet();
             schemaSet.ValidationEventHandler += new ValidationEventHandler(ValidationCallback);
+            schemaSet.Add(xmlNamespaceSchema);
             schemaSet.Add(CogsSchema);
             schemaSet.Compile();
 
@@ -124,7 +139,9 @@ namespace Cogs.Publishers
             settings.Encoding = Encoding.UTF8;
             settings.Indent = true;
             settings.IndentChars = "    ";
-            using (XmlWriter writer = XmlWriter.Create(Path.Combine(TargetDirectory, "schema.xsd"), settings))
+            WriteXmlNamespaceSchema(Path.Combine(TargetDirectory, XmlSchemaLocation));
+            string schemaPath = Path.Combine(TargetDirectory, "schema.xsd");
+            using (XmlWriter writer = XmlWriter.Create(schemaPath, settings))
             {
                 if (!string.IsNullOrWhiteSpace(CogsModel.HeaderInclude))
                 {
@@ -133,10 +150,6 @@ namespace Cogs.Publishers
 
                 CogsSchema.Write(writer);
             }
-                
-
-
-            
         }
 
         public XmlSchemaSimpleType CreateCogsDateType()
@@ -162,6 +175,31 @@ namespace Cogs.Publishers
             return simpleType;
         }
 
+        private static XmlSchema LoadXmlNamespaceSchema()
+        {
+            using Stream xmlSchemaStream = OpenXmlNamespaceSchemaStream();
+            using XmlReader reader = XmlReader.Create(xmlSchemaStream, new XmlReaderSettings
+            {
+                DtdProcessing = DtdProcessing.Parse,
+            });
+
+            return XmlSchema.Read(reader, (_, e) => throw e.Exception ?? new XmlSchemaException(e.Message))
+                ?? throw new InvalidOperationException("Unable to load xml.xsd.");
+        }
+
+        private static Stream OpenXmlNamespaceSchemaStream()
+        {
+            return typeof(XmlSchemaPublisher).GetTypeInfo().Assembly.GetManifestResourceStream(XmlSchemaResourceName)
+                ?? throw new InvalidOperationException($"Embedded resource '{XmlSchemaResourceName}' was not found.");
+        }
+
+        private static void WriteXmlNamespaceSchema(string targetPath)
+        {
+            using Stream source = OpenXmlNamespaceSchemaStream();
+            using FileStream destination = File.Create(targetPath);
+            source.CopyTo(destination);
+        }
+
 
         public XmlSchemaComplexType CreateCogsLangStringType()
         {
@@ -177,8 +215,8 @@ namespace Cogs.Publishers
             simpleContent.Content = simpleContentExtension;
 
             XmlSchemaAttribute langAttribute = new XmlSchemaAttribute();
-            langAttribute.Name = "lang";
-            langAttribute.SchemaTypeName = new XmlQualifiedName("language", XmlSchema.Namespace);
+            langAttribute.RefName = new XmlQualifiedName("lang", "http://www.w3.org/XML/1998/namespace");
+            langAttribute.Use = XmlSchemaUse.Required;
             simpleContentExtension.Attributes.Add(langAttribute);
 
 
