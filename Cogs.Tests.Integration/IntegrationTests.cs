@@ -1181,6 +1181,10 @@ namespace Cogs.Tests.Integration
 
             JsonSchema schema = await GetJsonSchema();
             string json = JsonConvert.SerializeObject(container);
+            Assert.Contains("\"@language\"", json);
+            Assert.Contains("\"@value\"", json);
+            Assert.DoesNotContain("\"LanguageTag\"", json);
+            Assert.DoesNotContain("\"Value\"", json);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1218,6 +1222,10 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
 
             JsonSchema schema = await GetJsonSchema();
             string json = JsonConvert.SerializeObject(container);
+            Assert.Contains("\"@language\"", json);
+            Assert.Contains("\"@value\"", json);
+            Assert.DoesNotContain("\"LanguageTag\"", json);
+            Assert.DoesNotContain("\"Value\"", json);
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 

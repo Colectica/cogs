@@ -87,11 +87,13 @@ namespace Cogs.SimpleTypes
         /// <summary>
         /// String Value
         /// </summary>
+        [JsonProperty("@value")]
         public string Value { get; set; }
 
         /// <summary>
         /// BCP 47 language tag
         /// </summary>
+        [JsonProperty("@language")]
         public string LanguageTag { get; set; }
 
         public override bool Equals(object? obj)

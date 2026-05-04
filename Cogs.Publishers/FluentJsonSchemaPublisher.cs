@@ -290,9 +290,9 @@ namespace Cogs.Publishers.FluentJson
             results.Add("language", new JsonSchemaBuilder().Type(SchemaValueType.String));
             results.Add("langString", new JsonSchemaBuilder().Type(SchemaValueType.Object)
                 .Properties(
-                    ("LanguageTag", new JsonSchemaBuilder().Type(SchemaValueType.String)),
-                    ("Value", new JsonSchemaBuilder().Type(SchemaValueType.String))
-                ).Required("LanguageTag", "Value").AdditionalProperties(false));
+                    ("@language", new JsonSchemaBuilder().Type(SchemaValueType.String)),
+                    ("@value", new JsonSchemaBuilder().Type(SchemaValueType.String))
+                ).Required("@language", "@value").AdditionalProperties(false));
 
             results.Add("reference", BuildReferenceSchema());
             return results;
