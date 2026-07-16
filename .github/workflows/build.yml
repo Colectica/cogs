@@ -12,6 +12,7 @@ jobs:
     env:
       DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
       BUILD_CONFIGURATION: Release
+      COGS_PYTHON: python
 
     steps:
     - name: Calculate version (run_number + 550)
@@ -30,6 +31,11 @@ jobs:
       uses: actions/setup-dotnet@v5.2.0
       with:
         dotnet-version: '10.0.x'  
+
+    - name: Setup Python 3.11
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.11'
 
     - name: Display .NET version 
       run: dotnet --version
@@ -56,6 +62,36 @@ jobs:
         -p:AssemblyVersion=${{ steps.version.outputs.BUILD_VERSION }}
         -p:FileVersion=${{ steps.version.outputs.BUILD_VERSION }}
         -p:InformationalVersion=${{ steps.version.outputs.BUILD_VERSION }}
+
+    - name: Run unit tests
+      run: >
+        dotnet test ./Cogs.Tests/Cogs.Tests.csproj
+        --configuration ${{ env.BUILD_CONFIGURATION }}
+        --no-build
+        --no-restore
+        --verbosity minimal
+
+    - name: Generate integration fixtures
+      shell: bash
+      run: |
+        rm -rf ./generated
+        COGS_DLL=./Cogs.Console/bin/Release/net10.0/cogs.dll
+        dotnet "$COGS_DLL" validate ./cogsburger
+        dotnet "$COGS_DLL" publish-xsd --overwrite ./cogsburger ./generated/xsd
+        dotnet "$COGS_DLL" publish-cs --overwrite --csproj --nullable ./cogsburger ./generated/src
+        dotnet "$COGS_DLL" publish-py --overwrite ./cogsburger ./generated/python
+        dotnet "$COGS_DLL" publish-json --overwrite ./cogsburger ./generated/json
+        dotnet "$COGS_DLL" publish-owl --overwrite ./cogsburger ./generated/owl
+
+    - name: Restore integration tests
+      run: dotnet restore ./Cogs.Tests.Integration/Cogs.Tests.Integration.csproj --verbosity minimal
+
+    - name: Run integration tests
+      run: >
+        dotnet test ./Cogs.Tests.Integration/Cogs.Tests.Integration.csproj
+        --configuration ${{ env.BUILD_CONFIGURATION }}
+        --no-restore
+        --verbosity minimal
 
     - name: Pack NuGet packages 
       run: >

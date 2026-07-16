@@ -16,6 +16,7 @@
     <EmbeddedResource Include="Csharp\DependantTypes.txt" />
     <EmbeddedResource Include="Csharp\Types.txt" />
     <EmbeddedResource Include="image.css" />
+    <EmbeddedResource Include="Python\Runtime.py" />
     <EmbeddedResource Include="xml.xsd" />
   </ItemGroup>
 

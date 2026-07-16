@@ -7,6 +7,7 @@ using Cogs.Publishers;
 using Cogs.Publishers.Csharp;
 using Cogs.Publishers.FluentJson;
 using Cogs.Publishers.LinkMl;
+using Cogs.Publishers.Python;
 using Cogs.Validation;
 using Microsoft.Extensions.CommandLineUtils;
 using System;
@@ -420,6 +421,56 @@ namespace Cogs.Console
                     return 0;
                 });
 
+            });
+
+            app.Command("publish-py", (command) =>
+            {
+                command.Description = "Publish a Python package from a COGS data model";
+                command.HelpOption("-?|-h|--help");
+
+                var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
+                var targetArgument = command.Argument("[targetLocation]", "Directory where the Python package is generated.");
+                var namespaceUri = command.Option("-n|--namespace",
+                    "URI of the target XML namespace",
+                    CommandOptionType.SingleValue);
+                var overwriteOption = command.Option("-o|--overwrite",
+                    "If the target directory exists, delete and overwrite the location",
+                    CommandOptionType.NoValue);
+
+                command.OnExecute(() =>
+                {
+                    var location = locationArgument.Value ?? Environment.CurrentDirectory;
+                    var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
+
+                    var directoryReader = new CogsDirectoryReader();
+                    var cogsDtoModel = directoryReader.Load(location);
+                    HandleErrors(directoryReader.Errors);
+                    HandleErrors(DtoValidation.Validate(cogsDtoModel));
+
+                    var modelBuilder = new CogsModelBuilder();
+                    var cogsModel = modelBuilder.Build(cogsDtoModel);
+                    HandleErrors(modelBuilder.Errors);
+
+                    try
+                    {
+                        XmlConvert.VerifyNCName(cogsModel.Settings.NamespacePrefix);
+                    }
+                    catch (XmlException xmlEx)
+                    {
+                        HandleErrors(new List<CogsError>
+                        {
+                            new CogsError(ErrorLevel.Error, "Invalid XML namespace prefix", xmlEx)
+                        });
+                    }
+
+                    var publisher = new PythonPublisher(cogsModel, target)
+                    {
+                        Overwrite = overwriteOption.HasValue(),
+                        TargetNamespace = namespaceUri.Value() ?? cogsModel.Settings.NamespaceUrl,
+                    };
+                    publisher.Publish();
+                    return 0;
+                });
             });
 
 

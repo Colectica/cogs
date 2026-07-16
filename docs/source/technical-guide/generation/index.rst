@@ -17,6 +17,7 @@ format.
    :maxdepth: 2
 
    csharp
+   python
    json
    xsd
    uml

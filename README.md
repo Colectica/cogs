@@ -30,12 +30,9 @@ Publishable formats include:
 * OMG's UML XMI 2.5 with Diagrams and Diagram Exchange
 * Sphinx HTML documentation and visualizations
 * C# class library with JSON and XML serialization
+* Python class package with JSON and XML serialization
 * SVG and dot visualizations
 * GraphQL schema language
-
-Upcoming formats include:
-
-* Class libraries for other languages
 
 ## Platform
 COGS runs on Windows, Linux, and macOS on the .NET Core 10 platform.

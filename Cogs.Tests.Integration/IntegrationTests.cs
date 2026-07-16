@@ -1942,7 +1942,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
                 Assert.Equal(roll.GYearMonth[i], roll2.GYearMonth[i]);
             }
         }
-        private static readonly JsonSchema Schema = JsonSchema.FromFile(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "generated", "json", "jsonSchema.json"));
+        internal static readonly JsonSchema Schema = JsonSchema.FromFile(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "generated", "json", "jsonSchema.json"));
         private async Task<JsonSchema> GetJsonSchema()
         {
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings

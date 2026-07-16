@@ -12,6 +12,7 @@ Command Line
     publish-json
     publish-linkml
     publish-owl
+    publish-py
     publish-sphinx
     publish-uml
     publish-xsd
