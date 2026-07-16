@@ -1,0 +1,10 @@
+Name,DataType,MinCardinality,MaxCardinality,Description,Ordered,AllowSubtypes,MinLength,MaxLength,Enumeration,Pattern,MinInclusive,MinExclusive,MaxInclusive,MaxExclusive,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
+TemperatureDelta,float,0,1,Float-based grill temperature delta in degrees Celsius,,,,,,,,,,,,,
+RefundAdjustment,nonPositiveInteger,0,1,Non-positive correction used when discounting an order,,,,,,,,,,,,,
+WasteVariance,negativeInteger,0,1,Negative variance used when inventory shrinks unexpectedly,,,,,,,,,,,,,
+BatchIdentifier,long,0,1,Long-running kitchen batch identifier,,,,,,,,,,,,,
+ProductionCounter,unsignedLong,0,1,Unsigned production counter for the grill session,,,,,,,,,,,,,
+RevisionSequence,positiveInteger,0,1,Positive revision sequence for this kitchen profile,,,,,,,,,,,,,
+QualityRating,int,0,1,Overall kitchen quality score from 1 to 10,,,,,,,,,,,,,
+PreparationTier,string,0,1,Named preparation tier for the profile,,,,,standard premium seasonal,,,,,,,,
+LegacyStationCode,string,0,1,Legacy kitchen station code kept for backward compatibility,,,3,10,,^[A-Z]{3}-[0-9]{2}$,,,,,http://example.org/legacy-kitchen,e,LegacyKitchenCode
