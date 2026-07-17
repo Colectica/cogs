@@ -13,6 +13,7 @@ Command Line
     publish-linkml
     publish-owl
     publish-py
+    publish-ts
     publish-sphinx
     publish-uml
     publish-xsd

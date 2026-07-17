@@ -86,7 +86,7 @@ public class PythonIntegrationTests
         }
     }
 
-    private static ItemContainer CreateContainer(bool includeReusableSubtype)
+    internal static ItemContainer CreateContainer(bool includeReusableSubtype)
     {
         var animal = new Animal
         {
@@ -197,8 +197,8 @@ public class PythonIntegrationTests
                 TemperatureDelta = 1.25f,
                 RefundAdjustment = -2,
                 WasteVariance = -3,
-                BatchIdentifier = 9_000_000_000,
-                ProductionCounter = 18_000_000_000,
+                BatchIdentifier = 9_007_199_254_740_993,
+                ProductionCounter = 18_446_744_073_709_551_615UL,
                 RevisionSequence = 7,
                 QualityRating = 9,
                 PreparationTier = "premium",
@@ -219,12 +219,12 @@ public class PythonIntegrationTests
         return container;
     }
 
-    private static void AssertValidJson(string json)
+    internal static void AssertValidJson(string json)
     {
         Assert.Empty(IntegrationTests.Schema.Validate(json));
     }
 
-    private static void AssertSemanticallyEqualJson(string expectedJson, string actualJson, string message)
+    internal static void AssertSemanticallyEqualJson(string expectedJson, string actualJson, string message)
     {
         JToken expected = NormalizeJson(JToken.Parse(expectedJson));
         JToken actual = NormalizeJson(JToken.Parse(actualJson));
@@ -292,7 +292,7 @@ public class PythonIntegrationTests
         return $"{path}: expected {expected}, got {actual}.";
     }
 
-    private static void AssertValidXml(XDocument document, string generatedRoot)
+    internal static void AssertValidXml(XDocument document, string generatedRoot)
     {
         var errors = new List<string>();
         var schemas = new XmlSchemaSet();
@@ -416,7 +416,8 @@ public class PythonIntegrationTests
             assert cheese.milk_source is animal
             assert bread.size.creature is animal
             assert bread.size.height[1] == Decimal("9876543210.123456789")
-            assert burger.kitchen_profile.production_counter == 18_000_000_000
+            assert burger.kitchen_profile.batch_identifier == 9_007_199_254_740_993
+            assert burger.kitchen_profile.production_counter == 18_446_744_073_709_551_615
             assert cheese.cheese_bio == c.LangString("en", "Aged cave cheddar")
             if expect_subpart:
                 assert isinstance(animal.meat_pieces[1], c.SubPart)

@@ -13,6 +13,8 @@ jobs:
       DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
       BUILD_CONFIGURATION: Release
       COGS_PYTHON: python
+      COGS_NODE: node
+      COGS_NPM: npm
 
     steps:
     - name: Calculate version (run_number + 550)
@@ -36,6 +38,11 @@ jobs:
       uses: actions/setup-python@v6
       with:
         python-version: '3.11'
+
+    - name: Setup Node 22
+      uses: actions/setup-node@v6
+      with:
+        node-version: '22'
 
     - name: Display .NET version 
       run: dotnet --version
@@ -80,8 +87,15 @@ jobs:
         dotnet "$COGS_DLL" publish-xsd --overwrite ./cogsburger ./generated/xsd
         dotnet "$COGS_DLL" publish-cs --overwrite --csproj --nullable ./cogsburger ./generated/src
         dotnet "$COGS_DLL" publish-py --overwrite ./cogsburger ./generated/python
+        dotnet "$COGS_DLL" publish-ts --overwrite ./cogsburger ./generated/typescript
         dotnet "$COGS_DLL" publish-json --overwrite ./cogsburger ./generated/json
         dotnet "$COGS_DLL" publish-owl --overwrite ./cogsburger ./generated/owl
+
+    - name: Build generated TypeScript package
+      run: |
+        npm --prefix ./generated/typescript install --ignore-scripts
+        npm --prefix ./generated/typescript run build
+        npm --prefix ./generated/typescript pack --dry-run
 
     - name: Restore integration tests
       run: dotnet restore ./Cogs.Tests.Integration/Cogs.Tests.Integration.csproj --verbosity minimal

@@ -31,6 +31,7 @@ Publishable formats include:
 * Sphinx HTML documentation and visualizations
 * C# class library with JSON and XML serialization
 * Python class package with JSON and XML serialization
+* TypeScript class package with JSON and XML serialization
 * SVG and dot visualizations
 * GraphQL schema language
 

@@ -8,6 +8,7 @@ using Cogs.Publishers.Csharp;
 using Cogs.Publishers.FluentJson;
 using Cogs.Publishers.LinkMl;
 using Cogs.Publishers.Python;
+using Cogs.Publishers.TypeScript;
 using Cogs.Validation;
 using Microsoft.Extensions.CommandLineUtils;
 using System;
@@ -464,6 +465,44 @@ namespace Cogs.Console
                     }
 
                     var publisher = new PythonPublisher(cogsModel, target)
+                    {
+                        Overwrite = overwriteOption.HasValue(),
+                        TargetNamespace = namespaceUri.Value() ?? cogsModel.Settings.NamespaceUrl,
+                    };
+                    publisher.Publish();
+                    return 0;
+                });
+            });
+
+            app.Command("publish-ts", (command) =>
+            {
+                command.Description = "Publish a TypeScript package from a COGS data model";
+                command.HelpOption("-?|-h|--help");
+
+                var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
+                var targetArgument = command.Argument("[targetLocation]", "Directory where the TypeScript package is generated.");
+                var namespaceUri = command.Option("-n|--namespace",
+                    "URI of the target XML namespace",
+                    CommandOptionType.SingleValue);
+                var overwriteOption = command.Option("-o|--overwrite",
+                    "If the target directory exists, delete and overwrite the location",
+                    CommandOptionType.NoValue);
+
+                command.OnExecute(() =>
+                {
+                    var location = locationArgument.Value ?? Environment.CurrentDirectory;
+                    var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
+
+                    var directoryReader = new CogsDirectoryReader();
+                    var cogsDtoModel = directoryReader.Load(location);
+                    HandleErrors(directoryReader.Errors);
+                    HandleErrors(DtoValidation.Validate(cogsDtoModel));
+
+                    var modelBuilder = new CogsModelBuilder();
+                    var cogsModel = modelBuilder.Build(cogsDtoModel);
+                    HandleErrors(modelBuilder.Errors);
+
+                    var publisher = new TypeScriptPublisher(cogsModel, target)
                     {
                         Overwrite = overwriteOption.HasValue(),
                         TargetNamespace = namespaceUri.Value() ?? cogsModel.Settings.NamespaceUrl,

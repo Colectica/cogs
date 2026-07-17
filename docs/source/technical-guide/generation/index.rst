@@ -18,6 +18,7 @@ format.
 
    csharp
    python
+   typescript
    json
    xsd
    uml
