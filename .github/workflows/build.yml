@@ -95,7 +95,7 @@ jobs:
       run: |
         npm --prefix ./generated/typescript install --ignore-scripts
         npm --prefix ./generated/typescript run build
-        npm --prefix ./generated/typescript pack --dry-run
+        npm pack ./generated/typescript --dry-run
 
     - name: Restore integration tests
       run: dotnet restore ./Cogs.Tests.Integration/Cogs.Tests.Integration.csproj --verbosity minimal
