@@ -47,6 +47,7 @@ Exit codes
     publish-linkml
     publish-owl
     publish-py
+    publish-pydantic
     publish-ts
     publish-sphinx
     publish-uml

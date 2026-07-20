@@ -24,6 +24,7 @@ The authoritative COGS outputs are:
 * UML/XMI in normative and EA flavors
 * C# class library with JSON and XML serialization
 * Python class package with JSON and XML serialization
+* Python class package utilizing Pydantic v2 validation
 * TypeScript class package with JSON and XML serialization
 
 COGS also publishes LinkML, DCTAP, GraphQL schema language,
