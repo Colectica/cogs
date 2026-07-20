@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2017 Colectica. All rights reserved
+// Copyright (c) 2017 Colectica. All rights reserved
 // See the LICENSE file in the project root for more information.
 using Cogs.Common;
 using Cogs.Dto;
@@ -510,6 +510,57 @@ namespace Cogs.Console
                     return 0;
                 });
             });
+
+            app.Command("publish-pydantic", (command) =>
+            {
+                command.Description = "Publish a Python Pydantic package from a COGS data model";
+                command.HelpOption("-?|-h|--help");
+
+                var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
+                var targetArgument = command.Argument("[targetLocation]", "Directory where the Python package is generated.");
+                var namespaceUri = command.Option("-n|--namespace",
+                    "URI of the target XML namespace",
+                    CommandOptionType.SingleValue);
+                var overwriteOption = command.Option("-o|--overwrite",
+                    "If the target directory exists, delete and overwrite the location",
+                    CommandOptionType.NoValue);
+
+                command.OnExecute(() =>
+                {
+                    var location = locationArgument.Value ?? Environment.CurrentDirectory;
+                    var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
+
+                    var directoryReader = new CogsDirectoryReader();
+                    var cogsDtoModel = directoryReader.Load(location);
+                    HandleErrors(directoryReader.Errors);
+                    HandleErrors(DtoValidation.Validate(cogsDtoModel));
+
+                    var modelBuilder = new CogsModelBuilder();
+                    var cogsModel = modelBuilder.Build(cogsDtoModel);
+                    HandleErrors(modelBuilder.Errors);
+
+                    try
+                    {
+                        XmlConvert.VerifyNCName(cogsModel.Settings.NamespacePrefix);
+                    }
+                    catch (XmlException xmlEx)
+                    {
+                        HandleErrors(new List<CogsError>
+                        {
+                            new CogsError(ErrorLevel.Error, "Invalid XML namespace prefix", xmlEx)
+                        });
+                    }
+
+                    var publisher = new Cogs.Publishers.PythonPydantic.PythonPydanticPublisher(cogsModel, target)
+                    {
+                        Overwrite = overwriteOption.HasValue(),
+                        TargetNamespace = namespaceUri.Value() ?? cogsModel.Settings.NamespaceUrl,
+                    };
+                    publisher.Publish();
+                    return 0;
+                });
+            });
+
 
             app.Command("publish-ts", (command) =>
             {
