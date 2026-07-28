@@ -55,7 +55,8 @@ namespace Cogs.Publishers.Csharp
 
         private static readonly (string Include, string Version)[] GeneratedProjectPackages =
         {
-            ("dotNetRdf.Core", "3.5.1")
+            ("dotNetRdf.Core", "3.5.2"),
+             ("AngleSharp", "1.6.0")
         };
 
         CogsModel model;

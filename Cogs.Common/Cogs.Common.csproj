@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <None Include="..\Cogs.licenseheader" Link="Cogs.licenseheader" />
+    <PackageReference Include="AngleSharp" />
   </ItemGroup>
   
 </Project>
