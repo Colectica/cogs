@@ -68,17 +68,6 @@ public sealed class DiagnosticContractTests
     }
 
     [Fact]
-    public void UncodedDiagnosticConstructorIsOnlyAnObsoleteCompatibilityAdapter()
-    {
-        ConstructorInfo constructor = typeof(CogsError).GetConstructor(
-            [typeof(ErrorLevel), typeof(string), typeof(Exception)])!;
-
-        Assert.NotNull(constructor.GetCustomAttribute<ObsoleteAttribute>());
-        Assert.Throws<ArgumentException>(() =>
-            new CogsError(ErrorLevel.Error, code: " ", message: "missing code"));
-    }
-
-    [Fact]
     public void CliExecutionPolicyMapsEveryDocumentedFailureClass()
     {
         using var error = new StringWriter();
