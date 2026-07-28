@@ -30,6 +30,43 @@ function Assert-UniqueText([string] $Text, [string] $Needle, [string] $CaseId) {
     }
 }
 
+function ConvertTo-NormalizedNewlines([string] $Text) {
+    $Text.Replace("`r`n", "`n").Replace("`r", "`n")
+}
+
+function Read-NormalizedText([string] $Path) {
+    ConvertTo-NormalizedNewlines ([IO.File]::ReadAllText($Path))
+}
+
+function Get-FirstTextDifference([string] $Expected, [string] $Actual) {
+    $expectedLines = $Expected.Split([char]0x0a)
+    $actualLines = $Actual.Split([char]0x0a)
+    $sharedCount = [Math]::Min($expectedLines.Length, $actualLines.Length)
+    $lineIndex = 0
+    while ($lineIndex -lt $sharedCount -and
+           $expectedLines[$lineIndex] -ceq $actualLines[$lineIndex]) {
+        $lineIndex++
+    }
+
+    if ($lineIndex -eq $sharedCount -and
+        $expectedLines.Length -eq $actualLines.Length) {
+        return 'No text difference was found.'
+    }
+
+    $expectedLine = if ($lineIndex -lt $expectedLines.Length) {
+        ConvertTo-Json -InputObject $expectedLines[$lineIndex] -Compress
+    } else {
+        '<end of file>'
+    }
+    $actualLine = if ($lineIndex -lt $actualLines.Length) {
+        ConvertTo-Json -InputObject $actualLines[$lineIndex] -Compress
+    } else {
+        '<end of file>'
+    }
+
+    "First difference at line $($lineIndex + 1).`nChecked in: $expectedLine`nGenerated: $actualLine"
+}
+
 $valid = Invoke-CogsValidation $Model
 if ($valid.ExitCode -ne 0) {
     throw "The checked-in conformance model is invalid (exit $($valid.ExitCode)):`n$($valid.Output)"
@@ -81,10 +118,16 @@ try {
     if (-not [IO.File]::Exists($checkedInReference)) {
         throw "The generated command reference is not checked in: $checkedInReference"
     }
-    if ([IO.File]::ReadAllText($generatedReference) -cne [IO.File]::ReadAllText($checkedInReference)) {
-        throw "The checked-in command reference is stale. Run: dotnet $CogsDll generate-command-reference $checkedInReference"
+    $generatedReferenceText = Read-NormalizedText $generatedReference
+    $checkedInReferenceText = Read-NormalizedText $checkedInReference
+    if (-not [string]::Equals(
+        $generatedReferenceText,
+        $checkedInReferenceText,
+        [StringComparison]::Ordinal)) {
+        $difference = Get-FirstTextDifference $checkedInReferenceText $generatedReferenceText
+        throw "The checked-in command reference is stale.`n$difference`nRun: dotnet $CogsDll generate-command-reference $checkedInReference"
     }
-    Write-Host 'PASS command reference: CLI descriptor snapshot is current'
+    Write-Host 'PASS command reference: normalized CLI descriptor snapshot is current'
 
     $referenceFailureOutput = & dotnet $CogsDll generate-command-reference $tempRoot 2>&1 | Out-String
     if ($LASTEXITCODE -ne 100 -or $referenceFailureOutput -notmatch '(?<![A-Z0-9-])CLI2201(?![A-Z0-9-])') {

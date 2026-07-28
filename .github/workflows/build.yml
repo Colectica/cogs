@@ -212,7 +212,6 @@ jobs:
             if ($IntegrationLayout) {
               Invoke-Cogs publish-dot --overwrite --dot $env:COGS_DOT --format png --all --inheritance --composite $model "$root/dot-png"
               Invoke-Cogs publish-dot --overwrite --dot $env:COGS_DOT --format jpeg --all --inheritance --composite $model "$root/dot-jpeg"
-              Invoke-Cogs publish-dot --overwrite --dot $env:COGS_DOT --format pdf --all --inheritance --composite $model "$root/dot-pdf"
             }
             Invoke-Cogs publish-sphinx --overwrite --dot $env:COGS_DOT $model "$root/sphinx"
           }

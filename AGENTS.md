@@ -125,8 +125,10 @@ The checked-in
 `docs\source\technical-guide\command-line\generated-reference.rst` is generated
 from the live command descriptors by the hidden developer command
 `cogs generate-command-reference <outputFile>`. Do not edit it by hand.
-`Test-Conformance.ps1` regenerates and byte-compares it so CLI option, argument,
-usage, and help drift fails the conformance gate.
+`Test-Conformance.ps1` regenerates it and compares decoded text ordinally after
+normalizing CRLF and CR newlines to LF, so platform line endings are ignored
+while CLI option, argument, usage, whitespace, and help drift still fail the
+conformance gate. `.gitattributes` also keeps the checked-in snapshot on LF.
 
 For any command with source and target directories, resolve canonical paths and
 links before writing. Reject a target that equals, contains, or is an ancestor
