@@ -78,3 +78,8 @@ finally {
 }
 
 Write-Host "Pinned downstream migration diagnostics are stable across every publisher pipeline."
+
+# Every downstream model intentionally returns its expected migration-error
+# exit code. GitHub Actions dot-sources PowerShell step scripts, so clear the
+# final native process status after all assertions and cleanup have passed.
+$global:LASTEXITCODE = 0
