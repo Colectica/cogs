@@ -165,3 +165,8 @@ finally {
 }
 
 Write-Host "COGS 2 conformance model and negative fixtures passed."
+
+# The negative-fixture loop intentionally invokes COGS commands that return 100.
+# GitHub Actions dot-sources PowerShell step scripts, so the final native
+# process exit code otherwise leaks out even though every assertion passed.
+$global:LASTEXITCODE = 0
