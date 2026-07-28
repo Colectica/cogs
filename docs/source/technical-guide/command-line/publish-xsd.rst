@@ -33,7 +33,7 @@ Optional inputs for the publish-xsd command.
 
 * ``-n|--namespace``
 
-    Allows the user to specify the XMI of the desired XML namespace.
+    Overrides the XML namespace URI.
 
 * ``-p|--namespacePrefix``
 
@@ -89,3 +89,24 @@ String                  `string <https://www.w3.org/TR/xmlschema-2/#string>`_
 Time                    `time <https://www.w3.org/TR/xmlschema-2/#time>`_
 UnsignedLong            `unsignedLong <https://www.w3.org/TR/xmlschema-2/#unsignedLong>`_
 ===================     =====================
+
+COGS limits the year component of Date, DateTime, GYear, and GYearMonth to a
+nonzero signed 32-bit integer. The generated XSD retains the native XSD 1.0
+types and documents this additional constraint; use ``validate-instance`` for
+authoritative enforcement.
+
+Reference Schema Components
+---------------------------
+
+The generated schema exposes a global ``IdentificationGroup`` containing all
+base and mixin identification elements in their required order. Every
+top-level or property item-reference type reuses that group and follows it
+with its own ``TypeOfObject`` restriction.
+
+Reference types also permit an optional, unqualified
+``isReference`` attribute of type ``xs:boolean`` with fixed value ``true``.
+Generated runtimes write ``isReference="true"`` on every new XML reference,
+while the optional declaration keeps older unmarked XML valid. Full item
+definitions never carry the marker. See
+:doc:`/technical-guide/generation/xsd` for the complete reader and query
+contract.

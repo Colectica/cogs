@@ -55,7 +55,7 @@ The output directory listing show us what COGS created
     drwxr-xr-x 4 user staff 136 Aug 9 15:34 ItemTypes
     drwxr-xr-x 4 user staff 136 Aug 9 15:34 Settings
     drwxr-xr-x 4 user staff 136 Aug 9 15:34 Topics
-    -rw-r--r-- 1 user staff  17 Aug 9 15:34 readme.md
+    -rw-r--r-- 1 user staff  17 Aug 9 15:34 readme.markdown
 
 The folder and files listed above contain everything we need to specify our model
 
@@ -98,4 +98,4 @@ Here is the output of the directory listing
 
 You are now up and running with COGS. Make the model your own by following 
 the :doc:`/modeler-guide/index`. Learn about the publishing to other formats
-in the :doc:`/technical-guide/index`.   
+in the :doc:`/technical-guide/index`.

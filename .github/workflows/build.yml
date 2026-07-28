@@ -1,129 +1,432 @@
-name: Build and Publish
+name: Build, conformance, and package
 
 on:
   push:
-    branches: [ main, master ]  # Adjust if your default branch is different
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
+
+permissions:
+  contents: read
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    name: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     env:
       DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+      DOTNET_NOLOGO: true
       BUILD_CONFIGURATION: Release
       COGS_PYTHON: python
       COGS_NODE: node
       COGS_NPM: npm
 
     steps:
-    - name: Calculate version (run_number + 550)
-      id: version
-      shell: pwsh
-      run: |
-        $number = [int]$env:GITHUB_RUN_NUMBER + 550
-        echo "BUILD_VERSION=1.0.$number" >> $env:GITHUB_OUTPUT
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
 
-    - name: Checkout repository
-      uses: actions/checkout@v6.0.2
-      with:
-        fetch-depth: 0
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v5.2.0
+        with:
+          dotnet-version: 10.0.x
 
-    - name: Setup .NET 10 SDK
-      uses: actions/setup-dotnet@v5.2.0
-      with:
-        dotnet-version: '10.0.x'  
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
 
-    - name: Setup Python 3.11
-      uses: actions/setup-python@v6
-      with:
-        python-version: '3.11'
+      - name: Setup Node 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
 
-    - name: Setup Node 22
-      uses: actions/setup-node@v6
-      with:
-        node-version: '22'
+      - name: Setup Java 21 for external ontology/UML tooling
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
 
-    - name: Display .NET version 
-      run: dotnet --version
+      - name: Install checksum-pinned Maven
+        shell: pwsh
+        run: |
+          $tools = Get-Content ./conformance/tools.json -Raw | ConvertFrom-Json
+          $archive = Join-Path $env:RUNNER_TEMP "apache-maven-$($tools.maven)-bin.zip"
+          $installRoot = Join-Path $env:RUNNER_TEMP 'cogs-maven'
+          Invoke-WebRequest `
+            -Uri "https://archive.apache.org/dist/maven/maven-3/$($tools.maven)/binaries/apache-maven-$($tools.maven)-bin.zip" `
+            -OutFile $archive
+          $actualHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA512).Hash.ToLowerInvariant()
+          if ($actualHash -cne $tools.mavenBinarySha512) {
+            throw "Maven archive checksum mismatch: expected $($tools.mavenBinarySha512), got $actualHash"
+          }
+          Expand-Archive -LiteralPath $archive -DestinationPath $installRoot
+          $maven = if ($IsWindows) {
+            Join-Path $installRoot "apache-maven-$($tools.maven)/bin/mvn.cmd"
+          } else {
+            Join-Path $installRoot "apache-maven-$($tools.maven)/bin/mvn"
+          }
+          if (-not $IsWindows) { & chmod '+x' $maven }
+          "COGS_MAVEN=$maven" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          ([IO.Path]::GetDirectoryName($maven)) | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          & $maven --version
 
-    - name: Cache NuGet packages
-      uses: actions/cache@v5.0.5
-      with:
-        path: ~/.nuget/packages
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json', '**/*.csproj', '**/*.props', '**/*.targets') }}
-        restore-keys: |
-          ${{ runner.os }}-nuget-
+      - name: Cache NuGet packages
+        uses: actions/cache@v5.0.5
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json', '**/*.csproj', '**/*.props', '**/*.targets') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
 
-    - name: Restore dependencies
-      run: dotnet restore ./Cogs.Console.sln --verbosity minimal
+      - name: Cache pinned Maven dependencies
+        uses: actions/cache@v5.0.5
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('conformance/java/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
 
-    - name: Build solution 
-      run: >
-        dotnet build ./Cogs.Console.sln
-        --configuration ${{ env.BUILD_CONFIGURATION }}
-        --verbosity minimal
-        --no-restore
-        -p:Version=${{ steps.version.outputs.BUILD_VERSION }}
-        -p:PackageVersion=${{ steps.version.outputs.BUILD_VERSION }}
-        -p:AssemblyVersion=${{ steps.version.outputs.BUILD_VERSION }}
-        -p:FileVersion=${{ steps.version.outputs.BUILD_VERSION }}
-        -p:InformationalVersion=${{ steps.version.outputs.BUILD_VERSION }}
+      - name: Install pinned Python conformance tools
+        shell: pwsh
+        run: |
+          $tools = Get-Content ./conformance/tools.json -Raw | ConvertFrom-Json
+          python -m pip install --disable-pip-version-check --upgrade pip
+          python -m pip install --disable-pip-version-check `
+            -r ./docs/requirements.txt `
+            "sphinx==$($tools.sphinx)" `
+            "myst-parser==$($tools.mystParser)" `
+            "linkml==$($tools.linkml)" `
+            "linkml-runtime==$($tools.linkmlRuntime)"
 
-    - name: Run unit tests
-      run: >
-        dotnet test ./Cogs.Tests/Cogs.Tests.csproj
-        --configuration ${{ env.BUILD_CONFIGURATION }}
-        --no-build
-        --no-restore
-        --verbosity minimal
+      - name: Install GraphQL conformance tools
+        working-directory: ./conformance/node
+        run: npm install --ignore-scripts --no-package-lock
 
-    - name: Generate integration fixtures
-      shell: bash
-      run: |
-        rm -rf ./generated
-        COGS_DLL=./Cogs.Console/bin/Release/net10.0/cogs.dll
-        dotnet "$COGS_DLL" validate ./cogsburger
-        dotnet "$COGS_DLL" publish-xsd --overwrite ./cogsburger ./generated/xsd
-        dotnet "$COGS_DLL" publish-cs --overwrite --csproj --nullable ./cogsburger ./generated/src
-        dotnet "$COGS_DLL" publish-py --overwrite ./cogsburger ./generated/python
-        dotnet "$COGS_DLL" publish-ts --overwrite ./cogsburger ./generated/typescript
-        dotnet "$COGS_DLL" publish-json --overwrite ./cogsburger ./generated/json
-        dotnet "$COGS_DLL" publish-owl --overwrite ./cogsburger ./generated/owl
+      - name: Install Graphviz
+        shell: pwsh
+        run: |
+          if ($IsWindows) {
+            choco install graphviz --yes --no-progress
+            $candidate = Get-Command dot -ErrorAction SilentlyContinue
+            if (-not $candidate) {
+              $path = Join-Path $env:ProgramFiles 'Graphviz/bin/dot.exe'
+              if (Test-Path -LiteralPath $path) { $candidate = Get-Item -LiteralPath $path }
+            }
+          } else {
+            sudo apt-get update
+            sudo apt-get install --yes graphviz
+            $candidate = Get-Command dot -ErrorAction Stop
+          }
+          if (-not $candidate) { throw 'Graphviz dot was installed but could not be discovered.' }
+          $dot = $candidate.Source ?? $candidate.FullName
+          "COGS_DOT=$dot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          ([IO.Path]::GetDirectoryName($dot)) | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          & $dot -V
 
-    - name: Build generated TypeScript package
-      run: |
-        npm --prefix ./generated/typescript install --ignore-scripts
-        npm --prefix ./generated/typescript run build
-        npm pack ./generated/typescript --dry-run
+      - name: Display pinned runtimes
+        shell: pwsh
+        run: |
+          dotnet --version
+          python --version
+          node --version
+          npm --version
+          java -version
+          & $env:COGS_MAVEN --version
 
-    - name: Restore integration tests
-      run: dotnet restore ./Cogs.Tests.Integration/Cogs.Tests.Integration.csproj --verbosity minimal
+      - name: Build pinned OWLAPI profile validator
+        shell: pwsh
+        run: |
+          & $env:COGS_MAVEN -B -ntp -f ./conformance/java/pom.xml package
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          java -jar ./conformance/java/target/owl-profile-validator.jar --help
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          java -jar ./conformance/java/target/owl-profile-validator.jar --self-test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-    - name: Run integration tests
-      run: >
-        dotnet test ./Cogs.Tests.Integration/Cogs.Tests.Integration.csproj
-        --configuration ${{ env.BUILD_CONFIGURATION }}
-        --no-restore
-        --verbosity minimal
+      - name: Restore dependencies
+        run: dotnet restore ./Cogs.Console.sln --verbosity minimal
 
-    - name: Pack NuGet packages 
-      run: >
-        dotnet pack Cogs.Console/Cogs.Console.csproj
-        --configuration ${{ env.BUILD_CONFIGURATION }}
-        --no-build
-        -o ./nupkg
-        -p:Version=${{ steps.version.outputs.BUILD_VERSION }}
-        -p:PackageVersion=${{ steps.version.outputs.BUILD_VERSION }}
-        -p:AssemblyVersion=${{ steps.version.outputs.BUILD_VERSION }}
-        -p:FileVersion=${{ steps.version.outputs.BUILD_VERSION }}
-        -p:InformationalVersion=${{ steps.version.outputs.BUILD_VERSION }}
-        -p:IncludeSymbols=true
-        -p:SymbolPackageFormat=snupkg
+      - name: Build solution at repository version 2.0.0
+        run: >
+          dotnet build ./Cogs.Console.sln
+          --configuration ${{ env.BUILD_CONFIGURATION }}
+          --verbosity minimal
+          --no-restore
 
-    - name: Upload NuGet package as artifact (now only ONE package)
-      uses: actions/upload-artifact@v7.0.1
-      with:
-        name: CogsNuGetPackage
-        path: ./nupkg/*.nupkg
-        if-no-files-found: error
+      - name: Self-test RDF graph comparer
+        run: >
+          dotnet
+          ./conformance/dotnet/Cogs.Conformance.RdfGraphComparer/bin/Release/net10.0/Cogs.Conformance.RdfGraphComparer.dll
+          --self-test
+
+      - name: Run unit tests
+        run: >
+          dotnet test ./Cogs.Tests/Cogs.Tests.csproj
+          --configuration ${{ env.BUILD_CONFIGURATION }}
+          --no-build
+          --no-restore
+          --verbosity minimal
+
+      - name: Validate COGS 2 conformance corpus
+        shell: pwsh
+        run: |
+          ./conformance/scripts/Test-Conformance.ps1 `
+            -CogsDll ./Cogs.Console/bin/Release/net10.0/cogs.dll
+
+      - name: Generate cogsburger and conformance artifacts
+        shell: pwsh
+        run: |
+          $generated = [IO.Path]::GetFullPath((Join-Path $PWD 'generated'))
+          $workspace = [IO.Path]::GetFullPath($PWD)
+          if (-not $generated.StartsWith($workspace + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Unsafe generated path: $generated"
+          }
+          if (Test-Path -LiteralPath $generated) { Remove-Item -LiteralPath $generated -Recurse -Force }
+
+          $cogs = [IO.Path]::GetFullPath('./Cogs.Console/bin/Release/net10.0/cogs.dll')
+          function Invoke-Cogs {
+            & dotnet $cogs @args
+            if ($LASTEXITCODE -ne 0) { throw "cogs $($args -join ' ') failed with exit $LASTEXITCODE" }
+          }
+          function Publish-All([string] $model, [string] $root, [switch] $IntegrationLayout) {
+            Invoke-Cogs validate $model
+            Invoke-Cogs publish-xsd --overwrite $model "$root/xsd"
+            Invoke-Cogs publish-cs --overwrite --csproj --nullable $model "$root/src"
+            Invoke-Cogs publish-py --overwrite $model "$root/python"
+            Invoke-Cogs publish-ts --overwrite $model "$root/typescript"
+            Invoke-Cogs publish-json --overwrite $model "$root/json"
+            Invoke-Cogs publish-owl --overwrite $model "$root/owl"
+            Invoke-Cogs publish-linkml --overwrite $model "$root/linkml"
+            Invoke-Cogs publish-dctap --overwrite $model "$root/dctap"
+            Invoke-Cogs publish-graphql --overwrite $model "$root/graphql"
+            Invoke-Cogs publish-uml --overwrite --mode normative $model "$root/uml-normative"
+            Invoke-Cogs publish-uml --overwrite --mode ea --dot $env:COGS_DOT $model "$root/uml-ea"
+            Invoke-Cogs publish-dot --overwrite --format dot --all --inheritance --composite $model "$root/dot"
+            Invoke-Cogs publish-dot --overwrite --dot $env:COGS_DOT --format svg --all --inheritance --composite $model "$root/dot-svg"
+            if ($IntegrationLayout) {
+              Invoke-Cogs publish-dot --overwrite --dot $env:COGS_DOT --format png --all --inheritance --composite $model "$root/dot-png"
+              Invoke-Cogs publish-dot --overwrite --dot $env:COGS_DOT --format jpeg --all --inheritance --composite $model "$root/dot-jpeg"
+              Invoke-Cogs publish-dot --overwrite --dot $env:COGS_DOT --format pdf --all --inheritance --composite $model "$root/dot-pdf"
+            }
+            Invoke-Cogs publish-sphinx --overwrite --dot $env:COGS_DOT $model "$root/sphinx"
+          }
+
+          function Get-TreeManifest([string] $root) {
+            $resolvedRoot = [IO.Path]::GetFullPath($root)
+            @(Get-ChildItem -LiteralPath $resolvedRoot -Recurse -File | ForEach-Object {
+              $relative = [IO.Path]::GetRelativePath($resolvedRoot, $_.FullName).Replace('\', '/')
+              if ($_.Extension -ieq '.ttl') {
+                # Turtle syntax may differ while representing the same RDF graph.
+                "$relative`t<RDF-GRAPH>"
+              }
+              else {
+                "$relative`t$((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash)"
+              }
+            } | Sort-Object)
+          }
+
+          function Copy-TurtleTree([string] $source, [string] $target) {
+            $resolvedSource = [IO.Path]::GetFullPath($source)
+            [IO.Directory]::CreateDirectory($target) | Out-Null
+            Get-ChildItem -LiteralPath $resolvedSource -Recurse -File |
+              Where-Object { $_.Extension -ieq '.ttl' } |
+              ForEach-Object {
+                $relative = [IO.Path]::GetRelativePath($resolvedSource, $_.FullName)
+                $destination = Join-Path $target $relative
+                [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($destination)) | Out-Null
+                Copy-Item -LiteralPath $_.FullName -Destination $destination
+              }
+          }
+
+          # Keep the historical integration-test paths at generated/*.
+          Publish-All ./cogsburger ./generated -IntegrationLayout
+          Publish-All ./conformance/model ./generated/conformance
+          Invoke-Cogs cogs-new --overwrite ./generated/new-model
+          Publish-All ./generated/new-model ./generated/new-model-artifacts
+
+          $firstManifest = Get-TreeManifest ./generated
+          $firstTurtleRoot = Join-Path $env:RUNNER_TEMP "cogs-first-turtle-$([guid]::NewGuid().ToString('N'))"
+          Copy-TurtleTree ./generated $firstTurtleRoot
+          Publish-All ./cogsburger ./generated -IntegrationLayout
+          Publish-All ./conformance/model ./generated/conformance
+          Publish-All ./generated/new-model ./generated/new-model-artifacts
+          $secondManifest = Get-TreeManifest ./generated
+          $drift = @(Compare-Object -ReferenceObject $firstManifest -DifferenceObject $secondManifest)
+          if ($drift.Count -ne 0) {
+            $details = $drift | Select-Object -First 20 | Out-String
+            throw "A second publisher regeneration changed a non-Turtle artifact or file inventory:`n$details"
+          }
+
+          $rdfComparer = [IO.Path]::GetFullPath(
+            './conformance/dotnet/Cogs.Conformance.RdfGraphComparer/bin/Release/net10.0/Cogs.Conformance.RdfGraphComparer.dll')
+          & dotnet $rdfComparer $firstTurtleRoot ./generated
+          if ($LASTEXITCODE -ne 0) {
+            throw "A second publisher regeneration changed a Turtle RDF graph (exit $LASTEXITCODE)."
+          }
+
+      - name: Compile and pack generated TypeScript packages
+        shell: pwsh
+        run: |
+          $packages = @(
+            './generated/typescript',
+            './generated/conformance/typescript',
+            './generated/new-model-artifacts/typescript'
+          )
+          foreach ($package in $packages) {
+            $manifest = Join-Path $package 'package.json'
+            $manifestBefore = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash
+            if ($IsWindows) {
+              # npm 10 on Windows either ignores a project-scoped --prefix
+              # during install or treats its value as a package spec. Run the
+              # install in the package while retaining --prefix for build.
+              Push-Location $package
+              try {
+                npm install --ignore-scripts --no-package-lock
+                if ($LASTEXITCODE -ne 0) { throw "npm install failed for $package with exit $LASTEXITCODE" }
+              }
+              finally {
+                Pop-Location
+              }
+            }
+            else {
+              npm --prefix $package install --ignore-scripts --no-package-lock
+              if ($LASTEXITCODE -ne 0) { throw "npm install failed for $package with exit $LASTEXITCODE" }
+            }
+            $manifestAfter = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash
+            if ($manifestAfter -cne $manifestBefore) {
+              throw "npm install rewrote the generated manifest for $package"
+            }
+            npm --prefix $package run build
+            if ($LASTEXITCODE -ne 0) { throw "npm build failed for $package with exit $LASTEXITCODE" }
+            npm pack $package --dry-run
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - name: Compile generated Python packages
+        run: >
+          python -m compileall -q
+          ./generated/python
+          ./generated/conformance/python
+          ./generated/new-model-artifacts/python
+
+      - name: Compile generated C# packages
+        shell: pwsh
+        run: |
+          $roots = @(
+            './generated/src',
+            './generated/conformance/src',
+            './generated/new-model-artifacts/src'
+          )
+          foreach ($root in $roots) {
+            $projects = @(Get-ChildItem $root -Filter *.csproj -File)
+            if ($projects.Count -ne 1) { throw "Expected one generated C# project below $root, found $($projects.Count)." }
+            dotnet build $projects[0].FullName --configuration Release --verbosity minimal
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - name: Execute generated conformance runtimes in both language orders
+        shell: pwsh
+        run: |
+          ./conformance/scripts/Test-GeneratedRuntimes.ps1 `
+            -CogsDll ./Cogs.Console/bin/Release/net10.0/cogs.dll
+
+      - name: Validate secondary publisher artifacts
+        shell: pwsh
+        run: |
+          ./conformance/scripts/Test-SecondaryArtifacts.ps1 `
+            -Roots @('./generated', './generated/conformance', './generated/new-model-artifacts')
+          $linkmlRoots = @(
+            './generated/linkml',
+            './generated/conformance/linkml',
+            './generated/new-model-artifacts/linkml'
+          )
+          foreach ($root in $linkmlRoots) {
+            linkml-lint --validate --ignore-warnings "$root/linkml.yml"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            gen-python --validate "$root/linkml.yml" |
+              Set-Content -LiteralPath "$root/linkml_model.py" -Encoding utf8
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          python -m py_compile `
+            ./generated/linkml/linkml_model.py `
+            ./generated/conformance/linkml/linkml_model.py `
+            ./generated/new-model-artifacts/linkml/linkml_model.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node ./conformance/node/validate-graphql.mjs `
+            ./generated/graphql/GraphQL.graphqls `
+            ./generated/conformance/graphql/GraphQL.graphqls `
+            ./generated/new-model-artifacts/graphql/GraphQL.graphqls
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $owlFiles = @(
+            Get-ChildItem `
+              ./generated/owl, `
+              ./generated/conformance/owl, `
+              ./generated/new-model-artifacts/owl `
+              -Filter *.ttl -File | Select-Object -ExpandProperty FullName
+          )
+          if ($owlFiles.Count -ne 3) {
+            throw "Expected three generated Turtle ontologies, found $($owlFiles.Count)."
+          }
+          java -jar ./conformance/java/target/owl-profile-validator.jar @owlFiles
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build generated and repository Sphinx documentation with warnings as errors
+        shell: pwsh
+        run: |
+          sphinx-build -W --keep-going -b html ./generated/sphinx/source ./generated/sphinx/build/html
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          sphinx-build -W --keep-going -b html ./generated/conformance/sphinx/source ./generated/conformance/sphinx/build/html
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          sphinx-build -W --keep-going -b html ./generated/new-model-artifacts/sphinx/source ./generated/new-model-artifacts/sphinx/build/html
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          sphinx-build -W --keep-going -b html ./docs/source ./docs/build/html
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Restore integration tests against regenerated C#
+        run: dotnet restore ./Cogs.Tests.Integration/Cogs.Tests.Integration.csproj --verbosity minimal
+
+      - name: Run cross-language integration tests
+        run: >
+          dotnet test ./Cogs.Tests.Integration/Cogs.Tests.Integration.csproj
+          --configuration ${{ env.BUILD_CONFIGURATION }}
+          --no-restore
+          --verbosity minimal
+
+      - name: Probe pinned downstream migration diagnostics through every publisher
+        if: runner.os == 'Linux'
+        shell: pwsh
+        run: |
+          ./conformance/scripts/Test-DownstreamDiagnostics.ps1 `
+            -CogsDll ./Cogs.Console/bin/Release/net10.0/cogs.dll
+
+      - name: Report deliberately unavailable external validators
+        shell: pwsh
+        run: |
+          $tools = Get-Content ./conformance/tools.json -Raw | ConvertFrom-Json
+          Write-Host "OWL structural/profile gate: $($tools.owlStructuralReasoner)"
+          Write-Host "Eclipse UML2: $($tools.eclipseUml2)"
+          Write-Host "Official XMI schemas: $($tools.officialXmiSchemas)"
+          Write-Host "Java JAXP/Xerces XSD: $($tools.javaJaxpXsd)"
+          Write-Host 'Turtle RDF semantics are exercised by dotNetRDF publisher tests, regeneration graph equality, and OWLAPI; generated XMI receives deterministic local semantic validation.'
+
+      - name: Pack NuGet package
+        run: >
+          dotnet pack ./Cogs.Console/Cogs.Console.csproj
+          --configuration ${{ env.BUILD_CONFIGURATION }}
+          --no-build
+          -o ./nupkg
+          -p:IncludeSymbols=true
+          -p:SymbolPackageFormat=snupkg
+
+      - name: Upload NuGet package
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: CogsNuGetPackage-${{ runner.os }}
+          path: ./nupkg/*.nupkg
+          if-no-files-found: error

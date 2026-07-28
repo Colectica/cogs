@@ -1,0 +1,4 @@
+Name,DataType,MinCardinality,MaxCardinality,Description,Ordered,AllowSubtypes,MinLength,MaxLength,Enumeration,Pattern,MinInclusive,MinExclusive,MaxInclusive,MaxExclusive,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
+Scope,anyURI,1,1,Exact URI-reference scope.,,,1,256,,,,,,,,,
+Partition,string,1,1,Exact identity partition; delimiter characters remain data.,,,,,,,,,,,,,
+Segment,string,1,1,Exact identity segment; delimiter characters remain data.,,,,,,,,,,,,,

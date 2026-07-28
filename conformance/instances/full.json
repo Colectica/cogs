@@ -1,0 +1,133 @@
+{
+  "topLevelReferences": [
+    {
+      "$type": "SpecialRecord",
+      "ID": "record.one",
+      "Scope": "scope/one",
+      "Partition": "primary",
+      "Segment": "one"
+    }
+  ],
+  "items": [
+    {
+      "$type": "SpecialRecord",
+      "ID": "record.one",
+      "Scope": "scope/one",
+      "Partition": "primary",
+      "Segment": "one",
+      "Title": "Conformance record 1",
+      "Status": "draft",
+      "Count": 999999999999999999,
+      "Ratio": 123.4500,
+      "Created": "2024-02-29T23:59:59.123456789+05:30",
+      "Elapsed": "P1Y2M3DT4H5M6.789S",
+      "ElapsedHistory": ["PT0.001S", "-P1DT0.5S", "P1Y2M"],
+      "LanguageTag": "en-Latn-US",
+      "Link": "../relative?x=1#fragment",
+      "Label": [
+        { "@language": "en", "@value": "Example" },
+        { "@language": "fr", "@value": "Exemple" }
+      ],
+      "When": { "Date": "2024-02-29Z" },
+      "Details": {
+        "BooleanValue": true,
+        "DecimalValue": 12345678901234567890.1234500,
+        "FloatValue": 1.25e2,
+        "DoubleValue": -2.5e-3,
+        "DateTimeValue": "2147483647-12-31T23:59:59Z",
+        "TimeValue": "24:00:00Z",
+        "DateValue": "-2147483648-01-01-06:00",
+        "GYearMonthValue": { "Year": 2147483647, "Month": 2, "Timezone": "Z" },
+        "GYearValue": { "Year": -2147483648, "Timezone": "+05:30" },
+        "GMonthDayValue": { "Month": 2, "Day": 29, "Timezone": "Z" },
+        "GDayValue": { "Day": 31, "Timezone": "-06:00" },
+        "GMonthValue": { "Month": 12, "Timezone": "Z" },
+        "NonPositiveIntegerValue": -123456789012345678901234567890,
+        "NegativeIntegerValue": -123456789012345678901234567890,
+        "LongValue": -9223372036854775808,
+        "IntValue": -2147483648,
+        "NonNegativeIntegerValue": 123456789012345678901234567890,
+        "UnsignedLongValue": 18446744073709551615,
+        "PositiveIntegerValue": 123456789012345678901234567890,
+        "HugeFiniteCollection": ["first", "second"]
+      },
+      "Choice": {
+        "$type": "TextValue",
+        "Content": "substituted text"
+      },
+      "Parts": [
+        {
+          "Name": "root",
+          "Children": [
+            { "Name": "child" }
+          ]
+        }
+      ],
+      "Related": [
+        {
+          "$type": "Record",
+          "ID": "record.shared",
+          "Scope": "scope/shared",
+          "Partition": "alpha|beta",
+          "Segment": "gamma"
+        },
+        {
+          "$type": "Record",
+          "ID": "record.shared",
+          "Scope": "scope/shared",
+          "Partition": "alpha",
+          "Segment": "beta|gamma"
+        }
+      ],
+      "ExactRelated": {
+        "$type": "Record",
+        "ID": "record.shared",
+        "Scope": "scope/shared",
+        "Partition": "alpha|beta",
+        "Segment": "gamma"
+      },
+      "AssignableRelated": {
+        "$type": "SpecialRecord",
+        "ID": "record.one",
+        "Scope": "scope/one",
+        "Partition": "primary",
+        "Segment": "one"
+      },
+      "Note": "descendant property value is preserved"
+    },
+    {
+      "$type": "Record",
+      "ID": "record.shared",
+      "Scope": "scope/shared",
+      "Partition": "alpha|beta",
+      "Segment": "gamma",
+      "Title": "First delimiter-adversarial target",
+      "Related": [
+        {
+          "$type": "SpecialRecord",
+          "ID": "external",
+          "Scope": "../external",
+          "Partition": "external",
+          "Segment": "placeholder"
+        }
+      ]
+    },
+    {
+      "$type": "Record",
+      "ID": "record.shared",
+      "Scope": "scope/shared",
+      "Partition": "alpha",
+      "Segment": "beta|gamma",
+      "Title": "Second delimiter-adversarial target",
+      "Related": [
+        {
+          "$type": "SpecialRecord",
+          "ID": "record.one",
+          "Scope": "scope/one",
+          "Partition": "primary",
+          "Segment": "one"
+        }
+      ]
+    }
+  ]
+}

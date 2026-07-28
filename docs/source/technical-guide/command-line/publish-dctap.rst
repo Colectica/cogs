@@ -6,7 +6,8 @@ COGS model.
 
 This publisher gives a flattened, table-oriented view of the model that is
 useful when exchanging application-profile information with DCTAP-oriented
-tools.
+tools. Shape terms retain PascalCase COGS type names, while model
+``propertyID`` terms use the shared camelCase RDF property convention.
 
 Arguments
 ---------

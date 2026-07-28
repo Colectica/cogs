@@ -1,20 +1,51 @@
-﻿// Copyright (c) 2017 Colectica. All rights reserved
+// Copyright (c) 2017 Colectica. All rights reserved
 // See the LICENSE file in the project root for more information.
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Cogs.Model
 {
-    public class TopicIndex
+    public class TopicIndex : CogsModelNode
     {
-        public string Name { get; set; }
-        public string Description { get; set; }
-        public List<string> ItemTypeNames { get; } = new List<string>();
-        public List<DataType> ItemTypes { get; } = new List<DataType>();
-        public string ArticlesPath { get; set; }
-        public List<string> ArticleTocEntries { get; } = new List<string>();
+        private string name;
+        private string description;
+        private IList<string> itemTypeNames = new List<string>();
+        private IList<DataType> itemTypes = new List<DataType>();
+        private string articlesPath;
+        private IList<string> articleTocEntries = new List<string>();
+
+        public string Name
+        {
+            get => name;
+            set => SetValue(ref name, value);
+        }
+
+        public string Description
+        {
+            get => description;
+            set => SetValue(ref description, value);
+        }
+
+        public IList<string> ItemTypeNames => itemTypeNames;
+        public IList<DataType> ItemTypes => itemTypes;
+
+        public string ArticlesPath
+        {
+            get => articlesPath;
+            set => SetValue(ref articlesPath, value);
+        }
+
+        public IList<string> ArticleTocEntries => articleTocEntries;
+
+        protected sealed override void MakeReadOnlyCore()
+        {
+            foreach (DataType itemType in itemTypes)
+            {
+                itemType?.MakeReadOnly();
+            }
+
+            itemTypeNames = ReadOnlyCopy(itemTypeNames);
+            itemTypes = ReadOnlyCopy(itemTypes);
+            articleTocEntries = ReadOnlyCopy(articleTocEntries);
+        }
     }
 }

@@ -3,14 +3,18 @@ Graphviz
 
 Usage
 ------
-Graphviz is used to create the diagrams outputted by the `publish-dot <../../command-line/publish-dot/index.html>`_ command.
-Since the `publish-sphinx <../../command-line/publish-sphinx/index.html>`_ command embeds graphs created by the 
-`publish-dot <../../command-line/publish-dot/index.html>`_ command into the generated documentation, Graphviz is needed to run that publisher too.
-The `publish-uml <../../command-line/publish-uml/index.html>`_ command also uses Graphviz to determine node placements when outputting non-normative graphs.
+Graphviz renders diagrams produced by the `publish-dot <../../command-line/publish-dot/index.html>`_ command.
+Raw DOT does not need Graphviz. The `publish-sphinx <../../command-line/publish-sphinx/index.html>`_
+command uses Graphviz when available, but otherwise warns and emits text-only
+documentation with no diagram references.
+The current deterministic `publish-uml <../../command-line/publish-uml/index.html>`_
+writers do not invoke Graphviz, although ``--dot`` is retained for
+layout-capable UML modes.
 
 Download
 ---------
-* Go `here <http://www.graphviz.org/Download..php>`_ to download Graphviz and follow installation instructions. 
+* Visit the `Graphviz download page <https://graphviz.org/download/>`_ and follow its installation instructions.
 * If using Windows, you can `add dot.exe to your command path <https://www.howtogeek.com/118594/how-to-edit-your-system-path-for-easy-command-line-access/>`_. 
-  This allows you to use the `publish-dot <../../command-line/publish-dot/index.html>`_, `publish-sphinx <../../command-line/publish-sphinx/index.html>`_ and 
-  `publish-uml <../../command-line/publish-uml/index.html>`_ commands without needing to specify the location of the executable file.
+  This allows ``publish-dot`` and ``publish-sphinx`` to discover the executable
+  without ``--dot``. Discovery checks the option, then ``COGS_DOT``, then
+  ``PATH``.

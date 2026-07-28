@@ -11,7 +11,6 @@ namespace Cogs.Common
 
         public static readonly string[] SimpleTypeNames =
         {
-            "boolean",
             "string",
             "boolean",
             "decimal",
@@ -36,7 +35,6 @@ namespace Cogs.Common
             "unsignedLong",
             "positiveInteger",
             "cogsDate",
-            "dcTerms",
             "langString"
         };
 
@@ -44,8 +42,6 @@ namespace Cogs.Common
 
         public static readonly string[] BuiltinTypeNames =
         {
-            "This",
-            "Any"
         };
 
         public static readonly string[] BuiltinPropertyNames =

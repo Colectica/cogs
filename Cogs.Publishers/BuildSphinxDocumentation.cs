@@ -5,24 +5,26 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.IO;
-using System.Diagnostics;
+using Cogs.Common;
 using Cogs.Model;
-using Markdig;
 
 namespace Cogs.Publishers
 {
     public class BuildSphinxDocumentation
     {
-        private string outputDirectory;
-        private CogsModel cogsModel;
-        private string sphinxSourcePath;
+        private string outputDirectory = null!;
+        private CogsModel cogsModel = null!;
+        private string sphinxSourcePath = null!;
+        private bool includeDiagrams;
 
-        public void Build(CogsModel cogsModel, string outputDirectory)
+        public void Build(CogsModel cogsModel, string outputDirectory, bool includeDiagrams = true)
         {
             this.cogsModel = cogsModel;
             this.outputDirectory = outputDirectory;
+            this.includeDiagrams = includeDiagrams;
+            ValidateDocumentationInputs(cogsModel);
+            Directory.CreateDirectory(outputDirectory);
 
             CreateSphinxSkeleton();
             CopyTopLevelArticles();
@@ -47,6 +49,7 @@ namespace Cogs.Publishers
             // source directory
             sphinxSourcePath = Path.Combine(outputDirectory, "source");
             Directory.CreateDirectory(sphinxSourcePath);
+            Directory.CreateDirectory(Path.Combine(sphinxSourcePath, "_templates"));
 
             // source/_static directory
             string staticPath = Path.Combine(sphinxSourcePath, "_static");
@@ -86,25 +89,97 @@ namespace Cogs.Publishers
                 return;
             }
 
-            if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+            string sourceRoot = Path.GetFullPath(sourcePath);
+            string targetRoot = Path.GetFullPath(targetPath);
+            if (HasReparsePoint(sourceRoot))
             {
-                Process proc = new Process();
-                proc.StartInfo.UseShellExecute = false;
-                proc.StartInfo.FileName = @"C:\WINDOWS\system32\xcopy.exe";
-                proc.StartInfo.Arguments = $"{sourcePath} {targetPath} /E /I";
-                proc.Start();
-                proc.WaitForExit();
+                throw new InvalidDataException($"Article directory '{sourceRoot}' is a symbolic link or reparse point.");
             }
-            else if (Environment.OSVersion.Platform == PlatformID.Unix)
+            if (CogsDocumentationPath.IsWithin(sourceRoot, targetRoot) ||
+                CogsDocumentationPath.IsWithin(targetRoot, sourceRoot))
             {
-                Process proc = new Process();
-                proc.StartInfo.UseShellExecute = false;
-                proc.StartInfo.FileName = @"cp";
-                proc.StartInfo.Arguments = $"-r \"{sourcePath}/.\" \"{targetPath}\"";
-                proc.Start();
-                proc.WaitForExit();
+                throw new InvalidDataException($"Article source '{sourceRoot}' and documentation target '{targetRoot}' may not overlap.");
+            }
+
+            Directory.CreateDirectory(targetRoot);
+            var pending = new Queue<string>();
+            pending.Enqueue(sourceRoot);
+            while (pending.Count > 0)
+            {
+                string current = pending.Dequeue();
+                foreach (string entry in Directory.EnumerateFileSystemEntries(current))
+                {
+                    if (HasReparsePoint(entry))
+                    {
+                        throw new InvalidDataException($"Article content '{entry}' is a symbolic link or reparse point.");
+                    }
+
+                    string relative = Path.GetRelativePath(sourceRoot, entry);
+                    string destination = Path.GetFullPath(Path.Combine(targetRoot, relative));
+                    if (!CogsDocumentationPath.IsWithin(targetRoot, destination))
+                    {
+                        throw new InvalidDataException($"Article content '{entry}' escapes its documentation target.");
+                    }
+
+                    if (Directory.Exists(entry))
+                    {
+                        Directory.CreateDirectory(destination);
+                        pending.Enqueue(entry);
+                    }
+                    else
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                        File.Copy(entry, destination, overwrite: true);
+                    }
+                }
             }
         }
+
+        internal static void ValidateDocumentationInputs(CogsModel model)
+        {
+            ArgumentNullException.ThrowIfNull(model);
+            ValidateArticleEntries(model.ArticlesPath, model.ArticleTocEntries, "Articles");
+            foreach (TopicIndex topic in model.TopicIndices)
+            {
+                if (!IsSinglePathSegment(topic.Name))
+                {
+                    throw new InvalidDataException($"Topic name '{topic.Name}' is not a safe output directory name.");
+                }
+                ValidateArticleEntries(topic.ArticlesPath, topic.ArticleTocEntries, $"Topics.{topic.Name}.Articles");
+            }
+        }
+
+        private static void ValidateArticleEntries(string articleRoot, IEnumerable<string> entries, string modelPath)
+        {
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var seenDocuments = new HashSet<string>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+            foreach (string entry in entries)
+            {
+                CogsDocumentationPathStatus status = CogsDocumentationPath.Normalize(entry, out string normalized);
+                if (status == CogsDocumentationPathStatus.Valid && !seen.Add(normalized))
+                {
+                    throw new InvalidDataException($"{modelPath} contains duplicate article TOC entry '{normalized}'.");
+                }
+                if (status == CogsDocumentationPathStatus.Valid)
+                {
+                    status = CogsDocumentationPath.Resolve(articleRoot, normalized, out string resolvedPath);
+                    if (status == CogsDocumentationPathStatus.Valid && !seenDocuments.Add(resolvedPath))
+                    {
+                        throw new InvalidDataException($"{modelPath} contains two article TOC entries that resolve to '{resolvedPath}'.");
+                    }
+                }
+                if (status != CogsDocumentationPathStatus.Valid)
+                {
+                    throw new InvalidDataException($"{modelPath} article TOC entry '{entry}' {CogsDocumentationPath.Describe(status)}.");
+                }
+            }
+        }
+
+        private static bool IsSinglePathSegment(string value) =>
+            CogsDocumentationPath.IsPortableSingleSegment(value);
+
+        private static bool HasReparsePoint(string path) =>
+            (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0;
 
         private void BuildTopIndex()
         {
@@ -186,8 +261,9 @@ namespace Cogs.Publishers
             BuildDataTypePages("All Composite Types", "composite types", "composite-types", cogsModel.ReusableDataTypes);
         }
 
-        private void BuildDataTypePages(string title, string lowerTitle, string path, List<DataType> dataTypes)
+        private void BuildDataTypePages(string title, string lowerTitle, string path, ICollection<DataType> dataTypes)
         {
+            Directory.CreateDirectory(Path.Combine(outputDirectory, "source", path));
             foreach (var itemType in dataTypes)
             {
                 // Create a directory in the sphinx output area.
@@ -204,9 +280,22 @@ namespace Cogs.Publishers
                 builder.AppendLine();
                 builder.AppendLine();
 
-                // TODO Markdown to RST
-                builder.AppendLine(itemType.Description);
-                builder.AppendLine();
+                if (!string.IsNullOrWhiteSpace(itemType.Description))
+                {
+                    string descriptionMarkdownName = WriteMarkdownDocument(
+                        typeDir,
+                        "description",
+                        $"{itemType.Name} description",
+                        itemType.Description);
+                    builder.AppendLine("Description");
+                    builder.AppendLine("~~~~~~~~~~~");
+                    builder.AppendLine();
+                    builder.AppendLine(".. toctree::");
+                    builder.AppendLine("   :maxdepth: 1");
+                    builder.AppendLine();
+                    builder.AppendLine($"   {descriptionMarkdownName}");
+                    builder.AppendLine();
+                }
 
                 // Tables of properties
                 builder.AppendLine("Properties");
@@ -331,8 +420,9 @@ namespace Cogs.Publishers
 
                     foreach (ItemType otherItemType in relatedItemTypes)
                     {
-                        Relationship relationship = otherItemType.Relationships.FirstOrDefault(rel => rel.TargetItemType == itemType || rel.TargetItemType.Name == itemType.ExtendsTypeName);
-                        if (relationship != null)
+                        foreach (Relationship relationship in otherItemType.Relationships
+                            .Where(rel => rel.TargetItemType == itemType || rel.TargetItemType.Name == itemType.ExtendsTypeName)
+                            .OrderBy(rel => rel.PropertyName, StringComparer.Ordinal))
                         {
                             builder.AppendLine($"   :doc:`{otherItemType.Path}`,{relationship.PropertyName}");
                         }
@@ -341,36 +431,34 @@ namespace Cogs.Publishers
                 }
 
 
-                builder.AppendLine(".. container:: image");
-                builder.AppendLine();
-                builder.AppendLine("   |stub|");
-                builder.AppendLine();
-                builder.Append(".. |stub| image:: ");
-                builder.AppendLine(Path.Combine("../../images/" + itemType.Name + ".svg"));
-                builder.AppendLine();
-
-
-                // Output additional markdown text content
-                // TODO Markdown to RST
-                foreach(var extraText in itemType.AdditionalText)
+                if (includeDiagrams)
                 {
-                    builder.AppendLine(extraText.Name);
-                    builder.AppendLine(new string('~',extraText.Name.Length));
+                    builder.AppendLine(".. container:: image");
                     builder.AppendLine();
-
-                    var html = Markdown.ToHtml(extraText.Content);
-                    builder.AppendLine(".. raw:: html");
+                    builder.AppendLine("   |stub|");
                     builder.AppendLine();
-
-                    using (var reader = new StringReader(html))
+                    builder.Append(".. |stub| image:: ");
+                    builder.AppendLine("../../images/" + itemType.Name + ".svg");
+                    builder.AppendLine();
+                }
+                // Preserve authored Markdown and let MyST parse the copied files.
+                if (itemType.AdditionalText.Any())
+                {
+                    builder.AppendLine("Additional Documentation");
+                    builder.AppendLine("~~~~~~~~~~~~~~~~~~~~~~~~");
+                    builder.AppendLine();
+                    builder.AppendLine(".. toctree::");
+                    builder.AppendLine("   :maxdepth: 1");
+                    builder.AppendLine();
+                    foreach (var extraText in itemType.AdditionalText.OrderBy(text => text.Name, StringComparer.Ordinal))
                     {
-                        for (string? line = reader.ReadLine(); line != null; line = reader.ReadLine())
-                        {
-                            builder.AppendLine("   " + line);
-                        }
+                        string markdownName = WriteMarkdownDocument(
+                            typeDir,
+                            extraText.Name,
+                            extraText.Name,
+                            extraText.Content);
+                        builder.AppendLine($"   {extraText.Name} <{markdownName}>");
                     }
-                    
-
                     builder.AppendLine();
                 }
 
@@ -422,14 +510,29 @@ namespace Cogs.Publishers
                 cardinality += " (Ordered)";
             }
             // Description
-            string description = property.Description
-                .Replace("\n", " ")
-                .Replace("\"", "\"\"");
+            string description = (property.Description ?? string.Empty)
+                .Replace("\n", " ", StringComparison.Ordinal)
+                .Replace("\"", "\"\"", StringComparison.Ordinal);
 
-            if(property?.Enumeration.Count > 0)
+            if(property.Enumeration.Count > 0)
             {
                 description += " Valid values include: ";
                 description += string.Join(", ", property.Enumeration);
+            }
+
+            var constraints = new List<string>();
+            if (property.MinLength.HasValue) constraints.Add($"minLength={property.MinLength.Value}");
+            if (property.MaxLength.HasValue) constraints.Add($"maxLength={property.MaxLength.Value}");
+            if (!string.IsNullOrWhiteSpace(property.Pattern)) constraints.Add($"pattern={property.Pattern}");
+            if (!string.IsNullOrWhiteSpace(property.MinInclusive)) constraints.Add($"minInclusive={property.MinInclusive}");
+            if (!string.IsNullOrWhiteSpace(property.MinExclusive)) constraints.Add($"minExclusive={property.MinExclusive}");
+            if (!string.IsNullOrWhiteSpace(property.MaxInclusive)) constraints.Add($"maxInclusive={property.MaxInclusive}");
+            if (!string.IsNullOrWhiteSpace(property.MaxExclusive)) constraints.Add($"maxExclusive={property.MaxExclusive}");
+            if (CogsTypeSystem.AllowsSubtypes(property)) constraints.Add("assignable subtypes allowed");
+            if (constraints.Count > 0)
+            {
+                description += " Constraints: " + string.Join("; ", constraints) + ".";
+                description = description.Replace("\"", "\"\"", StringComparison.Ordinal);
             }
 
             propertiesBuilder.AppendLine($"   \"{property.Name}\",\"{typeStr}\",\"{cardinality}\",\"{description}\"");
@@ -487,15 +590,6 @@ namespace Cogs.Publishers
             //    propertiesBuilder.AppendLine();
             //}
 
-            //if (!string.IsNullOrWhiteSpace(property.DeprecatedNamespace))
-            //{
-            //    propertiesBuilder.AppendLine("DDI namespace");
-            //    var xmlType = property.DeprecatedElementOrAttribute != null
-            //        && property.DeprecatedElementOrAttribute == "e" ? "Element" : "Attribute";
-            //    propertiesBuilder.AppendLine($"    {xmlType} in {property.DeprecatedNamespace}");
-            //    propertiesBuilder.AppendLine();
-            //}
-
         }
 
         private string GetDataTypeRoot(string typeName)
@@ -532,14 +626,33 @@ namespace Cogs.Publishers
                 string topicIndexName = Path.Combine(topicOutputDirectory, "index.rst");
                 Directory.CreateDirectory(topicOutputDirectory);
 
+                if (topicIndex.ArticleTocEntries.Any())
+                {
+                    CopyArticles(topicIndex.ArticlesPath, topicOutputDirectory);
+                }
+
                 var builder = new StringBuilder();
 
                 builder.AppendLine(topicIndex.Name);
                 builder.AppendLine(GetRepeatedCharacters(topicIndex.Name, "-"));
                 builder.AppendLine();
 
-                builder.AppendLine(topicIndex.Description);
-                builder.AppendLine();
+                if (!string.IsNullOrWhiteSpace(topicIndex.Description))
+                {
+                    string descriptionMarkdownName = WriteMarkdownDocument(
+                        topicOutputDirectory,
+                        "description",
+                        $"{topicIndex.Name} description",
+                        topicIndex.Description);
+                    builder.AppendLine("Description");
+                    builder.AppendLine("***********");
+                    builder.AppendLine();
+                    builder.AppendLine(".. toctree::");
+                    builder.AppendLine("   :maxdepth: 1");
+                    builder.AppendLine();
+                    builder.AppendLine($"   {descriptionMarkdownName}");
+                    builder.AppendLine();
+                }
 
                 // If there are any articles for this topic, output them in a toctree and copy the files into the topic directory.
                 if (topicIndex.ArticleTocEntries.Any())
@@ -554,8 +667,6 @@ namespace Cogs.Publishers
                     }
 
                     builder.AppendLine();
-
-                    CopyArticles(topicIndex.ArticlesPath, topicOutputDirectory);
                 }
 
                 builder.AppendLine("Item Types");
@@ -578,11 +689,80 @@ namespace Cogs.Publishers
 
         }
 
+        private static string EnsureMarkdownDocumentTitle(string name, string content)
+        {
+            using var reader = new StringReader(content);
+            string? firstNonEmpty = null;
+            string? followingLine = null;
+            while (reader.ReadLine() is { } line)
+            {
+                if (firstNonEmpty is null)
+                {
+                    if (string.IsNullOrWhiteSpace(line))
+                    {
+                        continue;
+                    }
+
+                    firstNonEmpty = line.TrimStart();
+                    continue;
+                }
+
+                followingLine = line.Trim();
+                break;
+            }
+
+            bool hasAtxTitle = firstNonEmpty is not null &&
+                firstNonEmpty.StartsWith("# ", StringComparison.Ordinal);
+            bool hasSetextTitle = firstNonEmpty is not null &&
+                followingLine is not null &&
+                followingLine.Length > 0 &&
+                followingLine.All(character => character == '=');
+            if (hasAtxTitle || hasSetextTitle)
+            {
+                return content;
+            }
+
+            string title = name.Replace('\r', ' ').Replace('\n', ' ').Trim();
+            return $"# {title}{Environment.NewLine}{Environment.NewLine}{content}";
+        }
+
+        private static string WriteMarkdownDocument(
+            string directory,
+            string preferredName,
+            string title,
+            string content)
+        {
+            string markdownName = NextAvailableMarkdownFileName(directory, preferredName);
+            File.WriteAllText(
+                Path.Combine(directory, markdownName),
+                EnsureMarkdownDocumentTitle(title, content),
+                new UTF8Encoding(false));
+            return markdownName;
+        }
+
+        private static string NextAvailableMarkdownFileName(string directory, string preferredName)
+        {
+            var occupiedNames = Directory
+                .EnumerateFileSystemEntries(directory)
+                .Select(Path.GetFileName)
+                .Where(name => !string.IsNullOrEmpty(name))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            string stem = SafeDocumentName(preferredName);
+            for (int suffix = 1; ; suffix++)
+            {
+                string candidate = suffix == 1 ? $"{stem}.md" : $"{stem}-{suffix}.md";
+                if (!occupiedNames.Contains(candidate))
+                {
+                    return candidate;
+                }
+            }
+        }
+
         private string GetConfDotPyTemplate()
         {
             return @"# -*- coding: utf-8 -*-
 #
-# @Title documentation build configuration file.
+# COGS generated documentation build configuration file.
 #
 # import os
 # import sys
@@ -590,38 +770,38 @@ namespace Cogs.Publishers
 
 
 # -- General configuration ------------------------------------------------
-extensions = ['sphinx.ext.todo', 'sphinx.ext.graphviz']
+extensions = ['sphinx.ext.todo', 'myst_parser']
 templates_path = ['_templates']
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
 # source_suffix = ['.rst', '.md']
-source_suffix = '.rst'
+source_suffix = {'.rst': 'restructuredtext', '.md': 'markdown'}
 
 # The master toctree document.
 master_doc = 'index'
 
 # General information about the project.
-project = u'@Title'
-copyright = u'@Copyright'
-author = u'@Author'
+project = @TitleLiteral
+copyright = @CopyrightLiteral
+author = @AuthorLiteral
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
 # The short X.Y version.
-version = u'@Version'
+version = @VersionLiteral
 # The full version, including alpha/beta/rc tags.
-release = u'@Version'
+release = @VersionLiteral
 
 # The language for content autogenerated by Sphinx. Refer to documentation
 # for a list of supported languages.
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set ""language"" from the command line for these cases.
-language = None
+language = 'en'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -640,8 +820,7 @@ todo_include_todos = True
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = ""sphinx_rtd_theme""
-html_theme_path = [""themes""]
+html_theme = ""alabaster""
 def setup(app):
   app.add_css_file( ""css/custom.css"" )
 
@@ -661,7 +840,7 @@ html_static_path = ['_static']
 # -- Options for HTMLHelp output ------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = '@Title-doc'
+htmlhelp_basename = @HtmlBaseLiteral
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -688,8 +867,8 @@ latex_elements = {
 # (source start file, target name, title,
 # author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, '@Title.tex', u'@Title Documentation',
-     u'@Title', 'manual'),
+    (master_doc, @LatexFileLiteral, @DocumentationTitleLiteral,
+     @TitleLiteral, 'manual'),
 ]
 
 
@@ -698,7 +877,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, '@Title', u'@Title Documentation',
+    (master_doc, @HtmlBaseLiteral, @DocumentationTitleLiteral,
      [author], 1)
 ]
 
@@ -709,8 +888,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, '@Title', u'@Title Documentation',
-     author, '@Title', '@Title',
+    (master_doc, @HtmlBaseLiteral, @DocumentationTitleLiteral,
+     author, @TitleLiteral, @TitleLiteral,
      'Miscellaneous'),
 ]
 ";
@@ -731,7 +910,7 @@ if ""%SPHINXBUILD%"" == """" (
 set SOURCEDIR=source
 set BUILDDIR=build
 set SPHINXPROJ=COGS
-set SPHINXOPTS=-D graphviz_dot=C:\bin\graphviz\bin\dot.exe -D graphviz_output_format=png
+set SPHINXOPTS=
 
 if ""%1"" == """" goto help
 
@@ -794,10 +973,24 @@ help:
             string template = GetConfDotPyTemplate();
 
             return template
-                .Replace("@Title", cogsModel.Settings.Title)
-                .Replace("@Author", cogsModel.Settings.Author)
-                .Replace("@Version", cogsModel.Settings.Version)
-                .Replace("@Copyright", cogsModel.Settings.Copyright);
+                .Replace("@TitleLiteral", PythonLiteral(cogsModel.Settings.Title), StringComparison.Ordinal)
+                .Replace("@AuthorLiteral", PythonLiteral(cogsModel.Settings.Author), StringComparison.Ordinal)
+                .Replace("@VersionLiteral", PythonLiteral(cogsModel.Settings.Version), StringComparison.Ordinal)
+                .Replace("@CopyrightLiteral", PythonLiteral(cogsModel.Settings.Copyright), StringComparison.Ordinal)
+                .Replace("@HtmlBaseLiteral", PythonLiteral(SafeDocumentName(cogsModel.Settings.Slug)), StringComparison.Ordinal)
+                .Replace("@LatexFileLiteral", PythonLiteral(SafeDocumentName(cogsModel.Settings.Slug) + ".tex"), StringComparison.Ordinal)
+                .Replace("@DocumentationTitleLiteral", PythonLiteral(cogsModel.Settings.Title + " Documentation"), StringComparison.Ordinal);
+        }
+
+        private static string PythonLiteral(string? value) =>
+            System.Text.Json.JsonSerializer.Serialize(value ?? string.Empty);
+
+        private static string SafeDocumentName(string? value)
+        {
+            string source = value ?? string.Empty;
+            string result = string.Concat(source.Select(character =>
+                char.IsLetterOrDigit(character) || character is '-' or '_' ? character : '-')).Trim('-');
+            return string.IsNullOrWhiteSpace(result) ? "document" : result.ToLowerInvariant();
         }
 
         private string GetCustomCss()

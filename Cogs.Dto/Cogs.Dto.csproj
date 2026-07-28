@@ -26,4 +26,8 @@
     <ProjectReference Include="..\Cogs.Common\Cogs.Common.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Cogs.Tests" />
+  </ItemGroup>
+
 </Project>

@@ -1,56 +1,80 @@
 // Copyright (c) 2017 Colectica. All rights reserved
 // See the LICENSE file in the project root for more information.
+using Cogs.Common;
 using Cogs.Model;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Reflection;
-using System.Text;
 
-namespace Cogs.Publishers
+namespace Cogs.Publishers;
+
+public sealed class SphinxPublisher
 {
-    public class SphinxPublisher
+    public string? TargetDirectory { get; set; }
+    public bool Overwrite { get; set; }
+    public string? DotLocation { get; set; }
+    public List<CogsError> Errors { get; } = new();
+
+    public void Publish(CogsModel model)
     {
-        public string TargetDirectory { get; set; }
-        public bool Overwrite { get; set; }
-        public string DotLocation { get; set; }
+        ArgumentNullException.ThrowIfNull(model);
+        string target = TargetDirectory ?? throw new InvalidOperationException("Target directory must be specified.");
+        Errors.Clear();
+        BuildSphinxDocumentation.ValidateDocumentationInputs(model);
+        DirectoryPublication.Publish(target, Overwrite, stagingDirectory => PublishCore(model, stagingDirectory), model.SourceDirectory);
+    }
 
-        public void Publish(CogsModel model)
+    private void PublishCore(CogsModel model, string stagingDirectory)
+    {
+        string? dot = DiscoverDot();
+        bool diagramsAvailable = dot is not null;
+        if (diagramsAvailable)
         {
-            if (TargetDirectory == null)
+            var diagramPublisher = new DotSchemaPublisher
             {
-                throw new InvalidOperationException("Target directory must be specified");
-            }
-            if (Overwrite && Directory.Exists(TargetDirectory))
-            {
-                Directory.Delete(TargetDirectory, true);
-            }
-            // TODO: if Overwrite is false and Directory.Exists(TargetDirectory)) throw an error and exit
-            Directory.CreateDirectory(TargetDirectory);
-
-            // create graphs for each item
-            var builder = new DotSchemaPublisher
-            {
-                TargetDirectory = Path.Combine(Path.Combine(TargetDirectory, "source"), "images"),
-                Overwrite = Overwrite,
+                TargetDirectory = Path.Combine(stagingDirectory, "source", "images"),
+                Overwrite = false,
                 Format = "svg",
                 Output = "single",
                 Inheritance = false,
                 ShowReusables = false,
-                DotLocation = DotLocation
+                DotLocation = dot
             };
-            builder.Publish(model);
-            // create documentation
-            var doc = new BuildSphinxDocumentation();
-            doc.Build(model, TargetDirectory);
-            //copy over image css file
-            var path = Path.Combine(Path.Combine(Path.Combine(Path.Combine(TargetDirectory, "build"), "html"), "_static"), "css");
-            Directory.CreateDirectory(path);
-            using (var stream = new FileStream(Path.Combine(path, "image.css"), FileMode.Create))
+            try
             {
-                Assembly.GetExecutingAssembly().GetManifestResourceStream("Cogs.Publishers.image.css").CopyTo(stream);
+                diagramPublisher.Publish(model);
             }
+            catch
+            {
+                Errors.AddRange(diagramPublisher.Errors);
+                throw;
+            }
+            Errors.AddRange(diagramPublisher.Errors);
         }
+        else
+        {
+            Errors.Add(new CogsError(ErrorLevel.Warning, "PROJ2801",
+                "Graphviz dot was not found; Sphinx documentation was generated without diagrams or diagram links."));
+        }
+
+        var documentation = new BuildSphinxDocumentation();
+        documentation.Build(model, stagingDirectory, diagramsAvailable);
+    }
+
+    private string? DiscoverDot()
+    {
+        string? configured = string.IsNullOrWhiteSpace(DotLocation)
+            ? Environment.GetEnvironmentVariable("COGS_DOT")
+            : DotLocation;
+        if (!string.IsNullOrWhiteSpace(configured)) return configured;
+
+        string executable = OperatingSystem.IsWindows() ? "dot.exe" : "dot";
+        foreach (string directory in (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
+            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            string candidate = Path.Combine(directory, executable);
+            if (File.Exists(candidate)) return candidate;
+        }
+        return null;
     }
 }

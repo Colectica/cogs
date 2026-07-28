@@ -1,12 +1,9 @@
-﻿// Copyright (c) 2017 Colectica. All rights reserved
+// Copyright (c) 2017 Colectica. All rights reserved
 // See the LICENSE file in the project root for more information.
 using Cogs.Common;
-using Cogs.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Cogs.Model
 {
@@ -16,378 +13,411 @@ namespace Cogs.Model
 
         private Cogs.Dto.CogsDtoModel dto;
         private CogsModel model;
+        private Dictionary<string, DataType> types;
 
-        public CogsModel Build(Cogs.Dto.CogsDtoModel cogsDtoModel)
+        /// <summary>Builds a connected model or returns diagnostics without throwing.</summary>
+        public CogsBuildResult BuildResult(Cogs.Dto.CogsDtoModel cogsDtoModel)
         {
-            this.dto = cogsDtoModel;
-            this.model = new CogsModel();
-
-            // Copy information about articles.
-            model.ArticlesPath = dto.ArticlesPath;
-            model.ArticleTocEntries.AddRange(dto.ArticleTocEntries);
-
-            // Identification
-            foreach (var id in dto.Identification)
+            Errors.Clear();
+            if (cogsDtoModel == null)
             {
-                var property = new Property();
-                MapProperty(id, property);
-                model.Identification.Add(property);
+                Errors.Add(new CogsError(ErrorLevel.Error, "COGS-BUILD-001", "A DTO model is required."));
+                return new CogsBuildResult(null, Errors);
             }
-            // Identification Mixin
-            foreach (var id in dto.IdentificationMixin)
+
+            dto = cogsDtoModel;
+            model = new CogsModel
             {
-                var property = new Property();
-                MapProperty(id, property);
+                SourceDirectory = dto.SourceDirectory,
+                ArticlesPath = dto.ArticlesPath,
+                HeaderInclude = dto.HeaderInclude,
+                Settings = MapSettings(dto.Settings)
+            };
+            AddRange(model.ArticleTocEntries, dto.ArticleTocEntries);
+
+            MapIdentification();
+            CreateTypeStubs();
+            CreateTypeIndex();
+            ResolveInheritance();
+            InjectIdentification();
+            ResolvePropertyTypes();
+            ApplyAbstractSubtypeDefaults();
+            MapTopics();
+            BuildRelationships();
+            MarkCompositeSubstitutes();
+
+            var ordered = Errors
+                .OrderBy(x => x.SourcePath ?? string.Empty, StringComparer.Ordinal)
+                .ThenBy(x => x.Line ?? 0)
+                .ThenBy(x => x.Code, StringComparer.Ordinal)
+                .ToArray();
+            return new CogsBuildResult(ordered.Any(x => x.Level == ErrorLevel.Error) ? null : model, ordered);
+        }
+
+        /// <summary>
+        /// Compatibility adapter. Prefer <see cref="BuildResult"/> and inspect diagnostics.
+        /// Invalid input returns null rather than a partial or fabricated model.
+        /// </summary>
+        [Obsolete("Use BuildResult and inspect its diagnostics. This compatibility adapter will be removed in COGS 3.0.")]
+        public CogsModel Build(Cogs.Dto.CogsDtoModel cogsDtoModel) => BuildResult(cogsDtoModel).Model;
+
+        private void MapIdentification()
+        {
+            foreach (var source in dto.Identification)
+            {
+                model.Identification.Add(MapProperty(source));
+            }
+            foreach (var source in dto.IdentificationMixin)
+            {
+                var property = MapProperty(source);
                 property.FromMixin = true;
                 model.Identification.Add(property);
             }
-
-            // Settings
-            model.HeaderInclude = dto.HeaderInclude;
-            model.Settings = new Settings();
-            foreach (var setting in dto.Settings)
-            {
-                switch (setting.Key)
-                {
-                    case "Title":
-                        model.Settings.Title = setting.Value;
-                        break;
-                    case "ShortTitle":
-                        model.Settings.ShortTitle = setting.Value;
-                        break;
-                    case "Slug":
-                        model.Settings.Slug = setting.Value;
-                        break;
-                    case "Description":
-                        model.Settings.Description = setting.Value;
-                        break;
-                    case "Version":
-                        model.Settings.Version = setting.Value;
-                        break;
-                    case "Author":
-                        model.Settings.Author = setting.Value;
-                        break;
-                    case "Copyright":
-                        model.Settings.Copyright = setting.Value;
-                        break;
-                    case "NamespaceUrl":
-                        model.Settings.NamespaceUrl = setting.Value;
-                        break;
-                    case "NamespacePrefix":
-                        model.Settings.NamespacePrefix = setting.Value;
-                        break;
-                    case "CSharpNamespace":
-                        model.Settings.CSharpNamespace = setting.Value;
-                        break;
-                    default:
-                        model.Settings.ExtraSettings.Add(setting.Key, setting.Value);
-                        break;
-                }
-            }
-
-            // Set defaults for well-known settings, if they are blank.
-            if (string.IsNullOrWhiteSpace(model.Settings.Title))
-            {
-                model.Settings.Title = "Model Title";
-            }
-            if (string.IsNullOrWhiteSpace(model.Settings.ShortTitle))
-            {
-                model.Settings.ShortTitle = "Model";
-            }
-            if (string.IsNullOrWhiteSpace(model.Settings.Slug))
-            {
-                model.Settings.Slug = "model";
-            }
-
-            if (string.IsNullOrWhiteSpace(model.Settings.Description))
-            {
-                model.Settings.Description = "TODO";
-            }
-
-            if (string.IsNullOrWhiteSpace(model.Settings.Version))
-            {
-                model.Settings.Version = "0.1";
-            }
-
-            if (string.IsNullOrWhiteSpace(model.Settings.Author))
-            {
-                model.Settings.Author = "TODO";
-            }
-
-            if (string.IsNullOrWhiteSpace(model.Settings.Copyright))
-            {
-                model.Settings.Copyright = "TODO";
-            }
-
-            if (string.IsNullOrWhiteSpace(model.Settings.NamespaceUrl))
-            {
-                model.Settings.NamespaceUrl = "http://example.org/todo";
-            }
-
-            if (string.IsNullOrWhiteSpace(model.Settings.NamespacePrefix))
-            {
-                model.Settings.NamespacePrefix = "todo";
-            }
-
-
-            // First pass: create object stubs.
-            string[] itemNames = dto.ItemTypes.Select(x => x.Name).ToArray();
-
-            foreach (var itemTypeDto in dto.ItemTypes)
-            {
-                var itemType = new ItemType();
-                MapDataType(itemTypeDto, itemType, true);
-                model.ItemTypes.Add(itemType);
-                
-                // add identification to all base types in itemtypes
-                if (string.IsNullOrEmpty(itemType.ExtendsTypeName))
-                {
-                    itemType.Properties.InsertRange(0, model.Identification);
-                }
-                else
-                {
-                    if (!itemNames.Contains(itemType.ExtendsTypeName))
-                    {
-                        string errorMessage = $"Item {itemType.Name} can not extend {itemType.ExtendsTypeName} because it is not an item type.";
-                        throw new InvalidOperationException(errorMessage);
-                    }
-                }
-            }
-
-            foreach (var reusableTypeDto in dto.ReusableDataTypes)
-            {
-                var reusableType = new DataType();
-                MapDataType(reusableTypeDto, reusableType, false);
-                model.ReusableDataTypes.Add(reusableType);
-            }
-
-            foreach (var topicIndexDto in dto.TopicIndices)
-            {
-                var index = new TopicIndex();
-                MapTopicIndex(topicIndexDto, index);
-                model.TopicIndices.Add(index);
-            }
-            
-
-            // Second pass: add references between items.
-            foreach (var itemType in model.ItemTypes)
-            {
-                CreateRelationships(itemType);
-            }
-
-            foreach (var type in model.ReusableDataTypes)
-            {
-                CreateRelationships(type);
-            }
-
-            foreach (var index in model.TopicIndices)
-            {
-                foreach (var itemTypeName in index.ItemTypeNames)
-                {
-                    var includedType = GetTypeByName(itemTypeName);
-                    index.ItemTypes.Add(includedType);
-                }
-            }
-
-            // Third pass: look for relationships among items.
-            // Related item types, based on following the properties' data types.
-            foreach (var itemType in model.ItemTypes)
-            {
-                ProcessProperties(itemType.Properties, itemType.Relationships, new HashSet<string>());
-            }
-
-            // find reusable types which can have a subclass used in their place
-            foreach(var dataType in model.ReusableDataTypes.Union(model.ItemTypes))
-            {
-                foreach(var property in dataType.Properties)
-                {
-                    if (property.AllowSubtypes)
-                    {
-                        MarkSubstitute(property.DataType);
-                    }
-                }
-            }
-
-            return model;
         }
 
-        private void MarkSubstitute(DataType dataType)
+        private void CreateTypeStubs()
         {
-            dataType.IsSubstitute = true;
-            foreach(var child in dataType.ChildTypes)
+            foreach (var source in dto.ItemTypes)
             {
-                MarkSubstitute(child);
+                var target = new ItemType();
+                MapDataType(source, target, true);
+                model.ItemTypes.Add(target);
+            }
+            foreach (var source in dto.ReusableDataTypes)
+            {
+                var target = new DataType();
+                MapDataType(source, target, false);
+                model.ReusableDataTypes.Add(target);
             }
         }
 
-        private void CreateRelationships(DataType type)
+        private void CreateTypeIndex()
         {
-            // Property types
-            foreach (var property in type.Properties)
+            types = new Dictionary<string, DataType>(StringComparer.Ordinal);
+            foreach (var type in model.AllDataTypes)
             {
-                property.DataType = GetTypeByName(property.DataTypeName);
+                if (!types.TryAdd(type.Name, type))
+                {
+                    Errors.Add(new CogsError(ErrorLevel.Error, "COGS-BUILD-002", $"Duplicate type '{type.Name}' cannot be connected.", modelPath: type.Name));
+                }
             }
-
-            // Parents
-            string extendsTypeName = type.ExtendsTypeName;
-            while (!string.IsNullOrWhiteSpace(extendsTypeName))
+            foreach (var primitiveName in CogsTypes.SimpleTypeNames.Distinct(StringComparer.Ordinal))
             {
-                var parent = GetTypeByName(extendsTypeName);
-                type.ParentTypes.Insert(0, parent);
-                extendsTypeName = parent.ExtendsTypeName;
+                if (!types.TryAdd(primitiveName, new DataType
+                {
+                    Name = primitiveName,
+                    IsXmlPrimitive = true,
+                    IsPrimitive = true,
+                    Properties = new List<Property>()
+                }))
+                {
+                    Errors.Add(new CogsError(ErrorLevel.Error, "COGS-BUILD-003", $"Model type '{primitiveName}' conflicts with a builtin datatype.", modelPath: primitiveName));
+                }
             }
-
-            // Look through all other types to determine which types extend this one.
-            foreach (var otherType in model.ItemTypes.Where(x => x.ExtendsTypeName == type.Name))
-            {
-                type.ChildTypes.Add(otherType);
-            }
-            foreach (var otherType in model.ReusableDataTypes.Where(x => x.ExtendsTypeName == type.Name))
-            {
-                type.ChildTypes.Add(otherType);
-            }
-
         }
 
-        private void ProcessProperties(List<Property> properties, List<Relationship> relationships, HashSet<string> seenTypeNames, string prefixTypeStr = "")
+        private void ResolveInheritance()
         {
-            foreach (var property in properties)
+            foreach (var type in model.AllDataTypes)
             {
-                if (seenTypeNames.Contains(property.DataType?.Name))
+                if (string.IsNullOrWhiteSpace(type.ExtendsTypeName))
                 {
                     continue;
                 }
-                seenTypeNames.Add(property.DataType?.Name);
-
-                // If the type of this property is an ItemType, consider it related.
-                if (property.DataType is ItemType it)
+                if (!types.TryGetValue(type.ExtendsTypeName, out var parent) || parent.IsXmlPrimitive)
                 {
-                    string nameStr = property.Name;
-                    if (!string.IsNullOrWhiteSpace(prefixTypeStr))
-                    {
-                        nameStr = prefixTypeStr + "/" + nameStr;
-                    }
-                    var relationship = new Relationship
-                    {
-                        PropertyName = nameStr,
-                        TargetItemType = it
-                    };
-                    relationships.Add(relationship);
+                    Errors.Add(new CogsError(ErrorLevel.Error, "COGS-BUILD-010", $"Parent type '{type.ExtendsTypeName}' for '{type.Name}' is undefined.", modelPath: type.Name));
+                    continue;
                 }
+                if ((type is ItemType) != (parent is ItemType))
+                {
+                    Errors.Add(new CogsError(ErrorLevel.Error, "COGS-BUILD-011", $"Type '{type.Name}' cannot inherit across item/composite kinds from '{parent.Name}'.", modelPath: type.Name));
+                    continue;
+                }
+                parent.ChildTypes.Add(type);
+            }
 
-                // If the type is not an item type, dive deeper to see if
-                // the regular-type might reference an ItemType.
+            foreach (var type in model.AllDataTypes)
+            {
+                var chain = new List<DataType>();
+                var seen = new HashSet<string>(StringComparer.Ordinal) { type.Name };
+                var parentName = type.ExtendsTypeName;
+                while (!string.IsNullOrWhiteSpace(parentName))
+                {
+                    if (!types.TryGetValue(parentName, out var parent) || parent.IsXmlPrimitive)
+                    {
+                        break;
+                    }
+                    if (!seen.Add(parent.Name))
+                    {
+                        Errors.Add(new CogsError(ErrorLevel.Error, "COGS-BUILD-012", $"Inheritance cycle encountered while connecting '{type.Name}'.", modelPath: type.Name));
+                        chain.Clear();
+                        break;
+                    }
+                    chain.Insert(0, parent);
+                    parentName = parent.ExtendsTypeName;
+                }
+                AddRange(type.ParentTypes, chain);
+            }
+        }
+
+        private void InjectIdentification()
+        {
+            foreach (var item in model.ItemTypes.Where(x => string.IsNullOrWhiteSpace(x.ExtendsTypeName)))
+            {
+                var identification = model.Identification.Select(CloneProperty).ToArray();
+                for (int index = identification.Length - 1; index >= 0; index--)
+                {
+                    item.Properties.Insert(0, identification[index]);
+                }
+            }
+        }
+
+        private void ResolvePropertyTypes()
+        {
+            foreach (var type in model.AllDataTypes)
+            {
+                foreach (var property in type.Properties)
+                {
+                    if (!types.TryGetValue(property.DataTypeName, out var propertyType))
+                    {
+                        Errors.Add(new CogsError(ErrorLevel.Error, "COGS-BUILD-020", $"Property '{type.Name}.{property.Name}' uses undefined datatype '{property.DataTypeName}'.", modelPath: $"{type.Name}.{property.Name}"));
+                        continue;
+                    }
+                    property.DataType = propertyType;
+                }
+            }
+            foreach (var property in model.Identification)
+            {
+                if (types.TryGetValue(property.DataTypeName, out var propertyType))
+                {
+                    property.DataType = propertyType;
+                }
                 else
                 {
-                    string nameStr = property.Name;
-                    if (!string.IsNullOrWhiteSpace(prefixTypeStr))
+                    Errors.Add(new CogsError(ErrorLevel.Error, "COGS-BUILD-021", $"Identification property '{property.Name}' uses undefined datatype '{property.DataTypeName}'.", modelPath: $"Identification.{property.Name}"));
+                }
+            }
+        }
+
+        private void ApplyAbstractSubtypeDefaults()
+        {
+            foreach (var property in model.AllDataTypes.SelectMany(type => type.Properties))
+            {
+                if (property.DataType?.IsAbstract == true)
+                {
+                    property.AllowSubtypes = true;
+                }
+            }
+        }
+
+        private void MapTopics()
+        {
+            foreach (var source in dto.TopicIndices)
+            {
+                var target = new TopicIndex
+                {
+                    Name = source.Name,
+                    Description = source.Description,
+                    ArticlesPath = source.ArticlesPath
+                };
+                AddRange(target.ItemTypeNames, source.ItemTypes);
+                AddRange(target.ArticleTocEntries, source.ArticleTocEntries);
+                for (int itemIndex = 0; itemIndex < source.ItemTypes.Count; itemIndex++)
+                {
+                    string itemName = source.ItemTypes[itemIndex];
+                    if (types.TryGetValue(itemName, out var type) && type is ItemType)
                     {
-                        nameStr = prefixTypeStr + "/" + nameStr;
+                        target.ItemTypes.Add(type);
                     }
-                    ProcessProperties(property.DataType.Properties, relationships, seenTypeNames, nameStr);
+                    else
+                    {
+                        Cogs.Dto.SourceTextEntry location = itemIndex < source.ItemTypeSources.Count ? source.ItemTypeSources[itemIndex] : null;
+                        Errors.Add(new CogsError(ErrorLevel.Error, "COGS-BUILD-030", $"Topic '{source.Name}' references unknown item type '{itemName}'.",
+                            location?.SourcePath ?? source.SourcePath, location?.SourceLine, location?.SourceColumn, modelPath: $"Topics.{source.Name}.Items"));
+                    }
+                }
+                model.TopicIndices.Add(target);
+            }
+        }
+
+        private void BuildRelationships()
+        {
+            foreach (var item in model.ItemTypes)
+            {
+                var keys = new HashSet<string>(StringComparer.Ordinal);
+                TraverseProperties(CogsTypeSystem.EffectiveProperties(item), item.Relationships, new HashSet<DataType>(), string.Empty, keys);
+            }
+        }
+
+        private void TraverseProperties(IEnumerable<Property> properties, IList<Relationship> relationships, HashSet<DataType> recursionStack, string prefix, HashSet<string> keys)
+        {
+            foreach (var property in properties)
+            {
+                if (property.DataType == null || property.DataType.IsXmlPrimitive)
+                {
+                    continue;
+                }
+                var path = string.IsNullOrEmpty(prefix) ? property.Name : prefix + "/" + property.Name;
+                if (property.DataType is ItemType item)
+                {
+                    var key = path + "\u001f" + item.Name;
+                    if (keys.Add(key))
+                    {
+                        relationships.Add(new Relationship { PropertyName = path, TargetItemType = item });
+                    }
+                    continue;
                 }
 
+                if (!recursionStack.Add(property.DataType))
+                {
+                    continue;
+                }
+                TraverseProperties(CogsTypeSystem.EffectiveProperties(property.DataType), relationships, recursionStack, path, keys);
+                recursionStack.Remove(property.DataType);
             }
-
         }
 
-        private DataType GetTypeByName(string dataTypeName)
+        private void MarkCompositeSubstitutes()
         {
-            // Try Item Type.
-            var itemType = model.ItemTypes.FirstOrDefault(x => x.Name == dataTypeName);
-            if (itemType != null)
+            foreach (var property in model.AllDataTypes.SelectMany(x => x.Properties))
             {
-                return itemType;
+                if (!property.AllowSubtypes || property.DataType == null || property.DataType is ItemType || property.DataType.IsXmlPrimitive)
+                {
+                    continue;
+                }
+                MarkSubstitute(property.DataType, new HashSet<DataType>());
             }
-
-            // Try Reusable Type.
-            var reusableType = model.ReusableDataTypes.FirstOrDefault(x => x.Name == dataTypeName);
-            if (reusableType != null)
-            {
-                return reusableType;
-            }
-
-            // Must be a primitive, or something from outside the system.
-            var primitiveType = new DataType();
-            primitiveType.Name = dataTypeName;
-            primitiveType.IsXmlPrimitive = true;
-            return primitiveType;
         }
 
-        private void MapDataType(Cogs.Dto.DataType dto, DataType dataType, bool isItemType)
+        private static void MarkSubstitute(DataType dataType, HashSet<DataType> seen)
         {
-            dataType.Name = dto.Name;
-            dataType.Description = dto.Description;
-            dataType.IsAbstract = dto.IsAbstract;
-            dataType.IsPrimitive = dto.IsPrimitive;
-            dataType.ExtendsTypeName = dto.Extends;
-            dataType.DeprecatedNamespace = dto.DeprecatedNamespace;
-            dataType.IsDeprecated = dto.IsDeprecated;
-            dataType.AdditionalText = dto.AdditionalText;
-
-            foreach (var dtoProperty in dto.Properties)
+            if (!seen.Add(dataType)) return;
+            dataType.IsSubstitute = true;
+            foreach (var child in dataType.ChildTypes)
             {
-                var property = new Property();
-                MapProperty(dtoProperty, property);
-                dataType.Properties.Add(property);
-            }
-
-            if (isItemType)
-            {
-                dataType.Path = $"/item-types/{dataType.Name}/index";
-            }
-            else
-            {
-                dataType.Path = $"/composite-types/{dataType.Name}/index";
+                MarkSubstitute(child, seen);
             }
         }
 
-        private void MapProperty(Cogs.Dto.Property dto, Property property)
+        private void MapDataType(Cogs.Dto.DataType source, DataType target, bool isItemType)
         {
-            property.Name = dto.Name;
-            property.DataTypeName = dto.DataType;
-
-            property.MinCardinality = dto.MinCardinality;
-            if (string.IsNullOrWhiteSpace(property.MinCardinality))
+            target.Name = source.Name;
+            target.Description = source.Description;
+            target.IsAbstract = source.IsAbstract;
+            target.IsPrimitive = source.IsPrimitive;
+            target.ExtendsTypeName = source.Extends;
+            target.DeprecatedNamespace = source.DeprecatedNamespace;
+            target.IsDeprecated = source.IsDeprecated;
+            AddRange(target.AdditionalText, source.AdditionalText.Select(CloneAdditionalText));
+            foreach (var property in source.Properties)
             {
-                property.MinCardinality = "0";
+                target.Properties.Add(MapProperty(property));
             }
-
-            property.MaxCardinality = dto.MaxCardinality;
-            property.Description = dto.Description;
-
-            property.Ordered = !string.IsNullOrWhiteSpace(dto.Ordered);
-            property.AllowSubtypes = !string.IsNullOrWhiteSpace(dto.AllowSubtypes);
-
-            // simple string restrictions
-            property.MinLength = dto.MinLength;
-            property.MaxLength = dto.MaxLength;
-            if (!string.IsNullOrWhiteSpace(dto.Enumeration))
-            {                
-                string[] parts = dto.Enumeration.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
-                property.Enumeration = new List<string>(parts);
-            }           
-            property.Pattern = dto.Pattern;
-            // numeric restrictions
-            property.MinInclusive = dto.MinInclusive;
-            property.MinExclusive = dto.MinExclusive;
-            property.MaxInclusive = dto.MaxInclusive;
-            property.MaxExclusive = dto.MaxExclusive;
-
-            property.DeprecatedNamespace = dto.DeprecatedNamespace;
-            property.DeprecatedElementOrAttribute = dto.DeprecatedElementOrAttribute;
-            property.DeprecatedChoiceGroup = dto.DeprecatedChoiceGroup;
+            target.Path = isItemType ? $"/item-types/{target.Name}/index" : $"/composite-types/{target.Name}/index";
         }
 
-        private void MapTopicIndex(Cogs.Dto.TopicIndex dto, TopicIndex topicIndex)
+        private Property MapProperty(Cogs.Dto.Property source)
         {
-            topicIndex.Name = dto.Name;
-            topicIndex.Description = dto.Description;
+            if (!CogsConventions.TryParseCardinality(source.MinCardinality, source.MaxCardinality, out var minimum, out var maximum, out var cardinalityError))
+            {
+                Errors.Add(new CogsError(ErrorLevel.Error, "COGS-BUILD-040", $"Property '{source.Name}' has invalid cardinality: {cardinalityError}.", source.SourcePath, source.SourceLine, modelPath: source.Name));
+            }
+            CogsConventions.TryParseFlag(source.Ordered, out var ordered);
+            CogsConventions.TryParseFlag(source.AllowSubtypes, out var allowSubtypes);
+            var enumeration = CogsConventions.ParseEnumeration(source.Enumeration);
 
-            topicIndex.ItemTypeNames.AddRange(dto.ItemTypes);
-            topicIndex.ArticlesPath = dto.ArticlesPath;
-            topicIndex.ArticleTocEntries.AddRange(dto.ArticleTocEntries);
+            return new Property
+            {
+                Name = source.Name,
+                DataTypeName = source.DataType,
+                MinCardinality = minimum.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                MaxCardinality = maximum?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "n",
+                Description = source.Description,
+                Ordered = ordered,
+                AllowSubtypes = allowSubtypes,
+                MinLength = source.MinLength,
+                MaxLength = source.MaxLength,
+                Enumeration = enumeration.ToList(),
+                Pattern = source.Pattern,
+                MinInclusive = source.MinInclusive,
+                MinExclusive = source.MinExclusive,
+                MaxInclusive = source.MaxInclusive,
+                MaxExclusive = source.MaxExclusive,
+                DeprecatedNamespace = source.DeprecatedNamespace,
+                DeprecatedElementOrAttribute = source.DeprecatedElementOrAttribute,
+                DeprecatedChoiceGroup = source.DeprecatedChoiceGroup
+            };
         }
 
+        private static Property CloneProperty(Property source) => new Property
+        {
+            Name = source.Name,
+            DataTypeName = source.DataTypeName,
+            DataType = source.DataType,
+            MinCardinality = source.MinCardinality,
+            MaxCardinality = source.MaxCardinality,
+            Description = source.Description,
+            DeprecatedNamespace = source.DeprecatedNamespace,
+            DeprecatedElementOrAttribute = source.DeprecatedElementOrAttribute,
+            DeprecatedChoiceGroup = source.DeprecatedChoiceGroup,
+            Ordered = source.Ordered,
+            AllowSubtypes = source.AllowSubtypes,
+            MinLength = source.MinLength,
+            MaxLength = source.MaxLength,
+            Enumeration = new List<string>(source.Enumeration),
+            Pattern = source.Pattern,
+            MinInclusive = source.MinInclusive,
+            MinExclusive = source.MinExclusive,
+            MaxInclusive = source.MaxInclusive,
+            MaxExclusive = source.MaxExclusive,
+            FromMixin = source.FromMixin
+        };
+
+        private static Cogs.Dto.AdditionalText CloneAdditionalText(Cogs.Dto.AdditionalText source) =>
+            new Cogs.Dto.AdditionalText
+            {
+                FilePath = source.FilePath,
+                Format = source.Format,
+                Name = source.Name,
+                Content = source.Content
+            };
+
+        private static void AddRange<T>(ICollection<T> target, IEnumerable<T> values)
+        {
+            foreach (T value in values)
+            {
+                target.Add(value);
+            }
+        }
+
+        private static Settings MapSettings(IEnumerable<Cogs.Dto.Setting> settings)
+        {
+            var target = new Settings();
+            foreach (var setting in settings)
+            {
+                switch (setting.Key)
+                {
+                    case "CogsVersion": target.CogsVersion = setting.Value; break;
+                    case "Title": target.Title = setting.Value; break;
+                    case "ShortTitle": target.ShortTitle = setting.Value; break;
+                    case "Slug": target.Slug = setting.Value; break;
+                    case "Description": target.Description = setting.Value; break;
+                    case "Version": target.Version = setting.Value; break;
+                    case "Author": target.Author = setting.Value; break;
+                    case "Copyright": target.Copyright = setting.Value; break;
+                    case "NamespaceUrl": target.NamespaceUrl = setting.Value; break;
+                    case "NamespacePrefix": target.NamespacePrefix = setting.Value; break;
+                    case "CSharpNamespace": target.CSharpNamespace = setting.Value; break;
+                    default:
+                        if (!target.ExtraSettings.ContainsKey(setting.Key ?? string.Empty))
+                        {
+                            target.ExtraSettings.Add(setting.Key ?? string.Empty, setting.Value);
+                        }
+                        break;
+                }
+            }
+            return target;
+        }
     }
 }

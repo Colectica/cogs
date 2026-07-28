@@ -18,23 +18,23 @@ COGS is a production framework for domain experts and groups who value
 Output Formats
 --------------
 
-Publishable formats include:
+XML Schema, JSON Schema, and the generated C#, Python, and TypeScript libraries
+are the authoritative instance targets. They share the strict JSON/XML contract
+defined in the :doc:`COGS 2 specification <specification/index>`.
 
-* XML Schema
-* OWL 2 (RDF Schema)
-* OMG's UML Normative XMI 2.4.2
-* OMG's UML XMI 2.5 with Diagrams and Diagram Exchange
-* Sphinx HTML documentation and visualizations
-* JSON Schema
-* C# class library
-* SVG and dot visualizations
-* GraphQL schema language
-* LinkML
-* DCTAP
+UML/XMI is the authoritative structural model output, with the explicitly
+diagnosed ``PROJ2601`` exception for property-local subtype exclusion. It is
+not an instance-validation schema.
 
-Upcoming formats include:
+OWL/RDF is emitted as W3C Turtle in ``<Settings.Slug>.ttl`` and is the
+authoritative ontology and class-semantics output, with ``OWL2002`` and
+``OWL2003`` as its explicit authority exceptions. It is not an
+instance-validation, lexical-facet, or ordered-collection authority.
 
-* Class libraries for other languages
+LinkML, DCTAP, GraphQL, Graphviz/DOT, and Sphinx are projections. They may
+preserve, approximate, or explicitly reject individual modeling features and
+must not be treated as alternate wire-format authorities. ShEx and SHACL are
+not current COGS publishers.
 
 Quick Start
 -----------
@@ -66,7 +66,7 @@ of the system.
 Platforms
 ---------
 
-COGS runs on Windows, Linux, and macOS on the .NET Core platform.
+COGS runs on Windows, Linux, and macOS on .NET 10.
 
 https://www.microsoft.com/net/core
 
@@ -80,5 +80,7 @@ COGS is licensed under the MIT license.
    :caption: Contents
 
    quick-start/index
+   specification/index
    modeler-guide/index
+   migration/index
    technical-guide/index

@@ -1,0 +1,33 @@
+{
+  "publishCommands": [
+    { "name": "validate", "arguments": [] },
+    { "name": "publish-xsd", "arguments": [] },
+    { "name": "publish-cs", "arguments": ["--csproj", "--nullable"] },
+    { "name": "publish-py", "arguments": [] },
+    { "name": "publish-ts", "arguments": [] },
+    { "name": "publish-json", "arguments": [] },
+    { "name": "publish-owl", "arguments": [] },
+    { "name": "publish-linkml", "arguments": [] },
+    { "name": "publish-dctap", "arguments": [] },
+    { "name": "publish-graphql", "arguments": [] },
+    { "name": "publish-uml", "arguments": ["--mode", "normative"] },
+    { "name": "publish-dot", "arguments": ["--format", "dot", "--all"] },
+    { "name": "publish-sphinx", "arguments": [] }
+  ],
+  "models": [
+    {
+      "id": "sdtl",
+      "url": "https://github.com/ddialliance/sdtl.git",
+      "commit": "c08ac782348ab5537ad5d25ef63760b7dd866041",
+      "expectedExitCode": 100,
+      "diagnosticCounts": { "COGS-READ-090": 1 }
+    },
+    {
+      "id": "ddi-lifecycle",
+      "url": "https://github.com/ddialliance/ddimodel.git",
+      "commit": "d2231864504eab52789a02e5bed5f07903cd48c7",
+      "expectedExitCode": 100,
+      "diagnosticCounts": { "COGS-READ-090": 1 }
+    }
+  ]
+}

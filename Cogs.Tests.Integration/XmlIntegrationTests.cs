@@ -55,7 +55,7 @@ namespace Cogs.Tests.Integration
                 GMonthDay = mDay
             };
 
-            List<decimal> heights = new List<decimal> { 5, 5 };
+            List<CogsDecimal> heights = new List<CogsDecimal> { new(5m), new(5m) };
             GYearMonth GYM = new GYearMonth(2017, 06, "Z");
 
             Bread bread = new Bread
@@ -251,10 +251,10 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                Durations = new List<TimeSpan>()
+                Durations = new List<CogsDuration>()
                 {
-                    new TimeSpan(10000000),
-                    new TimeSpan(0)
+                    new CogsDuration(new TimeSpan(10000000)),
+                    new CogsDuration(new TimeSpan(0))
                 }
             };
             container.Items.Add(animal);
@@ -283,9 +283,9 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                Dates = new List<DateOnly>()
+                Dates = new List<CogsDateOnly>()
                 {
-                    new DateOnly(2017, 9, 2),
+                    new CogsDateOnly(new DateOnly(2017, 9, 2)),
                     //new DateTime(1,1,1),
                     //new DateTime(1562, 8, 23, 5, 12, 46)
                     new DateOnly(1562, 8, 23)
@@ -317,10 +317,10 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                DateTimes = new List<DateTimeOffset>()
+                DateTimes = new List<CogsDateTime>()
                 {
-                    new DateTimeOffset(new DateTime(2017, 9, 2, 13, 23, 32), new TimeSpan(+1, 0, 0)),
-                    new DateTimeOffset(1,1,1,0,0,0, new TimeSpan())
+                    new CogsDateTime(new DateTimeOffset(new DateTime(2017, 9, 2, 13, 23, 32), new TimeSpan(+1, 0, 0))),
+                    new CogsDateTime(new DateTimeOffset(1,1,1,0,0,0, new TimeSpan()))
                 }
             };
             container.Items.Add(animal);
@@ -349,10 +349,10 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                Times = new List<TimeOnly>
+                Times = new List<CogsTime>
                 {
-                    new TimeOnly(2, 32, 32),
-                    new TimeOnly(4, 32, 3)
+                    new CogsTime(new TimeOnly(2, 32, 32)),
+                    new CogsTime(new TimeOnly(4, 32, 3))
                 }
             };
             container.Items.Add(animal);

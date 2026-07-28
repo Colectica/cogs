@@ -26,9 +26,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Cogs.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="JsonSchema.Net" />
-    <PackageReference Include="Markdig" />
-    <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="System.ComponentModel.Annotations" />
     <PackageReference Include="YamlDotNet" />
     <PackageReference Include="dotNetRdf.Core" />

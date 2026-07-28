@@ -9,6 +9,8 @@ using System.Text;
 using System.Xml.Linq;
 using System.Xml;
 using System.Reflection;
+using System.Text.Json;
+using System.Globalization;
 using Cogs.Common;
 using VDS.RDF;
 
@@ -53,9 +55,7 @@ namespace Cogs.Publishers.Csharp
 
         private static readonly (string Include, string Version)[] GeneratedProjectPackages =
         {
-            ("System.ComponentModel.Annotations", "5.0.0"),
-            ("dotNetRdf.Core", "3.5.1"),
-            ("Newtonsoft.Json", "13.0.4")
+            ("dotNetRdf.Core", "3.5.1")
         };
 
         CogsModel model;
@@ -69,25 +69,27 @@ namespace Cogs.Publishers.Csharp
 
         public void Publish()
         {
-            if (TargetDirectory == null)
+            string originalTarget = TargetDirectory;
+            DirectoryPublication.Publish(originalTarget, Overwrite, stagingDirectory =>
             {
-                throw new InvalidOperationException("Target directory must be specified");
-            }
-            if (Overwrite && Directory.Exists(TargetDirectory))
-            {
-                Directory.Delete(TargetDirectory, true);
-            }
-            if (!Overwrite && Directory.Exists(TargetDirectory))
-            {
-                throw new InvalidOperationException("Target directory already exists");
-            }
-            Directory.CreateDirectory(TargetDirectory);
+                TargetDirectory = stagingDirectory;
+                try
+                {
+                    PublishCore();
+                }
+                finally
+                {
+                    TargetDirectory = originalTarget;
+                }
+            }, model.SourceDirectory);
+        }
 
-            if (string.IsNullOrWhiteSpace(TargetDirectory))
-            {
-                TargetNamespace = model.Settings.NamespaceUrl;
-            }
-            TargetNamespacePrefix = model.Settings.NamespacePrefix;
+        private void PublishCore()
+        {
+            ValidateGeneratedNames();
+
+            TargetNamespace ??= model.Settings.NamespaceUrl;
+            TargetNamespacePrefix ??= model.Settings.NamespacePrefix;
 
 
             //get the project name
@@ -96,6 +98,7 @@ namespace Cogs.Publishers.Csharp
             {
                 csNamespace = "Cogs.Model";
             }
+            ValidateTargetOptions(csNamespace);
 
             CreatePartialIIdentifiable(model, csNamespace);
             CreatePartialItemContainer(model, csNamespace);
@@ -107,6 +110,11 @@ namespace Cogs.Publishers.Csharp
                     new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
                         new XElement("PropertyGroup", 
                             new XElement("TargetFramework", "net10.0"),
+                            new XElement("PackageId", model.Settings.Slug),
+                            new XElement("Version", model.Settings.Version),
+                            new XElement("Description", model.Settings.Description),
+                            new XElement("Authors", model.Settings.Author),
+                            new XElement("Copyright", model.Settings.Copyright),
                             IsNullableEnabled ? new XElement("Nullable", "enable") : null),
                         new XElement("ItemGroup",
                             GeneratedProjectPackages.Select(x =>
@@ -151,9 +159,14 @@ namespace Cogs.Publishers.Csharp
             string fileContents = reader.ReadToEnd();
 
             fileContents = fileContents.Replace("__CogsGeneratedNamespace", csNamespace);
-            var referencePropertyNames = string.Join(", ", model.Identification
-                .Select(x => $"\"{x.Name}\""));
-            fileContents = fileContents.Replace("\"__JsonReferencePropertyNames__\"", referencePropertyNames);
+            fileContents = fileContents.Replace("__CogsXmlNamespace__", TargetNamespace ?? model.Settings.NamespaceUrl);
+            fileContents = fileContents.Replace("__CogsXmlPrefix__", TargetNamespacePrefix ?? model.Settings.NamespacePrefix);
+            fileContents = fileContents.Replace(
+                "\"__CogsRdfInstanceBase__\"",
+                QuoteCSharp(CogsRdfNaming.GetTermBase(TargetNamespace ?? model.Settings.NamespaceUrl) + "instance/"));
+            fileContents = fileContents.Replace("\"__CogsVersionLiteral__\"", QuoteCSharp(model.Settings.CogsVersion));
+            fileContents = fileContents.Replace("\"__CogsModelVersionLiteral__\"", QuoteCSharp(model.Settings.Version));
+            fileContents = fileContents.Replace("\"__CogsSlugLiteral__\"", QuoteCSharp(model.Settings.Slug));
 
             if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
             {
@@ -169,6 +182,7 @@ namespace Cogs.Publishers.Csharp
                 {
                     continue;
                 }
+                string className = ToCSharpIdentifier(item.Name);
 
                 StringBuilder classBuilder = new();
 
@@ -181,15 +195,14 @@ namespace Cogs.Publishers.Csharp
                 }
                 classBuilder.AppendLine("using System;");
                 classBuilder.AppendLine("using System.Linq;");
-                classBuilder.AppendLine("using Newtonsoft.Json;");
                 classBuilder.AppendLine("using System.Xml.Linq;");
                 classBuilder.AppendLine("using Cogs.SimpleTypes;");
                 classBuilder.AppendLine("using System.Reflection;");
                 classBuilder.AppendLine("using System.Collections;");
-                classBuilder.AppendLine("using Newtonsoft.Json.Linq;");
                 classBuilder.AppendLine("using Cogs.DataAnnotations;");
                 classBuilder.AppendLine("using Cogs.Converters;");
                 classBuilder.AppendLine("using System.Collections.Generic;");                
+                classBuilder.AppendLine("using System.Numerics;");
                 classBuilder.AppendLine("using System.ComponentModel.DataAnnotations;");
                 classBuilder.AppendLine("using VDS.RDF;");
                 classBuilder.AppendLine("using System.Globalization;");
@@ -203,6 +216,7 @@ namespace Cogs.Publishers.Csharp
                 }
                 
                 classBuilder.AppendLine( "    /// <summary>");
+                classBuilder.AppendLine($"    [CogsType({QuoteCSharp(item.Name)}, {model.ItemTypes.Contains(item).ToString().ToLowerInvariant()}, {item.IsAbstract.ToString().ToLowerInvariant()})]");
                 classBuilder.Append("    public ");
 
 
@@ -233,7 +247,7 @@ namespace Cogs.Publishers.Csharp
                 StringBuilder addTriplesMethodBuilder = new();
                 if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName) && !CogsTypes.SimpleTypeNames.Contains(item.ExtendsTypeName) )
                 {
-                    addTriplesMethodBuilder.AppendLine("        public override INode AddTriples(IGraph graph, INode itemNode = null)");
+                    addTriplesMethodBuilder.AppendLine("        public override INode AddTriples(IGraph graph, INode? itemNode = null)");
                 }
                 else
                 {
@@ -252,9 +266,12 @@ namespace Cogs.Publishers.Csharp
                 {
                     addTriplesMethodBuilder.AppendLine($"            itemNode ??= graph.CreateBlankNode();");
                 }
+                string rdfClassIri = CogsRdfNaming.ClassIri(
+                    TargetNamespace ?? model.Settings.NamespaceUrl,
+                    item.Name);
                 addTriplesMethodBuilder.AppendLine($$"""
                             IUriNode typePredicate = graph.CreateUriNode(UriFactory.Create("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"));
-                            IUriNode typeUriNode = graph.CreateUriNode(UriFactory.Create("{{model.Settings.NamespacePrefix}}:{{item.Name}}"));
+                            IUriNode typeUriNode = graph.CreateUriNode(UriFactory.Create({{QuoteCSharp(rdfClassIri)}}));
                             graph.Assert(new Triple(itemNode, typePredicate, typeUriNode));
                 """);
 
@@ -269,7 +286,7 @@ namespace Cogs.Publishers.Csharp
 
                 // Add abstract to class title if relevant
                 if (item.IsAbstract) { classBuilder.Append("abstract "); }
-                classBuilder.Append("partial class " + item.Name);
+                classBuilder.Append("partial class " + className);
 
                 // Allow inheritance when relevant
                 string nameArgument = model.ReusableDataTypes.Contains(item) ?
@@ -302,7 +319,7 @@ namespace Cogs.Publishers.Csharp
                         // This type extends another type.
 
                         // Add the inheritance to the class declaration.
-                        classBuilder.AppendLine($" : {item.ExtendsTypeName}");
+                        classBuilder.AppendLine($" : {ToCSharpIdentifier(item.ExtendsTypeName)}");
                         classBuilder.AppendLine("    {");
 
                         // Add the base class descendants to the ToXml method.
@@ -317,51 +334,24 @@ namespace Cogs.Publishers.Csharp
                 {
                     classBuilder.AppendLine(" : IIdentifiable");
                     classBuilder.AppendLine("    {");
-                    classBuilder.AppendLine("        [JsonIgnore]");                    
-                    string format = string.Join(":", model.Identification.Select(x => "{" + x.Name + "}"));
-                    classBuilder.AppendLine($"        public string ReferenceId {{ get {{ return $\"{format}\"; }} }}");                    
+                    classBuilder.AppendLine("        public string ReferenceId => CogsIdentity.Format(this);");
 
                 }
                 else { classBuilder.AppendLine($"{Environment.NewLine}    {{"); }
 
 
-                // insert a type descriminator that will be output for json serialization
-                if (item.IsSubstitute)
-                {
-                    bool isFirst = true;
-                    if(item.ParentTypes.Count > 0)
-                    {
-                        var directParent = item.ParentTypes.Last();
-                        if (directParent.IsSubstitute)
-                        {
-                            // not first in inheritance chain with a type descriminator
-                            isFirst = false;
-                        }
-                    }
-                    if (isFirst)
-                    {
-                        classBuilder.AppendLine();
-                        classBuilder.AppendLine("        /// <summary>");
-                        classBuilder.AppendLine("        /// Set the item type discriminator");
-                        classBuilder.AppendLine("        /// <summary>");
-                        classBuilder.AppendLine($"        public {item.Name}() {{ this.TypeDescriminator = this.GetType().Name; Initialize(); }}");
-                        classBuilder.AppendLine();
-                        classBuilder.AppendLine("        /// <summary>");
-                        classBuilder.AppendLine("        /// Item type discriminator for json serialization");
-                        classBuilder.AppendLine("        /// <summary>");
-                        classBuilder.AppendLine("        [JsonProperty(\"$type\")]");
-                        classBuilder.AppendLine("        public string TypeDescriminator { get; set; }");
-                        classBuilder.AppendLine();
-                    }
-                }
+                classBuilder.AppendLine($"        public {className}() {{ Initialize(); }}");
+                classBuilder.AppendLine();
 
                 // For every property in the model, add a C# property.
-                foreach (Property? prop in item!.Properties)
+                int propertyOrder = item.ParentTypes.Sum(parentType => parentType.Properties.Count);
+                foreach (Property? sourceProperty in item!.Properties)
                 {
-                    if (prop == null)
+                    if (sourceProperty == null)
                     {
                         continue;
                     }
+                    Property prop = CloneProperty(sourceProperty);
 
                     AddPropertyToGetTriplesMethod(item, prop, addTriplesMethodBuilder);
 
@@ -374,44 +364,6 @@ namespace Cogs.Publishers.Csharp
                     classBuilder.AppendLine("        /// <summary>");
 
                     
-                    // Add type converters for specific serialization
-                    if(prop.DataTypeName.Equals("date", StringComparison.CurrentCultureIgnoreCase))
-                    {
-                        classBuilder.AppendLine("        [JsonConverter(typeof(DateConverter))]");
-                    }
-                    else if (prop.DataTypeName.Equals("time", StringComparison.CurrentCultureIgnoreCase))
-                    {
-                        classBuilder.AppendLine("        [JsonConverter(typeof(TimeConverter))]");
-                    }
-                    else if (prop.DataTypeName.Equals("datetime", StringComparison.CurrentCultureIgnoreCase))
-                    {
-                        classBuilder.AppendLine("        [JsonConverter(typeof(DateTimeConverter))]");
-                    }
-                    else if (prop.DataTypeName.Equals("gday", StringComparison.CurrentCultureIgnoreCase))
-                    {
-                        classBuilder.AppendLine("        [JsonConverter(typeof(GDayConverter))]");
-                    }
-                    else if (prop.DataTypeName.Equals("gmonth", StringComparison.CurrentCultureIgnoreCase))
-                    {
-                        classBuilder.AppendLine("        [JsonConverter(typeof(GMonthConverter))]");
-                    }
-                    else if (prop.DataTypeName.Equals("gmonthday", StringComparison.CurrentCultureIgnoreCase))
-                    {
-                        classBuilder.AppendLine("        [JsonConverter(typeof(GMonthDayConverter))]");
-                    }
-                    else if (prop.DataTypeName.Equals("gyear", StringComparison.CurrentCultureIgnoreCase))
-                    {
-                        classBuilder.AppendLine("        [JsonConverter(typeof(GYearConverter))]");
-                    }
-                    else if (prop.DataTypeName.Equals("gyearmonth", StringComparison.CurrentCultureIgnoreCase))
-                    {
-                        classBuilder.AppendLine("        [JsonConverter(typeof(GYearMonthConverter))]");
-                    }
-                    else if (prop.DataTypeName.Equals("duration", StringComparison.CurrentCultureIgnoreCase))
-                    {
-                        classBuilder.AppendLine("        [JsonConverter(typeof(DurationConverter))]");
-                    }
-
                     // set c# datatype representation while saving original so can tell what type it is
                     string? origDataTypeName = null;
                     if (Translator?.ContainsKey(prop.DataTypeName) == true)
@@ -419,73 +371,36 @@ namespace Cogs.Publishers.Csharp
                         origDataTypeName = prop.DataTypeName;
                         prop.DataTypeName = Translator[prop.DataTypeName];                        
                     }
-
-                    // create constraints
-                    if (prop.DataTypeName.Equals("string") || prop.DataTypeName.Equals("Uri"))
+                    else
                     {
-                        if (prop.MinLength != null && prop.MaxLength != null)
-                        {
-                            classBuilder.AppendLine($"        [StringLength({prop.MaxLength}, MinimumLength = {prop.MinLength})]");
-                        }
-                        else if (prop.MaxLength != null)
-                        {
-                            classBuilder.AppendLine($"        [StringLength({prop.MaxLength})]");
-                        }
-                        else if (prop.MinLength != null)
-                        {
-                            classBuilder.AppendLine($"        [StringLength({int.MaxValue}, MinimumLength = {prop.MinLength})]");
-                        }
-                        if (prop.DataTypeName.Equals("string"))
-                        {
-                            // work with Enum and pattern
-                            if (prop.Enumeration.Count > 0)
-                            {
-                                classBuilder.AppendLine("        [StringValidation(new string[] {");
-                                bool useComma = false;
-                                foreach (var option in prop.Enumeration)
-                                {
-                                    if (useComma) { classBuilder.Append(", "); }
-                                    classBuilder.AppendLine($"            \"{option}\"");
-                                    useComma = true;
-                                }
-                                if (!string.IsNullOrWhiteSpace(prop.Pattern)) { classBuilder.AppendLine($"        }}, {prop.Pattern})]"); }
-                                else { classBuilder.AppendLine("        })]"); }
-                            }
-                            else if (!string.IsNullOrWhiteSpace(prop.Pattern))
-                            {
-                                classBuilder.AppendLine($"        [StringValidation(null, @\"{prop.Pattern}\")]");
-                            }
-                        }
+                        prop.DataTypeName = ToCSharpIdentifier(prop.DataTypeName);
                     }
-                    else if (!prop.DataTypeName.Equals("bool") && !prop.DataTypeName.Equals("CogsDate"))
-                    {                        
-                        if (prop.MinInclusive != null || prop.MaxInclusive != null)
-                        {
-                            classBuilder.AppendLine($"        [Range({prop.MinInclusive}, {prop.MaxInclusive})]");
-                        }
-                        if (prop.MinExclusive != null || prop.MaxExclusive != null)
-                        {
-                            classBuilder.AppendLine($"        [ExclusiveRange({prop.MinInclusive}, {prop.MaxInclusive})]");
-                        }
-                    }
-                    
-                    
-                    if (model.ItemTypes.Contains(prop.DataType) && !item.IsAbstract)
-                    {
-                        classBuilder.AppendLine("        [JsonConverter(typeof(IIdentifiableConverter))]");
-                    }
+                    string propertyName = ToCSharpIdentifier(prop.Name);
 
-                    // allow substitution of reusable datatypes
-                    if (prop.AllowSubtypes && model.ReusableDataTypes.Contains(prop.DataType))
-                    {
-                        classBuilder.AppendLine("        [JsonConverter(typeof(SubstitutionConverter))]");
-                    }
-
+                    bool isIdentification = IsIdentificationProperty(prop);
+                    string kind = model.ItemTypes.Contains(prop.DataType)
+                        ? "CogsPropertyKind.ItemReference"
+                        : model.ReusableDataTypes.Contains(prop.DataType)
+                            ? "CogsPropertyKind.Composite"
+                            : "CogsPropertyKind.Primitive";
+                    string metadata = $"        [CogsProperty({QuoteCSharp(prop.Name)}, {QuoteCSharp(origDataTypeName ?? sourceProperty.DataTypeName)}, {kind}, {propertyOrder++}, {CogsTypeSystem.AllowsSubtypes(prop).ToString().ToLowerInvariant()}, {isIdentification.ToString().ToLowerInvariant()}, {QuoteCSharp(prop.MinCardinality)}, {QuoteCSharp(prop.MaxCardinality)}";
+                    var metadataOptions = new List<string>();
+                    if (prop.MinLength.HasValue) metadataOptions.Add($"MinLength = {prop.MinLength.Value}");
+                    if (prop.MaxLength.HasValue) metadataOptions.Add($"MaxLength = {prop.MaxLength.Value}");
+                    if (prop.Ordered) metadataOptions.Add("Ordered = true");
+                    if (prop.Enumeration.Count > 0) metadataOptions.Add($"Enumeration = new string[] {{ {string.Join(", ", prop.Enumeration.Select(QuoteCSharp))} }}");
+                    if (!string.IsNullOrEmpty(prop.Pattern)) metadataOptions.Add($"Pattern = {QuoteCSharp(prop.Pattern)}");
+                    if (!string.IsNullOrEmpty(prop.MinInclusive)) metadataOptions.Add($"MinInclusive = {QuoteCSharp(prop.MinInclusive)}");
+                    if (!string.IsNullOrEmpty(prop.MinExclusive)) metadataOptions.Add($"MinExclusive = {QuoteCSharp(prop.MinExclusive)}");
+                    if (!string.IsNullOrEmpty(prop.MaxInclusive)) metadataOptions.Add($"MaxInclusive = {QuoteCSharp(prop.MaxInclusive)}");
+                    if (!string.IsNullOrEmpty(prop.MaxExclusive)) metadataOptions.Add($"MaxExclusive = {QuoteCSharp(prop.MaxExclusive)}");
+                    metadata += metadataOptions.Count == 0 ? ")]" : ", " + string.Join(", ", metadataOptions) + ")]";
+                    classBuilder.AppendLine(metadata);
 
                     // if there can be at most one, create an instance variable
-                    if (!prop.MaxCardinality.Equals("n") && int.Parse(prop.MaxCardinality) == 1)
+                    if (prop.MaxCardinality == "1")
                     {
-                        if (Isboolintdoubleulong(prop.DataTypeName) || model.Identification.Contains(prop))
+                        if (Isboolintdoubleulong(prop.DataTypeName) || IsIdentificationProperty(prop))
                         {
                             // If the property is optional (min cardinality is 0), and nullable is enabled, then only write an element when one exists.
                             bool propertyIsOptional = prop.MinCardinality == "0" && IsNullableEnabled;
@@ -553,15 +468,24 @@ namespace Cogs.Publishers.Csharp
                         }
 
                         // TODO Consider whether Identification properties in C# generator should be non-nullable 
-                        string nullableStr = IsNullableEnabled && prop.MinCardinality == "0" && prop.MaxCardinality == "1" ? "?" : "";
+                        // Nullable annotations are optional, but the wire-level distinction between an
+                        // absent optional scalar and its CLR default value is not. Value types therefore
+                        // always use Nullable<T> for 0..1 properties, even when nullable reference type
+                        // annotations are disabled.
+                        bool optionalSingleton = prop.MinCardinality == "0" && prop.MaxCardinality == "1";
+                        bool clrValueType = Isboolintdoubleulong(prop.DataTypeName);
+                        string nullableStr = optionalSingleton && (IsNullableEnabled || clrValueType) ? "?" : "";
                         //bool isIdentificationProperty = model.Identification.Contains(prop);
                         //string nullableStr = IsNullableEnabled && !isIdentificationProperty ? "?" : "";
-                        classBuilder.AppendLine($"        public {prop.DataTypeName}{nullableStr} {prop.Name} {{ get; set; }}");
+                        string initializer = IsNullableEnabled && nullableStr.Length == 0 && !Isboolintdoubleulong(prop.DataTypeName)
+                            ? " = null!;"
+                            : string.Empty;
+                        classBuilder.AppendLine($"        public {prop.DataTypeName}{nullableStr} {propertyName} {{ get; set; }}{initializer}");
                     }
                     // otherwise, create a list object to allow multiple
                     else
                     {
-                        if (Isboolintdoubleulong(prop.DataTypeName) || model.Identification.Contains(prop))
+                        if (Isboolintdoubleulong(prop.DataTypeName) || IsIdentificationProperty(prop))
                         {
                             toXml.AppendLine($""""
                                 xEl.Add(
@@ -618,8 +542,8 @@ namespace Cogs.Publishers.Csharp
                             toXml.AppendLine("            }");
                         }
 
-                        classBuilder.AppendLine($"        public List<{prop.DataTypeName}> {prop.Name} {{ get; set; }} = new List<{prop.DataTypeName}>();");
-                        classBuilder.AppendLine($"        public bool ShouldSerialize{prop.Name}() {{ return {prop.Name}.Count > 0; }}");
+                        classBuilder.AppendLine($"        public List<{prop.DataTypeName}> {propertyName} {{ get; set; }} = new List<{prop.DataTypeName}>();");
+                        classBuilder.AppendLine($"        public bool ShouldSerialize{propertyName}() {{ return {propertyName}.Count > 0; }}");
 
                     }
                 }
@@ -629,8 +553,14 @@ namespace Cogs.Publishers.Csharp
                 classBuilder.AppendLine("        /// <summary>");
                 classBuilder.AppendLine("        /// Used to Serialize this object to XML");
                 classBuilder.AppendLine("        /// <summary>");
-                classBuilder.Append(toXml.ToString());
-                classBuilder.AppendLine("            return xEl;");
+                bool overridesToXml = !string.IsNullOrWhiteSpace(item.ExtendsTypeName)
+                    && !CogsTypes.SimpleTypeNames.Contains(item.ExtendsTypeName);
+                string xmlModifier = overridesToXml ? "override" : "virtual";
+                classBuilder.AppendLine($"        public {xmlModifier} XElement ToXml({parameterStr})");
+                classBuilder.AppendLine("        {");
+                classBuilder.AppendLine(string.IsNullOrWhiteSpace(parameterStr)
+                    ? $"            return CogsXmlCodec.WriteStandalone(this, {QuoteCSharp(item.Name)});"
+                    : "            return CogsXmlCodec.WriteStandalone(this, name);");
                 classBuilder.AppendLine("        }");
                 classBuilder.AppendLine();
                 classBuilder.Append(addTriplesMethodBuilder.ToString());
@@ -641,7 +571,7 @@ namespace Cogs.Publishers.Csharp
                 classBuilder.AppendLine();
 
                 // Write class to out folder
-                File.WriteAllText(Path.Combine(TargetDirectory, item.Name + ".cs"), classBuilder.ToString());
+                File.WriteAllText(Path.Combine(TargetDirectory, className + ".cs"), classBuilder.ToString());
             }
         }
 
@@ -659,13 +589,9 @@ namespace Cogs.Publishers.Csharp
 
         private void AddPropertyToGetTriplesMethod(DataType item, Property prop, StringBuilder addTriplesMethodBuilder)
         {
-            bool isIdentificationProperty = model.Identification.Contains(prop);
-            if (isIdentificationProperty)
-            {
-                return;
-            }
+            string memberName = ToCSharpIdentifier(prop.Name);
 
-            bool isSingular = !prop.MaxCardinality.Equals("n") && int.Parse(prop.MaxCardinality) == 1;
+            bool isSingular = prop.MaxCardinality == "1";
             if (isSingular)
             {
                 // We have itemNode accessible here already.
@@ -675,9 +601,9 @@ namespace Cogs.Publishers.Csharp
                 {
                     // For an item type, make a triple from this item, property-predicate, to the URI of the referenced item.
                     addTriplesMethodBuilder.AppendLine($$"""            
-                                if ({{prop.Name}} != null)
+                                if ({{memberName}} != null)
                                 {
-                                    {{GetStringToAddTripleForReferencedItem(prop.Name, prop.Name)}}
+                                    {{GetStringToAddTripleForReferencedItem(prop.Name, memberName)}}
                                 }
                     """);
                 }
@@ -685,9 +611,9 @@ namespace Cogs.Publishers.Csharp
                 {
                     // For a nested, non-identified type, make a triple from this item, property-predicate, to ... something.
                     addTriplesMethodBuilder.AppendLine($$"""
-                                if ({{prop.Name}} != null)
+                                if ({{memberName}} != null)
                                 {
-                                    {{GetStringToAddTripleForCompositeObject(prop.Name, prop.Name)}}
+                                    {{GetStringToAddTripleForCompositeObject(prop.Name, memberName)}}
                                 }
                     """);
 
@@ -697,9 +623,9 @@ namespace Cogs.Publishers.Csharp
                 {
                     // This must be a primitive property. Put out the actual value.
                     addTriplesMethodBuilder.AppendLine($$"""
-                                if ({{prop.Name}} != null)
+                                if ({{memberName}} != null)
                                 {
-                                    {{GetStringToAddTripleForPrimitive(prop.Name, prop.Name, prop.DataType)}}
+                                    {{GetStringToAddTripleForPrimitive(prop.Name, memberName, prop.DataType)}}
                                 }
                     """);
                     addTriplesMethodBuilder.AppendLine();
@@ -713,7 +639,7 @@ namespace Cogs.Publishers.Csharp
                 {
                     // If the reference is to a versionsed item, add a reference for each one.
                     addTriplesMethodBuilder.AppendLine($$"""            
-                                foreach (var referencedItem in {{prop.Name}})
+                                foreach (var referencedItem in {{memberName}})
                                 {
                                     if (referencedItem != null)
                                     {
@@ -725,7 +651,7 @@ namespace Cogs.Publishers.Csharp
                 else if (model.ReusableDataTypes.Contains(prop.DataType))
                 {
                     addTriplesMethodBuilder.AppendLine($$"""            
-                                foreach (var referencedItem in {{prop.Name}})
+                                foreach (var referencedItem in {{memberName}})
                                 {
                                     if (referencedItem != null)
                                     {
@@ -738,7 +664,7 @@ namespace Cogs.Publishers.Csharp
                 {
                     // This must be a primitive property. Put out the actual value.
                     addTriplesMethodBuilder.AppendLine($$"""
-                                foreach (var obj in {{prop.Name}})
+                                foreach (var obj in {{memberName}})
                                 {
                                     if (obj != null)
                                     {
@@ -754,69 +680,191 @@ namespace Cogs.Publishers.Csharp
 
         private string GetStringToAddTripleForReferencedItem(string predicateName, string variableName)
         {
-            return $"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("{model.Settings.NamespacePrefix}:{predicateName}")), graph.CreateUriNode(UriFactory.Create(RdfUriFactory.GetUri({variableName})))));""";
+            string predicateIri = GetRdfPropertyIri(predicateName);
+            return $"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create({QuoteCSharp(predicateIri)})), graph.CreateUriNode(UriFactory.Create(RdfUriFactory.GetUri({variableName})))));""";
         }
 
         private string GetStringToAddTripleForCompositeObject(string predicateName, string variableName)
         {
+            string predicateIri = GetRdfPropertyIri(predicateName);
             return $"""
             INode node = {variableName}.AddTriples(graph);
-                                graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("{model.Settings.NamespacePrefix}:{predicateName}")), node));
+                                graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create({QuoteCSharp(predicateIri)})), node));
             """;
         }
 
         private string GetStringToAddTripleForPrimitive(string predicateName, string variableName, DataType dataType)
         {
-            // Graph graph = new Graph();
-            // string primitiveDataType = GetValueDataType(dataType.Name);
-            // graph.CreateLiteralNode(literal, new Uri(primitiveDataType));
-
-            if (dataType.Name == "langString")
-            {
-                return $$"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("{{model.Settings.NamespacePrefix}}:{{predicateName}}")), graph.CreateLiteralNode({{variableName}}.Value, {{variableName}}.LanguageTag)));""";
-            }
-            else if (dataType.Name == "string")
-            {
-                return $$"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("{{model.Settings.NamespacePrefix}}:{{predicateName}}")), graph.CreateLiteralNode({{variableName}})));   """;
-            }
-            else if (dataType.Name == "cogsdate")
-            {
-                // TODO
-                return $$"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("{{model.Settings.NamespacePrefix}}:{{predicateName}}")), graph.CreateLiteralNode({{variableName}}.ToString())));""";
-            }
-            else
-            {
-                return $$"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create("{{model.Settings.NamespacePrefix}}:{{predicateName}}")), graph.CreateLiteralNode({{variableName}}.ToString())));""";
-            }
+            string predicateIri = GetRdfPropertyIri(predicateName);
+            return $$"""graph.Assert(new Triple(itemNode, graph.CreateUriNode(UriFactory.Create({{QuoteCSharp(predicateIri)}})), CogsPrimitiveCodec.CreateRdfLiteral(graph, {{variableName}}, {{QuoteCSharp(dataType.Name)}})));""";
         }
 
-        private string GetValueDataType(string cogsType)
-        {
-            string lower = cogsType.ToLower();
-            if (lower == "cogsdate")
-            {
-                return "xsd:date xsd:dateTime xsd:duration xsd:gYear xsd:gYearMonth";
-            }
-            else if (lower == "langstring")
-            {
-                return "rdf:langString";
-            }
-            else if (lower == "dcterms")
-            {
-
-            }
-            return "xsd:" + cogsType;
-            //TODO implement
-        }
+        private string GetRdfPropertyIri(string propertyName) =>
+            CogsRdfNaming.PropertyIri(TargetNamespace ?? model.Settings.NamespaceUrl, propertyName);
 
         private bool Isboolintdoubleulong(string name)
         {
-            if (name.Equals("bool") || name.Equals("int") || name.Equals("double") || name.Equals("ulong") || name.Equals("long") || name.Equals("decimal") || name.Equals("float"))
+            if (name.Equals("bool") || name.Equals("int") || name.Equals("double") || name.Equals("ulong") || name.Equals("long") || name.Equals("BigInteger") || name.Equals("float"))
             {
                 return true;
             }
             return false;
         }
+
+        private bool IsIdentificationProperty(Property property) =>
+            model.Identification.Any(candidate => string.Equals(candidate.Name, property.Name, StringComparison.Ordinal));
+
+        private void ValidateGeneratedNames()
+        {
+            CogsError? rdfError = RdfPublisherValidation.ValidatePropertyTermCollisions(
+                    model,
+                    "CSH1001",
+                    "Generated C# RDF")
+                .FirstOrDefault();
+            if (rdfError is not null)
+            {
+                throw new CogsPublicationException($"{rdfError.Code}: {rdfError.Message}");
+            }
+
+            DataType[] types = model.ItemTypes.Concat(model.ReusableDataTypes).ToArray();
+            var reservedTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "ItemContainer", "IIdentifiable", "CogsIdentity", "CogsModelMetadata", "RdfUriFactory",
+                "ItemContainerJsonConverter", "CogsIdentityKey", "CogsIdentityMap", "CogsObjectState",
+                "CogsPropertyMetadata", "CogsReflection", "CogsPrimitiveCodec", "CogsJsonCodec", "CogsXmlCodec",
+                "LangString", "CogsDecimal", "CogsDate", "CogsDateTime", "CogsDateOnly", "CogsTime",
+                "CogsDuration", "GYear", "GYearMonth", "GMonthDay", "GDay", "GMonth",
+            };
+            foreach (DataType type in types)
+            {
+                string generated = ToCSharpIdentifier(type.Name);
+                if (reservedTypes.Contains(generated))
+                    throw new InvalidOperationException($"COGS type '{type.Name}' conflicts with generated C# runtime type '{generated}'.");
+            }
+            foreach (IGrouping<string, DataType> collision in types.GroupBy(x => ToCSharpIdentifier(x.Name), StringComparer.OrdinalIgnoreCase).Where(x => x.Count() > 1))
+                throw new InvalidOperationException($"COGS types {string.Join(", ", collision.Select(x => $"'{x.Name}'"))} normalize to the same C# class '{collision.Key}'.");
+
+            var reservedMembers = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "ReferenceId", "ToXml", "AddTriples", "GetUri", "GetType", "Initialize",
+            };
+            foreach (DataType type in types)
+            {
+                IEnumerable<Property> effective = type.ParentTypes.SelectMany(parent => parent.Properties).Concat(type.Properties);
+                Property[] properties = effective.ToArray();
+                foreach (Property property in properties)
+                    if (reservedMembers.Contains(ToCSharpIdentifier(property.Name)))
+                        throw new InvalidOperationException($"COGS property '{type.Name}.{property.Name}' conflicts with a generated C# member.");
+                foreach (IGrouping<string, Property> collision in properties.GroupBy(x => ToCSharpIdentifier(x.Name), StringComparer.OrdinalIgnoreCase).Where(x => x.Count() > 1))
+                    throw new InvalidOperationException($"Properties on '{type.Name}' normalize to the same C# member '{collision.Key}'.");
+                var memberNames = new HashSet<string>(properties.Select(x => ToCSharpIdentifier(x.Name)), StringComparer.OrdinalIgnoreCase);
+                foreach (Property repeated in properties.Where(x => x.MaxCardinality != "1"))
+                    if (memberNames.Contains("ShouldSerialize" + ToCSharpIdentifier(repeated.Name)))
+                        throw new InvalidOperationException($"Generated ShouldSerialize member for '{type.Name}.{repeated.Name}' collides with a property.");
+            }
+        }
+
+        private void ValidateTargetOptions(string csharpNamespace)
+        {
+            if (!Uri.TryCreate(TargetNamespace, UriKind.Absolute, out _))
+                throw new InvalidOperationException($"C# publisher XML namespace '{TargetNamespace}' must be an absolute URI.");
+
+            string targetPrefix = TargetNamespacePrefix
+                ?? throw new InvalidOperationException("C# publisher XML namespace prefix is required.");
+            try { XmlConvert.VerifyNCName(targetPrefix); }
+            catch (XmlException exception)
+            {
+                throw new InvalidOperationException($"C# publisher XML namespace prefix '{targetPrefix}' must be an XML NCName.", exception);
+            }
+            if (targetPrefix is "xml" or "xmlns")
+                throw new InvalidOperationException($"C# publisher XML namespace prefix '{targetPrefix}' is reserved.");
+
+            string[] segments = csharpNamespace.Split('.');
+            if (segments.Length == 0 || segments.Any(segment => !IsValidCSharpIdentifier(segment)))
+                throw new InvalidOperationException($"CSharpNamespace '{csharpNamespace}' is not a valid C# namespace.");
+        }
+
+        private static bool IsValidCSharpIdentifier(string value)
+        {
+            if (string.IsNullOrEmpty(value) || CSharpKeywords.Contains(value)) return false;
+            bool first = true;
+            foreach (Rune rune in value.EnumerateRunes())
+            {
+                UnicodeCategory category = Rune.GetUnicodeCategory(rune);
+                bool valid = first
+                    ? Rune.IsLetter(rune) || category == UnicodeCategory.ConnectorPunctuation
+                    : Rune.IsLetterOrDigit(rune) || category is UnicodeCategory.ConnectorPunctuation
+                        or UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark
+                        or UnicodeCategory.Format;
+                if (!valid) return false;
+                first = false;
+            }
+            return !first;
+        }
+
+        private static readonly HashSet<string> CSharpKeywords = new(StringComparer.Ordinal)
+        {
+            "abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char", "checked",
+            "class", "const", "continue", "decimal", "default", "delegate", "do", "double", "else",
+            "enum", "event", "explicit", "extern", "false", "finally", "fixed", "float", "for",
+            "foreach", "goto", "if", "implicit", "in", "int", "interface", "internal", "is", "lock",
+            "long", "namespace", "new", "null", "object", "operator", "out", "override", "params",
+            "private", "protected", "public", "readonly", "ref", "return", "sbyte", "sealed", "short",
+            "sizeof", "stackalloc", "static", "string", "struct", "switch", "this", "throw", "true",
+            "try", "typeof", "uint", "ulong", "unchecked", "unsafe", "ushort", "using", "virtual",
+            "void", "volatile", "while",
+        };
+
+        private static string ToCSharpIdentifier(string value)
+        {
+            if (string.IsNullOrEmpty(value)) throw new InvalidOperationException("A COGS name cannot be empty.");
+            var builder = new StringBuilder(value.Length);
+            bool capitalize = true;
+            foreach (Rune rune in value.Normalize(NormalizationForm.FormC).EnumerateRunes())
+            {
+                UnicodeCategory category = Rune.GetUnicodeCategory(rune);
+                bool allowed = Rune.IsLetterOrDigit(rune) || category is UnicodeCategory.ConnectorPunctuation
+                    or UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.Format;
+                if (!allowed)
+                {
+                    capitalize = true;
+                    continue;
+                }
+                Rune output = capitalize && Rune.IsLetter(rune) ? Rune.ToUpperInvariant(rune) : rune;
+                builder.Append(output.ToString());
+                capitalize = false;
+            }
+            if (builder.Length == 0) throw new InvalidOperationException($"COGS name '{value}' cannot be represented as a C# identifier.");
+            return builder.ToString();
+        }
+
+        private string GetCSharpTypeName(string cogsTypeName) =>
+            Translator != null && Translator.TryGetValue(cogsTypeName, out string? translated)
+                ? translated
+                : ToCSharpIdentifier(cogsTypeName);
+
+        private static string QuoteCSharp(string value) => JsonSerializer.Serialize(value ?? string.Empty);
+
+        private static Property CloneProperty(Property source) => new()
+        {
+            Name = source.Name,
+            DataTypeName = source.DataTypeName,
+            DataType = source.DataType,
+            MinCardinality = source.MinCardinality,
+            MaxCardinality = source.MaxCardinality,
+            Description = source.Description,
+            Ordered = source.Ordered,
+            AllowSubtypes = source.AllowSubtypes,
+            MinLength = source.MinLength,
+            MaxLength = source.MaxLength,
+            Enumeration = new List<string>(source.Enumeration),
+            Pattern = source.Pattern,
+            MinInclusive = source.MinInclusive,
+            MinExclusive = source.MinExclusive,
+            MaxInclusive = source.MaxInclusive,
+            MaxExclusive = source.MaxExclusive,
+            FromMixin = source.FromMixin,
+        };
 
         private string SimpleToXml(string origDataTypeName, string name, string elname, string start, bool isInList)
         {
@@ -864,8 +912,9 @@ namespace Cogs.Publishers.Csharp
             builder.AppendLine("using System;");
             builder.AppendLine();
             builder.AppendLine("using System.Xml.Linq;");
-            builder.AppendLine("using Newtonsoft.Json.Linq;");
             builder.AppendLine("using System.Collections.Generic;");
+            builder.AppendLine("using System.Numerics;");
+            builder.AppendLine("using Cogs.SimpleTypes;");
             builder.AppendLine();
             builder.AppendLine($"namespace {csNamespace}");
             builder.AppendLine("{");
@@ -877,10 +926,9 @@ namespace Cogs.Publishers.Csharp
 
             // TODO Consider whether Identification properties in C# generator should be non-nullable
             // If so, then don't make this nullable here.
-            string nullableStr = IsNullableEnabled ? "?" : "";
             foreach (var prop in model.Identification)
             {
-                builder.AppendLine($"        {prop.DataTypeName}{nullableStr} {prop.Name} {{ get; set; }}");
+                builder.AppendLine($"        {GetCSharpTypeName(prop.DataTypeName)} {ToCSharpIdentifier(prop.Name)} {{ get; set; }}");
             }
             builder.AppendLine("    }");
             builder.AppendLine("}");
@@ -891,6 +939,8 @@ namespace Cogs.Publishers.Csharp
         // Creates the ItemContainer Class
         private void CreatePartialItemContainer(CogsModel model, string csNamespace)
         {
+            string rdfTermBase = CogsRdfNaming.GetTermBase(TargetNamespace ?? model.Settings.NamespaceUrl);
+            string rdfPrefix = TargetNamespacePrefix ?? model.Settings.NamespacePrefix;
 
             string clss = $$"""
 using System;
@@ -900,47 +950,14 @@ using VDS.RDF;
 namespace {{csNamespace}}
 {
     /// <summary>
-    /// Partial class implementation for XML generation 
+    /// Partial class implementation for RDF generation.
     /// <summary>
     public partial class ItemContainer
-    { 
-        public XDocument MakeXml()
-        {
-            XNamespace ns = "{{TargetNamespace}}";
-            XDocument xDoc = new XDocument(new XElement(ns + "ItemContainer"));
-            if (xDoc.Root != null)
-            {
-                if (TopLevelReferences != null && TopLevelReferences.Count > 0)
-                {
-                    foreach (var item in TopLevelReferences)
-                    {
-                        xDoc.Root.Add(
-                            new XElement(ns + "TopLevelReference", 
-""";
-            foreach(var idProperty in model.Identification)
-            {
-                clss += $"""
-                            new XElement(ns + "{idProperty.Name}", item.{idProperty.Name}),
-""";
-            }
-
-string clssFooter = $$"""
-                                new XElement(ns + "TypeOfObject", item.GetType().Name)
-                            ));
-                    }
-                }
-                foreach (var item in Items)
-                {
-                    xDoc.Root.Add(item.ToXml());
-                }
-            }
-            return xDoc;
-        }
-
+    {
         public IGraph MakeRdfGraph()
         {
             IGraph graph = new Graph();
-            graph.NamespaceMap.AddNamespace("{{model.Settings.NamespacePrefix}}", UriFactory.Create("{{model.Settings.NamespaceUrl}}"));
+            graph.NamespaceMap.AddNamespace({{QuoteCSharp(rdfPrefix)}}, UriFactory.Create({{QuoteCSharp(rdfTermBase)}}));
 
             foreach (var item in Items)
             {
@@ -963,8 +980,6 @@ string clssFooter = $$"""
 
             builder.AppendLine(clss);
 
-            builder.AppendLine(clssFooter);
-
             File.WriteAllText(Path.Combine(TargetDirectory, "ItemContainer.Xml.cs"), builder.ToString());
         }
 
@@ -972,26 +987,31 @@ string clssFooter = $$"""
         // initialize the Translator dictionary
         private void InitializeDictionary()
         {
-            Translator = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            Translator = new Dictionary<string, string>(StringComparer.Ordinal)
             {
+                { "string", "string" },
                 { "boolean", "bool" },
-                { "integer", "int" },
+                { "float", "float" },
+                { "double", "double" },
+                { "long", "long" },
+                { "int", "int" },
                 { "language", "string" },
-                { "duration", "TimeSpan" },
-                { "dateTime", "DateTimeOffset" },
-                { "time", "TimeOnly" },
-                { "date", "DateOnly" },
+                { "duration", "CogsDuration" },
+                { "dateTime", "CogsDateTime" },
+                { "time", "CogsTime" },
+                { "date", "CogsDateOnly" },
                 { "gYearMonth", "GYearMonth" },
                 { "gMonthDay", "GMonthDay" },
                 { "gYear", "GYear" },
                 { "gMonth", "GMonth" },
                 { "gDay", "GDay" },
                 { "anyURI", "Uri" },
-                { "nonPositiveInteger", "int" },
-                { "negativeInteger", "int" },
-                { "nonNegativeInteger", "int" },
+                { "nonPositiveInteger", "BigInteger" },
+                { "negativeInteger", "BigInteger" },
+                { "nonNegativeInteger", "BigInteger" },
                 { "unsignedLong", "ulong" },
-                { "positiveInteger", "int" },
+                { "positiveInteger", "BigInteger" },
+                { "decimal", "CogsDecimal" },
                 { "cogsDate", "CogsDate" },
                 { "langString", "LangString" }
             };

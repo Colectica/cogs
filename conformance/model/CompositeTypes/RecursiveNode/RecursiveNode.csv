@@ -1,0 +1,3 @@
+Name,DataType,MinCardinality,MaxCardinality,Description,Ordered,AllowSubtypes,MinLength,MaxLength,Enumeration,Pattern,MinInclusive,MinExclusive,MaxInclusive,MaxExclusive,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
+Name,string,1,1,Node name.,,,1,64,,,,,,,,,
+Children,RecursiveNode,0,n,Ordered recursive children.,true,,,,,,,,,,,,

@@ -1,0 +1,8 @@
+{
+  "name": "cogs-conformance-tools",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "graphql": "16.11.0"
+  }
+}

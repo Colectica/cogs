@@ -1,0 +1,12 @@
+Key,Value
+CogsVersion,2.0
+Title,COGS 2 Conformance Model
+ShortTitle,COGS Conformance
+Slug,cogs_conformance
+Description,Exercises the normative COGS 2 model and serialization contracts.
+Version,2.0.0-rc.1+conformance
+Author,COGS contributors
+Copyright,
+NamespaceUrl,https://example.org/cogs/conformance
+NamespacePrefix,conformance
+CSharpNamespace,Cogs.Conformance.Model

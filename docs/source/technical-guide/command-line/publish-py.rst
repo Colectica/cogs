@@ -38,7 +38,11 @@ For example:
    cogs publish-py --overwrite MyModel generated/python
 
 The model ``Slug`` is normalized into a Python import package name and a
-distribution name. The model ``Version`` must be PEP-440 compatible.
+distribution name. A canonical SemVer ``alpha``, ``beta``, or ``rc`` release
+maps directly to PEP 440. Other valid SemVer prereleases receive a stable
+PEP-440 approximation and retain the original SemVer in generated COGS
+metadata. The command emits source-located warning ``PUB3101`` whenever that
+approximation is used.
 
 Generated Files
 ---------------

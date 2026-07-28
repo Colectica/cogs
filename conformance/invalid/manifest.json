@@ -1,0 +1,58 @@
+{
+  "cases": [
+    {
+      "id": "missing-cogs-version",
+      "description": "The required CogsVersion setting is absent.",
+      "mutation": { "kind": "removeLine", "path": "Settings/Settings.csv", "value": "CogsVersion,2.0" },
+      "expectedCode": "COGS-READ-090"
+    },
+    {
+      "id": "invalid-slug",
+      "description": "Slug violates the canonical lowercase grammar.",
+      "mutation": { "kind": "replaceText", "path": "Settings/Settings.csv", "old": "Slug,cogs_conformance", "new": "Slug,COGS-Conformance" },
+      "expectedCode": "COGS-VAL-SET-007"
+    },
+    {
+      "id": "invalid-identification-cardinality",
+      "description": "An identity field is not exactly 1..1.",
+      "mutation": { "kind": "replaceText", "path": "Settings/Identification.csv", "old": "ID,string,1,1", "new": "ID,string,0,1" },
+      "expectedCode": "COGS-VAL-ID-004"
+    },
+    {
+      "id": "invalid-cardinality-range",
+      "description": "A property's minimum exceeds its maximum.",
+      "mutation": { "kind": "replaceText", "path": "ItemTypes/Record/Record.csv", "old": "Title,string,1,1", "new": "Title,string,2,1" },
+      "expectedCode": "COGS-VAL-CARD-001"
+    },
+    {
+      "id": "ordered-singleton",
+      "description": "Ordered=true is used on a singleton property.",
+      "mutation": { "kind": "replaceText", "path": "ItemTypes/Record/Record.csv", "old": "Created,dateTime,0,1,Full XSD dateTime lexical value.,,", "new": "Created,dateTime,0,1,Full XSD dateTime lexical value.,true," },
+      "expectedCode": "COGS-VAL-CARD-002"
+    },
+    {
+      "id": "invalid-portable-pattern",
+      "description": "The portable regex subset rejects anchors.",
+      "mutation": { "kind": "replaceText", "path": "ItemTypes/Record/Record.csv", "old": "[A-Za-z0-9 ._-]+", "new": "^[A-Za-z0-9 ._-]+$" },
+      "expectedCode": "COGS-VAL-FACET-004"
+    },
+    {
+      "id": "primitive-allows-subtypes",
+      "description": "AllowSubtypes is valid only for modeled item and composite types.",
+      "mutation": { "kind": "replaceText", "path": "ItemTypes/Record/Record.csv", "old": "Title,string,1,1,Required constrained title.,,,1", "new": "Title,string,1,1,Required constrained title.,,true,1" },
+      "expectedCode": "COGS-VAL-SUB-001"
+    },
+    {
+      "id": "inheritance-cycle",
+      "description": "Item inheritance is acyclic.",
+      "mutation": { "kind": "writeFile", "path": "ItemTypes/Entity/Extends.SpecialRecord", "value": "" },
+      "expectedCode": "COGS-VAL-INH-005"
+    },
+    {
+      "id": "wrong-case-settings-directory",
+      "description": "Convention directories are case-sensitive on every platform.",
+      "mutation": { "kind": "renamePath", "path": "Settings", "value": "settings" },
+      "expectedCode": "COGS-READ-070"
+    }
+  ]
+}

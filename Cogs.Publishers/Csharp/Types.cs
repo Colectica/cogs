@@ -1,1064 +1,502 @@
 using System;
-using System.Linq;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
-using System.ComponentModel.DataAnnotations;
-using System.Xml.Linq;
-using Cogs.SimpleTypes;
 using System.Globalization;
-using Cogs.Converters;
+using System.Text.RegularExpressions;
 
-/// <summary>
-/// Data Annotations
-/// </summary>
 namespace Cogs.DataAnnotations
 {
-    [AttributeUsage(AttributeTargets.All)]
-    public class ExclusiveRangeAttribute : RangeAttribute
+    [AttributeUsage(AttributeTargets.Class, Inherited = false)]
+    public sealed class CogsTypeAttribute : Attribute
     {
-        public ExclusiveRangeAttribute(int minimum, int maximum) : base(minimum, maximum) { }
-
-        public override bool IsValid(object? value)
+        public CogsTypeAttribute(string name, bool isItem, bool isAbstract)
         {
-            // Automatically pass if value is null or empty. RequiredAttribute should be used to assert a value is not empty.
-            if (value == null)
-            {
-                return true;
-            }
-            if (value is string s && String.IsNullOrEmpty(s))
-            {
-                return true;
-            }
-            dynamic val = value;
-            dynamic min = Minimum;
-            dynamic max = Maximum;
-
-            if (val <= min) { return false; }
-            if (val >= max) { return false; }
-            return true;
+            Name = name;
+            IsItem = isItem;
+            IsAbstract = isAbstract;
         }
+
+        public string Name { get; }
+        public bool IsItem { get; }
+        public bool IsAbstract { get; }
     }
 
-
-    [AttributeUsage(AttributeTargets.All)]
-    public class StringValidationAttribute : ValidationAttribute
+    public enum CogsPropertyKind
     {
-        Regex? Rgx;
-        List<string>? Enumerations;
-
-        public StringValidationAttribute(string[]? enumerations, string? pattern = null)
-        {
-            if (pattern != null) { this.Rgx = new Regex(pattern); }
-            if (enumerations != null) { this.Enumerations = new List<string>(enumerations); }
-        }
-
-        public override bool IsValid(object? value)
-        {
-            if(value == null)
-            {
-                return true;
-            }
-            if (Enumerations != null && !Enumerations.Contains(value?.ToString() ?? "")) { return false; }
-            // check regex Pattern
-            if (Rgx != null && !this.Rgx.IsMatch(value?.ToString() ?? "")) { return false; }
-            return true;
-        }
+        Primitive,
+        Composite,
+        ItemReference,
     }
-        
+
+    [AttributeUsage(AttributeTargets.Property, Inherited = false)]
+    public sealed class CogsPropertyAttribute : Attribute
+    {
+        public CogsPropertyAttribute(
+            string name,
+            string dataType,
+            CogsPropertyKind kind,
+            int order,
+            bool allowSubtypes,
+            bool isIdentification,
+            string minimum,
+            string maximum)
+        {
+            Name = name;
+            DataType = dataType;
+            Kind = kind;
+            Order = order;
+            AllowSubtypes = allowSubtypes;
+            IsIdentification = isIdentification;
+            Minimum = minimum;
+            Maximum = maximum;
+        }
+
+        public string Name { get; }
+        public string DataType { get; }
+        public CogsPropertyKind Kind { get; }
+        public int Order { get; }
+        public bool AllowSubtypes { get; }
+        public bool IsIdentification { get; }
+        public string Minimum { get; }
+        public string Maximum { get; }
+        public bool Ordered { get; set; }
+        public int MinLength { get; set; } = -1;
+        public int MaxLength { get; set; } = -1;
+        public string[] Enumeration { get; set; } = Array.Empty<string>();
+        public string Pattern { get; set; } = string.Empty;
+        public string MinInclusive { get; set; } = string.Empty;
+        public string MinExclusive { get; set; } = string.Empty;
+        public string MaxInclusive { get; set; } = string.Empty;
+        public string MaxExclusive { get; set; } = string.Empty;
+    }
 }
 
 namespace Cogs.SimpleTypes
 {
-    /// <summary>
-    /// Represents a string with associated language tag
-    /// </summary>
-    public class LangString : IEquatable<LangString>
+    public interface IXsdLexicalValue
     {
-        /// <summary>
-        /// Create a language string
-        /// </summary>
+        string LexicalValue { get; }
+    }
+
+    public abstract class XsdLexicalValue : IXsdLexicalValue, IEquatable<XsdLexicalValue>
+    {
+        protected XsdLexicalValue(string lexicalValue)
+        {
+            if (string.IsNullOrEmpty(lexicalValue) || !IsValid(lexicalValue))
+            {
+                throw new FormatException($"'{lexicalValue}' is not a valid {GetType().Name} lexical value.");
+            }
+
+            LexicalValue = lexicalValue;
+        }
+
+        public string LexicalValue { get; }
+        protected abstract bool IsValid(string value);
+        public sealed override string ToString() => LexicalValue;
+        public bool Equals(XsdLexicalValue? other) =>
+            other is not null && other.GetType() == GetType() && other.LexicalValue == LexicalValue;
+        public sealed override bool Equals(object? obj) => Equals(obj as XsdLexicalValue);
+        public sealed override int GetHashCode() => HashCode.Combine(GetType(), LexicalValue);
+    }
+
+    internal static class XsdLexical
+    {
+        internal const string TimeZone = @"(?:Z|[+-](?:(?:0[0-9]|1[0-3]):[0-5][0-9]|14:00))";
+        internal const string Year = @"-?(?:[0-9]{4}|[1-9][0-9]{4,})";
+        internal static readonly Regex Date = new(
+            $@"^(?<year>{Year})-(?<month>0[1-9]|1[0-2])-(?<day>0[1-9]|[12][0-9]|3[01])(?<tz>{TimeZone})?$",
+            RegexOptions.CultureInvariant);
+        internal static readonly Regex Time = new(
+            $@"^(?:(?<hour>[01][0-9]|2[0-3]):(?<minute>[0-5][0-9]):(?<second>[0-5][0-9])(?<fraction>\.[0-9]+)?|24:00:00(?:\.0+)?)(?<tz>{TimeZone})?$",
+            RegexOptions.CultureInvariant);
+        internal static readonly Regex DateTime = new(
+            $@"^(?<date>{Year}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01]))T(?<time>(?:(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\.[0-9]+)?|24:00:00(?:\.0+)?))(?<tz>{TimeZone})?$",
+            RegexOptions.CultureInvariant);
+        internal static readonly Regex Duration = new(
+            @"^-?P(?=[0-9]|T(?:[0-9]|\.[0-9]))(?:[0-9]+Y)?(?:[0-9]+M)?(?:[0-9]+D)?(?:T(?=[0-9]|\.[0-9])(?:[0-9]+H)?(?:[0-9]+M)?(?:(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)S)?)?$",
+            RegexOptions.CultureInvariant);
+        internal static readonly Regex Decimal = new(
+            @"^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$",
+            RegexOptions.CultureInvariant);
+        internal static readonly Regex Language = new(
+            @"^(?:(?:(?:[A-Za-z]{2,3}(?:-[A-Za-z]{3}){0,3}|[A-Za-z]{4}|[A-Za-z]{5,8})(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|[0-9]{3}))?(?:-(?:[A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3}))*(?:-[0-9A-WY-Za-wy-z](?:-[A-Za-z0-9]{2,8})+)*(?:-x(?:-[A-Za-z0-9]{1,8})+)?)|(?:x(?:-[A-Za-z0-9]{1,8})+)|(?:en-GB-oed|i-ami|i-bnn|i-default|i-enochian|i-hak|i-klingon|i-lux|i-mingo|i-navajo|i-pwn|i-tao|i-tay|i-tsu|sgn-BE-FR|sgn-BE-NL|sgn-CH-DE|art-lojban|cel-gaulish|no-bok|no-nyn|zh-guoyu|zh-hakka|zh-min|zh-min-nan|zh-xiang))$",
+            RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+        internal static readonly Regex UriReferenceCharacters = new(
+            @"^(?:[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=-]|%[0-9A-Fa-f]{2})*$",
+            RegexOptions.CultureInvariant);
+
+        internal static bool IsDate(string value)
+        {
+            Match match = Date.Match(value);
+            return match.Success && IsCalendarDate(match.Groups["year"].Value,
+                int.Parse(match.Groups["month"].Value, CultureInfo.InvariantCulture),
+                int.Parse(match.Groups["day"].Value, CultureInfo.InvariantCulture));
+        }
+
+        internal static bool IsDateTime(string value)
+        {
+            Match match = DateTime.Match(value);
+            if (!match.Success)
+            {
+                return false;
+            }
+
+            string date = match.Groups["date"].Value;
+            int secondDash = date.LastIndexOf('-');
+            int firstDash = date.LastIndexOf('-', secondDash - 1);
+            return IsCalendarDate(
+                date[..firstDash],
+                int.Parse(date[(firstDash + 1)..secondDash], CultureInfo.InvariantCulture),
+                int.Parse(date[(secondDash + 1)..], CultureInfo.InvariantCulture));
+        }
+
+        internal static bool IsYear(string value)
+        {
+            string year = RemoveTimeZone(value);
+            return Regex.IsMatch(year, $@"^{Year}$", RegexOptions.CultureInvariant)
+                && int.TryParse(year, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out int parsed)
+                && parsed != 0;
+        }
+
+        internal static bool IsCalendarDate(string yearText, int month, int day)
+        {
+            if (!int.TryParse(
+                    yearText,
+                    NumberStyles.AllowLeadingSign,
+                    CultureInfo.InvariantCulture,
+                    out int year)
+                || year == 0)
+            {
+                return false;
+            }
+
+            int max = month switch
+            {
+                2 => IsLeapYear(year) ? 29 : 28,
+                4 or 6 or 9 or 11 => 30,
+                _ => 31,
+            };
+            return day <= max;
+        }
+
+        private static bool IsLeapYear(int year)
+        {
+            int astronomical = year < 0 ? year + 1 : year;
+            return astronomical % 400 == 0 || (astronomical % 4 == 0 && astronomical % 100 != 0);
+        }
+
+        internal static string NormalizeTimeZone(string? timezone)
+        {
+            if (string.IsNullOrEmpty(timezone))
+            {
+                return string.Empty;
+            }
+            if (timezone == "Z" || Regex.IsMatch(timezone, $@"^{TimeZone}$", RegexOptions.CultureInvariant))
+            {
+                return timezone;
+            }
+            if (Regex.IsMatch(timezone, @"^(?:0[0-9]|1[0-3]):[0-5][0-9]$", RegexOptions.CultureInvariant))
+            {
+                return "+" + timezone;
+            }
+            throw new FormatException($"'{timezone}' is not a valid XSD timezone.");
+        }
+
+        internal static string RemoveTimeZone(string value)
+        {
+            Match match = Regex.Match(value, $@"(?<tz>{TimeZone})$", RegexOptions.CultureInvariant);
+            return match.Success ? value[..match.Index] : value;
+        }
+
+        internal static string? GetTimeZone(string value)
+        {
+            Match match = Regex.Match(value, $@"(?<tz>{TimeZone})$", RegexOptions.CultureInvariant);
+            return match.Success ? match.Value : null;
+        }
+
+        internal static bool IsUriReference(string value)
+        {
+            if (!UriReferenceCharacters.IsMatch(value)) return false;
+            int fragment = value.IndexOf('#');
+            if (fragment >= 0 && value.IndexOf('#', fragment + 1) >= 0) return false;
+
+            int firstDelimiter = value.Length;
+            foreach (char delimiter in new[] { '/', '?', '#' })
+            {
+                int index = value.IndexOf(delimiter);
+                if (index >= 0 && index < firstDelimiter) firstDelimiter = index;
+            }
+            int colon = value.IndexOf(':');
+            if (colon >= 0 && colon < firstDelimiter &&
+                !Regex.IsMatch(value[..colon], @"^[A-Za-z][A-Za-z0-9+.-]*$", RegexOptions.CultureInvariant))
+                return false;
+
+            int openBrackets = 0;
+            int closeBrackets = 0;
+            foreach (char character in value)
+            {
+                if (character == '[') openBrackets++;
+                else if (character == ']') closeBrackets++;
+            }
+            return openBrackets == closeBrackets;
+        }
+    }
+
+    public sealed class CogsDecimal : IEquatable<CogsDecimal>
+    {
+        public CogsDecimal(string lexicalValue)
+        {
+            if (!XsdLexical.Decimal.IsMatch(lexicalValue))
+            {
+                throw new FormatException($"'{lexicalValue}' is not an exact JSON/XSD decimal lexical value.");
+            }
+            LexicalValue = lexicalValue;
+        }
+
+        public CogsDecimal(decimal value) : this(value.ToString(CultureInfo.InvariantCulture)) { }
+        public string LexicalValue { get; }
+        public override string ToString() => LexicalValue;
+        public bool Equals(CogsDecimal? other) => other?.LexicalValue == LexicalValue;
+        public override bool Equals(object? obj) => Equals(obj as CogsDecimal);
+        public override int GetHashCode() => LexicalValue.GetHashCode(StringComparison.Ordinal);
+        public bool TryGetDecimal(out decimal value)
+        {
+            if (!decimal.TryParse(LexicalValue, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint,
+                    CultureInfo.InvariantCulture, out value)) return false;
+            return Normalize(LexicalValue) == Normalize(value.ToString(CultureInfo.InvariantCulture));
+        }
+        public static implicit operator CogsDecimal(decimal value) => new(value);
+        public static explicit operator decimal(CogsDecimal value) => value.TryGetDecimal(out decimal result)
+            ? result
+            : throw new OverflowException($"'{value.LexicalValue}' cannot be represented exactly as System.Decimal.");
+
+        private static string Normalize(string lexical)
+        {
+            bool negative = lexical.StartsWith("-", StringComparison.Ordinal);
+            string unsigned = negative ? lexical[1..] : lexical;
+            string[] parts = unsigned.Split('.', 2);
+            string integer = parts[0].TrimStart('0');
+            if (integer.Length == 0) integer = "0";
+            string fraction = parts.Length == 2 ? parts[1].TrimEnd('0') : string.Empty;
+            string normalized = fraction.Length == 0 ? integer : integer + "." + fraction;
+            return negative && normalized != "0" ? "-" + normalized : normalized;
+        }
+    }
+
+    public sealed class CogsDateTime : XsdLexicalValue
+    {
+        public CogsDateTime(string value) : base(value) { }
+        public CogsDateTime(DateTimeOffset value) : this(value.ToString("yyyy-MM-dd'T'HH:mm:ss.FFFFFFFK", CultureInfo.InvariantCulture)) { }
+        protected override bool IsValid(string value) => XsdLexical.IsDateTime(value);
+        public bool TryGetDateTimeOffset(out DateTimeOffset value)
+        {
+            if (XsdLexical.GetTimeZone(LexicalValue) is null) { value = default; return false; }
+            return DateTimeOffset.TryParseExact(
+                LexicalValue, new[] { "yyyy-MM-dd'T'HH:mm:ssK", "yyyy-MM-dd'T'HH:mm:ss.FFFFFFFK" },
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out value);
+        }
+        public static implicit operator CogsDateTime(DateTimeOffset value) => new(value);
+    }
+
+    public sealed class CogsDateOnly : XsdLexicalValue
+    {
+        public CogsDateOnly(string value) : base(value) { }
+        public CogsDateOnly(DateOnly value) : this(value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)) { }
+        protected override bool IsValid(string value) => XsdLexical.IsDate(value);
+        public bool TryGetDateOnly(out DateOnly value)
+        {
+            if (XsdLexical.GetTimeZone(LexicalValue) is not null) { value = default; return false; }
+            return DateOnly.TryParseExact(LexicalValue, "yyyy-MM-dd", CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out value);
+        }
+        public static implicit operator CogsDateOnly(DateOnly value) => new(value);
+    }
+
+    public sealed class CogsTime : XsdLexicalValue
+    {
+        public CogsTime(string value) : base(value) { }
+        public CogsTime(TimeOnly value) : this(value.ToString("HH:mm:ss.FFFFFFF", CultureInfo.InvariantCulture)) { }
+        protected override bool IsValid(string value) => XsdLexical.Time.IsMatch(value);
+        public bool TryGetTimeOnly(out TimeOnly value)
+        {
+            if (XsdLexical.GetTimeZone(LexicalValue) is not null) { value = default; return false; }
+            return TimeOnly.TryParseExact(LexicalValue, new[] { "HH:mm:ss", "HH:mm:ss.FFFFFFF" },
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out value);
+        }
+        public static implicit operator CogsTime(TimeOnly value) => new(value);
+    }
+
+    public sealed class CogsDuration : XsdLexicalValue
+    {
+        public CogsDuration(string value) : base(value) { }
+        public CogsDuration(TimeSpan value) : this(System.Xml.XmlConvert.ToString(value)) { }
+        protected override bool IsValid(string value) => XsdLexical.Duration.IsMatch(value);
+        public bool TryGetTimeSpan(out TimeSpan value)
+        {
+            try
+            {
+                value = System.Xml.XmlConvert.ToTimeSpan(LexicalValue);
+                return !Regex.IsMatch(LexicalValue, @"^-?P(?:[0-9]+Y|[0-9]+M)", RegexOptions.CultureInvariant);
+            }
+            catch (FormatException)
+            {
+                value = default;
+                return false;
+            }
+        }
+        public static implicit operator CogsDuration(TimeSpan value) => new(value);
+    }
+
+    public sealed class GYear : XsdLexicalValue
+    {
+        public GYear(string value) : base(value) { }
+        public GYear(int year, string? timezone = null) : this(FormatYear(year) + XsdLexical.NormalizeTimeZone(timezone)) { }
+        protected override bool IsValid(string value) => XsdLexical.IsYear(value);
+        public int Year => int.Parse(XsdLexical.RemoveTimeZone(LexicalValue), CultureInfo.InvariantCulture);
+        public string? Timezone => XsdLexical.GetTimeZone(LexicalValue);
+        internal static string FormatYear(int year)
+        {
+            if (year == 0) throw new ArgumentOutOfRangeException(nameof(year), "XSD years do not include year zero.");
+            string digits = Math.Abs((long)year).ToString(CultureInfo.InvariantCulture).PadLeft(4, '0');
+            return year < 0 ? "-" + digits : digits;
+        }
+    }
+
+    public sealed class GYearMonth : XsdLexicalValue
+    {
+        private static readonly Regex Pattern = new($@"^(?<year>{XsdLexical.Year})-(?<month>0[1-9]|1[0-2])(?:{XsdLexical.TimeZone})?$", RegexOptions.CultureInvariant);
+        public GYearMonth(string value) : base(value) { }
+        public GYearMonth(int year, int month, string? timezone = null) : this($"{GYear.FormatYear(year)}-{month:00}" + XsdLexical.NormalizeTimeZone(timezone)) { }
+        protected override bool IsValid(string value)
+        {
+            Match match = Pattern.Match(value);
+            return match.Success
+                && int.TryParse(
+                    match.Groups["year"].Value,
+                    NumberStyles.AllowLeadingSign,
+                    CultureInfo.InvariantCulture,
+                    out int year)
+                && year != 0;
+        }
+        public int Year => int.Parse(Pattern.Match(LexicalValue).Groups["year"].Value, CultureInfo.InvariantCulture);
+        public int Month => int.Parse(Pattern.Match(LexicalValue).Groups["month"].Value, CultureInfo.InvariantCulture);
+        public string? Timezone => XsdLexical.GetTimeZone(LexicalValue);
+    }
+
+    public sealed class GMonthDay : XsdLexicalValue
+    {
+        private static readonly Regex Pattern = new($@"^--(?<month>0[1-9]|1[0-2])-(?<day>0[1-9]|[12][0-9]|3[01])(?:{XsdLexical.TimeZone})?$", RegexOptions.CultureInvariant);
+        public GMonthDay(string value) : base(value) { }
+        public GMonthDay(int month, int day, string? timezone = null) : this($"--{month:00}-{day:00}" + XsdLexical.NormalizeTimeZone(timezone)) { }
+        protected override bool IsValid(string value)
+        {
+            Match match = Pattern.Match(value);
+            return match.Success && XsdLexical.IsCalendarDate("2000", int.Parse(match.Groups["month"].Value, CultureInfo.InvariantCulture), int.Parse(match.Groups["day"].Value, CultureInfo.InvariantCulture));
+        }
+        public int Month => int.Parse(Pattern.Match(LexicalValue).Groups["month"].Value, CultureInfo.InvariantCulture);
+        public int Day => int.Parse(Pattern.Match(LexicalValue).Groups["day"].Value, CultureInfo.InvariantCulture);
+        public string? Timezone => XsdLexical.GetTimeZone(LexicalValue);
+    }
+
+    public sealed class GDay : XsdLexicalValue
+    {
+        private static readonly Regex Pattern = new($@"^---(?<day>0[1-9]|[12][0-9]|3[01])(?:{XsdLexical.TimeZone})?$", RegexOptions.CultureInvariant);
+        public GDay(string value) : base(value) { }
+        public GDay(int day, string? timezone = null) : this($"---{day:00}" + XsdLexical.NormalizeTimeZone(timezone)) { }
+        protected override bool IsValid(string value) => Pattern.IsMatch(value);
+        public int Day => int.Parse(Pattern.Match(LexicalValue).Groups["day"].Value, CultureInfo.InvariantCulture);
+        public string? Timezone => XsdLexical.GetTimeZone(LexicalValue);
+    }
+
+    public sealed class GMonth : XsdLexicalValue
+    {
+        private static readonly Regex Pattern = new($@"^--(?<month>0[1-9]|1[0-2])--(?:{XsdLexical.TimeZone})?$", RegexOptions.CultureInvariant);
+        public GMonth(string value) : base(value) { }
+        public GMonth(int month, string? timezone = null) : this($"--{month:00}--" + XsdLexical.NormalizeTimeZone(timezone)) { }
+        protected override bool IsValid(string value) => Pattern.IsMatch(value);
+        public int Month => int.Parse(Pattern.Match(LexicalValue).Groups["month"].Value, CultureInfo.InvariantCulture);
+        public string? Timezone => XsdLexical.GetTimeZone(LexicalValue);
+    }
+
+    public sealed class LangString : IEquatable<LangString>
+    {
         public LangString(string languageTag, string value)
         {
-            this.Value = value;
-            this.LanguageTag = languageTag;
-        }
-        /// <summary>
-        /// String Value
-        /// </summary>
-        [JsonProperty("@value")]
-        public string Value { get; set; }
-
-        /// <summary>
-        /// BCP 47 language tag
-        /// </summary>
-        [JsonProperty("@language")]
-        public string LanguageTag { get; set; }
-
-        public override bool Equals(object? obj)
-        {
-            return Equals(obj as LangString);
+            if (!XsdLexical.Language.IsMatch(languageTag))
+            {
+                throw new FormatException($"'{languageTag}' is not a syntactically valid BCP 47 language tag.");
+            }
+            LanguageTag = languageTag;
+            Value = value ?? throw new ArgumentNullException(nameof(value));
         }
 
-        public bool Equals(LangString? other)
-        {
-            return other != null &&
-                   Value == other.Value &&
-                   LanguageTag == other.LanguageTag;
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Value, LanguageTag);
-        }
+        public string Value { get; }
+        public string LanguageTag { get; }
+        public bool Equals(LangString? other) => other is not null && other.Value == Value && other.LanguageTag == LanguageTag;
+        public override bool Equals(object? obj) => Equals(obj as LangString);
+        public override int GetHashCode() => HashCode.Combine(Value, LanguageTag);
+        public override string ToString() => Value;
     }
 
     public enum CogsDateType
     {
-        None = 0,
-        DateTime = 1,
-        Date = 2,
-        GYearMonth = 3,
-        GYear = 4,
-        Duration = 5
+        None,
+        DateTime,
+        Date,
+        GYearMonth,
+        GYear,
+        Duration,
     }
-    public class CogsDate
+
+    public sealed class CogsDate
     {
-        private DateTimeOffset dateTimeOffset;
-        private DateOnly dateOnly;
-        private GYearMonth? gYearMonth;
-        private GYear? gYear;
-        private TimeSpan timespan;
-
-        private void Clear()
-        {
-            dateTimeOffset = default(DateTimeOffset);
-            dateOnly = default(DateOnly);
-            gYearMonth = null;
-            gYear = null;
-            timespan = default(TimeSpan);
-            UsedType = CogsDateType.None;
-        }
-
-        [JsonConverter(typeof(DateTimeConverter))]
-        public DateTimeOffset DateTime
-        {
-            get
-            {
-                if(this.UsedType == CogsDateType.DateTime) { return dateTimeOffset; }
-                return default(DateTimeOffset);
-            }
-            set
-            {
-                Clear();
-                dateTimeOffset = value;
-                this.UsedType = CogsDateType.DateTime;
-            }
-        }
-
-        [JsonConverter(typeof(DateConverter))]
-        public DateOnly Date
-        {
-            get
-            {
-                if (this.UsedType == CogsDateType.Date) { return dateOnly; }
-                return default(DateOnly);
-            }
-            set
-            {
-                Clear();
-                dateOnly = value;
-                this.UsedType = CogsDateType.Date;
-            }
-        }
-
-        [JsonConverter(typeof(GYearMonthConverter))]
-        public GYearMonth? GYearMonth
-        {
-            get
-            {
-                return gYearMonth;
-            }
-            set
-            {
-                Clear();
-                gYearMonth = value;
-                this.UsedType = CogsDateType.GYearMonth;
-            }
-        }
-
-        [JsonConverter(typeof(GYearConverter))]
-        public GYear? GYear
-        {
-            get
-            {
-                return gYear;
-            }
-            set
-            {
-                Clear();
-                gYear = value;
-                this.UsedType = CogsDateType.GYear;
-            }
-        }
-
-        [JsonConverter(typeof(DurationConverter))]
-        public TimeSpan Duration
-        {
-            get
-            {
-                return timespan;
-            }
-            set
-            {
-                Clear();
-                timespan = value;
-                this.UsedType = CogsDateType.Duration;
-            }
-        }
-
-        [JsonIgnore]
+        private object? value;
         public CogsDateType UsedType { get; private set; }
-
         public CogsDate() { }
+        public CogsDate(CogsDateTime item) => DateTime = item;
+        public CogsDate(DateTimeOffset item) => DateTime = new CogsDateTime(item);
+        public CogsDate(CogsDateOnly item) => Date = item;
+        public CogsDate(DateOnly item) => Date = new CogsDateOnly(item);
+        public CogsDate(GYearMonth item) => GYearMonth = item;
+        public CogsDate(GYear item) => GYear = item;
+        public CogsDate(CogsDuration item) => Duration = item;
+        public CogsDate(TimeSpan item) => Duration = new CogsDuration(item);
 
-        public CogsDate(DateTimeOffset item)
-        {
-            DateTime = item;
-            UsedType = CogsDateType.DateTime;
-        }
+        public CogsDateTime? DateTime { get => UsedType == CogsDateType.DateTime ? (CogsDateTime?)value : null; set => Set(CogsDateType.DateTime, value); }
+        public CogsDateOnly? Date { get => UsedType == CogsDateType.Date ? (CogsDateOnly?)value : null; set => Set(CogsDateType.Date, value); }
+        public GYearMonth? GYearMonth { get => UsedType == CogsDateType.GYearMonth ? (GYearMonth?)value : null; set => Set(CogsDateType.GYearMonth, value); }
+        public GYear? GYear { get => UsedType == CogsDateType.GYear ? (GYear?)value : null; set => Set(CogsDateType.GYear, value); }
+        public CogsDuration? Duration { get => UsedType == CogsDateType.Duration ? (CogsDuration?)value : null; set => Set(CogsDateType.Duration, value); }
 
-        public CogsDate(DateOnly item)
+        public string? GetUsedType() => UsedType switch
         {
-            Date = item;
-            UsedType = CogsDateType.Date;
-        }
+            CogsDateType.DateTime => "DateTime",
+            CogsDateType.Date => "Date",
+            CogsDateType.GYearMonth => "GYearMonth",
+            CogsDateType.GYear => "GYear",
+            CogsDateType.Duration => "Duration",
+            _ => null,
+        };
 
-        public CogsDate(GYearMonth item)
-        {
-            GYearMonth = item;
-            UsedType = CogsDateType.GYearMonth;
-        }
-
-        public CogsDate(GYear item)
-        {
-            GYear = item;
-            UsedType = CogsDateType.GYear;
-        }
-
-        public CogsDate(TimeSpan item)
-        {
-            Duration = item;
-            UsedType = CogsDateType.Duration;
-        }
-
-        public string? GetUsedType()
-        {
-            switch (UsedType)
-            {
-                case CogsDateType.Date: { return "date"; }
-                case CogsDateType.DateTime: { return "datetime"; }
-                case CogsDateType.Duration: { return "duration"; }
-                case CogsDateType.GYear: { return "year"; }
-                case CogsDateType.GYearMonth: { return "YearMonth"; }
-            }
-            return null;
-        }
-
-        public override string? ToString()
-        {
-            switch (UsedType)
-            {
-                case CogsDateType.Date: { return Date.ToString("yyyy-MM-dd"); }
-                case CogsDateType.DateTime: { return DateTime.ToString("yyyy-MM-dd\\THH:mm:ss.FFFFFFFK"); }
-                case CogsDateType.Duration:
-                    {
-                        return string.Format("P{00}DT{00}H{00}M{00}S", Duration.ToString("%d"), Duration.ToString("%h"),
-                            Duration.ToString("%m"), Duration.ToString("%s"));
-                    }
-                case CogsDateType.GYear: { return GYear?.ToString(); }
-                case CogsDateType.GYearMonth: { return GYearMonth?.ToString(); }
-            }
-            return base.ToString();
-        }
-        
         public object? GetValue()
         {
-            switch (UsedType)
-            {
-                case CogsDateType.DateTime:
-                    {
-                        if (DateTime == default(DateTimeOffset)) { return null; }
-                        return DateTime;
-                    }
-                case CogsDateType.Date:
-                    {
-                        if (Date == default(DateOnly)) { return null; }
-                        return Date;
-                    }
-                case CogsDateType.GYearMonth:
-                    {
-                        return GYearMonth;
-                    }
-                case CogsDateType.GYear:
-                    {
-                        return GYear;
-                    }
-                case CogsDateType.Duration:
-                    {
-                        if (Duration == default(TimeSpan)) { return null; }
-                        return Duration;
-                    }
-            }
-            return null;
-        }
-    }
-
-    public class GYear : IComparable, IEquatable<GYear>
-	{
-        public int Year { set; get; }
-        public string? Timezone { set; get; }
-
-		public GYear(int year)
-		{
-			Year = year;
-		}
-
-		public GYear(int year, string? timezone)
-		{
-			Year = year;
-			Timezone = timezone;
-		}
-
-		public override string ToString()
-		{
-			if (Timezone != null) 
-			{
-				if (char.IsDigit(Timezone[0])) { return Year.ToString().PadLeft(4, '0') + "+" + Timezone; }
-				return Year.ToString().PadLeft(4, '0') + Timezone; 
-			}
-			return Year.ToString().PadLeft(4, '0');
-		}
-
-		public JObject ToJson()
-		{
-            if (Timezone != null) { return new JObject(new JProperty("Year", Year), new JProperty("Timezone", Timezone)); }
-            return new JObject(new JProperty("Year", Year));
+            if (value is CogsDateTime dateTime && dateTime.TryGetDateTimeOffset(out DateTimeOffset dto)) return dto;
+            if (value is CogsDateOnly date && date.TryGetDateOnly(out DateOnly dateOnly)) return dateOnly;
+            if (value is CogsDuration duration && duration.TryGetTimeSpan(out TimeSpan span)) return span;
+            return value;
         }
 
-        public int CompareTo(object? obj)
+        public override string? ToString() => value?.ToString();
+
+        private void Set(CogsDateType type, object? item)
         {
-            if (obj == null || obj.GetType() != typeof(GYear)) { return -1; }
-            var other = (GYear)obj;
-            if (other.Year < Year) { return -1; }
-            if (other.Year == Year)
-            {
-                if (other.Timezone == null && Timezone == null) { return 0; }
-                if (other.Timezone == null) { return -1; }
-                if (Timezone == null) { return 1; }
-                if (other.Timezone.Equals(Timezone)) { return 0; }
-                return -1;
-            }
-            return 1;
-        }
-
-        public bool Equals(GYear? other)
-        {
-            if (CompareTo(other) == 0) { return true; }
-            return false;
-        }
-    }
-
-    public class GMonth : IComparable, IEquatable<GMonth>
-    {
-        [Range(1, 12)]
-        public int Month { set; get; }
-        public string? Timezone { set; get; }
-
-        public GMonth(int month)
-        {
-            Month = month;
-        }
-
-        public GMonth(int month, string? timezone)
-        {
-            Month = month;
-            Timezone = timezone;
-        }
-
-        public override string ToString()
-        {
-            if (Timezone != null)
-            {
-                if (char.IsDigit(Timezone[0])) { return "--" + Month.ToString().PadLeft(2, '0') + "+" + Timezone; }
-                return "--" + Month.ToString().PadLeft(2, '0') + Timezone;
-            }
-            return "--" + Month.ToString().PadLeft(2, '0');
-        }
-
-        public JObject ToJson()
-        {
-            if (Timezone != null) { return new JObject(new JProperty("Month", Month), new JProperty("Timezone", Timezone)); }
-            return new JObject(new JProperty("Month", Month));
-        }
-
-        public int CompareTo(object? obj)
-        {
-            if (obj == null || obj.GetType() != typeof(GMonth)) { return -1; }
-            var other = (GMonth)obj;
-            if (other.Month < Month) { return -1; }
-            if (other.Month == Month)
-            {
-                if (other.Timezone == null && Timezone == null) { return 0; }
-                if (other.Timezone == null) { return -1; }
-                if (Timezone == null) { return 1; }
-                if (other.Timezone.Equals(Timezone)) { return 0; }
-                return -1;
-            }
-            return 1;
-        }
-
-        public bool Equals(GMonth? other)
-        {
-            if (CompareTo(other) == 0) { return true; }
-            return false;
-        }
-    }
-
-    public class GDay : IComparable, IEquatable<GDay>
-    {
-        [Range(1, 31)]
-        public int Day { set; get; }
-        public string? Timezone { set; get; }
-
-        public GDay(int day)
-        {
-            Day = day;
-        }
-
-        public GDay(int day, string? timezone)
-        {
-            Day = day;
-            Timezone = timezone;
-        }
-
-        public override string ToString()
-        {
-            if (Timezone != null)
-            {
-                if (char.IsDigit(Timezone[0])) { return "---" + Day.ToString().PadLeft(2, '0') + "+" + Timezone; }
-                return "---" + Day.ToString().PadLeft(2, '0') + Timezone;
-            }
-            return "---" + Day.ToString().PadLeft(2, '0');
-        }
-
-        public JObject ToJson()
-        {
-            if (Timezone != null) { return new JObject(new JProperty("Day", Day), new JProperty("Timezone", Timezone)); }
-            return new JObject(new JProperty("Day", Day));
-        }
-
-        public int CompareTo(object? obj)
-        {
-            if (obj == null || obj.GetType() != typeof(GDay)) { return -1; }
-            var other = (GDay)obj;
-            if (other.Day < Day) { return -1; }
-            if (other.Day == Day)
-            {
-                if (other.Timezone == null && Timezone == null) { return 0; }
-                if (other.Timezone == null) { return -1; }
-                if (Timezone == null) { return 1; }
-                if (other.Timezone.Equals(Timezone)) { return 0; }
-                return -1;
-            }
-            return 1;
-        }
-
-        public bool Equals(GDay? other)
-        {
-            if (CompareTo(other) == 0) { return true; }
-            return false;
-        }
-    }
-
-    public class GYearMonth : IComparable, IEquatable<GYearMonth>
-    {
-        public int Year { set; get; }
-        [Range(1, 12)]
-        public int Month { set; get; }
-        public string? Timezone { set; get; }
-
-        public GYearMonth(int year, int month)
-        {
-            Year = year;
-            Month = month;
-        }
-
-        public GYearMonth(int year, int month, string? timezone)
-        {
-            Year = year;
-            Month = month;
-            Timezone = timezone;
-        }
-
-        public override string ToString()
-        {
-            if (Timezone != null)
-            {
-                if (char.IsDigit(Timezone[0])) { return Year.ToString().PadLeft(4, '0') + "-" + Month.ToString().PadLeft(2, '0') + "+" + Timezone; }
-                return Year.ToString().PadLeft(4, '0') + "-" + Month.ToString().PadLeft(2, '0') + Timezone;
-            }
-            return Year.ToString().PadLeft(4, '0') + "-" + Month.ToString().PadLeft(2, '0');
-        }
-
-        public JObject ToJson()
-        {
-            if (Timezone != null) { return new JObject(new JProperty("Year", Year), new JProperty("Month", Month), new JProperty("Timezone", Timezone)); }
-            return new JObject(new JProperty("Year", Year), new JProperty("Month", Month));
-        }
-
-        public int CompareTo(object? obj)
-        {
-            if (obj == null || obj.GetType() != typeof(GYearMonth)) { return -1; }
-            var other = (GYearMonth)obj;
-            if (other.Year < Year) { return -1; }
-            if (other.Year == Year)
-            {
-                if (other.Month < Month) { return -1; }
-                if (other.Month == Month)
-                {
-                    if (other.Timezone == null && Timezone == null) { return 0; }
-                    if (other.Timezone == null) { return -1; }
-                    if (Timezone == null) { return 1; }
-                    if (other.Timezone.Equals(Timezone)) { return 0; }
-                    return -1;
-                }
-                if (other.Month > Month) { return 1; }
-            }
-            return 1;
-        }
-
-        public bool Equals(GYearMonth? other)
-        {
-            if (CompareTo(other) == 0) { return true; }
-            return false;
-        }
-    }
-
-    public class GMonthDay : IComparable, IEquatable<GMonthDay>
-    {
-        [Range(1, 12)]
-        public int Month { set; get; }
-        [Range(1, 31)]
-        public int Day { set; get; }
-        public string? Timezone { set; get; }
-
-        public GMonthDay(int month, int day)
-        {
-            Month = month;
-            Day = day;
-        }
-
-        public GMonthDay(int month, int day, string? timezone)
-        {
-            Month = month;
-            Day = day;
-            Timezone = timezone;
-        }
-
-        public override string ToString()
-        {
-            if (Timezone != null)
-            {
-                if (char.IsDigit(Timezone[0])) { return "--" + Month.ToString().PadLeft(2, '0') + "-" + Day.ToString().PadLeft(2, '0') + "+" + Timezone; }
-                return "--" + Month.ToString().PadLeft(2, '0') + "-" + Day.ToString().PadLeft(2, '0') + Timezone;
-            }
-            return "--" + Month.ToString().PadLeft(2, '0') + "-" + Day.ToString().PadLeft(2, '0');
-        }
-
-        public JObject ToJson()
-        {
-            if (Timezone != null) { return new JObject(new JProperty("Month", Month), new JProperty("Day", Day), new JProperty("Timezone", Timezone)); }
-            return new JObject(new JProperty("Month", Month), new JProperty("Day", Day));
-        }
-
-        public int CompareTo(object? obj)
-        {
-            if (obj == null || obj.GetType() != typeof(GMonthDay)) { return -1; }
-            var other = (GMonthDay)obj;
-            if (other.Month < Month) { return -1; }
-            if (other.Month == Month)
-            {
-                if (other.Day < Day) { return -1; }
-                if (other.Day == Day)
-                {
-                    if (other.Timezone == null && Timezone == null) { return 0; }
-                    if (other.Timezone == null) { return -1; }
-                    if (Timezone == null) { return 1; }
-                    if (other.Timezone.Equals(Timezone)) { return 0; }
-                    return -1;
-                }
-                if (other.Day > Day) { return 1; }
-            }
-            return 1;
-        }
-
-        public bool Equals(GMonthDay? other)
-        {
-            if (CompareTo(other) == 0) { return true; }
-            return false;
+            value = item;
+            UsedType = item is null ? CogsDateType.None : type;
         }
     }
 }
 
 namespace Cogs.Converters
 {
-    public class DateConverter : BaseDateTimeConverter
-    {
-        public override bool CanConvert(Type objectType)
-        {
-            return objectType == typeof(DateOnly) || objectType == typeof(List<DateOnly>);
-        }
-        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
-        {
-            if (reader.TokenType == JsonToken.StartArray)
-            {
-                var results = new List<DateOnly>();
-                var array = JArray.Load(reader);
-                foreach (var item in array.Children())
-                {
-                    var itemValue = item.ToString();
-                    if (DateOnly.TryParseExact(itemValue.ToString(), DateTimeFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly itemResult))
-                    {
-                        results.Add(itemResult);
-                    }
-                }
-                return results;
-            }
-
-            string? token = (string?)reader.Value;
-            if (DateOnly.TryParseExact(token?.ToString(), DateTimeFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly result))
-            {
-                return result;
-            }
-            return null;
-        }
-
-
-        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
-        {
-            if (value is DateOnly offset)
-            {
-                writer.WriteValue(offset.ToString(DateTimeFormat));
-            }
-            else if (value is List<DateOnly> offsets)
-            {
-                writer.WriteStartArray();
-                foreach (var off in offsets)
-                {
-                    writer.WriteValue(off.ToString(DateTimeFormat));
-                }
-                writer.WriteEndArray();
-            }
-        }
-        public override string DateTimeFormat { get; } = "yyyy-MM-dd";   
-    }
-
-    public class TimeConverter : BaseDateTimeConverter
-    {
-
-        public override bool CanConvert(Type objectType)
-        {
-            return objectType == typeof(TimeOnly) || objectType == typeof(List<TimeOnly>);
-        }
-
-        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
-        {
-            if (reader.TokenType == JsonToken.StartArray)
-            {
-                var results = new List<TimeOnly>();
-                var array = JArray.Load(reader);
-                foreach (var item in array.Children())
-                {
-                    var itemValue = item.ToString();
-                    if (TimeOnly.TryParseExact(itemValue.ToString(), DateTimeFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out TimeOnly itemResult))
-                    {
-                        results.Add(itemResult);
-                    }
-                }
-                return results;
-            }
-
-            string? token = (string?)reader.Value;
-            if (TimeOnly.TryParseExact(token?.ToString(), parseFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out TimeOnly result))
-            {
-                return result;
-            }
-            return null;
-
-
-        }
-        string[] parseFormats = { "HH:mm:ss", "HH:mm:ss.fffffff" };
-
-        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
-        {
-            if (value is TimeOnly offset)
-            {
-                writer.WriteValue(offset.ToString(DateTimeFormat));
-            }
-            else if (value is List<TimeOnly> offsets)
-            {
-                writer.WriteStartArray();
-                foreach (var off in offsets)
-                {
-                    writer.WriteValue(off.ToString(DateTimeFormat));
-                }
-                writer.WriteEndArray();
-            }
-        }
-        public override string DateTimeFormat { get; } = "HH:mm:ss.FFFFFFFK";
-    }
-
-    public class DateTimeConverter : BaseDateTimeConverter
-    {
-        public override string DateTimeFormat { get; } = "yyyy-MM-dd\\THH:mm:ss.FFFFFFFK";        
-    }
-
-    public abstract class BaseDateTimeConverter : JsonConverter
-    {
-        public abstract string DateTimeFormat { get; } 
-
-        public override bool CanConvert(Type objectType)
-        {
-            return objectType == typeof(DateTimeOffset) || objectType == typeof(List<DateTimeOffset>);
-        }
-
-        public override bool CanRead => true;
-        public override bool CanWrite => true;
-
-        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
-        {
-            if (reader.TokenType == JsonToken.StartArray)
-            {
-                var results = new List<DateTimeOffset>();
-                var array = JArray.Load(reader);
-                foreach (var item in array.Children())
-                {
-                    var itemValue = item.ToString();
-                    if (DateTimeOffset.TryParseExact(itemValue.ToString(), DateTimeFormat, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTimeOffset itemResult))
-                    {
-                        results.Add(itemResult);
-                    }
-                }
-                return results;
-            }
-
-            string? token = (string?)reader.Value;
-            if (DateTimeOffset.TryParseExact(token?.ToString(), DateTimeFormat, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTimeOffset result))
-            {
-                return result;
-            }
-            return null;
-        }
-
-        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
-        {
-            if (value is DateTimeOffset offset)
-            {
-                writer.WriteValue(offset.ToString(DateTimeFormat));
-            }
-            else if (value is List<DateTimeOffset> offsets)
-            {
-                writer.WriteStartArray();
-                foreach (var off in offsets)
-                {
-                    writer.WriteValue(off.ToString(DateTimeFormat));
-                }
-                writer.WriteEndArray();
-            }
-        }
-    }
-
-
-    public class DurationConverter : JsonConverter
-    {
-        public override bool CanConvert(Type objectType)
-        {
-            return objectType == typeof(TimeSpan) || objectType == typeof(List<TimeSpan>);
-        }
-
-        public override bool CanRead => true;
-        public override bool CanWrite => true;
-
-        // UTC milliseconds
-
-        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
-        {
-            if (reader.TokenType == JsonToken.StartArray)
-            {
-                var results = new List<TimeSpan>();
-                var array = JArray.Load(reader);
-                foreach (var item in array.Children())
-                {
-                    var itemValue = item.ToString();
-                    if (long.TryParse(itemValue, out long milliseconds))
-                    {
-                        
-                        results.Add(TimeSpan.FromMilliseconds(milliseconds));
-                    }
-                }
-                return results;
-            }
-
-            if (reader.Value is Int64 largeMilli)
-            {
-                return TimeSpan.FromMilliseconds(largeMilli);
-            }
-            if (reader.Value is int milli)
-            {
-                return TimeSpan.FromMilliseconds(milli);
-            }
-            if (reader.Value is double d)
-            {
-                return TimeSpan.FromMilliseconds(d);
-            }
-
-            string? token = reader?.Value?.ToString();
-            if (double.TryParse(token, out double mill))
-            {
-                return TimeSpan.FromMilliseconds(mill);
-            }
-            return null;
-        }
-
-        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
-        {
-            if (value is TimeSpan span)
-            {
-                writer.WriteValue(span.TotalMilliseconds);
-            }
-            else if (value is List<TimeSpan> offsets)
-            {
-                writer.WriteStartArray();
-                foreach (var off in offsets)
-                {
-                    writer.WriteValue(off.TotalMilliseconds);
-                }
-                writer.WriteEndArray();
-            }
-        }
-    }
-
-    public abstract class BaseGConverter<T> : JsonConverter
-    {
-
-        public override bool CanConvert(Type objectType)
-        {
-            return objectType == typeof(T) || objectType == typeof(List<T>);
-        }
-
-        public override bool CanRead => true;
-        public override bool CanWrite => true;
-
-        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
-        {
-            if (reader.TokenType == JsonToken.StartArray)
-            {
-                List<T> results = new List<T>();
-                JArray array = JArray.Load(reader);
-                foreach (var item in array.Children())
-                {
-                    JObject jsonObject = (JObject)item;
-
-                    T? obj = FromObject(jsonObject);
-                    if (obj != null)
-                    {
-                        results.Add(obj);
-                    }
-                }
-                return results;
-            }
-
-            var single = JObject.Load(reader);
-            return FromObject(single);
-        }
-
-        internal abstract T? FromObject(JObject jsonObject);
-
-        internal abstract void Write(JsonWriter writer, T item);
-
-        public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
-        {
-            if (value is T item)
-            {
-                Write(writer, item);
-            }
-            else if (value is List<T> items)
-            {
-                writer.WriteStartArray();
-                foreach (var i in items)
-                {
-                    Write(writer, i);
-                }
-                writer.WriteEndArray();
-            }
-        }
-    }
-
-    public class GDayConverter : BaseGConverter<GDay>
-    {
-        internal override GDay? FromObject(JObject jsonObject)
-        {
-            int? day = (int?)jsonObject["Day"];
-            if (day == null)
-            {
-                return null;
-            }
-
-            string? timezone = (string?)jsonObject["Timezone"];
-            return new GDay(day.Value, timezone);
-        }
-
-        internal override void Write(JsonWriter writer, GDay item)
-        {
-            writer.WriteStartObject();
-            writer.WritePropertyName("Day");
-            writer.WriteValue(item.Day);
-            if (!string.IsNullOrWhiteSpace(item.Timezone))
-            {
-                writer.WritePropertyName("Timezone");
-                writer.WriteValue(item.Timezone);
-            }
-            writer.WriteEndObject();
-        }
-    }
-
-
-    public class GMonthConverter : BaseGConverter<GMonth>
-    {
-        internal override GMonth? FromObject(JObject jsonObject)
-        {
-            int? month = (int?)jsonObject["Month"];
-            if (month == null)
-            {
-                return null;
-            }
-
-            string? timezone = (string?)jsonObject["Timezone"];
-            return new GMonth(month.Value, timezone);
-        }
-
-        internal override void Write(JsonWriter writer, GMonth item)
-        {
-            writer.WriteStartObject();
-            writer.WritePropertyName("Month");
-            writer.WriteValue(item.Month);
-            if (!string.IsNullOrWhiteSpace(item.Timezone))
-            {
-                writer.WritePropertyName("Timezone");
-                writer.WriteValue(item.Timezone);
-            }
-            writer.WriteEndObject();
-        }
-    }
-
-
-    public class GMonthDayConverter : BaseGConverter<GMonthDay>
-    {
-        internal override GMonthDay? FromObject(JObject jsonObject)
-        {
-            int? month = (int?)jsonObject["Month"];
-            int? day = (int?)jsonObject["Day"];
-            string? timezone = (string?)jsonObject["Timezone"];
-
-            if (month == null || day == null)
-            {
-                return null;
-            }
-
-            return new GMonthDay(month.Value, day.Value, timezone);
-        }
-
-        internal override void Write(JsonWriter writer, GMonthDay item)
-        {
-            writer.WriteStartObject();
-            writer.WritePropertyName("Month");
-            writer.WriteValue(item.Month);
-            writer.WritePropertyName("Day");
-            writer.WriteValue(item.Day);
-            if (!string.IsNullOrWhiteSpace(item.Timezone))
-            {
-                writer.WritePropertyName("Timezone");
-                writer.WriteValue(item.Timezone);
-            }
-            writer.WriteEndObject();
-        }
-    }
-
-    public class GYearConverter : BaseGConverter<GYear>
-    {      
-        internal override GYear? FromObject(JObject jsonObject)
-        {
-            int? year = (int?)jsonObject["Year"];
-            if (year == null)
-            {
-                return null;
-            }
-
-
-            string? timezone = (string?)jsonObject["Timezone"];
-            return new GYear(year.Value, timezone);
-        }
-
-        internal override void Write(JsonWriter writer, GYear item)
-        {
-            writer.WriteStartObject();
-            writer.WritePropertyName("Year");
-            writer.WriteValue(item.Year);
-
-            if (!string.IsNullOrWhiteSpace(item.Timezone))
-            {
-                writer.WritePropertyName("Timezone");
-                writer.WriteValue(item.Timezone);
-            }
-
-            writer.WriteEndObject();
-        }
-    }
-
-    public class GYearMonthConverter : BaseGConverter<GYearMonth>
-    {
-        internal override GYearMonth? FromObject(JObject jsonObject)
-        {
-            int? year = (int?)jsonObject["Year"];
-            int? month = (int?)jsonObject["Month"];
-            string? timezone = (string?)jsonObject["Timezone"];
-
-            if (year == null || month == null)
-            {
-                return null;
-            }
-
-            return new GYearMonth(year.Value, month.Value, timezone);
-        }
-
-        internal override void Write(JsonWriter writer, GYearMonth item)
-        {
-            writer.WriteStartObject();
-            writer.WritePropertyName("Year");
-            writer.WriteValue(item.Year);
-            writer.WritePropertyName("Month");
-            writer.WriteValue(item.Month);
-
-            if (!string.IsNullOrWhiteSpace(item.Timezone))
-            {
-                writer.WritePropertyName("Timezone");
-                writer.WriteValue(item.Timezone);
-            }
-
-            writer.WriteEndObject();
-        }
-    }
-
+    // Retained as an empty compatibility namespace. JSON conversion is provided
+    // by the generated strict System.Text.Json runtime.
 }

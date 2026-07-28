@@ -3,11 +3,18 @@ publish-uml
 
 Introduction
 ----------------------
-Generates a UML file containing connections between `Item types <../../../modeler-guide/item-types/index.html>`_
-and `Composite types <../../../modeler-guide/composite-types/index.html>`_ in the model. 
-Outputted UML can be normative or non-normative. If non-normative, it will also contain graph information.
+Generates an authoritative UML/XMI structural representation containing item
+and composite types. UML preserves the validated COGS model structure with one
+semantic exception: ``PROJ2601`` reports a property-local subtype exclusion
+that ordinary UML association typing cannot enforce. See the
+:doc:`/technical-guide/generation/uml` guide for the complete explanation and
+DDI Lifecycle example.
 
-Requires that `dotnet <../../installation/dotnet/index.html>`_ and `Graphviz <../../installation/graphviz/index.html>`_ are installed.
+UML/XMI is not an instance serialization or an instance-validation schema.
+Validate JSON and XML documents with the generated JSON Schema and XSD.
+
+Requires that `dotnet <../../installation/dotnet/index.html>`_ is installed.
+Graphviz is needed only for a mode that actually emits graph layout.
 
 Command Line Arguments
 ----------------------
@@ -33,8 +40,16 @@ Optional inputs for the publish-uml command.
 
     If the ``[TargetLocation]`` is not empty, erase all files in the folder before generation.
 
-* ``-n|--normative`` 
-    Outputs a normative XMI file (2.4.2) instead of XMI 2.5.1. The normative file cannot contain graph information.
+* ``-m|--mode normative|ea``
+
+    Selects normative UML/XMI 2.4.2 or Enterprise Architect-compatible XMI
+    2.5.1. The default is ``ea``.
+
+* ``--dot PATH``
+
+    Supplies Graphviz for layout-capable projections. Resolution otherwise
+    checks ``COGS_DOT`` and then ``PATH``. The current deterministic UML/XMI
+    writers do not require Graphviz.
 
 Command Line Usage
 -------------------
@@ -42,7 +57,7 @@ Command Line Usage
 
     .. code-block:: bash
 
-        $ publish-uml (-h) (-o) (-n) [CogsLocation] [TargetLocation]
+        $ cogs publish-uml (-h) (-o) [--mode normative|ea] [--dot PATH] [CogsLocation] [TargetLocation]
 
 **Examples**
 
@@ -50,6 +65,6 @@ Command Line Usage
 
     .. code-block:: bash
 
-        $ publish-uml -h
-        $ publish-uml MyCogsModelDirectory MyOutputDirectory
-        $ publish-uml -o -n MyCogsModelDirectory MyOutputDirectory
+        $ cogs publish-uml -h
+        $ cogs publish-uml MyCogsModelDirectory MyOutputDirectory
+        $ cogs publish-uml -o --mode normative MyCogsModelDirectory MyOutputDirectory

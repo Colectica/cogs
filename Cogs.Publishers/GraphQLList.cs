@@ -6,6 +6,6 @@ namespace Cogs.Publishers
 {
     class GraphQLList
     {
-        public List<GraphQLItems> List { get; set; }
+        public List<GraphQLItems> List { get; set; } = new();
     }
 }

@@ -3,15 +3,14 @@
 using Cogs.SimpleTypes;
 using CogsBurger.Model;
 using Json.Schema;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Globalization;
 using System.Linq;
+using System.Numerics;
 using System.Text;
+using System.Text.Json;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Schema;
@@ -36,7 +35,7 @@ public class PythonIntegrationTests
         {
             ItemContainer jsonContainer = CreateContainer(includeReusableSubtype: true);
             ItemContainer xmlContainer = CreateContainer(includeReusableSubtype: false);
-            string inputJson = JsonConvert.SerializeObject(jsonContainer);
+            string inputJson = jsonContainer.ToJson();
             XDocument inputXml = xmlContainer.MakeXml();
 
             AssertValidJson(inputJson);
@@ -101,13 +100,13 @@ public class PythonIntegrationTests
             GMonth = new GMonth(2, "+01:00"),
             GDay = new GDay(29, "-06:00"),
             CDate = new CogsDate(new GYearMonth(2024, 2, "Z")),
-            Times = new List<TimeOnly> { new(1, 2, 3), new(23, 59, 58) },
-            Durations = new List<TimeSpan> { TimeSpan.FromSeconds(2), TimeSpan.FromMilliseconds(2500) },
-            Dates = new List<DateOnly> { new(2023, 1, 2), new(2024, 2, 29) },
-            DateTimes = new List<DateTimeOffset>
+            Times = new List<CogsTime> { new(new TimeOnly(1, 2, 3)), new(new TimeOnly(23, 59, 58)) },
+            Durations = new List<CogsDuration> { new(TimeSpan.FromSeconds(2)), new(TimeSpan.FromMilliseconds(2500)) },
+            Dates = new List<CogsDateOnly> { new(new DateOnly(2023, 1, 2)), new(new DateOnly(2024, 2, 29)) },
+            DateTimes = new List<CogsDateTime>
             {
-                new(2023, 1, 2, 3, 4, 5, TimeSpan.Zero),
-                new(2024, 2, 29, 23, 59, 58, TimeSpan.FromHours(2)),
+                new(new DateTimeOffset(2023, 1, 2, 3, 4, 5, TimeSpan.Zero)),
+                new(new DateTimeOffset(2024, 2, 29, 23, 59, 58, TimeSpan.FromHours(2))),
             },
             GMonthDays = new List<GMonthDay> { new(12, 31, "Z") },
             GDays = new List<GDay> { new(15, null) },
@@ -172,7 +171,7 @@ public class PythonIntegrationTests
             {
                 Width = 42,
                 Length = 12.5,
-                Height = new List<decimal> { 1.2300m, 9876543210.123456789m },
+                Height = new List<CogsDecimal> { new("1.2300"), new("9876543210.123456789") },
                 Creature = animal,
                 CogsDate = new CogsDate(new DateOnly(2024, 2, 29)),
             },
@@ -221,75 +220,101 @@ public class PythonIntegrationTests
 
     internal static void AssertValidJson(string json)
     {
-        Assert.Empty(IntegrationTests.Schema.Validate(json));
+        List<string> errors = IntegrationTests.Schema.Validate(json);
+        Assert.True(errors.Count == 0, "JSON Schema validation failed:\n" + string.Join("\n", errors) + "\nInstance:\n" + json);
     }
 
     internal static void AssertSemanticallyEqualJson(string expectedJson, string actualJson, string message)
     {
-        JToken expected = NormalizeJson(JToken.Parse(expectedJson));
-        JToken actual = NormalizeJson(JToken.Parse(actualJson));
-        Assert.True(JToken.DeepEquals(expected, actual),
-            message + " " + DescribeFirstDifference(expected, actual, "$"));
-    }
-
-    private static JToken NormalizeJson(JToken token)
-    {
-        if (token.Type is JTokenType.Integer or JTokenType.Float)
+        var options = new JsonDocumentOptions
         {
-            return new JValue(decimal.Parse(
-                token.ToString(Newtonsoft.Json.Formatting.None),
-                NumberStyles.Float,
-                CultureInfo.InvariantCulture));
-        }
-        return token switch
-        {
-            JObject value => new JObject(value.Properties()
-                .OrderBy(property => property.Name, StringComparer.Ordinal)
-                .Select(property => new JProperty(property.Name, NormalizeJson(property.Value)))),
-            JArray value => new JArray(value.Select(NormalizeJson)),
-            _ => token.DeepClone(),
+            AllowTrailingCommas = false,
+            CommentHandling = JsonCommentHandling.Disallow,
+            AllowDuplicateProperties = false
         };
+        using JsonDocument expected = JsonDocument.Parse(expectedJson, options);
+        using JsonDocument actual = JsonDocument.Parse(actualJson, options);
+        string? difference = DescribeFirstDifference(expected.RootElement, actual.RootElement, "$");
+        Assert.True(difference is null, message + " " + difference);
     }
 
-    private static string DescribeFirstDifference(JToken expected, JToken actual, string path)
+    private static string? DescribeFirstDifference(JsonElement expected, JsonElement actual, string path)
     {
-        if (expected.Type != actual.Type)
+        if (expected.ValueKind == JsonValueKind.Number && actual.ValueKind == JsonValueKind.Number)
         {
-            return $"{path}: expected {expected.Type} {expected}, got {actual.Type} {actual}.";
+            string expectedNumber = NormalizeNumber(expected.GetRawText());
+            string actualNumber = NormalizeNumber(actual.GetRawText());
+            return expectedNumber == actualNumber
+                ? null
+                : $"{path}: expected number {expected.GetRawText()}, got {actual.GetRawText()}.";
         }
-        if (expected is JObject expectedObject && actual is JObject actualObject)
+        if (expected.ValueKind != actual.ValueKind)
         {
-            string[] expectedNames = expectedObject.Properties().Select(x => x.Name).ToArray();
-            string[] actualNames = actualObject.Properties().Select(x => x.Name).ToArray();
+            return $"{path}: expected {expected.ValueKind} {expected.GetRawText()}, got {actual.ValueKind} {actual.GetRawText()}.";
+        }
+        if (expected.ValueKind == JsonValueKind.Object)
+        {
+            var expectedObject = expected.EnumerateObject().ToDictionary(property => property.Name, property => property.Value, StringComparer.Ordinal);
+            var actualObject = actual.EnumerateObject().ToDictionary(property => property.Name, property => property.Value, StringComparer.Ordinal);
+            string[] expectedNames = expectedObject.Keys.OrderBy(name => name, StringComparer.Ordinal).ToArray();
+            string[] actualNames = actualObject.Keys.OrderBy(name => name, StringComparer.Ordinal).ToArray();
             if (!expectedNames.SequenceEqual(actualNames, StringComparer.Ordinal))
             {
                 return $"{path}: expected properties [{string.Join(", ", expectedNames)}], got [{string.Join(", ", actualNames)}].";
             }
             foreach (string name in expectedNames)
             {
-                JToken expectedChild = expectedObject[name]!;
-                JToken actualChild = actualObject[name]!;
-                if (!JToken.DeepEquals(expectedChild, actualChild))
-                {
-                    return DescribeFirstDifference(expectedChild, actualChild, $"{path}.{name}");
-                }
+                string? difference = DescribeFirstDifference(expectedObject[name], actualObject[name], $"{path}.{name}");
+                if (difference is not null) return difference;
             }
+            return null;
         }
-        else if (expected is JArray expectedArray && actual is JArray actualArray)
+        if (expected.ValueKind == JsonValueKind.Array)
         {
-            if (expectedArray.Count != actualArray.Count)
+            JsonElement[] expectedArray = expected.EnumerateArray().ToArray();
+            JsonElement[] actualArray = actual.EnumerateArray().ToArray();
+            if (expectedArray.Length != actualArray.Length)
             {
-                return $"{path}: expected {expectedArray.Count} entries, got {actualArray.Count}.";
+                return $"{path}: expected {expectedArray.Length} entries, got {actualArray.Length}.";
             }
-            for (int index = 0; index < expectedArray.Count; index++)
+            for (int index = 0; index < expectedArray.Length; index++)
             {
-                if (!JToken.DeepEquals(expectedArray[index], actualArray[index]))
-                {
-                    return DescribeFirstDifference(expectedArray[index]!, actualArray[index]!, $"{path}[{index}]");
-                }
+                string? difference = DescribeFirstDifference(expectedArray[index], actualArray[index], $"{path}[{index}]");
+                if (difference is not null) return difference;
             }
+            return null;
         }
-        return $"{path}: expected {expected}, got {actual}.";
+        if (expected.ValueKind == JsonValueKind.String)
+        {
+            return string.Equals(expected.GetString(), actual.GetString(), StringComparison.Ordinal)
+                ? null
+                : $"{path}: expected string {expected.GetRawText()}, got {actual.GetRawText()}.";
+        }
+        return expected.GetRawText() == actual.GetRawText()
+            ? null
+            : $"{path}: expected {expected.GetRawText()}, got {actual.GetRawText()}.";
+    }
+
+    private static string NormalizeNumber(string lexical)
+    {
+        bool negative = lexical.StartsWith("-", StringComparison.Ordinal);
+        string unsigned = negative ? lexical[1..] : lexical;
+        int exponentMarker = unsigned.IndexOfAny('e', 'E');
+        string mantissa = exponentMarker < 0 ? unsigned : unsigned[..exponentMarker];
+        BigInteger exponent = exponentMarker < 0 ? BigInteger.Zero : BigInteger.Parse(unsigned[(exponentMarker + 1)..]);
+        int decimalPoint = mantissa.IndexOf('.');
+        int fractionalDigits = decimalPoint < 0 ? 0 : mantissa.Length - decimalPoint - 1;
+        string digits = (decimalPoint < 0 ? mantissa : mantissa.Remove(decimalPoint)).TrimStart('0');
+        if (digits.Length == 0) return "0";
+        exponent -= fractionalDigits;
+        int trailing = 0;
+        while (trailing < digits.Length - 1 && digits[digits.Length - trailing - 1] == '0') trailing++;
+        if (trailing > 0)
+        {
+            digits = digits[..^trailing];
+            exponent += trailing;
+        }
+        return (negative ? "-" : string.Empty) + digits + "e" + exponent;
     }
 
     internal static void AssertValidXml(XDocument document, string generatedRoot)
@@ -312,7 +337,7 @@ public class PythonIntegrationTests
         schemas.Add(schema!);
     }
 
-    private static void RunPython(string workingDirectory, string scriptPath, params string[] arguments)
+    internal static void RunPython(string workingDirectory, string scriptPath, params string[] arguments)
     {
         PythonCommand command = FindPython();
         var startInfo = new ProcessStartInfo(command.FileName)
@@ -390,13 +415,14 @@ public class PythonIntegrationTests
     private const string PythonRoundTripScript = """
         from __future__ import annotations
 
+        import compileall
         import io
         import sys
-        from decimal import Decimal
         from pathlib import Path
 
         assert sys.version_info >= (3, 11)
         package_root, input_json, input_xml, direct_json, output_json, json_xml, output_xml = sys.argv[1:]
+        assert compileall.compile_dir(package_root, quiet=1)
         sys.path.insert(0, package_root)
 
         import cogsburger as c
@@ -415,7 +441,22 @@ public class PythonIntegrationTests
             assert patty.source_animal[0] is animal
             assert cheese.milk_source is animal
             assert bread.size.creature is animal
-            assert bread.size.height[1] == Decimal("9876543210.123456789")
+            assert isinstance(animal.date, c.CogsDateOnly)
+            assert isinstance(animal.duration, c.CogsDuration)
+            assert isinstance(animal.time, c.CogsTime)
+            assert isinstance(animal.date_time, c.CogsDateTime)
+            assert isinstance(animal.g_month_day, c.GMonthDay)
+            assert isinstance(animal.g_month, c.GMonth)
+            assert isinstance(animal.g_day, c.GDay)
+            assert isinstance(animal.c_date, c.CogsDate)
+            assert isinstance(animal.c_date.value, c.GYearMonth)
+            assert all(isinstance(value, c.CogsDuration) for value in animal.durations)
+            assert all(isinstance(value, c.CogsDateOnly) for value in animal.dates)
+            assert all(isinstance(value, c.CogsDateTime) for value in animal.date_times)
+            assert isinstance(bread.gyearmonth, c.GYearMonth)
+            assert isinstance(bread.size.cogs_date, c.CogsDate)
+            assert isinstance(bread.size.height[1], c.CogsDecimal)
+            assert bread.size.height[1].lexical == "9876543210.123456789"
             assert burger.kitchen_profile.batch_identifier == 9_007_199_254_740_993
             assert burger.kitchen_profile.production_counter == 18_446_744_073_709_551_615
             assert cheese.cheese_bio == c.LangString("en", "Aged cave cheddar")

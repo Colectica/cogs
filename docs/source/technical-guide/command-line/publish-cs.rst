@@ -7,7 +7,9 @@ Generates C# classes for all `Item types <../../../modeler-guide/item-types/inde
 and `Composite types <../../../modeler-guide/composite-types/index.html>`_ in the model. 
 The generated classes can be serialized to JSON, populated from JSON, and serialized to XML.
 The generated JSON uses the current flat ``ItemContainer`` shape and ``$type``
-discriminators where polymorphic values are required.
+discriminators where polymorphic values are required. COGS 2 uses strict
+``System.Text.Json`` converters; the legacy Newtonsoft-based API is not
+generated.
 
 Requires that `dotnet <../../installation/dotnet/index.html>`_ is installed.
 
@@ -37,7 +39,8 @@ Optional inputs for the publish-cs command.
 
 * ``-n|--namespace``
 
-    Allows the user to specify the XMI of desired XML namespace used in XML creation from generated C# classes.
+    Overrides the namespace URI used by the generated C# XML APIs and RDF
+    graph terms.
 
 * ``--csproj``
 
@@ -66,8 +69,24 @@ Command Line Usage
         $ cogs publish-cs -o MyCogsModelDirectory MyOutputDirectory
         $ cogs publish-cs -n http://example.org/cogs --csproj --nullable -o MyCogsModelDirectory MyOutputDirectory
 
-Primitive Type Mappings to C#
--------------------------------
+COGS 2 primitive contract
+-------------------------
+
+Generated C# APIs must cover the full value spaces in
+:doc:`/specification/model-format`. In particular, arbitrary integer and
+decimal values cannot be narrowed to fixed .NET numeric types, and date, time,
+Gregorian, and full XSD duration lexemes cannot be narrowed to
+``DateTimeOffset``, ``DateOnly``, ``TimeOnly``, or ``TimeSpan`` when that would
+lose a permitted value. JSON/XML output remains identical to the Python and
+TypeScript wire contract.
+
+Legacy C# API reference
+-----------------------
+
+The table and helper notes below describe the pre-COGS 2 generated API and are
+retained for migration reference only. They are not the COGS 2 primitive
+contract; new code should use the generated COGS 2 declarations and the
+normative value-space table linked above.
 ===================     =====================
 Primitive Type           C# representation
 ===================     =====================

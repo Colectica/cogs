@@ -6,8 +6,16 @@ Introduction
 Generates documentation for the model including embedded graphs of each `Item type <../../../modeler-guide/item-types/index.html>`_ 
 and `Composite type <../../../modeler-guide/composite-types/index.html>`_ using the `publish-dot <../publish-dot/index.html>`_ command.
 
-Requires that `dotnet <../../installation/dotnet/index.html>`_, `Graphviz <../../installation/graphviz/index.html>`_ and
-`Sphinx <../../installation/sphinx/index.html>`_ are installed.
+Requires that `dotnet <../../installation/dotnet/index.html>`_ is installed.
+MyST is included in the generated Sphinx requirements so authored Markdown is
+parsed as Markdown. Graphviz is optional: when it cannot be found, COGS warns
+and omits all diagram markup. A configured or discovered Graphviz executable
+that runs and fails makes publication fail.
+
+Root and topic article TOCs must name normalized, exact-case, existing
+``.rst`` or ``.md`` files inside their own ``Articles`` directory. Duplicate
+documents, path traversal, links/reparse points, Sphinx directive syntax, and
+source/target overlap are errors detected before the target is changed.
 
 Command Line Arguments
 ----------------------
@@ -33,9 +41,11 @@ Optional inputs for the publish-sphinx command.
 
     If the ``[TargetLocation]`` is not empty, erase all files in the folder before generation.
 
-* ``-l|--location``
+* ``--dot PATH``
 
-    Directory where the dot.exe file is located--only needed if not running on Windows.
+    Path to the Graphviz ``dot`` executable. If omitted, discovery checks
+    ``COGS_DOT`` and then ``PATH``. If supplied, it must be valid and
+    executable.
 
 Command Line Usage
 -------------------
@@ -43,7 +53,7 @@ Command Line Usage
 
     .. code-block:: bash
 
-        $ publish-sphinx (-h) (-o) (-l [location]) [CogsLocation] [TargetLocation]
+        $ cogs publish-sphinx (-h) (-o) [--dot PATH] [CogsLocation] [TargetLocation]
 
 **Examples**
 
@@ -51,7 +61,7 @@ Command Line Usage
 
     .. code-block:: bash
 
-        $ publish-sphinx -h
-        $ publish-sphinx MyCogsModelDirectory MyOutputDirectory
-        $ publish-sphinx -o MyCogsModelDirectory MyOutputDirectory
-        $ publish-sphinx -o -l MyGraphvizDotDirectory MyCogsModelDirectory MyOutputDirectory
+        $ cogs publish-sphinx -h
+        $ cogs publish-sphinx MyCogsModelDirectory MyOutputDirectory
+        $ cogs publish-sphinx -o MyCogsModelDirectory MyOutputDirectory
+        $ cogs publish-sphinx -o --dot /opt/graphviz/bin/dot MyCogsModelDirectory MyOutputDirectory

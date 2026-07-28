@@ -1,7 +1,6 @@
 #nullable enable
 
 using CogsBurger.Model;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -30,7 +29,7 @@ public class TypeScriptIntegrationTests
         {
             ItemContainer jsonContainer = PythonIntegrationTests.CreateContainer(includeReusableSubtype: true);
             ItemContainer xmlContainer = PythonIntegrationTests.CreateContainer(includeReusableSubtype: false);
-            string inputJson = JsonConvert.SerializeObject(jsonContainer);
+            string inputJson = jsonContainer.ToJson();
             XDocument inputXml = xmlContainer.MakeXml();
             PythonIntegrationTests.AssertValidJson(inputJson);
             PythonIntegrationTests.AssertValidXml(inputXml, generatedRoot);
@@ -69,7 +68,7 @@ public class TypeScriptIntegrationTests
         }
     }
 
-    private static void RunNode(string workingDirectory, string scriptPath, params string[] arguments)
+    internal static void RunNode(string workingDirectory, string scriptPath, params string[] arguments)
     {
         string node = FindNode();
         var startInfo = new ProcessStartInfo(node)
@@ -199,10 +198,35 @@ public class TypeScriptIntegrationTests
         duplicateObject.items.push(duplicateObject.items[0]);
         assert.throws(() => c.ItemContainer.fromObject(duplicateObject), /Duplicate full item/);
         assert.throws(() => c.ItemContainer.fromXml('<wrong:ItemContainer xmlns:wrong="https://wrong.example"/>'), /namespace/);
-        assert.equal(new c.GYear(-1n).toXml(), "-0001");
-        assert.equal(new c.CogsDecimal(".5").value, "0.5");
-        assert.equal(c.CogsDuration.fromXml("PT1.234S").milliseconds.value, "1234.000");
+        assert.equal(new c.GYear(-1).toXml(), "-0001");
+        assert.deepEqual(new c.GYearMonth(-1, 2, "Z").toObject(), { Year: -1, Month: 2, Timezone: "Z" });
+        assert.equal(c.GYearMonth.fromObject({ Year: -1, Month: 2, Timezone: "Z" }).toXml(), "-0001-02Z");
+        assert.equal(c.GMonthDay.fromObject({ Month: 2, Day: 29 }).toXml(), "--02-29");
+        assert.equal(c.GMonth.fromObject({ Month: 2, Timezone: "Z" }).toXml(), "--02--Z");
+        assert.equal(c.GDay.fromObject({ Day: 29, Timezone: "-06:00" }).toXml(), "---29-06:00");
+        assert.throws(() => c.GYear.fromObject("2024"), /object/);
+        assert.throws(() => c.GYear.fromObject({}), /Missing field/);
+        assert.throws(() => c.GYear.fromObject({ Year: 2024, Unknown: true }), /Unknown fields/);
+        assert.throws(() => c.GYear.fromObject({ Year: 0 }), /year zero/);
+        assert.throws(() => c.GYear.fromObject({ Year: 2147483648 }), /range/);
+        assert.throws(() => c.GMonthDay.fromObject({ Month: 2, Day: 30 }), /invalid for the month/);
+        assert.throws(() => new c.CogsDateOnly("2147483648-01-01"), /signed 32-bit/);
+        assert.throws(() => new c.CogsDateTime("-2147483649-01-01T00:00:00"), /signed 32-bit/);
+        assert.equal(new c.CogsTime("24:00:00.000Z").value, "24:00:00.000Z");
+        assert.throws(() => new c.CogsTime("24:00:00.001Z"), /nonzero fractional/);
+        assert.equal(new c.CogsDateTime("2024-02-29T24:00:00.000Z").value, "2024-02-29T24:00:00.000Z");
+        assert.throws(() => new c.CogsDateTime("2024-02-29T24:00:00.001Z"), /nonzero fractional/);
+        assert.throws(() => new c.CogsDecimal(".5"), /decimal lexical/);
+        assert.equal(new c.CogsDecimal("0.500").value, "0.500");
+        assert.equal(c.CogsDuration.fromXml("P1Y2M3DT4H5M6.700S").value, "P1Y2M3DT4H5M6.700S");
         assert.equal(c.CogsDate.fromObject({ DateTime: "2024-02-29T12:34:56Z" }).kind, "DateTime");
+        assert.deepEqual(
+          c.CogsDate.fromObject({ GYearMonth: { Year: 2024, Month: 2, Timezone: "Z" } }).toObject(),
+          { GYearMonth: { Year: 2024, Month: 2, Timezone: "Z" } },
+        );
+        assert.throws(() => c.CogsDate.fromObject({ GYear: "2024" }), /object/);
+        const external = c.ItemContainer.fromJson('{"items":[],"topLevelReferences":[{"$type":"Hamburger","ID":"external"}]}');
+        assert.equal(external.topLevelReferences[0].isDefined, false);
 
         const validPair = "<cogsburger:ID>hamburger-1</cogsburger:ID><cogsburger:HamburgerName>Round Trip Burger</cogsburger:HamburgerName>";
         const malformedOrder = (await readFile(jsonXml, "utf8")).replace(

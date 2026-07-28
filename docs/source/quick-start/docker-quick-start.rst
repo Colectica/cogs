@@ -40,7 +40,7 @@ The output of the directory listing shows us what COGS created.
      08/09/2017  09:43 AM    <DIR>          ..
      08/09/2017  09:43 AM    <DIR>          CompositeTypes
      08/09/2017  09:43 AM    <DIR>          ItemTypes
-     08/09/2017  09:43 AM                17 readme.md
+     08/09/2017  09:43 AM                17 readme.markdown
      08/09/2017  10:18 AM    <DIR>          Settings
      08/09/2017  09:55 AM    <DIR>          Topics
 

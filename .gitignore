@@ -36,4 +36,5 @@ Cogs.Console/Properties/launchSettings.json
 /docs/build
 /docs/source/_build/html
 /docs/.vscode
+/conformance/java/target/
 /out

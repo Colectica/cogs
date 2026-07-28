@@ -3,11 +3,18 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using CsvHelper.Configuration.Attributes;
 
 namespace Cogs.Dto
 {
     public class Property
     {
+        [Ignore]
+        public string SourcePath { get; set; } = "";
+
+        [Ignore]
+        public int? SourceLine { get; set; }
+
         public string Name { get; set; } = "";
 
         public string DataType { get; set; } = "";
@@ -26,10 +33,10 @@ namespace Cogs.Dto
         public string Enumeration { get; set; } = "";
         public string Pattern { get; set; } = "";
         // numeric restrictions
-        public int? MinInclusive { get; set; }
-        public int? MinExclusive { get; set; }
-        public int? MaxInclusive { get; set; }
-        public int? MaxExclusive { get; set; }
+        public string MinInclusive { get; set; } = "";
+        public string MinExclusive { get; set; } = "";
+        public string MaxInclusive { get; set; } = "";
+        public string MaxExclusive { get; set; } = "";
 
         public string DeprecatedNamespace { get; set; } = "";
         public string DeprecatedElementOrAttribute { get; set; } = "";

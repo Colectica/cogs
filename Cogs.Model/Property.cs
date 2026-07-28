@@ -1,53 +1,165 @@
-﻿// Copyright (c) 2017 Colectica. All rights reserved
+// Copyright (c) 2017 Colectica. All rights reserved
 // See the LICENSE file in the project root for more information.
-using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace Cogs.Model
 {
-    public class Property
+    public class Property : CogsModelNode
     {
-        public string Name { get; set; }
+        private string name;
+        private string dataTypeName;
+        private DataType dataType;
+        private string minCardinality;
+        private string maxCardinality;
+        private string description;
+        private string deprecatedNamespace;
+        private string deprecatedElementOrAttribute;
+        private string deprecatedChoiceGroup;
+        private bool ordered;
+        private bool allowSubtypes;
+        private int? minLength;
+        private int? maxLength;
+        private IList<string> enumeration = new List<string>();
+        private string pattern;
+        private string minInclusive;
+        private string minExclusive;
+        private string maxInclusive;
+        private string maxExclusive;
+        private bool fromMixin;
 
-        public string DataTypeName { get; set; }
-        public DataType DataType { get; set; }
-
-        public string MinCardinality { get; set; }
-        public string MaxCardinality { get; set; }
-
-        public string Description { get; set; }
-
-        public string DeprecatedNamespace { get; set; }
-        public string DeprecatedElementOrAttribute { get; set; }
-        public string DeprecatedChoiceGroup { get; set; }
-        public bool IsPrimitive
+        public string Name
         {
-            get
+            get => name;
+            set => SetValue(ref name, value);
+        }
+
+        public string DataTypeName
+        {
+            get => dataTypeName;
+            set => SetValue(ref dataTypeName, value);
+        }
+
+        public DataType DataType
+        {
+            get => dataType;
+            set => SetValue(ref dataType, value);
+        }
+
+        public string MinCardinality
+        {
+            get => minCardinality;
+            set => SetValue(ref minCardinality, value);
+        }
+
+        public string MaxCardinality
+        {
+            get => maxCardinality;
+            set => SetValue(ref maxCardinality, value);
+        }
+
+        public string Description
+        {
+            get => description;
+            set => SetValue(ref description, value);
+        }
+
+        public string DeprecatedNamespace
+        {
+            get => deprecatedNamespace;
+            set => SetValue(ref deprecatedNamespace, value);
+        }
+
+        public string DeprecatedElementOrAttribute
+        {
+            get => deprecatedElementOrAttribute;
+            set => SetValue(ref deprecatedElementOrAttribute, value);
+        }
+
+        public string DeprecatedChoiceGroup
+        {
+            get => deprecatedChoiceGroup;
+            set => SetValue(ref deprecatedChoiceGroup, value);
+        }
+
+        public bool IsPrimitive => DataType == null || DataType.IsPrimitive;
+
+        public bool Ordered
+        {
+            get => ordered;
+            set => SetValue(ref ordered, value);
+        }
+
+        public bool AllowSubtypes
+        {
+            get => allowSubtypes;
+            set => SetValue(ref allowSubtypes, value);
+        }
+
+        public int? MinLength
+        {
+            get => minLength;
+            set => SetValue(ref minLength, value);
+        }
+
+        public int? MaxLength
+        {
+            get => maxLength;
+            set => SetValue(ref maxLength, value);
+        }
+
+        public IList<string> Enumeration
+        {
+            get => enumeration;
+            set
             {
-                if(DataType == null) { return true; }
-                return DataType.IsPrimitive;
+                ThrowIfReadOnly(nameof(Enumeration));
+                enumeration = value ?? new List<string>();
             }
         }
-        
-        public bool Ordered { get; set; }
-        public bool AllowSubtypes { get; set; }
 
-        // simple string restrictions
-        public int? MinLength { get; set; }
-        public int? MaxLength { get; set; }
-        public List<string> Enumeration { get; set; } = new List<string>();
-        public string Pattern { get; set; }
-        // numeric restrictions
-        public int? MinInclusive { get; set; }
-        public int? MinExclusive { get; set; }
-        public int? MaxInclusive { get; set; }
-        public int? MaxExclusive { get; set; }
-        
-        public bool FromMixin { get; set; } 
-        public override string ToString()
+        public string Pattern
         {
-            return $"{Name} - {DataType} - {MinCardinality}..{MaxCardinality}";
+            get => pattern;
+            set => SetValue(ref pattern, value);
         }
+
+        public string MinInclusive
+        {
+            get => minInclusive;
+            set => SetValue(ref minInclusive, value);
+        }
+
+        public string MinExclusive
+        {
+            get => minExclusive;
+            set => SetValue(ref minExclusive, value);
+        }
+
+        public string MaxInclusive
+        {
+            get => maxInclusive;
+            set => SetValue(ref maxInclusive, value);
+        }
+
+        public string MaxExclusive
+        {
+            get => maxExclusive;
+            set => SetValue(ref maxExclusive, value);
+        }
+
+        public bool FromMixin
+        {
+            get => fromMixin;
+            set => SetValue(ref fromMixin, value);
+        }
+
+        protected sealed override void MakeReadOnlyCore()
+        {
+            dataType?.MakeReadOnly();
+            enumeration = ReadOnlyCopy(enumeration);
+        }
+
+        public override string ToString() =>
+            $"{Name} - {DataType} - {MinCardinality}..{MaxCardinality}";
     }
 }

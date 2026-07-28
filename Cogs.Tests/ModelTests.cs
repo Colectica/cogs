@@ -73,7 +73,9 @@ namespace Cogs.Tests
 
             var errors = DtoValidation.CheckReusedPropertyNamesShouldHaveSameDatatype(dto);
 
-            Assert.NotEmpty(errors);
+            Cogs.Common.CogsError error = Assert.Single(errors);
+            Assert.Equal("COGS-VAL-PROP-007", error.Code);
+            Assert.DoesNotContain(errors, candidate => candidate.Code == "COGS-LEGACY-PROP-001");
         }
 
 

@@ -8,10 +8,16 @@ Settings are set in a CSV file located at
 :file:`{baseDirectory}/Settings/Settings.csv`.
 This file has two columns: ``Key`` and ``Value``.
 
-Well-known Settings
-~~~~~~~~~~~~~~~~~~~
+Required settings
+~~~~~~~~~~~~~~~~~
 
-The following settings should always be included.
+Keys are case-sensitive and may appear only once. The following keys are
+required for COGS 2. ``Description``, ``Author``, and ``Copyright`` may have an
+empty value; every other required value must be nonempty.
+
+CogsVersion
+    The model-format version. For this specification the value is exactly
+    ``2.0``. This is separate from the model's own ``Version``.
 
 Title
     The title of your model. This is included in the generated Sphinx documentation and 
@@ -19,28 +25,35 @@ Title
 ShortTitle
     A shorter title or abbreviation for your model. This is used in the Sphinx documentation.
 Slug
-    A short name for your model, without spaces or hyphens. This is used as the namespace for
-    C# code.
+    A stable name matching ``[a-z][a-z0-9_]*``. Package publishers derive
+    target-specific names from it and reject ambiguous normalizations.
 Description
-    A short description of your model. This is not currently used, but may be inserted into the
-    Sphinx documentation in the future.
+    A short description of your model. The value may be empty.
 Version
-    The version of your model. This is used in the Sphinx documentation.
+    The canonical Semantic Versioning 2.0 release of your model, including
+    major, minor, and patch. This is not the COGS format version.
 Author
-    The person, organization, or group responsible for creating the model. This is used in the Sphinx documentation.
+    The person, organization, or group responsible for creating the model. The
+    value may be empty.
 Copyright
-    A copyright statement for the model. This is used in the Sphinx documentation.
+    A copyright statement for the model. The value may be empty.
 NamespaceUrl
-    The namespace of the model. This is used by the XML Schema and OWL 2 publishers.
+    The absolute namespace URI of the model. It is authoritative for XML; some
+    projection publishers also use it.
 NamespacePrefix
-    The namespace prefix to use for the model. This is used by the XML Schema and OWL 2 publishers.
+    A nonempty XML NCName other than the reserved names ``xml`` and ``xmlns``.
 
 Additional Settings
 ~~~~~~~~~~~~~~~~~~~
 
-You can add additional settings to the :file:`Settings.csv` file by creating
-additional rows. These settings may not be used by the built-in publishers,
-but it can be a useful way to track information about your model.
+You can add unique extension settings to :file:`Settings.csv`. A built-in
+publisher uses one only when its documentation says so. Duplicate keys are an
+error; a reader never chooses a first or last value silently.
+
+``CSharpNamespace`` is an optional known setting. When present it overrides the
+namespace of generated C# classes and must be a valid C# namespace. Compile the
+generated project as the final target check. Other unique keys are preserved as
+extension metadata.
 
 Identification Settings
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -54,4 +67,7 @@ Header Text
 ~~~~~~~~~~~
 
 You can specify header text to be included in outputs creating a file named :file:`{baseDirectory}/Settings/HeaderInclude.txt`.
-Content from this file will be included as a comment on top of all output files that support comments.
+Content from this file will be included as a comment on top of output files
+that support comments.
+
+See :doc:`/specification/model-format` for the normative setting table.

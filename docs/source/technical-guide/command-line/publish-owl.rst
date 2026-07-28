@@ -3,9 +3,18 @@ publish-owl
 
 Introduction
 ----------------------
-Generate a schema in owl/rdf format where all `Item types <../../../modeler-guide/item-types/index.html>`_ and 
-`Composite types <../../../modeler-guide/composite-types/index.html>`_ are defined 
-as classes and their properties as object properties or datatype properties.
+Generate the authoritative COGS ontology and class-semantics output as W3C
+Turtle (media type ``text/turtle``). The publisher writes exactly one UTF-8
+file named ``<Settings.Slug>.ttl``. Item and composite types become classes,
+with exact PascalCase class terms and shared word-aware camelCase object or
+datatype property terms. ``OWL2002`` and ``OWL2003`` identify the two explicit
+authority exceptions caused by OWL's open-world class semantics. See the
+:doc:`/technical-guide/generation/owl` guide for complete naming rules,
+explanations, and DDI Lifecycle examples.
+
+OWL/RDF is not a JSON/XML serialization or instance-validation schema.
+Collection ordering and unsupported lexical facets remain authoritative in the
+generated JSON Schema and XSD.
 
 Requires that `dotnet <../../installation/dotnet/index.html>`_ is installed.
 
@@ -33,6 +42,10 @@ Optional inputs for the publish-owl command.
 
     If the ``[TargetLocation]`` is not empty, erase all files in the folder before generation.
 
+* ``-n|--namespace``
+
+    Overrides the target OWL namespace URI.
+
 *  ``-p|--namespacePrefix``
 
     Specifies a namespace prefix to use for the target Owl namespace.
@@ -47,7 +60,7 @@ Command Line Usage
 
     .. code-block:: bash
 
-        $ publish-owl (-h) (-o) (-p [namespacePrefix]) [CogsLocation] [TargetLocation]
+        $ cogs publish-owl (-h) (-o) (-n [namespace]) (-p [namespacePrefix]) (-v [version]) [CogsLocation] [TargetLocation]
 
 **Examples**
 
@@ -55,7 +68,7 @@ Command Line Usage
 
     .. code-block:: bash
 
-        $ publish-owl -h
-        $ publish-owl MyCogsModelDirectory MyOutputDirectory
-        $ publish-owl -o MyCogsModelDirectory MyOutputDirectory
-        $ publish-owl -p cogs -o MyCogsModelDirectory MyOutputDirectory
+        $ cogs publish-owl -h
+        $ cogs publish-owl MyCogsModelDirectory MyOutputDirectory
+        $ cogs publish-owl -o MyCogsModelDirectory MyOutputDirectory
+        $ cogs publish-owl -n https://example.org/model -p cogs -o MyCogsModelDirectory MyOutputDirectory

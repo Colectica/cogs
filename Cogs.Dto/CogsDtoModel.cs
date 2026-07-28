@@ -11,6 +11,7 @@ namespace Cogs.Dto
 {
     public class CogsDtoModel
     {
+        public string SourceDirectory { get; set; }
         public List<ItemType> ItemTypes { get; } = new List<ItemType>();
         public List<DataType> ReusableDataTypes { get; } = new List<DataType>();
         public List<TopicIndex> TopicIndices { get; } = new List<TopicIndex>();
@@ -22,5 +23,6 @@ namespace Cogs.Dto
 
         public string ArticlesPath { get; set; }
         public List<string> ArticleTocEntries { get; } = new List<string>();
+        public List<SourceTextEntry> ArticleTocEntrySources { get; } = new List<SourceTextEntry>();
     }
 }

@@ -7,6 +7,7 @@ namespace Cogs.Dto
 {
     public class DataType
     {
+        public string SourcePath { get; set; } = "";
 
         public string Name { get; set; } = "";
         public string Description { get; set; } = "";

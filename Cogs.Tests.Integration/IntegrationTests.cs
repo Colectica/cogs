@@ -1,5 +1,4 @@
 using CogsBurger.Model;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,11 +14,52 @@ using System.Reflection;
 using Json.Schema;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using VDS.RDF;
 
 namespace Cogs.Tests.Integration
 {
     public class IntegrationTests
     {
+        [Fact]
+        public void CsharpRdfUsesPascalCaseClassesAndCamelCaseFullPredicateIris()
+        {
+            Roll enclosure = new Roll
+            {
+                ID = "roll-rdf",
+                Name = "RDF roll",
+            };
+            Hamburger hamburger = new Hamburger
+            {
+                ID = "hamburger-rdf",
+                HamburgerName = "RDF burger",
+                Enclosure = enclosure,
+            };
+            ItemContainer container = new ItemContainer();
+            container.Items.Add(hamburger);
+            container.Items.Add(enclosure);
+
+            IGraph graph = container.MakeRdfGraph();
+            const string termBase = "http://example.org/cogsburger#";
+
+            string[] predicates = graph.Triples
+                .Select(triple => Assert.IsAssignableFrom<IUriNode>(triple.Predicate).Uri.AbsoluteUri)
+                .ToArray();
+            Assert.Contains(termBase + "id", predicates);
+            Assert.Contains(termBase + "hamburgerName", predicates);
+            Assert.Contains(termBase + "enclosure", predicates);
+            Assert.Contains(termBase + "name", predicates);
+            Assert.DoesNotContain(termBase + "ID", predicates);
+            Assert.DoesNotContain(termBase + "HamburgerName", predicates);
+
+            string rdfType = NamespaceMapper.RDF + "type";
+            string[] types = graph.Triples
+                .Where(triple => triple.Predicate is IUriNode predicate && predicate.Uri.AbsoluteUri == rdfType)
+                .Select(triple => Assert.IsAssignableFrom<IUriNode>(triple.Object).Uri.AbsoluteUri)
+                .ToArray();
+            Assert.Contains(termBase + "Hamburger", types);
+            Assert.Contains(termBase + "Roll", types);
+        }
+
         [Fact]
         public async Task CsharpWritesValidJson()
         {
@@ -58,7 +98,7 @@ namespace Cogs.Tests.Integration
                 GMonthDay = mDay
             };
 
-            List<decimal> heights = new List<decimal> { 5, 5 };
+            List<CogsDecimal> heights = new List<CogsDecimal> { new(5m), new(5m) };
             GYearMonth GYM = new GYearMonth(2017, 06, "Z");
 
             Bread bread = new Bread
@@ -177,7 +217,7 @@ namespace Cogs.Tests.Integration
             for (int i = 0; i < 4; i++)
             {
                 // test serializing
-                string json = JsonConvert.SerializeObject(containers[i]);
+                string json = containers[i].ToJson();
 
                 var errors = schema.Validate(json);
 
@@ -218,8 +258,8 @@ namespace Cogs.Tests.Integration
                 }
 
                 // test parsing
-                ItemContainer newContainer = JsonConvert.DeserializeObject<ItemContainer>(json);
-                var newJson = JsonConvert.SerializeObject(newContainer);
+                ItemContainer newContainer = ItemContainer.FromJson(json);
+                var newJson = newContainer.ToJson();
 
                 errors = schema.Validate(newJson);
                 Assert.Empty(errors);
@@ -298,12 +338,12 @@ namespace Cogs.Tests.Integration
             container.TopLevelReferences.Add(hamburger);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
             Assert.NotEmpty(container2.Items);
             Assert.NotEmpty(container2.TopLevelReferences);
@@ -326,17 +366,17 @@ namespace Cogs.Tests.Integration
             Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
-                Gyearmonth = new GYearMonth(9, 24, "-06:00")
+                Gyearmonth = new GYearMonth(2009, 12, "-06:00")
             };
             container.Items.Add(bread);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
             Assert.NotEmpty(container2.Items);
             Assert.IsType<Bread>(container2.Items.First());
@@ -353,17 +393,17 @@ namespace Cogs.Tests.Integration
             Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
-                Gyearmonth = new GYearMonth(9, 24, null)
+                Gyearmonth = new GYearMonth(2009, 12, null)
             };
             container.Items.Add(bread);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
             Assert.NotEmpty(container2.Items);
             Assert.IsType<Bread>(container2.Items.First());
@@ -382,19 +422,19 @@ namespace Cogs.Tests.Integration
                 ID = Guid.NewGuid().ToString(),
                 GYearMonthList = new List<GYearMonth>()
                 {
-                    new GYearMonth(9, 24, null),
-                    new GYearMonth(12, 93, "+09:00")
+                    new GYearMonth(2009, 12, null),
+                    new GYearMonth(2012, 9, "+09:00")
                 }
             };
             container.Items.Add(bread);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
             Assert.NotEmpty(container2.Items);
             Assert.IsType<Bread>(container2.Items.First());
@@ -419,12 +459,12 @@ namespace Cogs.Tests.Integration
 
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
             Assert.NotEmpty(container2.Items);
             Assert.IsType<Roll>(container2.Items.First());
@@ -445,12 +485,12 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
             Assert.IsType<Animal>(container2.Items.First());
 
@@ -465,21 +505,21 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                Durations = new List<TimeSpan>()
+                Durations = new List<CogsDuration>()
                 {
-                    new TimeSpan(10000000),
-                    new TimeSpan(0)
+                    new CogsDuration(new TimeSpan(10000000)),
+                    new CogsDuration(new TimeSpan(0))
                 }
             };
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
             Assert.IsType<Animal>(container2.Items.First());
 
@@ -501,12 +541,12 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -523,9 +563,9 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                Dates = new List<DateOnly>()
+                Dates = new List<CogsDateOnly>()
                 {
-                    new DateOnly(2017, 9, 2),
+                    new CogsDateOnly(new DateOnly(2017, 9, 2)),
                     //new DateTime(1,1,1),
                     //new DateTime(1562, 8, 23, 5, 12, 46)
                     new DateOnly(1562, 8, 23)
@@ -534,12 +574,12 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -565,12 +605,12 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -587,21 +627,21 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                DateTimes = new List<DateTimeOffset>()
+                DateTimes = new List<CogsDateTime>()
                 {
-                    new DateTimeOffset(new DateTime(2017, 9, 2, 13, 23, 32), new TimeSpan(+1, 0, 0)),
-                    new DateTimeOffset(1,1,1,0,0,0, new TimeSpan())
+                    new CogsDateTime(new DateTimeOffset(new DateTime(2017, 9, 2, 13, 23, 32), new TimeSpan(+1, 0, 0))),
+                    new CogsDateTime(new DateTimeOffset(1,1,1,0,0,0, new TimeSpan()))
                 }
             };
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -625,19 +665,19 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
             Assert.IsType<Animal>(container2.Items.First());
 
             Animal animal2 = container2.Items.First() as Animal;
-            Assert.Equal(animal.Time.Value, animal2.Time.Value);
+            Assert.Equal(animal.Time, animal2.Time);
         }
 
         [Fact]
@@ -647,21 +687,21 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                Times = new List<TimeOnly>
+                Times = new List<CogsTime>
                 {
-                    new TimeOnly(2, 32, 32),
-                    new TimeOnly( 4, 32, 3)
+                    new CogsTime(new TimeOnly(2, 32, 32)),
+                    new CogsTime(new TimeOnly( 4, 32, 3))
                 }
             };
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -687,12 +727,12 @@ namespace Cogs.Tests.Integration
             container.Items.Add(patty);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -714,12 +754,12 @@ namespace Cogs.Tests.Integration
             container.Items.Add(patty);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -745,12 +785,12 @@ namespace Cogs.Tests.Integration
             container.Items.Add(cheese);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -777,12 +817,12 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -804,12 +844,12 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -829,19 +869,19 @@ namespace Cogs.Tests.Integration
                 GMonthDays = new List<GMonthDay>()
                 {
                     new GMonthDay(9, 3, null),
-                    new GMonthDay(0, 0, "-09:00")
+                    new GMonthDay(12, 31, "-09:00")
                 }
                 
             };
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -866,12 +906,12 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -894,12 +934,12 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -919,7 +959,7 @@ namespace Cogs.Tests.Integration
                 GDays = new List<GDay>()
                 {
                     new GDay(15, null),
-                    new GDay(0, "Z")
+                    new GDay(31, "Z")
                 }
                 
 
@@ -927,12 +967,12 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -956,12 +996,12 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -983,12 +1023,12 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -1014,12 +1054,12 @@ namespace Cogs.Tests.Integration
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -1043,12 +1083,12 @@ namespace Cogs.Tests.Integration
             container.Items.Add(condiment);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -1067,11 +1107,11 @@ namespace Cogs.Tests.Integration
             DateTimeOffset offset1 = new DateTimeOffset(2017, 12, 12, 5, 33, 45, 899, new TimeSpan(-4, -30, 0));
 
             string offsetFormat1 = offset1.ToString(format);
-            string json1 = JsonConvert.SerializeObject(offset1);
+            string json1 = JsonSerializer.Serialize(offset1);
 
             Assert.Equal("\"" + offsetFormat1 + "\"", json1);
 
-            DateTimeOffset offset2 = JsonConvert.DeserializeObject<DateTimeOffset>(json1);
+            DateTimeOffset offset2 = JsonSerializer.Deserialize<DateTimeOffset>(json1);
 
             Assert.Equal(offset1, offset2);
         }
@@ -1089,12 +1129,12 @@ namespace Cogs.Tests.Integration
             container.Items.Add(condiment);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
 
             Assert.NotEmpty(container2.Items);
             Assert.IsType<Condiment>(container2.Items.First());
@@ -1119,12 +1159,12 @@ namespace Cogs.Tests.Integration
             container.Items.Add(condiment);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -1148,12 +1188,12 @@ namespace Cogs.Tests.Integration
             container.Items.Add(cheese);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -1180,7 +1220,7 @@ namespace Cogs.Tests.Integration
             container.Items.Add(cheese);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             Assert.Contains("\"@language\"", json);
             Assert.Contains("\"@value\"", json);
             Assert.DoesNotContain("\"LanguageTag\"", json);
@@ -1188,8 +1228,8 @@ namespace Cogs.Tests.Integration
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -1221,7 +1261,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             container.Items.Add(cheese);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             Assert.Contains("\"@language\"", json);
             Assert.Contains("\"@value\"", json);
             Assert.DoesNotContain("\"LanguageTag\"", json);
@@ -1229,8 +1269,8 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -1254,12 +1294,12 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -1281,12 +1321,12 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -1308,12 +1348,12 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -1335,12 +1375,12 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -1362,12 +1402,12 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -1389,12 +1429,12 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -1416,12 +1456,12 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -1454,12 +1494,12 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             container.Items.Add(condiment);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -1493,12 +1533,12 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             container.Items.Add(bread);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -1523,12 +1563,12 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             container.Items.Add(bread);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -1554,12 +1594,12 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             container.Items.Add(bread);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -1593,7 +1633,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             animal.MeatPieces.Add(Tenderloin);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
@@ -1609,8 +1649,8 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             Assert.Equal(nameof(Part), serializedMeatPieces![0]?["$type"]?.GetValue<string>());
             Assert.Equal(nameof(SubPart), serializedMeatPieces[1]?["$type"]?.GetValue<string>());
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -1653,12 +1693,12 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             animal.MeatPieces.Add(sirloin);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -1708,12 +1748,12 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             animal.MeatPieces.Add(sirloin);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -1764,12 +1804,12 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             container.Items.Add(animal);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
 
             Assert.NotEmpty(container2.Items);
@@ -1798,12 +1838,12 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             container.Items.Add(bread);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
             Assert.NotEmpty(container2.Items);
             Assert.IsType<Bread>(container2.Items.First());
@@ -1821,7 +1861,7 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             ItemContainer container = new ItemContainer();
             GMonth month1 = new GMonth(6, "Z");
             GMonth month2 = new GMonth(9, "+09:00");
-            GMonth month3 = new GMonth(17, "+01:00");
+            GMonth month3 = new GMonth(12, "+01:00");
             Bread bread = new Bread
             {
                 ID = Guid.NewGuid().ToString(),
@@ -1830,12 +1870,12 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             container.Items.Add(bread);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
             Assert.NotEmpty(container2.Items);
             Assert.IsType<Bread>(container2.Items.First());
@@ -1862,12 +1902,12 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             container.Items.Add(bread);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
             Assert.NotEmpty(container2.Items);
             Assert.IsType<Bread>(container2.Items.First());
@@ -1894,12 +1934,12 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             container.Items.Add(bread);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
             Assert.NotEmpty(container2.Items);
             Assert.IsType<Bread>(container2.Items.First());
@@ -1926,12 +1966,12 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
             container.Items.Add(roll);
 
             JsonSchema schema = await GetJsonSchema();
-            string json = JsonConvert.SerializeObject(container);
+            string json = container.ToJson();
             var errors = schema.Validate(json);
             Assert.Empty(errors);
 
-            ItemContainer container2 = JsonConvert.DeserializeObject<ItemContainer>(json);
-            string json2 = JsonConvert.SerializeObject(container2);
+            ItemContainer container2 = ItemContainer.FromJson(json);
+            string json2 = container2.ToJson();
             Assert.Equal(json, json2);
             Assert.NotEmpty(container2.Items);
             Assert.IsType<Roll>(container2.Items.First());
@@ -1945,11 +1985,6 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
         internal static readonly JsonSchema Schema = JsonSchema.FromFile(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "generated", "json", "jsonSchema.json"));
         private async Task<JsonSchema> GetJsonSchema()
         {
-            JsonConvert.DefaultSettings = () => new JsonSerializerSettings
-            {
-                MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
-                DateParseHandling = DateParseHandling.None
-            };
             return await Task.FromResult(Schema);
             //string schemaPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..");
             //string jsonSchemaFileName = Path.Combine(schemaPath, "generated", "json", "jsonSchema.json");

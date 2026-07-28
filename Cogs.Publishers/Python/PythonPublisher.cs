@@ -27,14 +27,18 @@ public sealed class PythonPublisher
 
     private static readonly HashSet<string> RuntimeTypeNames = new(StringComparer.Ordinal)
     {
-        "CogsDate", "CogsItem", "CogsValue", "GDay", "GMonth", "GMonthDay", "GYear",
-        "GYearMonth", "ItemContainer", "LangString",
+        "Any", "ClassVar", "CogsDate", "CogsDateOnly", "CogsDateTime", "CogsDecimal",
+        "CogsDuration", "CogsItem", "CogsTime", "CogsValue", "Decimal", "ET", "GDay",
+        "GMonth", "GMonthDay", "GYear", "GYearMonth", "IDENTIFICATION_FIELDS", "IO",
+        "ITEM_TYPE_REGISTRY", "IdentityKey", "InvalidOperation", "ItemContainer", "LangString",
+        "Mapping", "NAMESPACE_PREFIX", "Path", "TARGET_NAMESPACE", "TYPE_REGISTRY",
+        "XML_NAMESPACE", "XSI_NAMESPACE", "XSI_PREFIX",
     };
 
     private static readonly HashSet<string> RuntimeAttributeNames = new(StringComparer.Ordinal)
     {
         "from_dict", "from_element", "from_json", "from_xml", "to_dict", "to_element",
-        "to_json", "to_reference_dict", "to_xml", "_cogs_type", "_emit_type_field",
+        "to_json", "to_reference_dict", "to_xml", "_cogs_type",
         "_is_abstract", "_is_item",
     };
 
@@ -49,15 +53,20 @@ public sealed class PythonPublisher
         "unsignedLong", "positiveInteger",
     };
 
-    private static readonly Regex Pep440Pattern = new(
-        @"^([1-9]\d*!)?(0|[1-9]\d*)(\.(0|[1-9]\d*))*(a|b|rc)?(0|[1-9]\d*)?(\.post(0|[1-9]\d*))?(\.dev(0|[1-9]\d*))?(\+[a-z0-9]+([._-][a-z0-9]+)*)?$",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    private static readonly Regex CanonicalSemVerPattern = new(
+        @"^(?<core>(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))(?:-(?<prerelease>[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+(?<build>[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$",
+        RegexOptions.CultureInvariant);
+
+    private static readonly Regex DirectPep440PrereleasePattern = new(
+        @"^(?<label>alpha|beta|rc)(?:\.(?<number>0|[1-9][0-9]*))?$",
+        RegexOptions.CultureInvariant);
 
     private readonly CogsModel model;
 
     public string TargetDirectory { get; }
     public string? TargetNamespace { get; set; }
     public bool Overwrite { get; set; }
+    public PublicationResult? LastResult { get; private set; }
 
     public PythonPublisher(CogsModel model, string targetDirectory)
     {
@@ -67,31 +76,46 @@ public sealed class PythonPublisher
 
     public void Publish()
     {
-        if (string.IsNullOrWhiteSpace(TargetDirectory))
+        PublicationResult result = PublishResult();
+        if (!result.Success)
         {
-            throw new InvalidOperationException("Target directory must be specified.");
+            CogsError error = result.Diagnostics.First(diagnostic => diagnostic.Level >= ErrorLevel.Error);
+            throw new CogsPublicationException(error.Message, error.Exception ?? new InvalidOperationException(error.Message));
         }
+    }
+
+    public PublicationResult PublishResult()
+    {
+        var diagnostics = new List<CogsError>();
+        try
+        {
+            PythonPackageVersion version = TranslatePackageVersion(model.Settings.Version);
+            if (version.Warning is not null)
+            {
+                diagnostics.Add(new CogsError(ErrorLevel.Warning, "PUB3101", version.Warning,
+                    model.SourceDirectory, modelPath: "Settings.Version"));
+            }
+        }
+        catch (InvalidOperationException)
+        {
+            // The transactional writer reports the invalid version as PUB1001.
+        }
+
+        PublicationResult transaction = DirectoryPublication.PublishResult(
+            TargetDirectory, Overwrite, PublishToDirectory, model.SourceDirectory);
+        LastResult = new PublicationResult(transaction.Artifacts, transaction.Diagnostics.Concat(diagnostics));
+        return LastResult;
+    }
+
+    private void PublishToDirectory(string targetDirectory)
+    {
 
         ValidateModelNames();
         string moduleName = NormalizeModuleName(model.Settings.Slug);
         string distributionName = NormalizeDistributionName(model.Settings.Slug);
-        string version = model.Settings.Version;
-        if (string.IsNullOrWhiteSpace(version) || !Pep440Pattern.IsMatch(version))
-        {
-            throw new InvalidOperationException($"Model version '{version}' is not a canonical PEP 440 version.");
-        }
+        PythonPackageVersion version = TranslatePackageVersion(model.Settings.Version);
 
-        if (Directory.Exists(TargetDirectory))
-        {
-            if (!Overwrite)
-            {
-                throw new InvalidOperationException("Target directory already exists.");
-            }
-            Directory.Delete(TargetDirectory, true);
-        }
-
-        Directory.CreateDirectory(TargetDirectory);
-        string packageDirectory = Path.Combine(TargetDirectory, moduleName);
+        string packageDirectory = Path.Combine(targetDirectory, moduleName);
         Directory.CreateDirectory(packageDirectory);
 
         string targetNamespace = TargetNamespace ?? model.Settings.NamespaceUrl;
@@ -114,14 +138,13 @@ public sealed class PythonPublisher
             throw new InvalidOperationException($"XML namespace prefix '{namespacePrefix}' is invalid.", exception);
         }
         if (namespacePrefix.Equals("xml", StringComparison.OrdinalIgnoreCase)
-            || namespacePrefix.Equals("xmlns", StringComparison.OrdinalIgnoreCase)
-            || namespacePrefix.Equals("xsi", StringComparison.OrdinalIgnoreCase))
+            || namespacePrefix.Equals("xmlns", StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException($"XML namespace prefix '{namespacePrefix}' is reserved.");
         }
 
         File.WriteAllText(
-            Path.Combine(TargetDirectory, "pyproject.toml"),
+            Path.Combine(targetDirectory, "pyproject.toml"),
             GeneratePyProject(moduleName, distributionName, version),
             new UTF8Encoding(false));
         File.WriteAllText(
@@ -135,19 +158,22 @@ public sealed class PythonPublisher
         File.WriteAllText(Path.Combine(packageDirectory, "py.typed"), string.Empty, new UTF8Encoding(false));
     }
 
-    private string GeneratePyProject(string moduleName, string distributionName, string version)
+    private string GeneratePyProject(
+        string moduleName,
+        string distributionName,
+        PythonPackageVersion version)
     {
         string description = string.IsNullOrWhiteSpace(model.Settings.Description)
             ? model.Settings.ShortTitle
             : model.Settings.Description;
-        return $$"""
+        var builder = new StringBuilder($$"""
             [build-system]
             requires = ["setuptools>=61"]
             build-backend = "setuptools.build_meta"
 
             [project]
             name = {{Quote(distributionName)}}
-            version = {{Quote(version)}}
+            version = {{Quote(version.Pep440)}}
             description = {{Quote(description)}}
             requires-python = ">=3.11"
 
@@ -156,7 +182,18 @@ public sealed class PythonPublisher
 
             [tool.setuptools.package-data]
             {{moduleName}} = ["py.typed"]
-            """;
+            """);
+        builder.AppendLine();
+        builder.AppendLine("[tool.cogs]");
+        builder.AppendLine("cogs-version = \"2.0\"");
+        builder.Append("model-version = ").AppendLine(Quote(version.SemVer));
+        builder.Append("package-version-mapping = ")
+            .AppendLine(Quote(version.IsApproximation ? "approximation" : "direct"));
+        if (version.Warning is not null)
+        {
+            builder.Append("version-warning = ").AppendLine(Quote(version.Warning));
+        }
+        return builder.ToString();
     }
 
     private string GenerateInit()
@@ -206,8 +243,9 @@ public sealed class PythonPublisher
         builder.AppendLine("__all__ = [");
         foreach (string name in new[]
         {
-            "CogsDate", "CogsItem", "CogsValue", "GDay", "GMonth", "GMonthDay", "GYear",
-            "GYearMonth", "ItemContainer", "LangString",
+            "CogsDate", "CogsDateOnly", "CogsDateTime", "CogsDecimal", "CogsDuration",
+            "CogsItem", "CogsTime", "CogsValue", "GDay", "GMonth", "GMonthDay",
+            "GYear", "GYearMonth", "ItemContainer", "LangString",
         }.Concat(GetOrderedTypes().Select(x => x.Name)).Distinct().OrderBy(x => x, StringComparer.Ordinal))
         {
             builder.AppendLine($"    {Quote(name)},");
@@ -227,10 +265,6 @@ public sealed class PythonPublisher
         builder.AppendLine($"    {Quote(dataType.Description ?? string.Empty)}");
         builder.AppendLine($"    _cogs_type: ClassVar[str] = {Quote(dataType.Name)}");
         builder.AppendLine($"    _is_abstract: ClassVar[bool] = {PythonBool(dataType.IsAbstract)}");
-        if (dataType is not ItemType)
-        {
-            builder.AppendLine($"    _emit_type_field: ClassVar[bool] = {PythonBool(dataType.IsSubstitute)}");
-        }
         foreach (Property property in dataType.Properties)
         {
             string attributeName = ToSnakeCase(property.Name);
@@ -245,7 +279,7 @@ public sealed class PythonPublisher
                 $"{Quote("kind")}: {Quote(GetKind(property))}, " +
                 $"{Quote("many")}: {PythonBool(many)}, " +
                 $"{Quote("ordered")}: {PythonBool(property.Ordered)}, " +
-                $"{Quote("allow_subtypes")}: {PythonBool(property.AllowSubtypes)}" +
+                $"{Quote("allow_subtypes")}: {PythonBool(CogsTypeSystem.AllowsSubtypes(property))}" +
                 "})");
         }
         builder.AppendLine();
@@ -285,12 +319,12 @@ public sealed class PythonPublisher
         return dataType.Name.ToLowerInvariant() switch
         {
             "boolean" => "bool",
-            "decimal" => "Decimal",
+            "decimal" => "CogsDecimal",
             "float" or "double" => "float",
-            "datetime" => "datetime",
-            "date" => "date",
-            "time" => "time",
-            "duration" => "timedelta",
+            "datetime" => "CogsDateTime",
+            "date" => "CogsDateOnly",
+            "time" => "CogsTime",
+            "duration" => "CogsDuration",
             "gyearmonth" => "GYearMonth",
             "gyear" => "GYear",
             "gmonthday" => "GMonthDay",
@@ -370,6 +404,80 @@ public sealed class PythonPublisher
         return normalized;
     }
 
+    private static PythonPackageVersion TranslatePackageVersion(string? version)
+    {
+        string semVer = version ?? string.Empty;
+        if (!CogsConventions.IsCanonicalSemVer(semVer))
+        {
+            throw new InvalidOperationException(
+                $"Model version '{version}' must be canonical SemVer 2.0.");
+        }
+
+        Match match = CanonicalSemVerPattern.Match(semVer);
+        if (!match.Success)
+        {
+            throw new InvalidOperationException(
+                $"Model version '{version}' could not be translated to PEP 440.");
+        }
+
+        string core = match.Groups["core"].Value;
+        string prerelease = match.Groups["prerelease"].Success
+            ? match.Groups["prerelease"].Value
+            : string.Empty;
+        string build = match.Groups["build"].Success
+            ? match.Groups["build"].Value
+            : string.Empty;
+        string localBuild = string.IsNullOrEmpty(build)
+            ? string.Empty
+            : "+" + EncodePep440Local("build", build);
+
+        if (string.IsNullOrEmpty(prerelease))
+        {
+            return new PythonPackageVersion(semVer, core + localBuild, false, null);
+        }
+
+        Match direct = DirectPep440PrereleasePattern.Match(prerelease);
+        if (direct.Success)
+        {
+            string label = direct.Groups["label"].Value switch
+            {
+                "alpha" => "a",
+                "beta" => "b",
+                _ => "rc",
+            };
+            string number = direct.Groups["number"].Success
+                ? direct.Groups["number"].Value
+                : "0";
+            return new PythonPackageVersion(
+                semVer,
+                core + label + number + localBuild,
+                false,
+                null);
+        }
+
+        string encoded = EncodePep440Local("prerelease", prerelease);
+        if (!string.IsNullOrEmpty(build))
+        {
+            encoded += "." + EncodePep440Local("build", build);
+        }
+        string warning =
+            $"SemVer prerelease '{prerelease}' has no direct PEP 440 mapping; " +
+            "the generated distribution uses a .dev0 local-version approximation.";
+        return new PythonPackageVersion(
+            semVer,
+            core + ".dev0+" + encoded,
+            true,
+            warning);
+    }
+
+    private static string EncodePep440Local(string prefix, string value)
+    {
+        return prefix + "." + string.Join(
+            ".",
+            value.Split('.').Select(identifier =>
+                "x" + Convert.ToHexString(Encoding.UTF8.GetBytes(identifier)).ToLowerInvariant()));
+    }
+
     private static string NormalizeModuleName(string slug)
     {
         string normalized = Regex.Replace(slug.ToLowerInvariant(), @"[^a-z0-9_]", "_", RegexOptions.CultureInvariant);
@@ -388,10 +496,21 @@ public sealed class PythonPublisher
 
     private static string Quote(string? value)
     {
-        return System.Text.Json.JsonSerializer.Serialize(value ?? string.Empty);
+        return System.Text.Json.JsonSerializer.Serialize(
+            value ?? string.Empty,
+            new System.Text.Json.JsonSerializerOptions
+            {
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            });
     }
 
     private static string PythonBool(bool value) => value ? "True" : "False";
+
+    private sealed record PythonPackageVersion(
+        string SemVer,
+        string Pep440,
+        bool IsApproximation,
+        string? Warning);
 
     private void AppendHeader(StringBuilder builder)
     {

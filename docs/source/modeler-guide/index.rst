@@ -1,8 +1,16 @@
 Modeler's Guide
 ===============
 
-With COGS, you can specify your information model in plain text. This section describes the 
-text and CSV files that define your model.
+With COGS, you can specify your information model in plain text. This section
+describes the text and CSV files that define your model. COGS conventions are
+case-sensitive contract data, even on Windows. COGS 2 models identify their
+format with ``CogsVersion,2.0`` in ``Settings/Settings.csv``.
+
+The required top-level directories are ``Settings``, ``ItemTypes``, and
+``CompositeTypes``. ``Topics`` and ``Articles`` are optional. Do not rename,
+pluralize, or change the case of any present convention path. See the normative
+:doc:`COGS 2 specification </specification/index>` for the complete grammar and
+serialization contract.
 
 A COGS model consists of the following core components.
 

@@ -4,16 +4,18 @@ Topics
 Topics allow you to describe subsets of your model, to make it easier for people
 to learn about your model.
 
-The Sphinx documentation generator creates a section of documentation for each topic. This
-section includes links to each item type contained in the topic, as well as a diagram 
-showing the relationships among the item types.
+The Sphinx documentation generator creates a section for each topic. Topics and
+articles are documentation metadata; they never become JSON/XML instance types.
+When Graphviz is unavailable, generated documentation remains valid and omits
+all diagram markup.
 
 Topic Index
 ~~~~~~~~~~~
 
-To include topics, create a topic index file named :file:`{baseDirectory}/Topics/index.txt`.
-This file should contain the name of one topic per line. Each topic gets its own folder as 
-described below.
+The :file:`{baseDirectory}/Topics` directory is optional. If it is present,
+the exact path :file:`{baseDirectory}/Topics/index.txt` is required and may be
+empty. The index contains one exact, unique topic directory name per nonblank
+line.
 
 Individual Topics Definitions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -22,19 +24,22 @@ A topic is defined in a folder named :file:`{baseDirectory}/Topics/{TopicName}`.
 to replace *TopicName* with the name of your topic, which should also be included in the
 topic index file.
 
-Each topic folder contains two files.
+Each topic folder contains the required ``items.txt`` file and may contain the
+documentation files described below.
 
 items.txt
 '''''''''
 
-:file:`{baseDirectory}/Topics/{TopicName}/items.txt` is a plain text file with the name of 
-one item type per line. 
+:file:`{baseDirectory}/Topics/{TopicName}/items.txt` is a plain text file with
+one exact, unique item type name per nonblank line. Composite, unknown, and
+mis-cased names are errors.
 
 readme.markdown
 '''''''''''''''
 
-The :file:`{baseDirectory}/Topics/{TopicName}/readme.markdown` file contains text
-to describe your topic.
+The optional :file:`{baseDirectory}/Topics/{TopicName}/readme.markdown` file
+contains Markdown text to describe your topic. Generated Sphinx projects parse
+it with MyST rather than treating it as reStructuredText.
 
 .. seealso::
 
@@ -45,7 +50,8 @@ Articles/
 
 Articles allow you to include extra content in the documentation that is generated for your topic.
 
-Each article is a reStructuredText file, and is included in the Sphinx documentation.
+Articles may be reStructuredText or MyST Markdown and are included in the
+Sphinx documentation.
 
 .. seealso::
 
@@ -54,9 +60,10 @@ Each article is a reStructuredText file, and is included in the Sphinx documenta
 toc.txt
 ~~~~~~~
 
-To include an article on the topics page, 
-you can include the name of the article in the :file:`{topicDirectory}/toc.txt` file.
-This file contains one path per line.
+To include an article on the topics page, include its path in
+:file:`{topicDirectory}/toc.txt`. This file contains one relative, normalized
+path per nonblank line. Paths must remain inside the topic's ``Articles``
+directory, resolve with exact case, and not be duplicated.
 
 Example Layout
 ~~~~~~~~~~~~~~

@@ -21,7 +21,12 @@ namespace Cogs.Console
 {
     class Program
     {
-        static void Main(string[] args)
+        static int Main(string[] args)
+        {
+            return CliExecutionPolicy.Execute(() => Run(args), System.Console.Error);
+        }
+
+        private static int Run(string[] args)
         {
             System.Console.WriteLine(cogsLogo);
             string programVersion = Microsoft.Extensions.PlatformAbstractions.PlatformServices.Default.Application.ApplicationVersion;
@@ -46,29 +51,85 @@ namespace Cogs.Console
                 {
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
 
-                    // read cogs directory and validate the contents
-                    var directoryReader = new CogsDirectoryReader();                    
-                    var cogsDtoModel = directoryReader.Load(location);
-                    HandleErrors(directoryReader.Errors);
-                    HandleErrors(DtoValidation.Validate(cogsDtoModel));
-
-                    // this could find gaps in the validation, but idealy return nothing
-                    var modelBuilder = new CogsModelBuilder();
-                    var cogsModel = modelBuilder.Build(cogsDtoModel);
-                    HandleErrors(modelBuilder.Errors);
+                    LoadValidatedModel(location);
 
                     return 0;
                 });
 
             });
 
+            app.Command("validate-instance", command =>
+            {
+                command.Description = "Validate a JSON or XML instance against a COGS 2.0 model.";
+                command.HelpOption("-?|-h|--help");
+
+                var modelArgument = command.Argument("model", "Directory containing the COGS model.");
+                var instanceArgument = command.Argument("instance", "Path to the JSON or XML instance.");
+                var formatOption = command.Option("--format <format>",
+                    "Instance serialization format: json or xml.", CommandOptionType.SingleValue);
+
+                command.OnExecute(() =>
+                {
+                    if (string.IsNullOrWhiteSpace(modelArgument.Value) ||
+                        string.IsNullOrWhiteSpace(instanceArgument.Value) ||
+                        string.IsNullOrWhiteSpace(formatOption.Value()))
+                    {
+                        throw new CommandParsingException(command,
+                            "validate-instance requires <model>, <instance>, and --format json|xml.");
+                    }
+
+                    string format = formatOption.Value()!;
+                    if (!format.Equals("json", StringComparison.OrdinalIgnoreCase) &&
+                        !format.Equals("xml", StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new CommandParsingException(command, "--format must be either 'json' or 'xml'.");
+                    }
+
+                    string instancePath = Path.GetFullPath(instanceArgument.Value!);
+                    if (!File.Exists(instancePath))
+                    {
+                        HandleErrors(new[]
+                        {
+                            new CogsError(ErrorLevel.Error, "INS0001",
+                                "The instance file does not exist.", instancePath)
+                        });
+                    }
+
+                    var model = LoadValidatedModel(modelArgument.Value!);
+                    string instance;
+                    try
+                    {
+                        instance = File.ReadAllText(instancePath);
+                    }
+                    catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                    {
+                        HandleErrors(new[]
+                        {
+                            new CogsError(ErrorLevel.Error, "INS0002",
+                                $"The instance file could not be read: {exception.Message}",
+                                instancePath, exception: exception)
+                        });
+                        return 100;
+                    }
+
+                    var diagnostics = format.Equals("json", StringComparison.OrdinalIgnoreCase)
+                        ? CogsInstanceValidator.ValidateJson(model, instance, instancePath)
+                        : CogsInstanceValidator.ValidateXml(model, instance, instancePath);
+                    HandleErrors(diagnostics);
+                    return 0;
+                });
+            });
+
             app.Command("rewrite", (command) =>
             {
 
-                command.Description = "Read a on disk COGS data model directory and rewrite the csv files to the newest on-disk format";
+                command.Description = "Rewrite an on-disk COGS model directory to the current CSV conventions";
                 command.HelpOption("-?|-h|--help");
 
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
+                var upgradeOption = command.Option("--upgrade-cogs-2",
+                    "Mechanically migrate an unambiguous legacy model to COGS 2.0; tracked marker case changes use git mv -f.",
+                    CommandOptionType.NoValue);
 
                 command.OnExecute(() =>
                 {
@@ -76,7 +137,7 @@ namespace Cogs.Console
 
                     // rewrite the cogs csv files
                     var rewrite = new RewriteCsvFormat();
-                    rewrite.Rewrite(location);
+                    rewrite.Rewrite(location, upgradeOption.HasValue());
                     HandleErrors(rewrite.Errors);
 
                     return 0;
@@ -103,7 +164,7 @@ namespace Cogs.Console
                            "If the target directory exists, delete and overwrite the location",
                            CommandOptionType.NoValue);
 
-                var name = command.Option("-n|--name",
+                var name = command.Option("--name",
                             "Name of the model",
                             CommandOptionType.SingleValue);
 
@@ -113,16 +174,7 @@ namespace Cogs.Console
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
 
-                    // read cogs directory and validate the contents
-                    var directoryReader = new CogsDirectoryReader();                    
-                    var cogsDtoModel = directoryReader.Load(location);
-                    HandleErrors(directoryReader.Errors);
-                    CreateOrderedEnumerables(cogsDtoModel);
-                    HandleErrors(DtoValidation.Validate(cogsDtoModel));
-
-                    var modelBuilder = new CogsModelBuilder();
-                    var cogsModel = modelBuilder.Build(cogsDtoModel);
-                    HandleErrors(modelBuilder.Errors);
+                    var cogsModel = LoadValidatedModel(location);
 
 
                     LinkMlPublisher publisher = new LinkMlPublisher
@@ -134,7 +186,7 @@ namespace Cogs.Console
                         Overwrite = overwrite
                     };
 
-                    publisher.Publish(cogsModel);
+                    HandleErrors(publisher.PublishResult(cogsModel).Diagnostics);
 
 
                     return 0;
@@ -159,16 +211,7 @@ namespace Cogs.Console
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
 
-                    // read cogs directory and validate the contents
-                    var directoryReader = new CogsDirectoryReader();
-                    var cogsDtoModel = directoryReader.Load(location);
-                    HandleErrors(directoryReader.Errors);
-                    CreateOrderedEnumerables(cogsDtoModel);
-                    HandleErrors(DtoValidation.Validate(cogsDtoModel));
-
-                    var modelBuilder = new CogsModelBuilder();
-                    var cogsModel = modelBuilder.Build(cogsDtoModel);
-                    HandleErrors(modelBuilder.Errors);
+                    var cogsModel = LoadValidatedModel(location);
 
 
                     DcTapPublisher publisher = new DcTapPublisher()
@@ -178,7 +221,7 @@ namespace Cogs.Console
                         CogsModel = cogsModel
                     };
 
-                    publisher.Publish();
+                    HandleErrors(publisher.PublishResult().Diagnostics);
 
 
                     return 0;
@@ -212,25 +255,19 @@ namespace Cogs.Console
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
 
-                    // read cogs directory and validate the contents
-                    var directoryReader = new CogsDirectoryReader();                    
-                    var cogsDtoModel = directoryReader.Load(location);
-                    HandleErrors(directoryReader.Errors);
-                    HandleErrors(DtoValidation.Validate(cogsDtoModel));
-
-                    var modelBuilder = new CogsModelBuilder();
-                    var cogsModel = modelBuilder.Build(cogsDtoModel);
-                    HandleErrors(modelBuilder.Errors);
+                    var cogsModel = LoadValidatedModel(location);
 
                     var targetNamespace = namespaceUri.Value() ?? cogsModel.Settings.NamespaceUrl;
                     var prefix = namespaceUriPrefix.Value() ?? cogsModel.Settings.NamespacePrefix;
                     try
                     {
-                        XmlConvert.VerifyName(prefix);
+                        XmlConvert.VerifyNCName(prefix);
                     }
                     catch(XmlException xmlEx)
                     {
-                        CogsError xmlPrefixError = new CogsError(ErrorLevel.Error, "Invalid xml prefix string", xmlEx);
+                        CogsError xmlPrefixError = new CogsError(
+                            ErrorLevel.Error, "CLI2101", $"Invalid XML namespace prefix '{prefix}': {xmlEx.Message}",
+                            modelPath: "Options.NamespacePrefix", exception: xmlEx);
                         HandleErrors(new List<CogsError>() { xmlPrefixError });
                     }
 
@@ -263,28 +300,31 @@ namespace Cogs.Console
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
                 var targetArgument = command.Argument("[targetLocation]", "Directory where the UML schema is generated.");
 
-                var dotOption = command.Option("-l|--location", "Directory where the dot.exe file is located. " +
-                                            "Only used if not using normative and not necessary for windows.", CommandOptionType.SingleValue);
+                var dotOption = command.Option("--dot",
+                                            "Path to the Graphviz dot executable. Uses COGS_DOT, then PATH when omitted.",
+                                            CommandOptionType.SingleValue);
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
                                            CommandOptionType.NoValue);
-                var normativeOption = command.Option("-n|--normative",
-                                           "Output a normative xmi file (2.4.2) instead of xmi 2.5.1. Note: cannot contain a graph element",
-                                           CommandOptionType.NoValue);
+                var modeOption = command.Option("-m|--mode",
+                                           "UML output mode: normative (UML/XMI 2.4.2) or ea (XMI 2.5.1 with diagram extensions).",
+                                           CommandOptionType.SingleValue);
 
                 command.OnExecute(() =>
                 {
-                    var dot = dotOption.Value() ?? null;
+                    var dot = dotOption.Value() ?? Environment.GetEnvironmentVariable("COGS_DOT");
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
-                    bool normative = normativeOption.HasValue();
+                    var mode = modeOption.Value() ?? "ea";
+                    if (!string.Equals(mode, "ea", StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(mode, "normative", StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new CommandParsingException(command, "--mode must be either 'normative' or 'ea'.");
+                    }
+                    bool normative = string.Equals(mode, "normative", StringComparison.OrdinalIgnoreCase);
 
-                    var directoryReader = new CogsDirectoryReader();
-                    var cogsDtoModel = directoryReader.Load(location);
-
-                    var modelBuilder = new CogsModelBuilder();
-                    var cogsModel = modelBuilder.Build(cogsDtoModel);
+                    var cogsModel = LoadValidatedModel(location);
 
                     UmlSchemaPublisher publisher = new UmlSchemaPublisher
                     {
@@ -294,6 +334,7 @@ namespace Cogs.Console
                         Normative = normative
                     };
                     publisher.Publish(cogsModel);
+                    HandleErrors(publisher.Errors);
 
 
                     return 0;
@@ -311,8 +352,9 @@ namespace Cogs.Console
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
                 var targetArgument = command.Argument("[targetLocation]", "Directory where the dot schema is generated.");
 
-                var dotOption = command.Option("-l|--location", "Directory where the dot.exe file is located. " +
-                                            "Only used if not using normative and not necessary for windows.", CommandOptionType.SingleValue);
+                var dotOption = command.Option("--dot",
+                                            "Path to the Graphviz dot executable. Uses COGS_DOT, then PATH when omitted.",
+                                            CommandOptionType.SingleValue);
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
                                            CommandOptionType.NoValue);
@@ -329,25 +371,25 @@ namespace Cogs.Console
 
                 command.OnExecute(() =>
                 {
-                    var dot = dotOption.Value() ?? null;
+                    var dot = dotOption.Value() ?? Environment.GetEnvironmentVariable("COGS_DOT");
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
                     string format = outputFormat.Value() ?? "svg";
                     bool all = outputAll.HasValue();
                     bool single = outputSingle.HasValue();
-                    if (all && single) throw new ArgumentException();
+                    if (all && single)
+                    {
+                        throw new CommandParsingException(command,
+                            "--all and --single cannot be used together.");
+                    }
                     string output = "topic";
                     if (all) output = "all";
                     else if (single) output = "single";
                     bool reusables = reusableArgument.HasValue();
                     bool inheritance = inheritanceArgument.HasValue();
 
-                    var directoryReader = new CogsDirectoryReader();
-                    var cogsDtoModel = directoryReader.Load(location);
-
-                    var modelBuilder = new CogsModelBuilder();
-                    var cogsModel = modelBuilder.Build(cogsDtoModel);
+                    var cogsModel = LoadValidatedModel(location);
 
                     DotSchemaPublisher publisher = new DotSchemaPublisher
                     {
@@ -392,19 +434,18 @@ namespace Cogs.Console
                     bool writeCsproj = writeCsprojOption.HasValue();
                     bool isNullableEnabled = isNullableEnabledOption.HasValue();
 
-                    var directoryReader = new CogsDirectoryReader();
-                    var cogsDtoModel = directoryReader.Load(location);
-
-                    var modelBuilder = new CogsModelBuilder();
-                    var cogsModel = modelBuilder.Build(cogsDtoModel);
+                    var cogsModel = LoadValidatedModel(location);
 
                     try
                     {
-                        XmlConvert.VerifyName(cogsModel.Settings.NamespacePrefix);
+                        XmlConvert.VerifyNCName(cogsModel.Settings.NamespacePrefix);
                     }
                     catch (XmlException xmlEx)
                     {
-                        CogsError xmlPrefixError = new CogsError(ErrorLevel.Error, "Invalid xml prefix string", xmlEx);
+                        CogsError xmlPrefixError = new CogsError(
+                            ErrorLevel.Error, "CLI2101",
+                            $"Invalid XML namespace prefix '{cogsModel.Settings.NamespacePrefix}': {xmlEx.Message}",
+                            modelPath: "Settings.NamespacePrefix", exception: xmlEx);
                         HandleErrors(new List<CogsError>() { xmlPrefixError });
                     }
 
@@ -443,14 +484,7 @@ namespace Cogs.Console
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
 
-                    var directoryReader = new CogsDirectoryReader();
-                    var cogsDtoModel = directoryReader.Load(location);
-                    HandleErrors(directoryReader.Errors);
-                    HandleErrors(DtoValidation.Validate(cogsDtoModel));
-
-                    var modelBuilder = new CogsModelBuilder();
-                    var cogsModel = modelBuilder.Build(cogsDtoModel);
-                    HandleErrors(modelBuilder.Errors);
+                    var cogsModel = LoadValidatedModel(location);
 
                     try
                     {
@@ -460,7 +494,10 @@ namespace Cogs.Console
                     {
                         HandleErrors(new List<CogsError>
                         {
-                            new CogsError(ErrorLevel.Error, "Invalid XML namespace prefix", xmlEx)
+                            new CogsError(
+                                ErrorLevel.Error, "CLI2101",
+                                $"Invalid XML namespace prefix '{cogsModel.Settings.NamespacePrefix}': {xmlEx.Message}",
+                                modelPath: "Settings.NamespacePrefix", exception: xmlEx)
                         });
                     }
 
@@ -469,7 +506,7 @@ namespace Cogs.Console
                         Overwrite = overwriteOption.HasValue(),
                         TargetNamespace = namespaceUri.Value() ?? cogsModel.Settings.NamespaceUrl,
                     };
-                    publisher.Publish();
+                    HandleErrors(publisher.PublishResult().Diagnostics);
                     return 0;
                 });
             });
@@ -493,14 +530,7 @@ namespace Cogs.Console
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
 
-                    var directoryReader = new CogsDirectoryReader();
-                    var cogsDtoModel = directoryReader.Load(location);
-                    HandleErrors(directoryReader.Errors);
-                    HandleErrors(DtoValidation.Validate(cogsDtoModel));
-
-                    var modelBuilder = new CogsModelBuilder();
-                    var cogsModel = modelBuilder.Build(cogsDtoModel);
-                    HandleErrors(modelBuilder.Errors);
+                    var cogsModel = LoadValidatedModel(location);
 
                     var publisher = new TypeScriptPublisher(cogsModel, target)
                     {
@@ -522,8 +552,9 @@ namespace Cogs.Console
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
                 var targetArgument = command.Argument("[targetLocation]", "Directory where the sphinx documentation is generated.");
 
-                var dotOption = command.Option("-l|--location", "Directory where the dot.exe file is located. " +
-                                            "Only used if not using normative and not necessary for windows.", CommandOptionType.SingleValue);
+                var dotOption = command.Option("--dot",
+                                            "Path to the Graphviz dot executable. Uses COGS_DOT, then PATH when omitted.",
+                                            CommandOptionType.SingleValue);
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
                                            CommandOptionType.NoValue);
@@ -534,14 +565,10 @@ namespace Cogs.Console
                 {
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
-                    var dot = dotOption.Value() ?? null;
+                    var dot = dotOption.Value() ?? Environment.GetEnvironmentVariable("COGS_DOT");
                     bool overwrite = overwriteOption.HasValue();
 
-                    var directoryReader = new CogsDirectoryReader();
-                    var cogsDtoModel = directoryReader.Load(location);
-
-                    var modelBuilder = new CogsModelBuilder();
-                    var cogsModel = modelBuilder.Build(cogsDtoModel);
+                    var cogsModel = LoadValidatedModel(location);
 
                     SphinxPublisher publisher = new SphinxPublisher
                     {
@@ -551,6 +578,7 @@ namespace Cogs.Console
                     };
 
                     publisher.Publish(cogsModel);
+                    HandleErrors(publisher.Errors);
                     return 0;
                 });
 
@@ -568,8 +596,8 @@ namespace Cogs.Console
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
                                            CommandOptionType.NoValue);
-                var additionalprop = command.Option("-a|--allowAdditionalProperties",
-                                            "Allow additional Properties to be added when enabled", CommandOptionType.NoValue);
+                var additionalprop = command.Option("--allowAdditionalProperties",
+                                            "Removed in COGS 2.0; generated JSON contracts are closed.", CommandOptionType.NoValue);
 
 
 
@@ -578,60 +606,19 @@ namespace Cogs.Console
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
-                    bool addprop = additionalprop.HasValue();
+                    if (additionalprop.HasValue())
+                    {
+                        HandleErrors(new[]
+                        {
+                            new CogsError(ErrorLevel.Error, "CLI2001",
+                                "--allowAdditionalProperties was removed in COGS 2.0; generated JSON contracts are always closed.")
+                        });
+                    }
 
 
-                    var directoryReader = new CogsDirectoryReader();
-                    var cogsDtoModel = directoryReader.Load(location);
-
-                    var modelBuilder = new CogsModelBuilder();
-                    var cogsModel = modelBuilder.Build(cogsDtoModel);
+                    var cogsModel = LoadValidatedModel(location);
 
                     FluentJsonSchemaPublisher publisher = new FluentJsonSchemaPublisher
-                    {
-                        CogsLocation = location,
-                        TargetDirectory = target,
-                        Overwrite = overwrite,
-                        AdditionalProperties = addprop
-                    };
-
-                    publisher.Publish(cogsModel);
-
-
-                    return 0;
-                });
-
-            });
-
-            app.Command("publish-GraphQL", (command) =>
-            {
-
-                command.Description = "Publish a GraphQL schema from a COGS data model";
-                command.HelpOption("-?|-h|--help");
-
-                var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
-                var targetArgument = command.Argument("[targetLocation]", "Directory where the json schema is generated.");
-
-                var overwriteOption = command.Option("-o|--overwrite",
-                                           "If the target directory exists, delete and overwrite the location",
-                                           CommandOptionType.NoValue);
-
-
-
-                command.OnExecute(() =>
-                {
-                    var location = locationArgument.Value ?? Environment.CurrentDirectory;
-                    var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
-                    bool overwrite = overwriteOption.HasValue();
-
-
-                    var directoryReader = new CogsDirectoryReader();
-                    var cogsDtoModel = directoryReader.Load(location);
-
-                    var modelBuilder = new CogsModelBuilder();
-                    var cogsModel = modelBuilder.Build(cogsDtoModel);
-
-                    GraphQLPublisher publisher = new GraphQLPublisher
                     {
                         CogsLocation = location,
                         TargetDirectory = target,
@@ -640,15 +627,19 @@ namespace Cogs.Console
 
                     publisher.Publish(cogsModel);
 
+
                     return 0;
                 });
 
             });
 
+            RegisterGraphQlCommand(app);
+            RegisterCommandReferenceCommand(app);
+
             app.Command("publish-owl", (command) =>
             {
 
-                command.Description = "Publish an OWL/RDF schema from a COGS data model";
+                command.Description = "Publish an authoritative OWL ontology in Turtle from a COGS data model";
                 command.HelpOption("-?|-h|--help");
 
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
@@ -676,16 +667,7 @@ namespace Cogs.Console
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     bool overwrite = overwriteOption.HasValue();
 
-                    // read cogs directory and validate the contents
-                    var directoryReader = new CogsDirectoryReader();
-                    var cogsDtoModel = directoryReader.Load(location);
-                    HandleErrors(directoryReader.Errors);
-                    CreateOrderedEnumerables(cogsDtoModel);
-                    HandleErrors(DtoValidation.Validate(cogsDtoModel));
-
-                    var modelBuilder = new CogsModelBuilder();
-                    var cogsModel = modelBuilder.Build(cogsDtoModel);
-                    HandleErrors(modelBuilder.Errors);
+                    var cogsModel = LoadValidatedModel(location);
 
                     var targetNamespace = namespaceUri.Value() ?? cogsModel.Settings.NamespaceUrl;
                     var prefix = namespaceUriPrefix.Value() ?? cogsModel.Settings.NamespacePrefix;
@@ -694,11 +676,13 @@ namespace Cogs.Console
 
                     try
                     {
-                        XmlConvert.VerifyName(prefix);
+                        XmlConvert.VerifyNCName(prefix);
                     }
                     catch (XmlException xmlEx)
                     {
-                        CogsError xmlPrefixError = new CogsError(ErrorLevel.Error, "Invalid xml prefix string", xmlEx);
+                        CogsError xmlPrefixError = new CogsError(
+                            ErrorLevel.Error, "CLI2101", $"Invalid XML namespace prefix '{prefix}': {xmlEx.Message}",
+                            modelPath: "Options.NamespacePrefix", exception: xmlEx);
                         HandleErrors(new List<CogsError>() { xmlPrefixError });
                     }
 
@@ -714,8 +698,7 @@ namespace Cogs.Console
                         Title = cogsModel.Settings.Title
                     };
 
-                    publisher.Publish(cogsModel);
-                    //HandleErrors(publisher.Errors);
+                    HandleErrors(publisher.PublishResult(cogsModel).Diagnostics);
 
 
                     return 0;
@@ -725,11 +708,10 @@ namespace Cogs.Console
 
             app.Command("cogs-new", (command) =>
             {
-                command.Description = "create a model skeleton";
+                command.Description = "Create a model skeleton in a new target directory";
                 command.HelpOption("-?|-h|--help");
-                
-                var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
-                var targetArgument = command.Argument("[targetLocation]", "Directory where the model skelton is generated.");
+
+                var targetArgument = command.Argument("targetLocation", "Directory where the model skeleton is generated.");
 
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
@@ -739,19 +721,18 @@ namespace Cogs.Console
 
                 command.OnExecute(() =>
                 {
-                    var location = locationArgument.Value ?? Environment.CurrentDirectory;
-                    var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
+                    var target = targetArgument.Value;
+                    if (string.IsNullOrWhiteSpace(target))
+                    {
+                        System.Console.Error.WriteLine("A targetLocation argument is required.");
+                        return 2;
+                    }
+
                     bool overwrite = overwriteOption.HasValue();
-
-                    var directoryReader = new CogsDirectoryReader();
-                    var cogsDtoModel = directoryReader.Load(location);
-
-                    var modelBuilder = new CogsModelBuilder();
-                    var cogsModel = modelBuilder.Build(cogsDtoModel);
 
                     ModelInitializer cogsmodel = new ModelInitializer
                     {
-                        Dir = location,
+                        Dir = target,
                         Overwrite = overwrite
                     };
 
@@ -770,93 +751,141 @@ namespace Cogs.Console
             });
 
 
-            var result = app.Execute(args);
-            Environment.Exit(result);
-        }
-
-
-        private static void CreateOrderedEnumerables(CogsDtoModel model)
-        {
-            // create enumeraded slot properties
-            bool hasOrderedSlots = false;
-            string slotDatatypeName = "EnumerableOrderedSlot";
-
-            foreach (var item in model.ItemTypes.Union(model.ReusableDataTypes))
+            string[] effectiveArgs = args;
+            if (args.Length > 0 && string.Equals(args[0], "publish-GraphQL", StringComparison.Ordinal))
             {
-                for (int i = 0; i < item.Properties.Count; ++i)
+                // CommandLineUtils matches command names case-insensitively, so two commands
+                // whose names differ only by case cannot provide a reliable deprecated alias.
+                // Detect the historical exact spelling before parsing and canonicalize it.
+                HandleErrors(new[]
                 {
-                    var property = item.Properties[i];
-
-                    if (string.IsNullOrEmpty(property.Ordered) || string.Equals(property.Ordered, "false", StringComparison.OrdinalIgnoreCase)) {  continue; }
-                    if(property.MaxCardinality == "1") {  continue; }
-
-                    hasOrderedSlots = true;
-                    var propertyName = property.Name;
-
-                    var orderedProperty = new Dto.Property();
-                    orderedProperty.Name = propertyName + "OrderedSlots";
-                    orderedProperty.DataType = slotDatatypeName;
-                    orderedProperty.MinCardinality = "0";
-                    orderedProperty.MaxCardinality = "n";
-                    orderedProperty.Description = $"Ranked slots for the ordered enumerable list designated by {propertyName}";
-
-                    i++;
-                    item.Properties.Insert(i, orderedProperty);                    
-                }
+                    new CogsError(ErrorLevel.Warning, "CLI2002",
+                        "publish-GraphQL is deprecated; use publish-graphql.")
+                });
+                effectiveArgs = (string[])args.Clone();
+                effectiveArgs[0] = "publish-graphql";
             }
 
-            if (hasOrderedSlots)
-            {
-                // shared ordered slots container
-                var orderedSlotDatatype = new Dto.DataType();
-                orderedSlotDatatype.Description = "Slot for ordered enumerable property definitions";
-                orderedSlotDatatype.Name = slotDatatypeName;
-
-                var referenceProperty = new Dto.Property();
-                referenceProperty.Name = "OrderedItemReference";
-                referenceProperty.DataType = "anyURI";
-                referenceProperty.MinCardinality = "0";
-                referenceProperty.MaxCardinality = "1";
-                referenceProperty.Description = $"URI of the item being ordered.";
-                orderedSlotDatatype.Properties.Add(referenceProperty);
-
-                var rankProperty = new Dto.Property();
-                rankProperty.Name = "OrderedItemRank";
-                rankProperty.DataType = "nonNegativeInteger";
-                rankProperty.MinCardinality = "0";
-                rankProperty.MaxCardinality = "1";
-                rankProperty.Description = $"Zero based ranking order of the item's position in the enumerated list.";
-                orderedSlotDatatype.Properties.Add(rankProperty);
-
-                model.ReusableDataTypes.Add(orderedSlotDatatype);
-            }
-
-
+            return app.Execute(effectiveArgs);
         }
 
-
-        private static void HandleErrors(List<CogsError> errors)
+        private static void RegisterGraphQlCommand(CommandLineApplication app)
         {
-            foreach(var error in errors)
+            app.Command("publish-graphql", command =>
+            {
+                command.Description = "Publish a GraphQL schema from a COGS data model";
+                command.HelpOption("-?|-h|--help");
+
+                var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
+                var targetArgument = command.Argument("[targetLocation]", "Directory where the GraphQL schema is generated.");
+                var overwriteOption = command.Option("-o|--overwrite",
+                    "If the target directory exists, replace it transactionally.",
+                    CommandOptionType.NoValue);
+
+                command.OnExecute(() =>
+                {
+                    var location = locationArgument.Value ?? Environment.CurrentDirectory;
+                    var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
+                    var cogsModel = LoadValidatedModel(location);
+                    var publisher = new GraphQLPublisher
+                    {
+                        CogsLocation = location,
+                        TargetDirectory = target,
+                        Overwrite = overwriteOption.HasValue()
+                    };
+                    publisher.Publish(cogsModel);
+                    HandleErrors(publisher.Errors);
+                    return 0;
+                });
+            });
+        }
+
+        private static void RegisterCommandReferenceCommand(CommandLineApplication app)
+        {
+            app.Command("generate-command-reference", command =>
+            {
+                // Developer-only command used to keep the checked-in command reference in
+                // lockstep with the descriptors above. It is intentionally omitted from help.
+                command.ShowInHelpText = false;
+                command.Description = "Generate the command reference from the CLI descriptors.";
+                command.HelpOption("-?|-h|--help");
+                var outputArgument = command.Argument("outputFile", "Path of the generated RST file.");
+
+                command.OnExecute(() =>
+                {
+                    if (string.IsNullOrWhiteSpace(outputArgument.Value))
+                    {
+                        throw new CommandParsingException(command,
+                            "generate-command-reference requires <outputFile>.");
+                    }
+
+                    string output = Path.GetFullPath(outputArgument.Value!);
+                    try
+                    {
+                        CommandReferenceWriter.Write(app, output);
+                    }
+                    catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+                    {
+                        HandleErrors(new[]
+                        {
+                            new CogsError(ErrorLevel.Error, "CLI2201",
+                                $"The command reference could not be written: {exception.Message}",
+                                output, exception: exception)
+                        });
+                    }
+                    return 0;
+                });
+            });
+        }
+
+        private static CogsModel LoadValidatedModel(string location)
+        {
+            var directoryReader = new CogsDirectoryReader();
+            var load = directoryReader.LoadResult(location);
+            HandleErrors(load.Diagnostics);
+
+            HandleErrors(DtoValidation.Validate(load.Model));
+
+            var modelBuilder = new CogsModelBuilder();
+            var build = modelBuilder.BuildResult(load.Model);
+            HandleErrors(build.Diagnostics);
+            if (!build.Success || build.Model == null)
+            {
+                throw new CogsCommandException();
+            }
+
+            return build.Model;
+        }
+
+        private static void HandleErrors(IEnumerable<CogsError> errors)
+        {
+            var ordered = errors
+                .OrderBy(error => error.SourcePath ?? string.Empty, StringComparer.Ordinal)
+                .ThenBy(error => error.Line ?? 0)
+                .ThenBy(error => error.Column ?? 0)
+                .ThenBy(error => error.Code ?? string.Empty, StringComparer.Ordinal)
+                .ToArray();
+
+            foreach(var error in ordered)
             {
                 System.Console.Error.Write(Enum.GetName(typeof(ErrorLevel), error.Level) + ": ");
                 if(error.Level == ErrorLevel.Message)
                 {
-                    System.Console.WriteLine(error.Message);
+                    System.Console.WriteLine(error.ToString());
                 }
                 else
                 {
-                    System.Console.Error.WriteLine(error.Message);
+                    System.Console.Error.WriteLine(error.ToString());
                 }
                              
             }
-            if(errors.Any(x => x.Level == ErrorLevel.Error))
+            if(ordered.Any(x => x.Level == ErrorLevel.Error))
             {
-                Environment.Exit(100);
+                throw new CogsCommandException();
             }
         }
 
-        private static string cogsLogo = 
+        private static string cogsLogo =
 @"  ______   ______     _______      _______.
  /      | /  __  \   /  _____|    /       |
 |  ,----'|  |  |  | |  |  __     |   (----`

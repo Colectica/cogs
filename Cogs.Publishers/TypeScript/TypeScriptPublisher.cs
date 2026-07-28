@@ -42,7 +42,7 @@ public sealed class TypeScriptPublisher
     {
         "constructor", "fromElement", "fromJson", "fromObject", "fromXml", "toElement", "toJson",
         "toObject", "toReferenceObject", "toXml", "cogsType", "declaredFields", "emitTypeField",
-        "isAbstract", "isItem",
+        "isAbstract", "isDefined", "isItem",
     };
 
     private static readonly HashSet<string> StringTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -69,6 +69,12 @@ public sealed class TypeScriptPublisher
             throw new InvalidOperationException("Target directory must be specified.");
         }
 
+        DirectoryPublication.Publish(TargetDirectory, Overwrite, PublishToDirectory, model.SourceDirectory);
+    }
+
+    private void PublishToDirectory(string targetDirectory)
+    {
+
         ValidateModelNames();
         string packageName = NormalizePackageName(model.Settings.Slug);
         string version = NormalizePackageVersion(model.Settings.Version);
@@ -90,26 +96,16 @@ public sealed class TypeScriptPublisher
             throw new InvalidOperationException($"XML namespace prefix '{namespacePrefix}' is invalid.", exception);
         }
         if (namespacePrefix.Equals("xml", StringComparison.OrdinalIgnoreCase)
-            || namespacePrefix.Equals("xmlns", StringComparison.OrdinalIgnoreCase)
-            || namespacePrefix.Equals("xsi", StringComparison.OrdinalIgnoreCase))
+            || namespacePrefix.Equals("xmlns", StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException($"XML namespace prefix '{namespacePrefix}' is reserved.");
         }
 
-        if (Directory.Exists(TargetDirectory))
-        {
-            if (!Overwrite)
-            {
-                throw new InvalidOperationException("Target directory already exists.");
-            }
-            Directory.Delete(TargetDirectory, true);
-        }
-
-        string sourceDirectory = Path.Combine(TargetDirectory, "src");
+        string sourceDirectory = Path.Combine(targetDirectory, "src");
         Directory.CreateDirectory(sourceDirectory);
         var utf8 = new UTF8Encoding(false);
-        File.WriteAllText(Path.Combine(TargetDirectory, "package.json"), GeneratePackageJson(packageName, version), utf8);
-        File.WriteAllText(Path.Combine(TargetDirectory, "tsconfig.json"), GenerateTsConfig(), utf8);
+        File.WriteAllText(Path.Combine(targetDirectory, "package.json"), GeneratePackageJson(packageName, version), utf8);
+        File.WriteAllText(Path.Combine(targetDirectory, "tsconfig.json"), GenerateTsConfig(), utf8);
         File.WriteAllText(Path.Combine(sourceDirectory, "index.ts"), GenerateIndex(), utf8);
         File.WriteAllText(Path.Combine(sourceDirectory, "model.ts"), GenerateModel(targetNamespace, namespacePrefix), utf8);
     }
@@ -124,6 +120,10 @@ public sealed class TypeScriptPublisher
               "name": {{Quote(packageName)}},
               "version": {{Quote(version)}},
               "description": {{Quote(description)}},
+              "cogs": {
+                "cogsVersion": "2.0",
+                "modelVersion": {{Quote(model.Settings.Version)}}
+              },
               "type": "module",
               "sideEffects": false,
               "engines": {
@@ -211,13 +211,13 @@ public sealed class TypeScriptPublisher
         builder.AppendLine("  [");
         foreach (ItemType item in model.ItemTypes.OrderBy(x => x.Name, StringComparer.Ordinal))
         {
-            builder.AppendLine($"    [{Quote(item.Name)}, {item.Name}],");
+            builder.AppendLine($"    [{Quote(item.Name)}, {ToPascalCase(item.Name)}],");
         }
         builder.AppendLine("  ],");
         builder.AppendLine("  [");
         foreach (DataType dataType in GetOrderedTypes().OrderBy(x => x.Name, StringComparer.Ordinal))
         {
-            builder.AppendLine($"    [{Quote(dataType.Name)}, {dataType.Name}],");
+            builder.AppendLine($"    [{Quote(dataType.Name)}, {ToPascalCase(dataType.Name)}],");
         }
         builder.AppendLine("  ],");
         builder.AppendLine(");");
@@ -228,10 +228,11 @@ public sealed class TypeScriptPublisher
     {
         string baseType = string.IsNullOrWhiteSpace(dataType.ExtendsTypeName)
             ? dataType is ItemType ? "CogsItem" : "CogsValue"
-            : dataType.ExtendsTypeName;
+            : ToPascalCase(dataType.ExtendsTypeName);
+        string className = ToPascalCase(dataType.Name);
         string abstractModifier = dataType.IsAbstract ? "abstract " : string.Empty;
         AppendJsDoc(builder, dataType.Description);
-        builder.AppendLine($"export {abstractModifier}class {dataType.Name} extends {baseType} {{");
+        builder.AppendLine($"export {abstractModifier}class {className} extends {baseType} {{");
         builder.AppendLine($"  static override readonly cogsType: string = {Quote(dataType.Name)};");
         builder.AppendLine($"  static override readonly isAbstract: boolean = {TsBool(dataType.IsAbstract)};");
         if (dataType is not ItemType)
@@ -249,7 +250,7 @@ public sealed class TypeScriptPublisher
             builder.AppendLine($"      kind: {Quote(GetKind(property))},");
             builder.AppendLine($"      many: {TsBool(IsMany(property))},");
             builder.AppendLine($"      ordered: {TsBool(property.Ordered)},");
-            builder.AppendLine($"      allowSubtypes: {TsBool(property.AllowSubtypes)},");
+            builder.AppendLine($"      allowSubtypes: {TsBool(CogsTypeSystem.AllowsSubtypes(property))},");
             builder.AppendLine("    },");
         }
         builder.AppendLine("  ];");
@@ -272,7 +273,7 @@ public sealed class TypeScriptPublisher
             }
         }
         builder.AppendLine();
-        builder.AppendLine($"  constructor(initial: Partial<{dataType.Name}> = {{}}) {{");
+        builder.AppendLine($"  constructor(initial: Partial<{className}> = {{}}) {{");
         builder.AppendLine("    super();");
         builder.AppendLine("    Object.assign(this, initial);");
         builder.AppendLine("  }");
@@ -316,7 +317,7 @@ public sealed class TypeScriptPublisher
             "gday" => "GDay",
             "langstring" => "LangString",
             "cogsdate" => "CogsDate",
-            _ => dataType.Name,
+            _ => ToPascalCase(dataType.Name),
         };
     }
 
@@ -331,23 +332,25 @@ public sealed class TypeScriptPublisher
 
     private void ValidateModelNames()
     {
-        var typeNames = new HashSet<string>(StringComparer.Ordinal);
+        var typeNames = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (DataType dataType in GetOrderedTypes())
         {
-            ValidateTypeScriptIdentifier(dataType.Name, "datatype");
-            if (!typeNames.Add(dataType.Name))
+            string className = ToPascalCase(dataType.Name);
+            ValidateTypeScriptIdentifier(className, "datatype");
+            if (typeNames.TryGetValue(className, out var existingType))
             {
-                throw new InvalidOperationException($"COGS datatype name '{dataType.Name}' is duplicated.");
+                throw new InvalidOperationException(
+                    $"COGS datatype names '{existingType}' and '{dataType.Name}' both normalize to TypeScript class '{className}'.");
             }
-            if (RuntimeTypeNames.Contains(dataType.Name))
+            typeNames[className] = dataType.Name;
+            if (RuntimeTypeNames.Contains(className))
             {
                 throw new InvalidOperationException(
                     $"COGS datatype name '{dataType.Name}' conflicts with the generated TypeScript runtime.");
             }
 
             var attributes = new Dictionary<string, string>(StringComparer.Ordinal);
-            IEnumerable<Property> inherited = dataType.ParentTypes.SelectMany(x => x.Properties);
-            foreach (Property property in inherited.Concat(dataType.Properties))
+            foreach (Property property in CogsTypeSystem.EffectiveProperties(dataType))
             {
                 string normalized = ToCamelCase(property.Name);
                 if (RuntimeMemberNames.Contains(normalized))
@@ -367,26 +370,56 @@ public sealed class TypeScriptPublisher
 
     private static void ValidateTypeScriptIdentifier(string value, string kind)
     {
-        if (!Regex.IsMatch(value, @"^[A-Za-z_$][A-Za-z0-9_$]*$", RegexOptions.CultureInvariant)
+        if (!Regex.IsMatch(value, @"^[\p{L}_$][\p{L}\p{M}\p{Nd}_$]*$", RegexOptions.CultureInvariant)
             || TypeScriptKeywords.Contains(value))
         {
             throw new InvalidOperationException($"COGS {kind} name '{value}' is not a valid TypeScript identifier.");
         }
     }
 
+    internal static string ToPascalCase(string value)
+    {
+        string normalized = (value ?? string.Empty).Normalize(NormalizationForm.FormC);
+        string[] segments = Regex.Split(normalized, @"[^\p{L}\p{M}\p{Nd}_$]+", RegexOptions.CultureInvariant)
+            .Where(segment => segment.Length > 0)
+            .ToArray();
+        if (segments.Length == 0)
+        {
+            throw new InvalidOperationException($"Datatype name '{value}' cannot be normalized to a TypeScript class.");
+        }
+        string result = string.Concat(segments.Select(UppercaseFirstRune));
+        if (TypeScriptKeywords.Contains(result)) result += "Type";
+        ValidateTypeScriptIdentifier(result, "datatype");
+        return result;
+    }
+
     internal static string ToCamelCase(string value)
     {
-        string[] words = Regex.Matches(value, @"[A-Z]+(?=[A-Z][a-z]|\d|$)|[A-Z]?[a-z]+|\d+", RegexOptions.CultureInvariant)
-            .Select(x => x.Value)
-            .ToArray();
+        string normalizedInput = (value ?? string.Empty).Normalize(NormalizationForm.FormC);
+        string[] words;
+        bool ascii = Regex.IsMatch(normalizedInput, @"^[A-Za-z0-9_.-]+$", RegexOptions.CultureInvariant);
+        if (ascii)
+        {
+            words = Regex.Matches(normalizedInput, @"[A-Z]+(?=[A-Z][a-z]|\d|$)|[A-Z]?[a-z]+|\d+", RegexOptions.CultureInvariant)
+                .Select(x => x.Value)
+                .ToArray();
+        }
+        else
+        {
+            words = Regex.Split(normalizedInput, @"[^\p{L}\p{M}\p{Nd}]+", RegexOptions.CultureInvariant)
+                .Where(word => word.Length > 0)
+                .ToArray();
+        }
         if (words.Length == 0)
         {
             throw new InvalidOperationException($"Property name '{value}' cannot be normalized to a TypeScript member.");
         }
-        string normalized = words[0].ToLowerInvariant()
-            + string.Concat(words.Skip(1).Select(x => char.ToUpperInvariant(x[0]) + x[1..].ToLowerInvariant()));
-        if (char.IsDigit(normalized[0])) normalized = "field" + normalized;
-        if (!Regex.IsMatch(normalized, @"^[A-Za-z_$][A-Za-z0-9_$]*$", RegexOptions.CultureInvariant))
+        string normalized = ascii
+            ? words[0].ToLowerInvariant()
+                + string.Concat(words.Skip(1).Select(word => char.ToUpperInvariant(word[0]) + word[1..].ToLowerInvariant()))
+            : LowercaseFirstRune(words[0]) + string.Concat(words.Skip(1).Select(UppercaseFirstRune));
+        if (Rune.GetRuneAt(normalized, 0).Value is >= '0' and <= '9') normalized = "field" + normalized;
+        if (!Regex.IsMatch(normalized, @"^[\p{L}_$][\p{L}\p{M}\p{Nd}_$]*$", RegexOptions.CultureInvariant))
         {
             throw new InvalidOperationException($"Property name '{value}' cannot be normalized to a TypeScript member.");
         }
@@ -394,53 +427,44 @@ public sealed class TypeScriptPublisher
         return normalized;
     }
 
+    private static string UppercaseFirstRune(string value)
+    {
+        Rune first = Rune.GetRuneAt(value, 0);
+        return Rune.ToUpperInvariant(first).ToString() + value[first.Utf16SequenceLength..];
+    }
+
+    private static string LowercaseFirstRune(string value)
+    {
+        Rune first = Rune.GetRuneAt(value, 0);
+        return Rune.ToLowerInvariant(first).ToString() + value[first.Utf16SequenceLength..];
+    }
+
     internal static string NormalizePackageName(string slug)
     {
-        string normalized = Regex.Replace((slug ?? string.Empty).ToLowerInvariant(), @"[^a-z0-9._-]+", "-", RegexOptions.CultureInvariant);
-        normalized = Regex.Replace(normalized, @"-+", "-", RegexOptions.CultureInvariant).Trim('-', '.', '_');
-        if (string.IsNullOrWhiteSpace(normalized)) normalized = "cogs-model";
+        string normalized = slug ?? string.Empty;
+        if (!Regex.IsMatch(normalized, @"^[a-z][a-z0-9_]*$", RegexOptions.CultureInvariant))
+        {
+            throw new InvalidOperationException($"Model slug '{slug}' must match [a-z][a-z0-9_]*.");
+        }
         if (normalized.Length > 214)
         {
             throw new InvalidOperationException("The normalized npm package name exceeds 214 characters.");
         }
-        if (normalized is "node_modules" or "favicon.ico") normalized = "cogs-" + normalized.Replace('.', '-');
+        if (normalized is "node_modules" or "favicon")
+        {
+            throw new InvalidOperationException($"Model slug '{slug}' is reserved by npm.");
+        }
         return normalized;
     }
 
     internal static string NormalizePackageVersion(string version)
     {
         string value = (version ?? string.Empty).Trim();
-        Match match = Regex.Match(value,
-            @"^(0|[1-9]\d*)(?:\.(0|[1-9]\d*))?(?:\.(0|[1-9]\d*))?(?:(a|b|rc)(0|[1-9]\d*))?(?:-([0-9A-Za-z.-]+))?(?:\+([0-9A-Za-z.-]+))?$",
-            RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
-        if (!match.Success)
+        if (!CogsConventions.IsCanonicalSemVer(value))
         {
-            throw new InvalidOperationException($"Model version '{version}' cannot be safely normalized to npm SemVer.");
+            throw new InvalidOperationException($"Model version '{version}' must be canonical SemVer 2.0.");
         }
-        string major = match.Groups[1].Value;
-        string minor = match.Groups[2].Success ? match.Groups[2].Value : "0";
-        string patch = match.Groups[3].Success ? match.Groups[3].Value : "0";
-        string prerelease = string.Empty;
-        if (match.Groups[4].Success)
-        {
-            prerelease = "-" + match.Groups[4].Value.ToLowerInvariant() + "." + match.Groups[5].Value;
-        }
-        else if (match.Groups[6].Success)
-        {
-            string[] identifiers = match.Groups[6].Value.Split('.');
-            if (identifiers.Any(x => string.IsNullOrWhiteSpace(x)
-                || (x.All(char.IsDigit) && x.Length > 1 && x[0] == '0')))
-            {
-                throw new InvalidOperationException($"Model version '{version}' cannot be safely normalized to npm SemVer.");
-            }
-            prerelease = "-" + match.Groups[6].Value;
-        }
-        if (match.Groups[7].Success && match.Groups[7].Value.Split('.').Any(string.IsNullOrWhiteSpace))
-        {
-            throw new InvalidOperationException($"Model version '{version}' cannot be safely normalized to npm SemVer.");
-        }
-        string build = match.Groups[7].Success ? "+" + match.Groups[7].Value : string.Empty;
-        return $"{major}.{minor}.{patch}{prerelease}{build}";
+        return value;
     }
 
     private static string Quote(string? value) => System.Text.Json.JsonSerializer.Serialize(value ?? string.Empty);

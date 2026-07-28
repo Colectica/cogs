@@ -1,16 +1,22 @@
-publish-GraphQL
+publish-graphql
 ~~~~~~~~~~~~~~~
 
 Introduction
 ----------------------
-Generate a JSON file that contains a schema that defines the given model in GraphQL. 
-All types and properties are defined independently and linked together by referencing the type names.
+Generate GraphQL Schema Definition Language (SDL) as an API projection of the
+model. The output is text SDL, not JSON and not a COGS instance schema. Its
+``PROJ25xx`` diagnostics identify approximations, and the generation guide
+records preserved and unsupported COGS features.
+
+The canonical command is lowercase ``publish-graphql``. The old
+``publish-GraphQL`` spelling is a hidden, deprecated alias that emits
+``CLI2002``.
 
 Requires that `dotnet <../../installation/dotnet/index.html>`_ is installed.
 
 Command Line Arguments
 ----------------------
-Required inputs for the publish-GraphQL command (must be specified in order).
+Required inputs for the ``publish-graphql`` command (must be specified in order).
 
 * ``[CogsLocation]`` 
 
@@ -22,11 +28,11 @@ Required inputs for the publish-GraphQL command (must be specified in order).
 
 Command Line Flags
 ----------------------
-Optional inputs for the publish-GraphQL command.
+Optional inputs for the ``publish-graphql`` command.
 
 * ``-?|-h|--help``
 
-    Displays all possible command arguments and flags for the publish-GraphQL command.
+    Displays all possible command arguments and flags for the command.
 
 * ``-o|--overwrite``
 
@@ -38,7 +44,7 @@ Command Line Usage
 
     .. code-block:: bash
 
-        $ publish-GraphQL (-h) (-o) [CogsLocation] [TargetLocation]
+        $ cogs publish-graphql (-h) (-o) [CogsLocation] [TargetLocation]
 
 **Examples**
 
@@ -46,6 +52,6 @@ Command Line Usage
 
     .. code-block:: bash
 
-        $ publish-GraphQL -h
-        $ publish-GraphQL MyCogsModelDirectory MyOutputDirectory
-        $ publish-GraphQL -o MyCogsModelDirectory MyOutputDirectory
+        $ cogs publish-graphql -h
+        $ cogs publish-graphql MyCogsModelDirectory MyOutputDirectory
+        $ cogs publish-graphql -o MyCogsModelDirectory MyOutputDirectory

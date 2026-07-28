@@ -1,8 +1,12 @@
 Key,Value
+CogsVersion,2.0
 Title,COGS Burger Example Model
 ShortTitle,COGS Burger
 Slug,cogsburger
 Description,A model for describing all sorts of burgers.
+Version,0.1.0
+Author,COGS contributors
+Copyright,
 NamespaceUrl,http://example.org/cogsburger
 CSharpNamespace,CogsBurger.Model
 NamespacePrefix,cogsburger

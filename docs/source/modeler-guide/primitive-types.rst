@@ -1,219 +1,86 @@
 Primitive Types
--------------------
+---------------
 
-COGS provides a number of built-in primitive types you can use to define properties on
-items in your model.
+COGS 2 provides the builtin datatypes below. Their names are case-sensitive.
+A model-defined type cannot shadow a builtin. ``dcTerms`` is a source macro,
+not a runtime primitive; ``This`` and ``Any`` are retired.
 
-Simple Types
-~~~~~~~~~~~~~~~~~~~~~~
+======================  =============================  =======================
+Datatype                JSON representation            Value space
+======================  =============================  =======================
+``boolean``             boolean                        true or false
+``string``              string                         Unicode text
+``language``            string                         BCP 47 tag syntax
+``anyURI``              string                         RFC 3986 URI reference
+``int``                 integer number                 signed 32-bit
+``long``                integer number                 signed 64-bit
+``unsignedLong``        integer number                 0 through 2^64-1
+``nonNegativeInteger``  integer number                 unbounded, at least zero
+``nonPositiveInteger``  integer number                 unbounded, at most zero
+``negativeInteger``     integer number                 unbounded, below zero
+``positiveInteger``     integer number                 unbounded, above zero
+``decimal``             number                         arbitrary-precision XSD
+                                                        decimal, no exponent
+``float``               number                         finite IEEE binary32
+``double``              number                         finite IEEE binary64
+``dateTime``            string, ``date-time`` format   XSD; nonzero int32 year
+``date``                string, ``date`` format        XSD; nonzero int32 year
+``time``                string, ``time`` format        full XSD time
+``gYearMonth``          component object               XSD; nonzero int32 year
+``gYear``               component object               XSD; nonzero int32 year
+``gMonthDay``           component object               full XSD gMonthDay
+``gDay``                component object               full XSD gDay
+``gMonth``              component object               full XSD gMonth
+``duration``            string, ``duration`` format    full XSD duration
+``langString``          language/value object          tagged text
+``cogsDate``            one-arm object                 date union
+======================  =============================  =======================
 
-boolean
-```````
-Represents Boolean values, which are either true or false.    
+``dateTime``, ``date``, and ``time`` retain their XML Schema lexical forms as
+JSON strings. The year in ``dateTime`` and ``date`` is limited to the nonzero
+signed 32-bit range.
+``gYearMonth``, ``gYear``, ``gMonthDay``, ``gDay``, and ``gMonth`` use closed
+JSON objects composed from exact ``Year``, ``Month``, ``Day``, and optional
+``Timezone`` members as applicable; XML retains the XSD lexical form. The year
+in ``gYearMonth`` and ``gYear`` has the same signed 32-bit restriction.
 
-Facets
-    none
+The JSON Schema ``duration``, ``date-time``, ``time``, and ``date`` formats are
+annotations that make the intended kind visible to schema tools. They are not
+enabled as assertions because their RFC value spaces differ from XSD. COGS
+validation retains optional XSD timezones, expanded or negative calendar
+years, ``24:00:00``, and negative or fractional durations. Timezone offsets
+cannot exceed plus or minus 14:00. Durations include year and month components.
 
-string
-``````
-Represents character strings.    
+``cogsDate`` has exactly one of the existing PascalCase arms ``DateTime``,
+``Date``, ``GYearMonth``, ``GYear``, or ``Duration``. Its Gregorian arms use
+the same component objects in JSON. ``langString`` carries text and a required
+BCP 47 language tag.
 
-Facets
-    maxLength, minLength, enumeration, pattern                     
-
-boolean      
-```````
-Represents Boolean values, which are either true or false.    
-
-decimal
-```````
-Represents arbitrary precision numbers.    
-
-Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive
-
-float
-`````
-Represents single-precision 32-bit floating-point numbers.    
-
-Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive
-
-double
-``````
-Represents double-precision 64-bit floating-point numbers.    
-
-Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive         
-
-duration
-````````
-Represents a duration of time. The pattern for duration is PnYnMnDTnHnMnS,
-where nY represents the number of years, nM the number of months, nD the number
-of days, T the date/time separator, nH the number of hours, nM the number of
-minutes, and nS the number of seconds.    
-
-Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive
-
-dateTime
-```````` 
-Represents a specific instance of time. The pattern for dateTime is
-CCYY-MM-DDThh:mm:ss where CC represents the century, YY the year, MM the month,
-and DD the day, preceded by an optional leading negative (-) character to
-indicate a negative number. If the negative character is omitted, positive (+)
-is assumed. The T is the date/time separator and hh, mm, and ss represent hour,
-minute, and second respectively. Additional digits can be used to increase the
-precision of fractional seconds if desired. For example, the format ss.ss...
-with any number of digits after the decimal point is supported. The fractional
-seconds part is optional. This representation may be immediately followed by a
-"Z" to indicate Coordinated Universal Time (UTC) or to indicate the time zone.
-For example, the difference between the local time and Coordinated Universal
-Time, immediately followed by a sign, + or -, followed by the difference from
-UTC represented as hh:mm (minutes is required). If the time zone is included,
-both hours and minutes must be present.    
+Decimals and integer families remain JSON numbers even when generated code
+uses a helper or big-integer type to avoid precision loss. NaN and infinities
+are excluded from float and double because JSON has no such numbers.
 
 Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive         
+~~~~~~
 
-time
-````
-Represents an instance of time that recurs every day. The pattern for time is hh:mm:ss.sss with optional time zone indicator.    
+Length and pattern facets apply to ``string``, ``anyURI``, ``language``, and
+the content of ``langString``. Enumeration applies to scalar builtin values;
+for ``langString`` it constrains the content rather than the language tag.
+Bounds apply to numeric, temporal, and duration values, but not ``cogsDate``.
+Facets constrain each value, not a repeated property's containing array.
 
-Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive         
+``Enumeration`` is a whitespace-delimited list stored in one CSV cell. Blank
+means no enumeration; otherwise one or more whitespace characters separate
+the values. For example, ``small medium large`` declares three values. Values
+cannot contain whitespace, and there is no quoting or escaping syntax inside
+the cell. Order and casing are preserved. JSON-looking text is not decoded and
+is split by the same whitespace rule. Patterns use the portable subset
+described in :doc:`/specification/model-format`: literals, dot, simple character classes,
+capturing groups, alternation, and ordinary quantifiers are available;
+anchors, shorthands such as ``\d``, lookarounds, backreferences, special
+groups, inline flags, and Unicode categories are not.
+Escapes are limited to regex metacharacters and tab, newline, or carriage
+return.
 
-date
-````
-Represents a calendar date. The pattern for date is CCYY-MM-DD with optional time zone indicator as allowed for dateTime
-
-Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive         
-
-gYearMonth
-``````````
-Represents a specific Gregorian month in a specific Gregorian year. A set of one-month long, nonperiodic instances. The pattern for gYearMonth is CCYY-MM with optional time zone indicator.
-
-Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive         
-
-gYear
-`````
-Represents a Gregorian year. A set of one-year long, nonperiodic instances. The pattern for gYear is CCYY with optional time zone indicator as allowed for dateTime.    
-
-Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive         
-
-gMonthDay
-`````````
-Represents a specific Gregorian date that recurs, specifically a day of the year such as the third of May. A gMonthDay is the set of calendar dates. Specifically, it is a set of one-day long, annually periodic instances. The pattern for gMonthDay is --MM-DD with optional time zone indicator as allowed for date
-
-Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive         
-
-gDay
-````
-Represents a Gregorian day that recurs, specifically a day of the month such as the fifth day of the month. A gDay is the space of a set of calendar dates. Specifically, it is a set of one-day long, monthly periodic instances. The pattern for gDay is ---DD with optional time zone indicator as allowed for date
-
-Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive         
-
-gMonth
-``````
-Represents a Gregorian month that recurs every year. A gMonth is the space of a set of calendar months. Specifically, it is a set of one-month long, yearly periodic instances. The pattern for gMonth is --MM-- with optional time zone indicator as allowed for date.    
-
-Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive         
-
-anyURI
-``````
-Represents a URI as defined by RFC 2396. An anyURI value can be absolute or relative, and may have an optional fragment identifier.    
-
-Facets
-    maxLength, minLength
-
-
-Derived Types
-~~~~~~~~~~~~~~~~~~~~~~~
-
-langString
-`````````````````````
-Represents a character string and an associated language tag (defined by BCP 47).    
-
-Facets
-    maxLength, minLength, enumeration, pattern                          
-
-language
-````````
-Represents natural language identifiers (defined by BCP 47).   
-
-Facets
-    None       
-
-int
-`````````````````````
-Represents an integer with a minimum value of -2147483648 and maximum of 2147483647. This data type is derived from long.    
-
-Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive        
-    
-long
-`````````````````````
-Represents an integer with a minimum value of -9223372036854775808 and maximum of 9223372036854775807. This data type is derived from integer.    
-
-Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive              
-
-unsignedLong
-`````````````````````
-Represents an integer with a minimum of zero and maximum of 18446744073709551615. This data type is derived from nonNegativeInteger.    
-
-Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive      
-
-nonNegativeInteger
-`````````````````````
-Represents an integer that is greater than or equal to zero. This data type is derived from integer.    
-
-Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive              
-
-nonPositiveInteger
-`````````````````````
-
-Represents an integer that is less than or equal to zero. A
-nonPositiveIntegerconsists of a negative sign (-) and sequence of decimal
-digits. This data type is derived from integer.    
-
-Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive              
-
-negativeInteger
-`````````````````````
-
-Represents an integer that is less than zero. Consists of a negative sign (-)
-and sequence of decimal digits. This data type is derived from
-nonPositiveInteger.    
-
-Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive     
-
-positiveInteger
-`````````````````````
-
-Represents an integer that is greater than zero. This data type is derived from
-nonNegativeInteger.    
-
-Facets
-    minInclusive, minExclusive, maxInclusive, maxExclusive
-
-cogsDate
-````````
-
-A union of dateTime, date, gYearMonth, gYear, and duration which allows for the
-use of a date-time combination (YYYY-MM-DDTHH:MM:SS), date (YYYYY-MM-DD),
-year-month (YYYY-MM), year (YYYY), and duration (PnYnMnDnHnMnS) as valid
-values.    
-
-Facets
-    None
+See :doc:`/specification/model-format` for normative lexical forms, facet
+applicability, and contradiction rules.

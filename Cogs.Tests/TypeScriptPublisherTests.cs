@@ -12,7 +12,7 @@ public class TypeScriptPublisherTests
     [Fact]
     public void PublishWritesEsmPackageAndGeneratedClasses()
     {
-        CogsModel model = BuildModel("My Model.Package", "1.2.3rc1");
+        CogsModel model = BuildModel("my_model", "1.2.3-rc.1");
         WithTemporaryDirectory(parent =>
         {
             string target = Path.Combine(parent, "output");
@@ -25,8 +25,10 @@ public class TypeScriptPublisherTests
             Assert.False(File.Exists(Path.Combine(target, "package-lock.json")));
 
             using JsonDocument package = JsonDocument.Parse(File.ReadAllText(Path.Combine(target, "package.json")));
-            Assert.Equal("my-model.package", package.RootElement.GetProperty("name").GetString());
+            Assert.Equal("my_model", package.RootElement.GetProperty("name").GetString());
             Assert.Equal("1.2.3-rc.1", package.RootElement.GetProperty("version").GetString());
+            Assert.Equal("2.0", package.RootElement.GetProperty("cogs").GetProperty("cogsVersion").GetString());
+            Assert.Equal("1.2.3-rc.1", package.RootElement.GetProperty("cogs").GetProperty("modelVersion").GetString());
             Assert.Equal("module", package.RootElement.GetProperty("type").GetString());
             Assert.Equal(">=22", package.RootElement.GetProperty("engines").GetProperty("node").GetString());
             Assert.Equal("^0.9.10", package.RootElement.GetProperty("dependencies").GetProperty("@xmldom/xmldom").GetString());
@@ -47,6 +49,10 @@ public class TypeScriptPublisherTests
             Assert.Contains("displayName: string | undefined", generated);
             Assert.Contains("attributeName: \"displayName\"", generated);
             Assert.Contains("cogsName: \"DisplayName\"", generated);
+            Assert.Contains("element.setAttribute(\"isReference\", \"true\")", generated);
+            Assert.Contains("allowedAttributes(element, [[null, \"isReference\"]])", generated);
+            Assert.Contains("marker !== \"true\" && marker !== \"1\"", generated);
+            Assert.DoesNotContain("isReference:", generated, StringComparison.Ordinal);
             Assert.DoesNotContain("class Topic", generated);
         });
     }
@@ -54,7 +60,7 @@ public class TypeScriptPublisherTests
     [Fact]
     public void PublishRequiresOverwriteForExistingDirectory()
     {
-        CogsModel model = BuildModel("example", "0.1");
+        CogsModel model = BuildModel("example", "0.1.0");
         WithTemporaryDirectory(parent =>
         {
             string target = Path.Combine(parent, "output");
@@ -74,10 +80,11 @@ public class TypeScriptPublisherTests
     [Fact]
     public void PublishRejectsCollidingCamelCaseMembers()
     {
-        CogsModel model = BuildModel("example", "1.0.0");
-        ItemType item = model.ItemTypes[0];
-        item.Properties.Add(SimpleProperty("URLValue"));
-        item.Properties.Add(SimpleProperty("UrlValue"));
+        CogsModel model = BuildModel("example", "1.0.0", customize: dto =>
+        {
+            dto.ItemTypes[0].Properties.Add(SimpleDtoProperty("URLValue"));
+            dto.ItemTypes[0].Properties.Add(SimpleDtoProperty("UrlValue"));
+        });
 
         WithTemporaryDirectory(parent =>
         {
@@ -90,8 +97,8 @@ public class TypeScriptPublisherTests
     [Fact]
     public void PublishRejectsRuntimeMemberCollisions()
     {
-        CogsModel model = BuildModel("example", "1.0.0");
-        model.ItemTypes[0].Properties.Add(SimpleProperty("ToJson"));
+        CogsModel model = BuildModel("example", "1.0.0", customize: dto =>
+            dto.ItemTypes[0].Properties.Add(SimpleDtoProperty("ToJson")));
 
         WithTemporaryDirectory(parent =>
         {
@@ -104,7 +111,7 @@ public class TypeScriptPublisherTests
     [Fact]
     public void PublishIncludesAllIdentificationFieldsAndNamespaceOverride()
     {
-        CogsModel model = BuildModel("example", "1", includeIdentificationMixin: true);
+        CogsModel model = BuildModel("example", "1.0.0", includeIdentificationMixin: true);
         WithTemporaryDirectory(parent =>
         {
             string target = Path.Combine(parent, "output");
@@ -116,18 +123,15 @@ public class TypeScriptPublisherTests
 
             Assert.Contains("{ cogsName: \"ID\", attributeName: \"id\" }", generated);
             Assert.Contains("{ cogsName: \"AgencyID\", attributeName: \"agencyId\" }", generated);
-            Assert.Contains("const TARGET_NAMESPACE = \"https://override.example/model\"", generated);
+            Assert.Contains("const TARGET_NAMESPACE: string = \"https://override.example/model\"", generated);
             Assert.Contains("static override readonly isAbstract: boolean = true", generated);
         });
     }
 
     [Theory]
-    [InlineData("1", "1.0.0")]
-    [InlineData("1.2", "1.2.0")]
     [InlineData("1.2.3", "1.2.3")]
-    [InlineData("1.2.3rc4", "1.2.3-rc.4")]
     [InlineData("1.2.3-beta.2+build.5", "1.2.3-beta.2+build.5")]
-    public void PublishNormalizesSafeVersions(string input, string expected)
+    public void PublishPreservesCanonicalVersions(string input, string expected)
     {
         CogsModel model = BuildModel("example", input);
         WithTemporaryDirectory(parent =>
@@ -137,6 +141,17 @@ public class TypeScriptPublisherTests
             using JsonDocument package = JsonDocument.Parse(File.ReadAllText(Path.Combine(target, "package.json")));
             Assert.Equal(expected, package.RootElement.GetProperty("version").GetString());
         });
+    }
+
+    [Theory]
+    [InlineData("1")]
+    [InlineData("1.2")]
+    [InlineData("1.2.3rc4")]
+    public void PublishRejectsNoncanonicalVersions(string input)
+    {
+        CogsModel model = BuildModel("example", input);
+        WithTemporaryDirectory(parent => Assert.Throws<InvalidOperationException>(
+            () => new TypeScriptPublisher(model, Path.Combine(parent, "output")).Publish()));
     }
 
     [Fact]
@@ -158,8 +173,8 @@ public class TypeScriptPublisherTests
     [Fact]
     public void PublishRejectsRuntimeTypeCollision()
     {
-        CogsModel model = BuildModel("example", "1.0.0");
-        model.ItemTypes[0].Name = "CogsDecimal";
+        CogsModel model = BuildModel("example", "1.0.0", customize: dto =>
+            dto.ItemTypes[1].Name = "CogsDecimal");
         WithTemporaryDirectory(parent =>
         {
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
@@ -168,7 +183,11 @@ public class TypeScriptPublisherTests
         });
     }
 
-    private static CogsModel BuildModel(string slug, string version, bool includeIdentificationMixin = false)
+    private static CogsModel BuildModel(
+        string slug,
+        string version,
+        bool includeIdentificationMixin = false,
+        Action<Cogs.Dto.CogsDtoModel> customize = null)
     {
         var dto = new Cogs.Dto.CogsDtoModel();
         AddSetting(dto, "Title", "Test Model");
@@ -186,7 +205,10 @@ public class TypeScriptPublisherTests
         baseItem.Properties.Add(SimpleDtoProperty("DisplayName"));
         dto.ItemTypes.Add(baseItem);
         dto.ItemTypes.Add(new Cogs.Dto.ItemType { Name = "DerivedItem", Description = "A concrete item", Extends = "BaseItem" });
-        return new CogsModelBuilder().Build(dto);
+        customize?.Invoke(dto);
+        CogsBuildResult result = new CogsModelBuilder().BuildResult(dto);
+        Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics));
+        return Assert.IsType<CogsModel>(result.Model);
     }
 
     private static void AddSetting(Cogs.Dto.CogsDtoModel dto, string key, string value) =>

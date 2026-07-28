@@ -8,7 +8,7 @@
     <AssemblyName>cogs</AssemblyName>
     <StartupObject>Cogs.Console.Program</StartupObject>
     <GenerateProgramFile>false</GenerateProgramFile>
-    <Version>1.0.539</Version>
+    <Version>2.0.0</Version>
     <Copyright>Colectica</Copyright>
     <PackageId>cogs</PackageId>
     <Authors>Colectica</Authors>
@@ -37,6 +37,10 @@ COGS is for domain experts and groups who value ease of collaboration and low te
     <None Include="..\Cogs.licenseheader" Link="Cogs.licenseheader" />
     <None Include="images\colectica-seal-128x128.png" Pack="true" PackagePath="" />
     <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Cogs.Tests" />
   </ItemGroup>
 
   <ItemGroup>

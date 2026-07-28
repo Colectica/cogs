@@ -6,7 +6,9 @@ Introduction
 Generates graph(s) showing connections between `Item types <../../../modeler-guide/item-types/index.html>`_ and, 
 optionally, `Composite types <../../../modeler-guide/composite-types/index.html>`_ in the model. 
 
-Requires that `dotnet <../../installation/dotnet/index.html>`_ and `Graphviz <../../installation/graphviz/index.html>`_ are installed.
+Requires that `dotnet <../../installation/dotnet/index.html>`_ is installed.
+Raw DOT output does not require Graphviz; rendered formats do. Missing Graphviz
+for a rendered format, or an invoked Graphviz process that fails, is an error.
 
 Command Line Arguments
 ----------------------
@@ -32,9 +34,10 @@ Optional inputs for the publish-dot command.
 
     If the ``[TargetLocation]`` is not empty, erase all files in the folder before generation.
 
-* ``-l|--location``
+* ``--dot PATH``
 
-    The directory where the dot.exe file is located--only needed if not using normative and not running on Windows.
+    Path to the Graphviz ``dot`` executable. If omitted, discovery checks
+    ``COGS_DOT`` and then ``PATH``.
 
 * ``-f|--format``
 
@@ -62,7 +65,7 @@ Command Line Usage
 
     .. code-block:: bash
 
-        $ publish-dot (-h) (-o) (-l [location]) (-f [format]) (-a) (-s) (-i) (-c) [CogsLocation] [TargetLocation]
+        $ cogs publish-dot (-h) (-o) [--dot PATH] (-f [format]) (-a) (-s) (-i) (-c) [CogsLocation] [TargetLocation]
 
 **Examples**
 
@@ -70,7 +73,7 @@ Command Line Usage
 
     .. code-block:: bash
 
-        $ publish-dot -h
-        $ publish-dot MyCogsModelDirectory MyOutputDirectory
-        $ publish-dot -o -a -i -c MyCogsModelDirectory MyOutputDirectory
-        $ publish-dot -o -l MyGraphvizDotDirectory -f jpg MyCogsModelDirectory MyOutputDirectory
+        $ cogs publish-dot -h
+        $ cogs publish-dot MyCogsModelDirectory MyOutputDirectory
+        $ cogs publish-dot -o -a -i -c MyCogsModelDirectory MyOutputDirectory
+        $ cogs publish-dot -o --dot /opt/graphviz/bin/dot -f jpg MyCogsModelDirectory MyOutputDirectory

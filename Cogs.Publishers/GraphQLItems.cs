@@ -6,7 +6,7 @@ namespace Cogs.Publishers
 {
     public class GraphQLItems
     {
-        public string Type { get; set; }
-        public Dictionary<string, string> Properties { get; set;  }
+        public string Type { get; set; } = string.Empty;
+        public Dictionary<string, string> Properties { get; set; } = new();
     }
 }

@@ -1,0 +1,2 @@
+Name,DataType,MinCardinality,MaxCardinality,Description,Ordered,AllowSubtypes,MinLength,MaxLength,Enumeration,Pattern,MinInclusive,MinExclusive,MaxInclusive,MaxExclusive,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
+Note,string,0,1,Property introduced by a concrete descendant.,,,,,,,,,,,http://example.org/legacy,note,LegacyNote
