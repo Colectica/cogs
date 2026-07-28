@@ -250,6 +250,7 @@ public sealed class DotSchemaPublisher
                 CreateNoWindow = true,
                 WindowStyle = ProcessWindowStyle.Hidden
             };
+            ConfigureGraphvizEnvironment(startInfo, format);
             startInfo.ArgumentList.Add("-T" + (format == "jpg" ? "jpeg" : format));
             startInfo.ArgumentList.Add("-o");
             startInfo.ArgumentList.Add(outputPath);
@@ -283,9 +284,10 @@ public sealed class DotSchemaPublisher
 
     internal static void NormalizePdfMetadata(string path)
     {
-        // Cairo-backed Graphviz builds write the wall-clock time into PDF
-        // metadata. Replace only the fixed-width timestamp digits so PDF byte
-        // offsets remain valid and identical graphs remain reproducible.
+        // Older Cairo-backed Graphviz builds may ignore SOURCE_DATE_EPOCH and
+        // write an uncompressed wall-clock time into PDF metadata. Replace
+        // only the fixed-width timestamp digits so PDF byte offsets remain
+        // valid and identical graphs remain reproducible.
         byte[] bytes = File.ReadAllBytes(path);
         string content = Encoding.Latin1.GetString(bytes);
         string normalized = Regex.Replace(content,
@@ -297,6 +299,17 @@ public sealed class DotSchemaPublisher
         if (!string.Equals(content, normalized, StringComparison.Ordinal))
         {
             File.WriteAllBytes(path, Encoding.Latin1.GetBytes(normalized));
+        }
+    }
+
+    internal static void ConfigureGraphvizEnvironment(ProcessStartInfo startInfo, string format)
+    {
+        ArgumentNullException.ThrowIfNull(startInfo);
+        if (string.Equals(format, "pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            // Graphviz passes SOURCE_DATE_EPOCH to Cairo as the PDF creation
+            // date, including when the metadata dictionary is compressed.
+            startInfo.Environment["SOURCE_DATE_EPOCH"] = "0";
         }
     }
 

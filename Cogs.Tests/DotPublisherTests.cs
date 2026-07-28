@@ -1,6 +1,7 @@
 using Cogs.Model;
 using Cogs.Publishers;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -73,6 +74,21 @@ public sealed class DotPublisherTests
 
         DotSchemaPublisher.NormalizePdfMetadata(path);
         Assert.Equal(normalized, File.ReadAllBytes(path));
+    }
+
+    [Fact]
+    public void PdfRenderingUsesAReproducibleSourceDateEpoch()
+    {
+        var pdfStartInfo = new ProcessStartInfo();
+        pdfStartInfo.Environment["SOURCE_DATE_EPOCH"] = "987654321";
+
+        DotSchemaPublisher.ConfigureGraphvizEnvironment(pdfStartInfo, "pdf");
+
+        Assert.Equal("0", pdfStartInfo.Environment["SOURCE_DATE_EPOCH"]);
+
+        var svgStartInfo = new ProcessStartInfo();
+        DotSchemaPublisher.ConfigureGraphvizEnvironment(svgStartInfo, "svg");
+        Assert.False(svgStartInfo.Environment.ContainsKey("SOURCE_DATE_EPOCH"));
     }
 
     private static CogsModel BuildModel()
