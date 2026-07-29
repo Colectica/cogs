@@ -6,12 +6,6 @@ The Convention-based Ontology Generation System (COGS) gives you a powerful, pat
 
 COGS is for domain experts and groups who value **ease of collaboration** and **low technical barriers** for participation.
 
-COGS 2 models declare `CogsVersion,2.0` in `Settings/Settings.csv`. The
-[normative model and wire-format specification](docs/source/specification/index.rst)
-defines the exact case-sensitive directory, CSV, identity, primitive, JSON,
-and XML contracts. The [migration guide](docs/source/migration/index.rst)
-describes review and mechanical upgrade steps for older models.
-
 ## Highlighted projects using COGS
 
 * SDTL - Structured Data Transformation Language
@@ -21,53 +15,20 @@ describes review and mechanical upgrade steps for older models.
   * https://github.com/ddialliance/ddimodel [cogs]
   * https://ddialliance.org/ddi-lifecycle
 
-
 ## Output formats
 
 The authoritative COGS outputs are:
 
-* XML Schema and JSON Schema as instance-validation targets
-* C# class library with JSON and XML serialization as an instance target
-* Python class package with JSON and XML serialization as an instance target
-* TypeScript class package with JSON and XML serialization as an instance target
-* UML/XMI as the authoritative structural model output, with the documented
-  `PROJ2601` property-local subtype exception
-* OWL/RDF in W3C Turtle (`<slug>.ttl`) as the authoritative ontology and
-  class-semantics output, with the documented `OWL2002` and `OWL2003`
-  authority exceptions
+* XML Schema 1.0 and JSON Schema 2020-12
+* OWL/RDF in W3C Turtle
+* UML/XMI in normative and EA flavors
+* C# class library with JSON and XML serialization
+* Python class package with JSON and XML serialization
+* TypeScript class package with JSON and XML serialization
 
-Generated XSD factors the ordered identification fields into one public
-`IdentificationGroup`. Every XML reference type reuses it and permits the
-optional unqualified fixed-true `isReference` attribute. Generated language
-writers emit `isReference="true"` so references are directly queryable, while
-readers and the schema continue to accept legacy unmarked XML.
-
-COGS also publishes projections for LinkML, DCTAP, GraphQL schema language,
+COGS also publishes LinkML, DCTAP, GraphQL schema language,
 Graphviz/DOT, and Sphinx documentation.
-Projection targets may approximate or reject COGS features and are not an
-alternative definition of the JSON/XML wire contract. Consult each target's
-capability notes and validate instances with the generated schemas.
-
-JSON Schema uses the standard ``duration``, ``date-time``, ``time``, and
-``date`` format annotations. COGS retains the broader XSD temporal lexical
-spaces, so ``validate-instance`` remains authoritative rather than optional
-third-party format assertion.
-
-ShEx and SHACL are not current COGS output targets.
-
-Validate a model before publication, and validate representative instances
-with the authoritative schema plus COGS extension checks:
-
-```powershell
-cogs validate MyModel
-cogs validate-instance MyModel example.json --format json
-cogs validate-instance MyModel example.xml --format xml
-```
-
-The [publisher capability matrix](docs/source/specification/publishers.rst)
-records what each output preserves, the UML and OWL authority exceptions, and
-which stable diagnostics disclose projection approximations or behavior outside
-an authoritative target's scope.
+ShEx and SHACL can be generated via LinkML.
 
 ## Platform
 COGS runs on Windows, Linux, and macOS on .NET 10.
@@ -82,8 +43,6 @@ COGS can be installed as a dotnet global tool from nuget
 ```
 dotnet tool install -g cogs
 ```
-
-
 ## Legal and Licensing
 COGS is licensed under the MIT license.
 
