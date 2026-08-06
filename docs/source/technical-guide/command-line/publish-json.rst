@@ -21,11 +21,13 @@ standard Draft 2020-12 ``duration``, ``date-time``, ``time``, and ``date``
 format annotations without regex patterns. The Gregorian ``g*`` definitions
 use closed PascalCase component objects. ``anyURI`` uses the standard ``uri``
 format annotation without a generated regex pattern.
-Property-local tagged and item-reference helper definitions are emitted only
-when reachable. Helper suffixes such as ``__Tagged``, ``__Reference``, and
-``__AssignableReference`` identify internal ``$defs`` entries, not wire
-``$type`` names. Equivalent exact/assignable reference shapes may share one
-definition.
+Property-local tagged and item-reference restrictions are expressed inline
+when reachable rather than as additional schema types. Derived item and
+composite definitions reference their parent with ``allOf`` and contain only
+locally declared properties. Draft 2020-12 ``unevaluatedProperties`` closes the
+final item or composite value after inherited and local constraints have been
+evaluated. Item-valued properties compose the global ``Reference`` with only
+their property-local ``$type`` restriction.
 
 Requires that `dotnet <../../installation/dotnet/index.html>`_ is installed.
 

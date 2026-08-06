@@ -17,6 +17,35 @@ namespace Cogs.Publishers.FluentJson
     {
         private const string Draft202012 = "https://json-schema.org/draft/2020-12/schema";
         private const string CogsVocabulary = "https://cogsdata.org/schema/vocabulary/2.0";
+        private static readonly IReadOnlyDictionary<string, string> PrimitiveDescriptions =
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["boolean"] = "A Boolean value: true or false.",
+                ["string"] = "A Unicode text string.",
+                ["decimal"] = "An exact XML Schema decimal represented as a JSON number without exponent notation.",
+                ["float"] = "A finite IEEE 754 binary32 value represented as a JSON number.",
+                ["double"] = "A finite IEEE 754 binary64 value represented as a JSON number.",
+                ["duration"] = "An XML Schema duration lexical value, including optional sign and year or month components.",
+                ["dateTime"] = "An XML Schema dateTime lexical value with a nonzero signed 32-bit calendar year.",
+                ["time"] = "An XML Schema time lexical value.",
+                ["date"] = "An XML Schema date lexical value with a nonzero signed 32-bit calendar year.",
+                ["gYearMonth"] = "An XML Schema gYearMonth represented by Year, Month, and optional Timezone components; Year is a nonzero signed 32-bit integer.",
+                ["gYear"] = "An XML Schema gYear represented by Year and optional Timezone components; Year is a nonzero signed 32-bit integer.",
+                ["gMonthDay"] = "An XML Schema gMonthDay represented by Month, Day, and optional Timezone components.",
+                ["gDay"] = "An XML Schema gDay represented by Day and optional Timezone components.",
+                ["gMonth"] = "An XML Schema gMonth represented by Month and optional Timezone components.",
+                ["anyURI"] = "An RFC 3986 relative or absolute URI reference.",
+                ["language"] = "A language tag using COGS BCP 47 syntax.",
+                ["nonPositiveInteger"] = "An arbitrary-precision integer less than or equal to zero.",
+                ["negativeInteger"] = "An arbitrary-precision integer less than zero.",
+                ["long"] = "A signed 64-bit integer.",
+                ["int"] = "A signed 32-bit integer.",
+                ["nonNegativeInteger"] = "An arbitrary-precision integer greater than or equal to zero.",
+                ["unsignedLong"] = "An integer from zero through 18446744073709551615.",
+                ["positiveInteger"] = "An arbitrary-precision integer greater than zero.",
+                ["cogsDate"] = "A date value containing exactly one DateTime, Date, GYearMonth, GYear, or Duration arm.",
+                ["langString"] = "A Unicode text string paired with a required BCP 47 language tag."
+            };
 
         public string CogsLocation { get; set; } = string.Empty;
         public string TargetDirectory { get; set; } = string.Empty;
@@ -60,41 +89,44 @@ namespace Cogs.Publishers.FluentJson
             var definitions = SimpleTypeDefinitions();
             foreach (var composite in model.ReusableDataTypes)
             {
-                if (EmissionPlan.UntaggedCompositeNames.Contains(composite.Name))
+                if (EmissionPlan.ModelTypeNames.Contains(composite.Name))
                 {
-                    definitions[composite.Name] = GetJsonSchema(composite, tagged: false);
-                }
-                if (EmissionPlan.TaggedCompositeNames.Contains(composite.Name))
-                {
-                    definitions[TaggedName(composite)] = GetJsonSchema(composite, tagged: true);
+                    definitions[composite.Name] = GetJsonSchema(composite);
                 }
             }
-            foreach (var item in model.ItemTypes.Where(x => !x.IsAbstract))
+            foreach (var item in model.ItemTypes)
             {
-                definitions[item.Name] = GetJsonSchema(item, tagged: true);
-            }
-            foreach (var reference in EmissionPlan.ReferenceDefinitions)
-            {
-                definitions[reference.Name] = BuildReferenceSchema(reference.ConcreteTypes);
+                if (EmissionPlan.ModelTypeNames.Contains(item.Name))
+                {
+                    definitions[item.Name] = GetJsonSchema(item);
+                }
             }
             definitions["Reference"] = BuildReferenceSchema(model.ItemTypes.Where(x => !x.IsAbstract));
 
             var itemAlternatives = model.ItemTypes
                 .Where(x => !x.IsAbstract)
                 .OrderBy(x => x.Name, StringComparer.Ordinal)
-                .Select(x => new JsonSchemaBuilder().Ref(DefinitionRef(x.Name)))
+                .Select(BuildExactItemAlternative)
                 .ToArray();
+            JsonSchemaBuilder itemSchema = itemAlternatives.Length == 0
+                ? JsonSchemaBuilder.False
+                : new JsonSchemaBuilder()
+                    .Type(SchemaValueType.Object)
+                    .OneOf(itemAlternatives)
+                    .UnevaluatedProperties(JsonSchemaBuilder.False);
 
             var containerProperties = new Dictionary<string, JsonSchemaBuilder>
             {
                 ["topLevelReferences"] = new JsonSchemaBuilder()
                     .Type(SchemaValueType.Array)
                     .Items(new JsonSchemaBuilder().Ref(DefinitionRef("Reference")))
-                    .MinItems(0),
+                    .MinItems(0)
+                    .Description("References to the top-level items in this container."),
                 ["items"] = new JsonSchemaBuilder()
                     .Type(SchemaValueType.Array)
-                    .Items(itemAlternatives.Length == 0 ? JsonSchemaBuilder.False : new JsonSchemaBuilder().OneOf(itemAlternatives))
+                    .Items(itemSchema)
                     .MinItems(0)
+                    .Description("Complete item definitions serialized in this container.")
             };
 
             var root = new JsonSchemaBuilder()
@@ -110,34 +142,45 @@ namespace Cogs.Publishers.FluentJson
             return root.Build();
         }
 
-        public JsonSchemaBuilder GetJsonSchema(DataType datatype) =>
-            GetJsonSchema(datatype, datatype is ItemType && !datatype.IsAbstract);
-
-        private JsonSchemaBuilder GetJsonSchema(DataType datatype, bool tagged)
+        public JsonSchemaBuilder GetJsonSchema(DataType datatype)
         {
-            var properties = CogsTypeSystem.EffectiveProperties(datatype);
+            var properties = datatype.Properties;
             var jsonProperties = new Dictionary<string, JsonSchemaBuilder>();
-            if (tagged)
+            DataType? parent = GetImmediateParent(datatype);
+            if (datatype is ItemType item && parent is null)
             {
+                string[] concreteTypes = CogsTypeSystem.ConcreteAssignableTypes(CogsModel, item)
+                    .OfType<ItemType>()
+                    .Select(x => x.Name)
+                    .OrderBy(x => x, StringComparer.Ordinal)
+                    .ToArray();
                 jsonProperties["$type"] = new JsonSchemaBuilder()
                     .Type(SchemaValueType.String)
-                    .Enum(datatype.Name);
+                    .Enum(concreteTypes);
             }
             foreach (var property in properties)
             {
                 jsonProperties[property.Name] = GetBuilderForProperty(property);
             }
 
-            var builder = new JsonSchemaBuilder()
+            var localSchema = new JsonSchemaBuilder()
                 .Type(SchemaValueType.Object)
-                .Description(datatype.Description ?? string.Empty)
-                .Properties(jsonProperties)
-                .AdditionalProperties(false);
+                .Properties(jsonProperties);
 
             var required = properties.Where(IsRequired).Select(x => x.Name).ToList();
-            if (tagged) required.Insert(0, "$type");
-            if (required.Count > 0) builder.Required(required);
-            return builder;
+            if (datatype is ItemType && parent is null) required.Insert(0, "$type");
+            if (required.Count > 0) localSchema.Required(required);
+
+            if (parent is null)
+            {
+                return localSchema.Description(datatype.Description ?? string.Empty);
+            }
+
+            return new JsonSchemaBuilder()
+                .Description(datatype.Description ?? string.Empty)
+                .AllOf(
+                    new JsonSchemaBuilder().Ref(DefinitionRef(parent.Name)),
+                    localSchema);
         }
 
         public JsonSchemaBuilder GetBuilderForProperty(Property property)
@@ -167,31 +210,25 @@ namespace Cogs.Publishers.FluentJson
         {
             if (property.DataType is ItemType item)
             {
-                var use = new ItemReferenceUse(item.Name, CogsTypeSystem.AllowsSubtypes(property));
-                if (EmissionPlan.ItemReferenceTargets.TryGetValue(use, out string? plannedReference))
-                {
-                    return plannedReference is null
-                        ? UninhabitedSchema()
-                        : new JsonSchemaBuilder().Ref(DefinitionRef(plannedReference));
-                }
-
-                string reference = use.AllowsSubtypes ? AssignableReferenceName(item) : ReferenceName(item);
-                return new JsonSchemaBuilder().Ref(DefinitionRef(reference));
+                return BuildItemReferenceSchema(item, CogsTypeSystem.AllowsSubtypes(property));
             }
             if (property.DataType != null && !property.DataType.IsXmlPrimitive)
             {
                 if (!CogsTypeSystem.AllowsSubtypes(property))
                 {
-                    return new JsonSchemaBuilder().Ref(DefinitionRef(property.DataType.Name));
+                    return BuildClosedStructuralReference(property.DataType);
                 }
 
                 var alternatives = CogsTypeSystem.ConcreteAssignableTypes(CogsModel, property.DataType)
                     .Where(x => x is not ItemType)
-                    .Select(x => new JsonSchemaBuilder().Ref(DefinitionRef(TaggedName(x))))
+                    .Select(BuildTaggedCompositeAlternative)
                     .ToArray();
                 return alternatives.Length == 0
                     ? UninhabitedSchema()
-                    : new JsonSchemaBuilder().OneOf(alternatives);
+                    : new JsonSchemaBuilder()
+                        .Type(SchemaValueType.Object)
+                        .OneOf(alternatives)
+                        .UnevaluatedProperties(JsonSchemaBuilder.False);
             }
 
             return new JsonSchemaBuilder().Ref(DefinitionRef(property.DataTypeName));
@@ -199,10 +236,17 @@ namespace Cogs.Publishers.FluentJson
 
         private SchemaEmissionPlan BuildEmissionPlan(CogsModel model)
         {
-            var untaggedComposites = new HashSet<string>(StringComparer.Ordinal);
-            var taggedComposites = new HashSet<string>(StringComparer.Ordinal);
+            var modelTypes = new HashSet<string>(StringComparer.Ordinal);
             var traversedComposites = new HashSet<string>(StringComparer.Ordinal);
-            var itemReferenceUses = new HashSet<ItemReferenceUse>();
+
+            void AddTypeAndAncestors(DataType type)
+            {
+                foreach (var parent in type.ParentTypes)
+                {
+                    modelTypes.Add(parent.Name);
+                }
+                modelTypes.Add(type.Name);
+            }
 
             void TraverseProperties(DataType owner)
             {
@@ -219,9 +263,8 @@ namespace Cogs.Publishers.FluentJson
 
             void TraverseProperty(Property property)
             {
-                if (property.DataType is ItemType item)
+                if (property.DataType is ItemType)
                 {
-                    itemReferenceUses.Add(new ItemReferenceUse(item.Name, CogsTypeSystem.AllowsSubtypes(property)));
                     return;
                 }
 
@@ -233,7 +276,7 @@ namespace Cogs.Publishers.FluentJson
                 DataType composite = property.DataType;
                 if (!CogsTypeSystem.AllowsSubtypes(property))
                 {
-                    untaggedComposites.Add(composite.Name);
+                    AddTypeAndAncestors(composite);
                     TraverseProperties(composite);
                     return;
                 }
@@ -241,165 +284,95 @@ namespace Cogs.Publishers.FluentJson
                 foreach (var concrete in CogsTypeSystem.ConcreteAssignableTypes(model, composite)
                     .Where(x => x is not ItemType))
                 {
-                    taggedComposites.Add(concrete.Name);
+                    AddTypeAndAncestors(concrete);
                     TraverseProperties(concrete);
                 }
             }
 
             // Every concrete item remains a legal full object in ItemContainer.items.
-            // Its flattened effective properties are therefore the roots of the
-            // model-defined value-type and item-reference reachability graph.
+            // Its inheritance chain and effective properties are therefore roots
+            // of the model-defined value-type reachability graph.
             foreach (var item in model.ItemTypes.Where(x => !x.IsAbstract))
             {
+                AddTypeAndAncestors(item);
                 foreach (var property in CogsTypeSystem.EffectiveProperties(item))
                 {
                     TraverseProperty(property);
                 }
             }
 
-            return BuildReferencePlan(
-                model,
-                untaggedComposites,
-                taggedComposites,
-                itemReferenceUses);
+            return new SchemaEmissionPlan(modelTypes);
         }
 
-        private SchemaEmissionPlan BuildReferencePlan(
-            CogsModel model,
-            HashSet<string> untaggedComposites,
-            HashSet<string> taggedComposites,
-            HashSet<ItemReferenceUse> itemReferenceUses)
+        private DataType? GetImmediateParent(DataType datatype)
         {
-            var targets = new Dictionary<ItemReferenceUse, string?>();
-            var definitionsByShape = new Dictionary<string, ReferenceDefinitionPlan>(StringComparer.Ordinal);
-            DataType[] allConcreteItems = model.ItemTypes
-                .Where(x => !x.IsAbstract)
-                .OrderBy(x => x.Name, StringComparer.Ordinal)
-                .Cast<DataType>()
-                .ToArray();
-            string globalShape = BuildReferenceShapeKey(allConcreteItems);
-            var itemByName = model.ItemTypes.ToDictionary(x => x.Name, StringComparer.Ordinal);
-
-            foreach (var use in itemReferenceUses
-                .OrderBy(x => x.ItemName, StringComparer.Ordinal)
-                .ThenBy(x => x.AllowsSubtypes))
+            if (string.IsNullOrWhiteSpace(datatype.ExtendsTypeName))
             {
-                ItemType declared = itemByName[use.ItemName];
-                DataType[] permitted = (use.AllowsSubtypes
-                        ? CogsTypeSystem.ConcreteAssignableTypes(model, declared)
-                        : declared.IsAbstract ? Array.Empty<DataType>() : new DataType[] { declared })
-                    .OfType<ItemType>()
-                    .OrderBy(x => x.Name, StringComparer.Ordinal)
-                    .Cast<DataType>()
-                    .ToArray();
-
-                if (permitted.Length == 0)
-                {
-                    // An abstract item without a concrete descendant is
-                    // uninhabited and needs no named definition.
-                    targets[use] = null;
-                    continue;
-                }
-
-                string shape = BuildReferenceShapeKey(permitted);
-                if (string.Equals(shape, globalShape, StringComparison.Ordinal))
-                {
-                    targets[use] = "Reference";
-                    continue;
-                }
-
-                if (!definitionsByShape.TryGetValue(shape, out ReferenceDefinitionPlan? definition))
-                {
-                    string definitionName = GetCanonicalReferenceName(model, permitted);
-                    definition = new ReferenceDefinitionPlan(definitionName, permitted);
-                    definitionsByShape.Add(shape, definition);
-                }
-                targets[use] = definition.Name;
+                return null;
             }
 
-            return new SchemaEmissionPlan(
-                untaggedComposites,
-                taggedComposites,
-                targets,
-                definitionsByShape.Values
-                    .OrderBy(x => x.Name, StringComparer.Ordinal)
-                    .ToArray());
+            DataType? parent = datatype.ParentTypes.FirstOrDefault(candidate =>
+                string.Equals(candidate.Name, datatype.ExtendsTypeName, StringComparison.Ordinal));
+            parent ??= CogsModel.AllDataTypes.FirstOrDefault(candidate =>
+                string.Equals(candidate.Name, datatype.ExtendsTypeName, StringComparison.Ordinal));
+            return parent ?? throw new InvalidOperationException(
+                $"Parent type '{datatype.ExtendsTypeName}' for '{datatype.Name}' is not present in the connected model.");
         }
 
-        private string BuildReferenceShapeKey(IReadOnlyList<DataType> concreteTypes)
+        private JsonSchemaBuilder BuildExactItemAlternative(ItemType item) =>
+            new JsonSchemaBuilder().AllOf(
+                new JsonSchemaBuilder().Ref(DefinitionRef(item.Name)),
+                BuildDiscriminatorRestriction(new[] { item.Name }));
+
+        private JsonSchemaBuilder BuildClosedStructuralReference(DataType datatype) =>
+            new JsonSchemaBuilder()
+                .Type(SchemaValueType.Object)
+                .AllOf(new JsonSchemaBuilder().Ref(DefinitionRef(datatype.Name)))
+                .UnevaluatedProperties(JsonSchemaBuilder.False);
+
+        private JsonSchemaBuilder BuildTaggedCompositeAlternative(DataType datatype) =>
+            new JsonSchemaBuilder().AllOf(
+                new JsonSchemaBuilder().Ref(DefinitionRef(datatype.Name)),
+                BuildDiscriminatorRestriction(new[] { datatype.Name }));
+
+        private JsonSchemaBuilder BuildItemReferenceSchema(ItemType declared, bool allowsSubtypes)
         {
-            var key = new StringBuilder();
-            AppendShapeSegment(key, "types");
-            foreach (var type in concreteTypes.OrderBy(x => x.Name, StringComparer.Ordinal))
-            {
-                AppendShapeSegment(key, type.Name);
-            }
-
-            // Reference objects use the same complete identification contract,
-            // but include it in the key so future item-local identity changes
-            // cannot accidentally cause structurally different schemas to merge.
-            AppendShapeSegment(key, "identity");
-            foreach (var property in CogsModel.Identification)
-            {
-                AppendShapeSegment(key, property.Name);
-                AppendShapeSegment(key, property.DataTypeName);
-                AppendShapeSegment(key, property.MinCardinality);
-                AppendShapeSegment(key, property.MaxCardinality);
-                AppendShapeSegment(key, property.Description);
-                AppendShapeSegment(key, property.Pattern);
-                AppendShapeSegment(key, property.MinLength?.ToString(CultureInfo.InvariantCulture));
-                AppendShapeSegment(key, property.MaxLength?.ToString(CultureInfo.InvariantCulture));
-                AppendShapeSegment(key, property.MinInclusive);
-                AppendShapeSegment(key, property.MinExclusive);
-                AppendShapeSegment(key, property.MaxInclusive);
-                AppendShapeSegment(key, property.MaxExclusive);
-                foreach (var value in property.Enumeration)
-                {
-                    AppendShapeSegment(key, value);
-                }
-            }
-            return key.ToString();
-        }
-
-        private static void AppendShapeSegment(StringBuilder builder, string? value)
-        {
-            if (value is null)
-            {
-                builder.Append("-1:");
-                return;
-            }
-            builder.Append(value.Length.ToString(CultureInfo.InvariantCulture))
-                .Append(':')
-                .Append(value);
-        }
-
-        private static string GetCanonicalReferenceName(CogsModel model, IReadOnlyList<DataType> concreteTypes)
-        {
-            if (concreteTypes.Count == 1)
-            {
-                return ReferenceName(concreteTypes[0]);
-            }
-
-            string[] permittedNames = concreteTypes
+            string[] permittedTypes = (allowsSubtypes
+                    ? CogsTypeSystem.ConcreteAssignableTypes(CogsModel, declared)
+                    : declared.IsAbstract ? Array.Empty<DataType>() : new DataType[] { declared })
+                .OfType<ItemType>()
                 .Select(x => x.Name)
                 .OrderBy(x => x, StringComparer.Ordinal)
                 .ToArray();
-            ItemType? canonicalBase = model.ItemTypes
-                .OrderBy(x => x.Name, StringComparer.Ordinal)
-                .FirstOrDefault(candidate =>
-                    CogsTypeSystem.ConcreteAssignableTypes(model, candidate)
-                        .OfType<ItemType>()
-                        .Select(x => x.Name)
-                        .OrderBy(x => x, StringComparer.Ordinal)
-                        .SequenceEqual(permittedNames, StringComparer.Ordinal));
+            if (permittedTypes.Length == 0)
+            {
+                return UninhabitedSchema();
+            }
 
-            // Every multi-type reference set originates from an assignable
-            // closure, so a canonical base is expected for a validated model.
-            // Retain a deterministic fallback for manually constructed models.
-            return canonicalBase is null
-                ? AssignableReferenceName(concreteTypes.OrderBy(x => x.Name, StringComparer.Ordinal).First())
-                : AssignableReferenceName(canonicalBase);
+            string[] allConcreteTypes = CogsModel.ItemTypes
+                .Where(x => !x.IsAbstract)
+                .Select(x => x.Name)
+                .OrderBy(x => x, StringComparer.Ordinal)
+                .ToArray();
+            if (permittedTypes.SequenceEqual(allConcreteTypes, StringComparer.Ordinal))
+            {
+                return new JsonSchemaBuilder().Ref(DefinitionRef("Reference"));
+            }
+
+            return new JsonSchemaBuilder()
+                .Type(SchemaValueType.Object)
+                .AllOf(
+                    new JsonSchemaBuilder().Ref(DefinitionRef("Reference")),
+                    BuildDiscriminatorRestriction(permittedTypes));
         }
+
+        private static JsonSchemaBuilder BuildDiscriminatorRestriction(IEnumerable<string> typeNames) =>
+            new JsonSchemaBuilder()
+                .Type(SchemaValueType.Object)
+                .Properties(("$type", new JsonSchemaBuilder()
+                    .Type(SchemaValueType.String)
+                    .Enum(typeNames.ToArray())))
+                .Required("$type");
 
         private Dictionary<string, JsonSchemaBuilder> SimpleTypeDefinitions()
         {
@@ -451,6 +424,22 @@ namespace Cogs.Publishers.FluentJson
                 .OneOf(cogsDateProperties.Keys.Select(name => new JsonSchemaBuilder().Required(name)))
                 .AdditionalProperties(false);
 
+            foreach (string primitiveName in CogsTypes.SimpleTypeNames)
+            {
+                if (!definitions.TryGetValue(primitiveName, out JsonSchemaBuilder? definition))
+                {
+                    throw new InvalidOperationException(
+                        $"The built-in COGS primitive '{primitiveName}' has no JSON Schema definition.");
+                }
+                if (!PrimitiveDescriptions.TryGetValue(primitiveName, out string? description) ||
+                    string.IsNullOrWhiteSpace(description))
+                {
+                    throw new InvalidOperationException(
+                        $"The built-in COGS primitive '{primitiveName}' has no JSON Schema description.");
+                }
+                definition.Description(description);
+            }
+
             return definitions;
         }
 
@@ -479,6 +468,7 @@ namespace Cogs.Publishers.FluentJson
             var required = new[] { "$type" }.Concat(CogsModel.Identification.Select(x => x.Name)).ToArray();
             return new JsonSchemaBuilder()
                 .Type(SchemaValueType.Object)
+                .Description("A reference to an item containing its concrete $type and every configured identification property.")
                 .Properties(properties)
                 .Required(required)
                 .AdditionalProperties(false);
@@ -666,45 +656,19 @@ namespace Cogs.Publishers.FluentJson
             ["type"] = "object"
         };
 
-        private static string TaggedName(DataType type) => type.Name + "__Tagged";
-        private static string ReferenceName(DataType type) => type.Name + "__Reference";
-        private static string AssignableReferenceName(DataType type) => type.Name + "__AssignableReference";
         private static string DefinitionRef(string name) => "#/$defs/" + name;
         private static bool IsRequired(Property property) => property.MinCardinality != "0" && !string.IsNullOrWhiteSpace(property.MinCardinality);
         private static bool IsIntegerType(string type) => type is "nonPositiveInteger" or "negativeInteger" or "long" or "int" or "nonNegativeInteger" or "unsignedLong" or "positiveInteger";
         private static bool IsNumeric(string type) => IsIntegerType(type) || type is "decimal" or "float" or "double";
         private static bool IsTemporal(string type) => type is "duration" or "dateTime" or "time" or "date" or "gYearMonth" or "gYear" or "gMonthDay" or "gDay" or "gMonth";
 
-        private readonly record struct ItemReferenceUse(string ItemName, bool AllowsSubtypes);
-
-        private sealed record ReferenceDefinitionPlan(
-            string Name,
-            IReadOnlyList<DataType> ConcreteTypes);
-
         private sealed class SchemaEmissionPlan
         {
-            public static SchemaEmissionPlan Empty { get; } = new(
-                new HashSet<string>(StringComparer.Ordinal),
-                new HashSet<string>(StringComparer.Ordinal),
-                new Dictionary<ItemReferenceUse, string?>(),
-                Array.Empty<ReferenceDefinitionPlan>());
+            public static SchemaEmissionPlan Empty { get; } = new(new HashSet<string>(StringComparer.Ordinal));
 
-            public SchemaEmissionPlan(
-                HashSet<string> untaggedCompositeNames,
-                HashSet<string> taggedCompositeNames,
-                Dictionary<ItemReferenceUse, string?> itemReferenceTargets,
-                IReadOnlyList<ReferenceDefinitionPlan> referenceDefinitions)
-            {
-                UntaggedCompositeNames = untaggedCompositeNames;
-                TaggedCompositeNames = taggedCompositeNames;
-                ItemReferenceTargets = itemReferenceTargets;
-                ReferenceDefinitions = referenceDefinitions;
-            }
+            public SchemaEmissionPlan(HashSet<string> modelTypeNames) => ModelTypeNames = modelTypeNames;
 
-            public IReadOnlySet<string> UntaggedCompositeNames { get; }
-            public IReadOnlySet<string> TaggedCompositeNames { get; }
-            public IReadOnlyDictionary<ItemReferenceUse, string?> ItemReferenceTargets { get; }
-            public IReadOnlyList<ReferenceDefinitionPlan> ReferenceDefinitions { get; }
+            public IReadOnlySet<string> ModelTypeNames { get; }
         }
 
         public bool IsInteger(string type) => IsIntegerType(type ?? string.Empty);

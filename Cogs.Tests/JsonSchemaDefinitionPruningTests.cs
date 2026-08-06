@@ -1,5 +1,6 @@
 using Cogs.Model;
 using Cogs.Publishers.FluentJson;
+using Cogs.Validation;
 using Json.Schema;
 using System;
 using System.Collections.Generic;
@@ -52,10 +53,9 @@ namespace Cogs.Tests
             using JsonDocument schema = SerializeSchema(BuildModel(dto));
             JsonElement definitions = schema.RootElement.GetProperty("$defs");
 
-            AssertDefinitionsPresent(definitions, "Root", "Standalone", "ConcreteChild", "UsedPrimitive", "Reference");
+            AssertDefinitionsPresent(definitions, "Root", "Standalone", "AbstractItem", "ConcreteChild", "UsedPrimitive", "Reference");
             AssertDefinitionsAbsent(
                 definitions,
-                "AbstractItem",
                 "UsedPrimitive__Tagged",
                 "UnusedPrimitive",
                 "UnusedPrimitive__Tagged",
@@ -75,7 +75,7 @@ namespace Cogs.Tests
             string[] itemRoots = schema.RootElement.GetProperty("properties").GetProperty("items")
                 .GetProperty("items").GetProperty("oneOf")
                 .EnumerateArray()
-                .Select(x => x.GetProperty("$ref").GetString()!)
+                .Select(x => x.GetProperty("allOf")[0].GetProperty("$ref").GetString()!)
                 .ToArray();
             Assert.Equal(
                 new[] { "#/$defs/ConcreteChild", "#/$defs/Root", "#/$defs/Standalone" },
@@ -87,6 +87,18 @@ namespace Cogs.Tests
             Assert.DoesNotContain(
                 definitions.EnumerateObject(),
                 definition => definition.Name.EndsWith("__Reference", StringComparison.Ordinal));
+
+            string[] omittedCompositeNames = dto.ReusableDataTypes
+                .Where(type => !definitions.TryGetProperty(type.Name, out _))
+                .Select(type => type.Name)
+                .OrderBy(name => name, StringComparer.Ordinal)
+                .ToArray();
+            string[] warnedCompositeNames = DtoValidation.Validate(dto)
+                .Where(diagnostic => diagnostic.Code == "COGS-VAL-TYPE-002")
+                .Select(diagnostic => diagnostic.ModelPath)
+                .OrderBy(name => name, StringComparer.Ordinal)
+                .ToArray();
+            Assert.Equal(omittedCompositeNames, warnedCompositeNames);
         }
 
         [Fact]
@@ -101,8 +113,23 @@ namespace Cogs.Tests
             dto.ItemTypes.Add(root);
 
             dto.ReusableDataTypes.Add(new Cogs.Dto.DataType { Name = "ExactValue" });
-            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType { Name = "PolyBase" });
-            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType { Name = "PolyChild", Extends = "PolyBase" });
+            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType
+            {
+                Name = "PolyBase",
+                Properties = { Property("BaseText", "string") }
+            });
+            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType
+            {
+                Name = "PolyChild",
+                Extends = "PolyBase",
+                Properties = { Property("ChildText", "string") }
+            });
+            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType
+            {
+                Name = "PolyGrandchild",
+                Extends = "PolyChild",
+                Properties = { Property("GrandchildText", "string") }
+            });
             dto.ReusableDataTypes.Add(new Cogs.Dto.DataType { Name = "AbstractBase", IsAbstract = true });
             dto.ReusableDataTypes.Add(new Cogs.Dto.DataType { Name = "AbstractLeaf", Extends = "AbstractBase" });
             dto.ReusableDataTypes.Add(new Cogs.Dto.DataType
@@ -119,40 +146,42 @@ namespace Cogs.Tests
             AssertDefinitionsPresent(
                 definitions,
                 "ExactValue",
-                "PolyBase__Tagged",
-                "PolyChild__Tagged",
-                "AbstractLeaf__Tagged",
-                "RecursiveValue",
-                "RecursiveValue__Tagged");
+                "PolyBase",
+                "PolyChild",
+                "PolyGrandchild",
+                "AbstractBase",
+                "AbstractLeaf",
+                "RecursiveValue");
             AssertDefinitionsAbsent(
                 definitions,
                 "ExactValue__Tagged",
-                "PolyBase",
-                "PolyChild",
-                "AbstractBase",
                 "AbstractBase__Tagged",
-                "AbstractLeaf",
                 "NeverReached",
                 "NeverReached__Tagged");
 
             JsonElement rootSchema = definitions.GetProperty("Root");
             Assert.Equal(
                 "#/$defs/ExactValue",
-                rootSchema.GetProperty("properties").GetProperty("Exact").GetProperty("$ref").GetString());
+                rootSchema.GetProperty("properties").GetProperty("Exact")
+                    .GetProperty("allOf")[0].GetProperty("$ref").GetString());
             Assert.Equal(
-                new[] { "#/$defs/PolyBase__Tagged", "#/$defs/PolyChild__Tagged" },
-                References(rootSchema.GetProperty("properties").GetProperty("Polymorphic").GetProperty("oneOf")));
+                new[] { "#/$defs/PolyBase", "#/$defs/PolyChild", "#/$defs/PolyGrandchild" },
+                ComposedReferences(rootSchema.GetProperty("properties").GetProperty("Polymorphic").GetProperty("oneOf")));
             Assert.Equal(
-                new[] { "#/$defs/AbstractLeaf__Tagged" },
-                References(rootSchema.GetProperty("properties").GetProperty("AbstractChoice").GetProperty("oneOf")));
-            Assert.Equal(
-                "#/$defs/RecursiveValue",
-                definitions.GetProperty("RecursiveValue__Tagged").GetProperty("properties")
-                    .GetProperty("Next").GetProperty("$ref").GetString());
+                new[] { "#/$defs/AbstractLeaf" },
+                ComposedReferences(rootSchema.GetProperty("properties").GetProperty("AbstractChoice").GetProperty("oneOf")));
             Assert.Equal(
                 "#/$defs/RecursiveValue",
                 definitions.GetProperty("RecursiveValue").GetProperty("properties")
-                    .GetProperty("Next").GetProperty("$ref").GetString());
+                    .GetProperty("Next").GetProperty("allOf")[0].GetProperty("$ref").GetString());
+            Assert.Equal("#/$defs/PolyBase", definitions.GetProperty("PolyChild")
+                .GetProperty("allOf")[0].GetProperty("$ref").GetString());
+            Assert.Equal("#/$defs/PolyChild", definitions.GetProperty("PolyGrandchild")
+                .GetProperty("allOf")[0].GetProperty("$ref").GetString());
+            Assert.False(definitions.GetProperty("PolyChild").GetProperty("allOf")[1]
+                .GetProperty("properties").TryGetProperty("BaseText", out _));
+            Assert.False(definitions.GetProperty("PolyGrandchild").GetProperty("allOf")[1]
+                .GetProperty("properties").TryGetProperty("ChildText", out _));
 
             JsonSchema builtSchema = new FluentJsonSchemaPublisher().BuildSchema(model);
             using JsonDocument valid = JsonDocument.Parse(
@@ -161,7 +190,7 @@ namespace Cogs.Tests
         }
 
         [Fact]
-        public void EmitsOnlySemanticallyDistinctItemReferenceVariants()
+        public void EmitsInlineReferenceRestrictionsWithoutHelperDefinitions()
         {
             var dto = CreateDto();
             var owner = new Cogs.Dto.ItemType { Name = "Owner" };
@@ -183,43 +212,23 @@ namespace Cogs.Tests
             CogsModel model = BuildModel(dto);
             using JsonDocument schema = SerializeSchema(model);
             JsonElement definitions = schema.RootElement.GetProperty("$defs");
-            JsonElement ownerSchema = definitions.GetProperty("Owner");
+            JsonElement ownerProperties = definitions.GetProperty("Owner")
+                .GetProperty("allOf")[1].GetProperty("properties");
 
-            Assert.Equal(
-                "#/$defs/Base__Reference",
-                ownerSchema.GetProperty("properties").GetProperty("ExactBase").GetProperty("$ref").GetString());
-            Assert.Equal(
-                "#/$defs/Base__AssignableReference",
-                ownerSchema.GetProperty("properties").GetProperty("FlexibleBase").GetProperty("$ref").GetString());
-            Assert.Equal(
-                "#/$defs/Leaf__Reference",
-                ownerSchema.GetProperty("properties").GetProperty("ExactLeaf").GetProperty("$ref").GetString());
-            Assert.Equal(
-                "#/$defs/Leaf__Reference",
-                ownerSchema.GetProperty("properties").GetProperty("FlexibleLeaf").GetProperty("$ref").GetString());
-            string abstractTargetReference = ownerSchema.GetProperty("properties").GetProperty("AbstractTarget")
-                .GetProperty("$ref").GetString()!;
-            Assert.Equal("#/$defs/AbstractChild__Reference", abstractTargetReference);
+            Assert.Equal(new[] { "Base" }, InlineReferenceTypes(ownerProperties.GetProperty("ExactBase")));
+            Assert.Equal(new[] { "Base", "Child" }, InlineReferenceTypes(ownerProperties.GetProperty("FlexibleBase")));
+            Assert.Equal(new[] { "Leaf" }, InlineReferenceTypes(ownerProperties.GetProperty("ExactLeaf")));
+            Assert.Equal(new[] { "Leaf" }, InlineReferenceTypes(ownerProperties.GetProperty("FlexibleLeaf")));
+            Assert.Equal(new[] { "AbstractChild" }, InlineReferenceTypes(ownerProperties.GetProperty("AbstractTarget")));
             Assert.Equal(
                 "#/$defs/Reference",
-                ownerSchema.GetProperty("properties").GetProperty("AnyItem").GetProperty("$ref").GetString());
+                ownerProperties.GetProperty("AnyItem").GetProperty("$ref").GetString());
 
-            Assert.Equal(new[] { "Base" }, ReferenceTypes(definitions, "Base__Reference"));
-            Assert.Equal(new[] { "Base", "Child" }, ReferenceTypes(definitions, "Base__AssignableReference"));
-            Assert.Equal(new[] { "Leaf" }, ReferenceTypes(definitions, "Leaf__Reference"));
-            Assert.Equal(new[] { "AbstractChild" }, ReferenceTypes(definitions, "AbstractChild__Reference"));
-            AssertDefinitionsAbsent(
-                definitions,
-                "Leaf__AssignableReference",
-                "AbstractBase",
-                "AbstractBase__Reference",
-                "AbstractBase__AssignableReference",
-                "AllBase",
-                "AllBase__Reference",
-                "AllBase__AssignableReference",
-                "Owner__Reference",
-                "Child__Reference",
-                "Child__AssignableReference");
+            AssertDefinitionsPresent(definitions, "AllBase", "AbstractBase");
+            Assert.DoesNotContain(definitions.EnumerateObject(), definition =>
+                definition.Name.EndsWith("__Tagged", StringComparison.Ordinal) ||
+                definition.Name.EndsWith("__Reference", StringComparison.Ordinal) ||
+                definition.Name.EndsWith("__AssignableReference", StringComparison.Ordinal));
 
             Assert.Equal(
                 new[] { "AbstractChild", "Base", "Child", "Leaf", "Owner" },
@@ -285,10 +294,20 @@ namespace Cogs.Tests
             }
         }
 
-        private static string[] References(JsonElement alternatives) =>
+        private static string[] ComposedReferences(JsonElement alternatives) =>
             alternatives.EnumerateArray()
-                .Select(x => x.GetProperty("$ref").GetString()!)
+                .Select(x => x.GetProperty("allOf")[0].GetProperty("$ref").GetString()!)
                 .ToArray();
+
+        private static string[] InlineReferenceTypes(JsonElement propertySchema)
+        {
+            JsonElement allOf = propertySchema.GetProperty("allOf");
+            Assert.Equal("#/$defs/Reference", allOf[0].GetProperty("$ref").GetString());
+            return allOf[1].GetProperty("properties").GetProperty("$type")
+                .GetProperty("enum").EnumerateArray()
+                .Select(x => x.GetString()!)
+                .ToArray();
+        }
 
         private static string[] ReferenceTypes(JsonElement definitions, string definitionName) =>
             definitions.GetProperty(definitionName).GetProperty("properties").GetProperty("$type")

@@ -177,6 +177,14 @@ the rewrite transaction; `MIG2011` means the checkout or tracked rename could
 not be handled safely. Competing markers remain errors. `This` and `Any` are
 retired and invalid in COGS 2.
 
+Validation warning `COGS-VAL-TYPE-002` identifies composite types that are not
+reachable from any concrete item's effective properties. Reachability follows
+nested and inherited composite properties, exact-type constraints, and
+property-local subtype permission; disconnected recursive groups remain
+unused. The warning also applies to unused `Primitive` composites. Suppress it
+for abstract composites with no concrete descendant because the more specific
+`COGS-VAL-INH-007` already explains that condition.
+
 `Settings\Identification.csv` is required and nonempty. Optional
 `Identification.Mixin.csv` fields are also identification fields. Each ID is a
 `string` or `anyURI` with exact `1..1` cardinality and a nonempty lexical value,
@@ -228,14 +236,17 @@ compatible.
   identification properties. Forward and repeated references identify the same
   logical item.
 * JSON Schema definition emission is reachability-based. Keep every concrete
-  item full definition as a root alternative, every built-in primitive
-  definition even when unused, and the global `Reference`. Recursively emit
-  model composites from concrete-item effective properties. Emit tagged
-  composite variants and per-item exact/assignable reference variants only for
-  reachable property sites, and share reference definitions when their
-  concrete allowed-type sets are identical. `__Tagged`, `__Reference`, and
-  `__AssignableReference` suffixes are internal `$defs` names and must never
-  leak into wire `$type` values or be treated as public model types.
+  item definition and each required inheritance ancestor, every built-in
+  primitive definition even when unused, and the global `Reference`.
+  Recursively emit model composites and their required ancestors from
+  concrete-item effective properties. Structural item and composite
+  definitions contain local properties and use `allOf` to reference their
+  parent; they remain open for extension. Close actual item and composite wire
+  boundaries with Draft 2020-12 `unevaluatedProperties:false`. Express tagged
+  composite alternatives and item-reference `$type` restrictions inline rather
+  than creating auxiliary definitions. Item references compose the global
+  closed `Reference` through `allOf` and restrict only its inherited `$type`
+  enumeration.
 * `AllowSubtypes` is property-local for both item and composite properties.
   Blank or false requires the exact declared type; true permits that concrete
   type and concrete assignable descendants. Abstract declarations are treated as true with a

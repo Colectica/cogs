@@ -29,14 +29,26 @@ Identification from both ``Identification.csv`` and
 Discriminators
 ~~~~~~~~~~~~~~
 
-The schema adds ``$type`` to item definitions and substitute reusable datatype
-definitions directly. Discriminator values are constrained with ``enum``.
+The schema declares an item hierarchy's ``$type`` property once on its root
+definition. Concrete item alternatives narrow that inherited property to the
+exact item type. Reusable datatype substitution adds a property-local ``$type``
+restriction for each permitted concrete alternative. Discriminator values are
+constrained with ``enum``.
 
-* item definitions are referenced directly in the ``items`` union
-* the schema does not use per-item wrapper ``allOf`` blocks just to add a
-  discriminator
+* derived item and composite definitions use ``allOf`` to reference their
+  parent and declare only their local properties
+* concrete alternatives in the ``items`` union combine the structural item
+  definition with its exact discriminator
 * reusable datatype substitution uses ``$type`` only for concrete assignable
   types permitted by that property's ``AllowSubtypes`` setting
+
+Structural definitions remain open so descendants can extend them. At each
+actual item or composite value boundary, Draft 2020-12
+``unevaluatedProperties: false`` closes the successfully composed definition.
+This accepts properties evaluated through ``$ref``/``allOf`` while continuing
+to reject unknown instance members. Consumers must use a Draft 2020-12
+processor that implements the required unevaluated vocabulary; an older
+processor cannot enforce this closed inheritance boundary.
 
 Definition inventory
 ~~~~~~~~~~~~~~~~~~~~
@@ -44,25 +56,22 @@ Definition inventory
 The publisher emits a minimal set of model-defined ``$defs`` without changing
 the JSON wire contract:
 
-* every concrete item retains its complete definition because it is a possible
-  member of the root ``items`` array;
+* every concrete item retains a structural definition because it is a possible
+  member of the root ``items`` array, together with each ancestor required by
+  its ``allOf`` inheritance chain;
 * every built-in COGS primitive definition remains available, even when the
   model does not use that primitive;
 * a model composite definition is emitted only when it is reachable,
-  recursively, from an effective property of a concrete item;
-* tagged composite alternatives are emitted only for reachable
-  ``AllowSubtypes=true`` property sites;
-* exact and assignable item-reference definitions are emitted only when a
-  reachable property needs them. Definitions with identical concrete
-  ``$type`` sets are shared instead of duplicated; and
+  recursively, from an effective property of a concrete item, together with
+  the ancestors needed by an emitted composite;
 * the global ``Reference`` definition is always retained for
   ``topLevelReferences``.
 
-Names ending in ``__Tagged``, ``__Reference``, or
-``__AssignableReference`` are schema-internal definition names. They are not
-COGS type names and never appear as a wire ``$type`` value. Their presence,
-absence, or sharing is not a separate serialization contract; consumers should
-follow ``$ref`` links rather than construct these names.
+Tagged composite alternatives and property-specific item-reference constraints
+are expressed inline rather than as additional schema types. An item-valued
+property uses ``allOf`` to reference the one global ``Reference`` shape and
+restricts only its inherited ``$type`` enumeration when the property permits
+fewer than all concrete item types.
 
 The schema closes unknown content, encodes all model cardinalities and facets,
 and uses the primitive value spaces in :doc:`/specification/model-format`.

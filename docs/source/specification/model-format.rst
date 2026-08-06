@@ -50,6 +50,17 @@ markers to their canonical spelling transactionally.
    or XML shape, does not create a new primitive value space, and is invalid on
    an item type.
 
+A composite declaration is used when it is reachable from a concrete item's
+effective properties through zero or more composite-valued property paths.
+Exact properties reach the declared concrete type and its ancestors;
+subtype-enabled properties reach every concrete assignable type and their
+ancestors. The traversal includes inherited properties and protects recursive
+composite paths. Validation emits warning ``COGS-VAL-TYPE-002`` for every
+unreachable composite, including disconnected recursive groups and composites
+marked ``Primitive``. An abstract composite with no concrete descendants
+instead receives only ``COGS-VAL-INH-007``, which more specifically explains
+why it cannot participate in an instance.
+
 Multiple or misspelled marker files are errors; a sole noncanonical keyword
 casing is warning-only. ``This`` and ``Any`` are retired COGS 1 pseudo-types
 and are invalid datatype names in a COGS 2 model. A migration must replace each

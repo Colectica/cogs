@@ -18,48 +18,87 @@ namespace Cogs.Tests
         private const string Namespace = "https://example.org/schema-test";
 
         [Fact]
-        public void JsonSchemaIsClosedFlattenedAndContextual()
+        public void JsonSchemaUsesAllOfInheritanceAndBoundaryClosure()
         {
             using var output = new TemporaryDirectory();
             PublishJson(BuildModel(), output.Path);
             using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(output.Path, "jsonSchema.json")));
             var root = document.RootElement;
             var definitions = root.GetProperty("$defs");
+            var baseItem = definitions.GetProperty("BaseItem");
             var derived = definitions.GetProperty("DerivedItem");
+            var derivedComposition = derived.GetProperty("allOf");
+            var derivedProperties = derivedComposition[1].GetProperty("properties");
 
             Assert.Equal("https://json-schema.org/draft/2020-12/schema", root.GetProperty("$schema").GetString());
             Assert.False(root.GetProperty("additionalProperties").GetBoolean());
-            Assert.False(derived.GetProperty("additionalProperties").GetBoolean());
-            Assert.False(derived.TryGetProperty("allOf", out _));
-            Assert.True(derived.GetProperty("properties").TryGetProperty("ID", out _));
-            Assert.True(derived.GetProperty("properties").TryGetProperty("BaseValue", out _));
-            Assert.Equal("DerivedItem", derived.GetProperty("properties").GetProperty("$type").GetProperty("enum")[0].GetString());
+            Assert.False(derived.TryGetProperty("additionalProperties", out _));
+            Assert.False(derived.TryGetProperty("unevaluatedProperties", out _));
+            Assert.False(baseItem.TryGetProperty("additionalProperties", out _));
+            Assert.False(baseItem.TryGetProperty("unevaluatedProperties", out _));
+            Assert.Equal("#/$defs/BaseItem", derivedComposition[0].GetProperty("$ref").GetString());
+            Assert.False(derivedProperties.TryGetProperty("ID", out _));
+            Assert.False(derivedProperties.TryGetProperty("BaseValue", out _));
+            Assert.True(baseItem.GetProperty("properties").TryGetProperty("ID", out _));
+            Assert.True(baseItem.GetProperty("properties").TryGetProperty("BaseValue", out _));
+            Assert.Equal(
+                new[] { "DerivedItem", "OtherItem" },
+                baseItem.GetProperty("properties").GetProperty("$type").GetProperty("enum")
+                    .EnumerateArray().Select(x => x.GetString()).ToArray());
+            Assert.Equal(
+                "#/$defs/DerivedItem",
+                definitions.GetProperty("OtherItem").GetProperty("allOf")[0].GetProperty("$ref").GetString());
 
-            var exact = derived.GetProperty("properties").GetProperty("ExactValue");
-            Assert.Equal("#/$defs/ValueBase", exact.GetProperty("$ref").GetString());
-            var flexible = derived.GetProperty("properties").GetProperty("FlexibleValue").GetProperty("oneOf");
-            Assert.Contains(flexible.EnumerateArray(), x => x.GetProperty("$ref").GetString() == "#/$defs/ValueBase__Tagged");
-            Assert.Contains(flexible.EnumerateArray(), x => x.GetProperty("$ref").GetString() == "#/$defs/ValueChild__Tagged");
+            var itemSchema = root.GetProperty("properties").GetProperty("items").GetProperty("items");
+            Assert.False(itemSchema.GetProperty("unevaluatedProperties").GetBoolean());
+            Assert.Equal(
+                new[] { "#/$defs/DerivedItem", "#/$defs/OtherItem" },
+                itemSchema.GetProperty("oneOf").EnumerateArray()
+                    .Select(x => x.GetProperty("allOf")[0].GetProperty("$ref").GetString())
+                    .ToArray());
+            Assert.Equal(
+                new[] { "DerivedItem", "OtherItem" },
+                itemSchema.GetProperty("oneOf").EnumerateArray()
+                    .Select(x => x.GetProperty("allOf")[1].GetProperty("properties")
+                        .GetProperty("$type").GetProperty("enum")[0].GetString())
+                    .ToArray());
+
+            var exact = derivedProperties.GetProperty("ExactValue");
+            Assert.Equal("#/$defs/ValueBase", exact.GetProperty("allOf")[0].GetProperty("$ref").GetString());
+            Assert.False(exact.GetProperty("unevaluatedProperties").GetBoolean());
+            var flexibleSchema = derivedProperties.GetProperty("FlexibleValue");
+            var flexible = flexibleSchema.GetProperty("oneOf");
+            Assert.False(flexibleSchema.GetProperty("unevaluatedProperties").GetBoolean());
+            Assert.Equal(
+                new[] { "#/$defs/ValueBase", "#/$defs/ValueChild" },
+                flexible.EnumerateArray()
+                    .Select(x => x.GetProperty("allOf")[0].GetProperty("$ref").GetString())
+                    .ToArray());
+            Assert.Equal(
+                new[] { "ValueBase", "ValueChild" },
+                flexible.EnumerateArray()
+                    .Select(x => x.GetProperty("allOf")[1].GetProperty("properties")
+                        .GetProperty("$type").GetProperty("enum")[0].GetString())
+                    .ToArray());
             Assert.False(definitions.GetProperty("ValueBase").GetProperty("properties").TryGetProperty("$type", out _));
-            Assert.Equal("ValueBase", definitions.GetProperty("ValueBase__Tagged").GetProperty("properties").GetProperty("$type").GetProperty("enum")[0].GetString());
+            Assert.Equal("#/$defs/ValueBase", definitions.GetProperty("ValueChild")
+                .GetProperty("allOf")[0].GetProperty("$ref").GetString());
 
             var referenceTypes = definitions.GetProperty("Reference").GetProperty("properties").GetProperty("$type").GetProperty("enum");
             Assert.Equal(new[] { "DerivedItem", "OtherItem" }, referenceTypes.EnumerateArray().Select(x => x.GetString()).ToArray());
-            Assert.Equal("#/$defs/DerivedItem__Reference",
-                derived.GetProperty("properties").GetProperty("ExactRelated").GetProperty("$ref").GetString());
+            var exactReference = derivedProperties.GetProperty("ExactRelated").GetProperty("allOf");
             Assert.Equal("#/$defs/Reference",
-                derived.GetProperty("properties").GetProperty("FlexibleRelated").GetProperty("$ref").GetString());
+                exactReference[0].GetProperty("$ref").GetString());
+            Assert.Equal(new[] { "DerivedItem" }, exactReference[1].GetProperty("properties")
+                .GetProperty("$type").GetProperty("enum").EnumerateArray().Select(x => x.GetString()).ToArray());
             Assert.Equal("#/$defs/Reference",
-                derived.GetProperty("properties").GetProperty("Related").GetProperty("$ref").GetString());
-            Assert.Equal(new[] { "DerivedItem" }, definitions.GetProperty("DerivedItem__Reference")
-                .GetProperty("properties").GetProperty("$type").GetProperty("enum")
-                .EnumerateArray().Select(x => x.GetString()).ToArray());
-            Assert.False(definitions.TryGetProperty("DerivedItem__AssignableReference", out _));
-            Assert.False(definitions.TryGetProperty("BaseItem__AssignableReference", out _));
-            Assert.False(definitions.TryGetProperty("BaseItem", out _));
-            Assert.False(definitions.TryGetProperty("ValueChild", out _));
-            Assert.False(definitions.TryGetProperty("OtherItem__Reference", out _));
-            Assert.False(definitions.TryGetProperty("OtherItem__AssignableReference", out _));
+                derivedProperties.GetProperty("FlexibleRelated").GetProperty("$ref").GetString());
+            Assert.Equal("#/$defs/Reference",
+                derivedProperties.GetProperty("Related").GetProperty("$ref").GetString());
+            Assert.DoesNotContain(definitions.EnumerateObject(), definition =>
+                definition.Name.EndsWith("__Tagged", StringComparison.Ordinal) ||
+                definition.Name.EndsWith("__Reference", StringComparison.Ordinal) ||
+                definition.Name.EndsWith("__AssignableReference", StringComparison.Ordinal));
         }
 
         [Fact]
@@ -84,7 +123,8 @@ namespace Cogs.Tests
             Assert.Equal("18446744073709551615", definitions.GetProperty("unsignedLong").GetProperty("maximum").GetRawText());
             Assert.Equal(5, definitions.GetProperty("cogsDate").GetProperty("oneOf").GetArrayLength());
 
-            var temporal = definitions.GetProperty("DerivedItem").GetProperty("properties").GetProperty("ObservedAt");
+            var temporal = definitions.GetProperty("DerivedItem").GetProperty("allOf")[1]
+                .GetProperty("properties").GetProperty("ObservedAt");
             var extension = temporal.GetProperty("x-cogs-minInclusive");
             Assert.Equal("dateTime", extension.GetProperty("datatype").GetString());
             Assert.Equal("2020-01-01T00:00:00Z", extension.GetProperty("value").GetString());
@@ -136,10 +176,17 @@ namespace Cogs.Tests
         [Theory]
         [InlineData("{\"items\":[{\"$type\":\"DerivedItem\",\"ID\":\"1\",\"BaseValue\":\"x\"}]}", true)]
         [InlineData("{\"items\":[{\"$type\":\"DerivedItem\",\"ID\":\"1\",\"BaseValue\":\"x\",\"Unknown\":1}]}", false)]
+        [InlineData("{\"items\":[{\"$type\":\"OtherItem\",\"ID\":\"1\",\"BaseValue\":\"x\"}]}", true)]
+        [InlineData("{\"items\":[{\"$type\":\"OtherItem\",\"ID\":\"1\",\"BaseValue\":\"x\",\"Unknown\":1}]}", false)]
         [InlineData("{\"items\":[{\"$type\":\"BaseItem\",\"ID\":\"1\",\"BaseValue\":\"x\"}]}", false)]
         [InlineData("{\"items\":[{\"$type\":\"DerivedItem\",\"ID\":\"1\",\"BaseValue\":\"x\",\"ExactRelated\":{\"$type\":\"OtherItem\",\"ID\":\"2\"}}]}", false)]
         [InlineData("{\"items\":[{\"$type\":\"DerivedItem\",\"ID\":\"1\",\"BaseValue\":\"x\",\"ExactRelated\":{\"$type\":\"DerivedItem\",\"ID\":\"2\"}}]}", true)]
+        [InlineData("{\"items\":[{\"$type\":\"DerivedItem\",\"ID\":\"1\",\"BaseValue\":\"x\",\"ExactRelated\":{\"$type\":\"DerivedItem\",\"ID\":\"2\",\"Unknown\":1}}]}", false)]
         [InlineData("{\"items\":[{\"$type\":\"DerivedItem\",\"ID\":\"1\",\"BaseValue\":\"x\",\"FlexibleRelated\":{\"$type\":\"OtherItem\",\"ID\":\"2\"}}]}", true)]
+        [InlineData("{\"items\":[{\"$type\":\"DerivedItem\",\"ID\":\"1\",\"BaseValue\":\"x\",\"ExactValue\":{}}]}", true)]
+        [InlineData("{\"items\":[{\"$type\":\"DerivedItem\",\"ID\":\"1\",\"BaseValue\":\"x\",\"ExactValue\":{\"Unknown\":1}}]}", false)]
+        [InlineData("{\"items\":[{\"$type\":\"DerivedItem\",\"ID\":\"1\",\"BaseValue\":\"x\",\"FlexibleValue\":{\"$type\":\"ValueChild\"}}]}", true)]
+        [InlineData("{\"items\":[{\"$type\":\"DerivedItem\",\"ID\":\"1\",\"BaseValue\":\"x\",\"FlexibleValue\":{\"$type\":\"ValueChild\",\"Unknown\":1}}]}", false)]
         [InlineData("{\"items\":[{\"$type\":\"DerivedItem\",\"ID\":\"1\",\"BaseValue\":\"x\",\"Calendar\":{}}]}", false)]
         [InlineData("{\"items\":[{\"$type\":\"DerivedItem\",\"ID\":\"1\",\"BaseValue\":\"x\",\"Calendar\":{\"Date\":\"2020-01-01\",\"GYear\":\"2020\"}}]}", false)]
         public void JsonSchemaValidatesClosedItemsAndExactOneCogsDate(string instance, bool expected)

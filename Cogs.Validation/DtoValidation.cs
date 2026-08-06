@@ -71,6 +71,7 @@ namespace Cogs.Validation
             ValidateProperties(model, errors);
             ValidateInheritance(model, errors);
             ValidateEffectiveProperties(model, errors);
+            ValidateCompositeUsage(model, errors);
             ValidateTopics(model, errors);
 
             return errors
@@ -433,11 +434,7 @@ namespace Cogs.Validation
 
             foreach (var type in unique.Values.Where(candidate => candidate.IsAbstract))
             {
-                bool hasConcreteDescendant = unique.Values.Any(candidate =>
-                    !candidate.IsAbstract &&
-                    (candidate is ItemType) == (type is ItemType) &&
-                    IsDescendantOf(candidate, type, unique));
-                if (!hasConcreteDescendant)
+                if (!HasConcreteDescendant(type, unique))
                 {
                     string kind = type is ItemType ? "item" : "composite";
                     AddWarning(errors, type, "COGS-VAL-INH-007",
@@ -446,6 +443,140 @@ namespace Cogs.Validation
                 }
             }
         }
+
+        private static void ValidateCompositeUsage(CogsDtoModel model, List<CogsError> errors)
+        {
+            var all = AllTypes(model).ToList();
+            var unique = all
+                .GroupBy(type => type.Name, StringComparer.Ordinal)
+                .Where(group => group.Count() == 1)
+                .ToDictionary(group => group.Key, group => group.Single(), StringComparer.Ordinal);
+            var reachable = new HashSet<Cogs.Dto.DataType>();
+            var traversedComposites = new HashSet<Cogs.Dto.DataType>();
+
+            IEnumerable<Property> EffectiveProperties(Cogs.Dto.DataType type)
+            {
+                var hierarchy = new List<Cogs.Dto.DataType>();
+                var seen = new HashSet<Cogs.Dto.DataType>();
+                Cogs.Dto.DataType current = type;
+                while (current != null && seen.Add(current))
+                {
+                    hierarchy.Add(current);
+                    if (string.IsNullOrWhiteSpace(current.Extends) ||
+                        !unique.TryGetValue(current.Extends, out var parent) ||
+                        (parent is ItemType) != (current is ItemType))
+                    {
+                        break;
+                    }
+                    current = parent;
+                }
+
+                hierarchy.Reverse();
+                return hierarchy.SelectMany(candidate => candidate.Properties);
+            }
+
+            void MarkTypeAndAncestors(Cogs.Dto.DataType type)
+            {
+                var seen = new HashSet<Cogs.Dto.DataType>();
+                Cogs.Dto.DataType current = type;
+                while (current != null && seen.Add(current))
+                {
+                    reachable.Add(current);
+                    if (string.IsNullOrWhiteSpace(current.Extends) ||
+                        !unique.TryGetValue(current.Extends, out var parent) ||
+                        parent is ItemType)
+                    {
+                        break;
+                    }
+                    current = parent;
+                }
+            }
+
+            void TraverseComposite(Cogs.Dto.DataType composite)
+            {
+                if (!traversedComposites.Add(composite))
+                {
+                    return;
+                }
+
+                foreach (var property in EffectiveProperties(composite))
+                {
+                    TraverseProperty(property);
+                }
+            }
+
+            void MarkAndTraverse(Cogs.Dto.DataType composite)
+            {
+                MarkTypeAndAncestors(composite);
+                TraverseComposite(composite);
+            }
+
+            void TraverseProperty(Property property)
+            {
+                if (property == null ||
+                    !unique.TryGetValue(property.DataType, out var declared) ||
+                    declared is ItemType)
+                {
+                    return;
+                }
+
+                if (!CogsConventions.TryParseFlag(property.AllowSubtypes, out var allowSubtypes))
+                {
+                    return;
+                }
+
+                if (!allowSubtypes && !declared.IsAbstract)
+                {
+                    MarkAndTraverse(declared);
+                    return;
+                }
+
+                foreach (var concrete in unique.Values
+                    .Where(candidate => candidate is not ItemType &&
+                        !candidate.IsAbstract &&
+                        (ReferenceEquals(candidate, declared) || IsDescendantOf(candidate, declared, unique)))
+                    .OrderBy(candidate => candidate.Name, StringComparer.Ordinal))
+                {
+                    MarkAndTraverse(concrete);
+                }
+            }
+
+            foreach (var item in model.ItemTypes.Where(candidate => !candidate.IsAbstract))
+            {
+                if (!unique.TryGetValue(item.Name, out var uniqueItem) || !ReferenceEquals(item, uniqueItem))
+                {
+                    continue;
+                }
+
+                foreach (var property in EffectiveProperties(item))
+                {
+                    TraverseProperty(property);
+                }
+            }
+
+            foreach (var composite in model.ReusableDataTypes)
+            {
+                if (!unique.TryGetValue(composite.Name, out var uniqueComposite) ||
+                    !ReferenceEquals(composite, uniqueComposite) ||
+                    reachable.Contains(composite) ||
+                    (composite.IsAbstract && !HasConcreteDescendant(composite, unique)))
+                {
+                    continue;
+                }
+
+                AddWarning(errors, composite, "COGS-VAL-TYPE-002",
+                    $"Composite type '{composite.Name}' is not reachable from any concrete item through composite-valued properties; it cannot occur in a serialized model instance.",
+                    composite.Name);
+            }
+        }
+
+        private static bool HasConcreteDescendant(
+            Cogs.Dto.DataType type,
+            IReadOnlyDictionary<string, Cogs.Dto.DataType> types) =>
+            types.Values.Any(candidate =>
+                !candidate.IsAbstract &&
+                (candidate is ItemType) == (type is ItemType) &&
+                IsDescendantOf(candidate, type, types));
 
         private static bool IsDescendantOf(
             Cogs.Dto.DataType candidate,

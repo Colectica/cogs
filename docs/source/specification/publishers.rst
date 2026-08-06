@@ -34,15 +34,15 @@ absence and the true lexemes ``true`` and ``1``. Full item definitions are
 never marked, and no generated model member represents the attribute.
 
 Its ``$defs`` inventory is dependency-driven rather than a dump of every model
-type. Concrete item definitions and all built-in primitive definitions are
-always present. Composite, tagged-composite, and property-specific item
-reference definitions are emitted only when reachable from concrete-item
-effective properties. Exact and assignable reference variants with identical
-concrete allowed-type sets are collapsed, while the global ``Reference``
-definition remains for top-level references. Names carrying ``__Tagged``,
-``__Reference``, or ``__AssignableReference`` are internal schema definitions,
-not serialized COGS type names. Pruning or sharing them must not weaken the
-closed instance contract.
+type. Concrete item definitions, their required inheritance ancestors, and all
+built-in primitive definitions are always present. A composite and its
+required ancestors are emitted only when reachable from concrete-item
+effective properties. Structural item and composite definitions declare local
+properties and use ``allOf`` for parent inheritance; final wire-object schemas
+use Draft 2020-12 ``unevaluatedProperties: false`` to remain closed after
+composition. The global ``Reference`` definition remains for top-level
+references, and item-valued properties restrict its ``$type`` inline through
+``allOf`` rather than introducing additional schema types.
 
 UML/XMI is the authoritative structural model output. It preserves COGS
 classes, abstractness, inheritance, properties, associations, multiplicity,

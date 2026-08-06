@@ -82,17 +82,17 @@ Generated-schema inventory
 
 COGS 2 emits only model-defined JSON Schema definitions reachable from concrete
 item effective properties, while retaining every concrete item definition,
-every built-in primitive definition, and the global top-level ``Reference``.
-Tagged composite and property-specific reference helpers are generated only
-when reachable, and equivalent exact/assignable reference shapes may share one
-definition. This can remove or consolidate ``$defs`` entries compared with an
-older generated schema without changing any valid JSON instance.
+the ancestors required by emitted inheritance chains, every built-in primitive
+definition, and the global top-level ``Reference``. Derived model definitions
+now use ``allOf`` to reference their parent and contain only local properties.
+Final item and composite boundaries use Draft 2020-12
+``unevaluatedProperties: false`` so the instance contract remains closed.
+Schema validators and code-generation tools must therefore support Draft
+2020-12's unevaluated vocabulary.
 
-Do not treat ``__Tagged``, ``__Reference``, or
-``__AssignableReference`` suffixes as wire type names or stable integration
-identifiers. Migrate schema tooling to follow ``$ref`` targets and inspect the
-referenced constraints. No model CSV or instance rewrite is required solely
-because an unreachable or duplicate internal definition was removed.
+Property-local tagged and reference restrictions are inline. Schema tooling
+should follow the model-type and global ``Reference`` links plus their adjacent
+``$type`` restrictions. No model CSV or JSON instance rewrite is required.
 
 The generated XSD now factors reference identity elements into the public
 global ``IdentificationGroup``. Schema-inspection tools that expected identity

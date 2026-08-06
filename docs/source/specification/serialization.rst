@@ -39,16 +39,18 @@ malformed primitive values, and non-finite JSON numbers are errors. JSON
 numbers for arbitrary integers and decimals must be read and written without
 precision loss.
 
-The generated schema may prune or share internal ``$defs`` while preserving
-this contract. All concrete item definitions remain root alternatives and all
-built-in primitive definitions remain present. Model composites are emitted
-only when recursively reachable from concrete-item effective properties;
-property-local tagged composite and exact/assignable item-reference variants
-are emitted only when reachable, and reference variants with the same concrete
-allowed-type set may share a definition. The global ``Reference`` definition
-remains available for ``topLevelReferences``. Internal suffixes such as
-``__Tagged``, ``__Reference``, and ``__AssignableReference`` never alter a
-wire ``$type`` value and are not public model type names.
+The generated schema prunes internal ``$defs`` while preserving this contract.
+All concrete item definitions, their required inheritance ancestors, and all
+built-in primitive definitions remain present. Model composites and the
+ancestors needed by their ``allOf`` chains are emitted only when recursively
+reachable from concrete-item effective properties. Each structural model
+definition declares only local properties; final item and composite value
+schemas use Draft 2020-12 ``unevaluatedProperties: false`` to close the object
+after inherited and local constraints have been evaluated. The global
+``Reference`` definition remains available for ``topLevelReferences``.
+Property-local reference and tagged-composite restrictions are inline, so the
+schema inventory contains only model types, built-in primitives, and the global
+reference shape.
 
 ``duration``, ``dateTime``, ``time``, and ``date`` are strings annotated with
 the standard Draft 2020-12 formats ``duration``, ``date-time``, ``time``, and

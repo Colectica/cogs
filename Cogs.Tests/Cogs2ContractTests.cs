@@ -716,6 +716,133 @@ namespace Cogs.Tests
         }
 
         [Fact]
+        public void UnusedCompositeWarningsFollowConcreteItemReachability()
+        {
+            var dto = ValidDto();
+            dto.ItemTypes[0].Extends = "ItemBase";
+            dto.ItemTypes.Add(new Cogs.Dto.ItemType
+            {
+                Name = "ItemBase",
+                IsAbstract = true,
+                Properties = { Property("InheritedItemValue", "InheritedItemValue") }
+            });
+            dto.ItemTypes[0].Properties.Add(Property("DirectValue", "DirectValue"));
+            dto.ItemTypes[0].Properties.Add(Property("InheritedValue", "UsedChild"));
+            Cogs.Dto.Property polymorphic = Property("PolymorphicValue", "PolymorphicBase");
+            polymorphic.AllowSubtypes = "true";
+            dto.ItemTypes[0].Properties.Add(polymorphic);
+            dto.ItemTypes[0].Properties.Add(Property("AbstractValue", "UsedAbstractBase"));
+            dto.ItemTypes[0].Properties.Add(Property("ExactValue", "ExactBase"));
+
+            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType
+            {
+                Name = "DirectValue",
+                Properties = { Property("NestedValue", "NestedValue") }
+            });
+            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType
+            {
+                Name = "NestedValue",
+                Properties = { Property("RecursiveValue", "DirectValue") }
+            });
+            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType { Name = "InheritedItemValue" });
+            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType
+            {
+                Name = "UsedBase",
+                Properties = { Property("InheritedCompositeValue", "InheritedCompositeValue") }
+            });
+            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType { Name = "UsedChild", Extends = "UsedBase" });
+            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType { Name = "InheritedCompositeValue" });
+            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType { Name = "PolymorphicBase" });
+            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType { Name = "PolymorphicChild", Extends = "PolymorphicBase" });
+            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType { Name = "UsedAbstractBase", IsAbstract = true });
+            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType { Name = "UsedAbstractChild", Extends = "UsedAbstractBase" });
+            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType { Name = "ExactBase" });
+            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType
+            {
+                Name = "ExactChild",
+                Extends = "ExactBase",
+                SourcePath = "CompositeTypes/01-ExactChild"
+            });
+            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType
+            {
+                Name = "OrphanOne",
+                SourcePath = "CompositeTypes/02-OrphanOne",
+                Properties = { Property("OtherOrphan", "OrphanTwo") }
+            });
+            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType
+            {
+                Name = "OrphanTwo",
+                SourcePath = "CompositeTypes/03-OrphanTwo",
+                Properties = { Property("OtherOrphanBack", "OrphanOne") }
+            });
+            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType
+            {
+                Name = "UnusedPrimitive",
+                IsPrimitive = true,
+                SourcePath = "CompositeTypes/04-UnusedPrimitive"
+            });
+            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType
+            {
+                Name = "UnusedAbstractBase",
+                IsAbstract = true,
+                SourcePath = "CompositeTypes/05-UnusedAbstractBase"
+            });
+            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType
+            {
+                Name = "UnusedAbstractChild",
+                Extends = "UnusedAbstractBase",
+                SourcePath = "CompositeTypes/06-UnusedAbstractChild"
+            });
+
+            CogsError[] warnings = DtoValidation.Validate(dto)
+                .Where(error => error.Code == "COGS-VAL-TYPE-002")
+                .ToArray();
+
+            Assert.Equal(
+                new[]
+                {
+                    "ExactChild", "OrphanOne", "OrphanTwo", "UnusedPrimitive",
+                    "UnusedAbstractBase", "UnusedAbstractChild"
+                },
+                warnings.Select(warning => warning.ModelPath));
+            Assert.All(warnings, warning => Assert.Equal(ErrorLevel.Warning, warning.Level));
+            Assert.Equal(
+                new[]
+                {
+                    "CompositeTypes/01-ExactChild", "CompositeTypes/02-OrphanOne",
+                    "CompositeTypes/03-OrphanTwo", "CompositeTypes/04-UnusedPrimitive",
+                    "CompositeTypes/05-UnusedAbstractBase", "CompositeTypes/06-UnusedAbstractChild"
+                },
+                warnings.Select(warning => warning.SourcePath));
+            Assert.DoesNotContain(warnings, warning => warning.ModelPath is
+                "DirectValue" or "NestedValue" or "InheritedItemValue" or
+                "UsedBase" or "UsedChild" or "InheritedCompositeValue" or
+                "PolymorphicBase" or "PolymorphicChild" or "UsedAbstractBase" or
+                "UsedAbstractChild" or "ExactBase");
+        }
+
+        [Fact]
+        public void AbstractCompositeWithoutConcreteDescendantsUsesSpecificInheritanceWarningOnly()
+        {
+            var dto = ValidDto();
+            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType
+            {
+                Name = "UninhabitableValue",
+                IsAbstract = true,
+                SourcePath = "CompositeTypes/UninhabitableValue"
+            });
+
+            IReadOnlyList<CogsError> diagnostics = DtoValidation.Validate(dto);
+
+            Assert.Contains(diagnostics, warning =>
+                warning.Code == "COGS-VAL-INH-007" &&
+                warning.ModelPath == "UninhabitableValue" &&
+                warning.Level == ErrorLevel.Warning);
+            Assert.DoesNotContain(diagnostics, warning =>
+                warning.Code == "COGS-VAL-TYPE-002" && warning.ModelPath == "UninhabitableValue");
+        }
+
+        [Fact]
         public void PrimitiveMarkerIsCompositeOnlyAndDoesNotChangeCompositeShape()
         {
             var invalidItem = ValidDto();

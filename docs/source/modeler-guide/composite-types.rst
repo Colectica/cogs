@@ -98,6 +98,16 @@ instances, and COGS warns when an abstract composite has no concrete descendant.
 projection publishers and does not change the composite's JSON or XML shape.
 ``This`` and ``Any`` are retired and invalid in COGS 2.
 
+Every composite type should be reachable from at least one concrete item.
+Reachability follows inherited properties and recursively nested composites.
+An exact composite property reaches only its declared concrete type and
+ancestors, while ``AllowSubtypes=true`` reaches every concrete assignable
+descendant and its ancestors. Validation emits warning
+``COGS-VAL-TYPE-002`` for each composite outside that instance graph, including
+disconnected recursive groups and unused ``Primitive`` composites. An abstract
+composite with no concrete descendants receives only the more specific
+``COGS-VAL-INH-007`` warning.
+
 Cardinalities use canonical nonnegative integers, with blank minimum ``0`` and
 blank maximum ``n``. Flags accept only blank, ``false``, or ``true``
 case-insensitively. See
