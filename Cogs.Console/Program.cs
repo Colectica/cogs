@@ -478,6 +478,9 @@ namespace Cogs.Console
                 var overwriteOption = command.Option("-o|--overwrite",
                     "If the target directory exists, delete and overwrite the location",
                     CommandOptionType.NoValue);
+                var flavorOption = command.Option("-f|--flavor",
+                    "Python output flavor: dataclass (default) or pydantic",
+                    CommandOptionType.SingleValue);
 
                 command.OnExecute(() =>
                 {
@@ -501,8 +504,26 @@ namespace Cogs.Console
                         });
                     }
 
+                    PythonFlavor flavor = PythonFlavor.Dataclass;
+                    if (flavorOption.HasValue())
+                    {
+                        string val = flavorOption.Value() ?? string.Empty;
+                        if (val.Equals("pydantic", StringComparison.OrdinalIgnoreCase))
+                        {
+                            flavor = PythonFlavor.Pydantic;
+                        }
+                        else if (!val.Equals("dataclass", StringComparison.OrdinalIgnoreCase))
+                        {
+                            HandleErrors(new List<CogsError>
+                            {
+                                new CogsError(ErrorLevel.Error, "CLI2102", $"Invalid Python flavor '{val}'. Valid options are 'dataclass' or 'pydantic'.")
+                            });
+                        }
+                    }
+
                     var publisher = new PythonPublisher(cogsModel, target)
                     {
+                        Flavor = flavor,
                         Overwrite = overwriteOption.HasValue(),
                         TargetNamespace = namespaceUri.Value() ?? cogsModel.Settings.NamespaceUrl,
                     };
@@ -530,14 +551,7 @@ namespace Cogs.Console
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
 
-                    var directoryReader = new CogsDirectoryReader();
-                    var cogsDtoModel = directoryReader.Load(location);
-                    HandleErrors(directoryReader.Errors);
-                    HandleErrors(DtoValidation.Validate(cogsDtoModel));
-
-                    var modelBuilder = new CogsModelBuilder();
-                    var cogsModel = modelBuilder.Build(cogsDtoModel);
-                    HandleErrors(modelBuilder.Errors);
+                    var cogsModel = LoadValidatedModel(location);
 
                     try
                     {
@@ -547,16 +561,20 @@ namespace Cogs.Console
                     {
                         HandleErrors(new List<CogsError>
                         {
-                            new CogsError(ErrorLevel.Error, "Invalid XML namespace prefix", xmlEx)
+                            new CogsError(
+                                ErrorLevel.Error, "CLI2101",
+                                $"Invalid XML namespace prefix '{cogsModel.Settings.NamespacePrefix}': {xmlEx.Message}",
+                                modelPath: "Settings.NamespacePrefix", exception: xmlEx)
                         });
                     }
 
-                    var publisher = new Cogs.Publishers.PythonPydantic.PythonPydanticPublisher(cogsModel, target)
+                    var publisher = new PythonPublisher(cogsModel, target)
                     {
+                        Flavor = PythonFlavor.Pydantic,
                         Overwrite = overwriteOption.HasValue(),
                         TargetNamespace = namespaceUri.Value() ?? cogsModel.Settings.NamespaceUrl,
                     };
-                    publisher.Publish();
+                    HandleErrors(publisher.PublishResult().Diagnostics);
                     return 0;
                 });
             });

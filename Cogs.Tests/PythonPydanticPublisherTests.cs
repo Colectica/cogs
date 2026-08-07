@@ -1,4 +1,5 @@
 using Cogs.Model;
+using Cogs.Publishers;
 using Cogs.Publishers.PythonPydantic;
 using System;
 using System.IO;
@@ -11,7 +12,7 @@ public class PythonPydanticPublisherTests
     [Fact]
     public void PublishWritesNormalizedPackageLayoutAndMetadata()
     {
-        CogsModel model = BuildModel("My Model.Package", "1.2.3rc1");
+        CogsModel model = BuildModel("My Model.Package", "1.2.3-rc.1");
         WithTemporaryDirectory(parent =>
         {
             string target = Path.Combine(parent, "output");
@@ -40,7 +41,7 @@ public class PythonPydanticPublisherTests
     [Fact]
     public void PublishRequiresOverwriteForAnExistingDirectory()
     {
-        CogsModel model = BuildModel("example", "1.0");
+        CogsModel model = BuildModel("example", "1.0.0");
         WithTemporaryDirectory(parent =>
         {
             string target = Path.Combine(parent, "output");
@@ -49,7 +50,7 @@ public class PythonPydanticPublisherTests
             string marker = Path.Combine(target, "marker.txt");
             File.WriteAllText(marker, "old");
 
-            Assert.Throws<InvalidOperationException>(() => publisher.Publish());
+            Assert.Throws<CogsPublicationException>(() => publisher.Publish());
 
             publisher.Overwrite = true;
             publisher.Publish();
@@ -60,14 +61,15 @@ public class PythonPydanticPublisherTests
     [Fact]
     public void PublishRejectsCollidingPythonAttributeNames()
     {
-        CogsModel model = BuildModel("example", "1.0");
-        ItemType item = model.ItemTypes[0];
-        item.Properties.Add(SimpleProperty("URLValue"));
-        item.Properties.Add(SimpleProperty("UrlValue"));
+        CogsModel model = BuildModel("example", "1.0.0", customize: dto =>
+        {
+            dto.ItemTypes[0].Properties.Add(SimpleDtoProperty("URLValue"));
+            dto.ItemTypes[0].Properties.Add(SimpleDtoProperty("UrlValue"));
+        });
 
         WithTemporaryDirectory(target =>
         {
-            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            CogsPublicationException exception = Assert.Throws<CogsPublicationException>(
                 () => new PythonPydanticPublisher(model, Path.Combine(target, "output")).Publish());
             Assert.Contains("both normalize to 'url_value'", exception.Message);
         });
@@ -76,7 +78,7 @@ public class PythonPydanticPublisherTests
     [Fact]
     public void PublishIncludesEveryIdentificationFieldInReferences()
     {
-        CogsModel model = BuildModel("example", "1.0", includeIdentificationMixin: true);
+        CogsModel model = BuildModel("example", "1.0.0", includeIdentificationMixin: true);
         WithTemporaryDirectory(parent =>
         {
             string target = Path.Combine(parent, "output");
@@ -92,7 +94,8 @@ public class PythonPydanticPublisherTests
     private static CogsModel BuildModel(
         string slug,
         string version,
-        bool includeIdentificationMixin = false)
+        bool includeIdentificationMixin = false,
+        Action<Cogs.Dto.CogsDtoModel>? customize = null)
     {
         var dto = new Cogs.Dto.CogsDtoModel();
         AddSetting(dto, "Title", "Test Model");
@@ -124,6 +127,8 @@ public class PythonPydanticPublisherTests
             Description = "A concrete item",
             Extends = "BaseItem",
         });
+
+        customize?.Invoke(dto);
 
         return new CogsModelBuilder().Build(dto);
     }
