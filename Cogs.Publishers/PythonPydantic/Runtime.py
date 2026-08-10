@@ -1070,21 +1070,24 @@ class ItemContainer(BaseModel):
         return cls.from_dict(_json_load_value(value))
 
     @classmethod
-    def load_json(cls, source: str | os.PathLike[str] | IO[str]) -> ItemContainer:
-        if hasattr(source, "read"):
-            return cls.from_json(source.read())
-        with open(source, "r", encoding="utf-8") as handle:
-            return cls.from_json(handle.read())
+    def load_json(cls, source: str | os.PathLike[str] | IO[str] | IO[bytes]) -> ItemContainer:
+        if isinstance(source, (str, os.PathLike)):
+            with open(source, "r", encoding="utf-8") as handle:
+                return cls.from_json(handle.read())
+        return cls.from_json(source.read())
 
     def dump_json(
-        self, target: str | os.PathLike[str] | IO[str], *, indent: int | None = 2
+        self, target: str | os.PathLike[str] | IO[str] | IO[bytes], *, indent: int | None = 2
     ) -> None:
         value = self.to_json(indent=indent)
-        if hasattr(target, "write"):
-            target.write(value)
+        if isinstance(target, (str, os.PathLike)):
+            with open(target, "w", encoding="utf-8", newline="\n") as handle:
+                handle.write(value)
             return
-        with open(target, "w", encoding="utf-8", newline="\n") as handle:
-            handle.write(value)
+        try:
+            target.write(value)
+        except TypeError:
+            target.write(value.encode("utf-8"))
 
     def to_element(self) -> ET.Element:
         context = _Context()
@@ -1175,9 +1178,9 @@ class ItemContainer(BaseModel):
     def load_xml(
         cls, source: str | os.PathLike[str] | IO[str] | IO[bytes]
     ) -> ItemContainer:
-        if hasattr(source, "read"):
-            return cls.from_xml(source.read())
-        return cls.from_element(ET.parse(source).getroot())
+        if isinstance(source, (str, os.PathLike)):
+            return cls.from_element(ET.parse(source).getroot())
+        return cls.from_xml(source.read())
 
     def dump_xml(
         self,
@@ -1189,13 +1192,13 @@ class ItemContainer(BaseModel):
             self.to_element(), encoding="utf-8", xml_declaration=xml_declaration,
             short_empty_elements=True,
         )
-        if hasattr(target, "write"):
-            try:
-                target.write(value)
-            except TypeError:
-                target.write(value.decode("utf-8"))
+        if isinstance(target, (str, os.PathLike)):
+            Path(target).write_bytes(value)
             return
-        Path(target).write_bytes(value)
+        try:
+            target.write(value)
+        except TypeError:
+            target.write(value.decode("utf-8"))
 
 
 # Registries and generated classes are appended below by COGS.
