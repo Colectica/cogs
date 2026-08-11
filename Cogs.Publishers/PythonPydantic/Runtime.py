@@ -9,7 +9,7 @@ from dataclasses import dataclass, field, fields
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, ClassVar, IO
+from typing import Any, ClassVar, IO, cast
 from xml.etree import ElementTree as ET
 
 from pydantic import BaseModel, Field, ConfigDict
@@ -223,11 +223,183 @@ class LangString:
 def _validate_timezone(value: str | None) -> None:
     if value is None:
         return
-    if re.fullmatch(r"Z|[+-](?:0\d|1\d|2[0-3]):[0-5]\d", value) is None:
+    match = _TIMEZONE_PATTERN.fullmatch(value)
+    if match is None:
         raise ValueError(f"Invalid XML Schema timezone: {value!r}")
+    if value == "Z":
+        return
+    hour = int(match.group("hour"))
+    minute = int(match.group("minute"))
+    if hour > 14 or minute > 59 or (hour == 14 and minute != 0):
+        raise ValueError(f"XML Schema timezone is outside +/-14:00: {value!r}")
 
 
-def _format_year(value: int) -> str:
+_TIMEZONE_PATTERN = re.compile(r"^(?:Z|(?P<sign>[+-])(?P<hour>[0-9]{2}):(?P<minute>[0-9]{2}))$")
+_YEAR_PATTERN = r"-?(?:[0-9]{4}|[1-9][0-9]{4,})"
+_DATE_PATTERN = re.compile(
+    rf"^(?P<year>{_YEAR_PATTERN})-(?P<month>[0-9]{{2}})-(?P<day>[0-9]{{2}})(?P<tz>Z|[+-][0-9]{{2}}:[0-9]{{2}})?$"
+)
+_TIME_PATTERN = re.compile(
+    r"^(?P<hour>[0-9]{2}):(?P<minute>[0-9]{2}):(?P<second>[0-9]{2})(?P<fraction>\.[0-9]+)?(?P<tz>Z|[+-][0-9]{2}:[0-9]{2})?$"
+)
+_DATETIME_PATTERN = re.compile(
+    rf"^(?P<year>{_YEAR_PATTERN})-(?P<month>[0-9]{{2}})-(?P<day>[0-9]{{2}})T"
+    r"(?P<hour>[0-9]{2}):(?P<minute>[0-9]{2}):(?P<second>[0-9]{2})(?P<fraction>\.[0-9]+)?(?P<tz>Z|[+-][0-9]{2}:[0-9]{2})?$"
+)
+_FULL_DURATION_PATTERN = re.compile(
+    r"^-?P(?=[0-9]|T(?:[0-9]|\.[0-9]))(?:[0-9]+Y)?(?:[0-9]+M)?(?:[0-9]+D)?"
+    r"(?:T(?=[0-9]|\.[0-9])(?:[0-9]+H)?(?:[0-9]+M)?"
+    r"(?:(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)S)?)?$"
+)
+_DECIMAL_PATTERN = re.compile(r"^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$")
+
+
+def _validate_year(value: str) -> int:
+    year = int(value)
+    if year == 0:
+        raise ValueError("XML Schema year zero is not valid.")
+    if year < -(2**31) or year > 2**31 - 1:
+        raise ValueError("COGS calendar years must fit in a signed 32-bit integer.")
+    return year
+
+
+def _days_in_month(year: int, month: int) -> int:
+    if month == 2:
+        astronomical = year + 1 if year < 0 else year
+        leap = astronomical % 4 == 0 and (astronomical % 100 != 0 or astronomical % 400 == 0)
+        return 29 if leap else 28
+    return 30 if month in {4, 6, 9, 11} else 31
+
+
+def _validate_date_parts(year_text: str, month_text: str, day_text: str) -> None:
+    year = _validate_year(year_text)
+    month = int(month_text)
+    day = int(day_text)
+    if month < 1 or month > 12 or day < 1 or day > _days_in_month(year, month):
+        raise ValueError("Date components are outside the XML Schema calendar.")
+
+
+def _validate_time_parts(match: re.Match[str]) -> None:
+    hour = int(match.group("hour"))
+    minute = int(match.group("minute"))
+    second = int(match.group("second"))
+    if hour > 24 or minute > 59 or second > 59:
+        raise ValueError("Time components are outside the XML Schema clock.")
+    fraction = match.group("fraction")
+    if hour == 24 and (
+        minute != 0
+        or second != 0
+        or fraction is not None and any(character != "0" for character in fraction[1:])
+    ):
+        raise ValueError("24:00:00 cannot have nonzero or fractional components.")
+    _validate_timezone(match.group("tz"))
+
+
+@dataclass(frozen=True)
+class CogsDecimal:
+    lexical: str
+
+    def __init__(self, value: CogsDecimal | Decimal | int | str) -> None:
+        if isinstance(value, CogsDecimal):
+            lexical = value.lexical
+        elif isinstance(value, bool) or isinstance(value, float):
+            raise TypeError("CogsDecimal requires a decimal lexical value, Decimal, or integer.")
+        else:
+            lexical = str(value)
+        if _DECIMAL_PATTERN.fullmatch(lexical) is None:
+            raise ValueError("decimal must use a JSON-compatible XSD decimal lexical form without exponent.")
+        try:
+            parsed = Decimal(lexical)
+        except InvalidOperation as exc:
+            raise ValueError(f"Invalid decimal: {lexical!r}") from exc
+        if not parsed.is_finite():
+            raise ValueError("decimal must be finite.")
+        object.__setattr__(self, "lexical", lexical)
+
+    def __str__(self) -> str:
+        return self.lexical
+
+    def to_decimal(self) -> Decimal:
+        return Decimal(self.lexical)
+
+
+@dataclass(frozen=True)
+class CogsDateTime:
+    lexical: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.lexical, str):
+            raise TypeError("dateTime must be a string.")
+        match = _DATETIME_PATTERN.fullmatch(self.lexical)
+        if match is None:
+            raise ValueError(f"Invalid dateTime: {self.lexical!r}")
+        _validate_date_parts(match.group("year"), match.group("month"), match.group("day"))
+        _validate_time_parts(match)
+
+    def to_json_value(self) -> str:
+        return self.lexical
+
+    def to_xml_text(self) -> str:
+        return self.lexical
+
+
+@dataclass(frozen=True)
+class CogsDateOnly:
+    lexical: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.lexical, str):
+            raise TypeError("date must be a string.")
+        match = _DATE_PATTERN.fullmatch(self.lexical)
+        if match is None:
+            raise ValueError(f"Invalid date: {self.lexical!r}")
+        _validate_date_parts(match.group("year"), match.group("month"), match.group("day"))
+        _validate_timezone(match.group("tz"))
+
+    def to_json_value(self) -> str:
+        return self.lexical
+
+    def to_xml_text(self) -> str:
+        return self.lexical
+
+
+@dataclass(frozen=True)
+class CogsTime:
+    lexical: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.lexical, str):
+            raise TypeError("time must be a string.")
+        match = _TIME_PATTERN.fullmatch(self.lexical)
+        if match is None:
+            raise ValueError(f"Invalid time: {self.lexical!r}")
+        _validate_time_parts(match)
+
+    def to_json_value(self) -> str:
+        return self.lexical
+
+    def to_xml_text(self) -> str:
+        return self.lexical
+
+
+@dataclass(frozen=True)
+class CogsDuration:
+    lexical: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.lexical, str) or _FULL_DURATION_PATTERN.fullmatch(self.lexical) is None:
+            raise ValueError(f"Invalid XML Schema duration: {self.lexical!r}")
+
+    def to_json_value(self) -> str:
+        return self.lexical
+
+    def to_xml_text(self) -> str:
+        return self.lexical
+
+
+def _format_year(value: int | str) -> str:
+    if isinstance(value, str):
+        value = int(value)
     sign = "-" if value < 0 else ""
     return sign + f"{abs(value):04d}"
 
@@ -850,6 +1022,12 @@ class CogsValue(BaseModel):
 
 class CogsItem(CogsValue):
     _is_item: ClassVar[bool] = True
+    _cogs_is_defined: bool = False
+
+    @property
+    def is_defined(self) -> bool:
+        """Whether this item was populated by a full definition in its container."""
+        return self._cogs_is_defined
 
     def _to_dict_with_context(self, context: _Context) -> dict[str, Any]:
         result = {"$type": self._cogs_type}
@@ -1071,23 +1249,26 @@ class ItemContainer(BaseModel):
 
     @classmethod
     def load_json(cls, source: str | os.PathLike[str] | IO[str] | IO[bytes]) -> ItemContainer:
-        if isinstance(source, (str, os.PathLike)):
-            with open(source, "r", encoding="utf-8") as handle:
-                return cls.from_json(handle.read())
+        if isinstance(source, (str, Path)):
+            return cls.from_json(Path(source).read_text(encoding="utf-8"))
+        if isinstance(source, os.PathLike):
+            return cls.from_json(Path(source.__fspath__()).read_text(encoding="utf-8"))
         return cls.from_json(source.read())
 
     def dump_json(
         self, target: str | os.PathLike[str] | IO[str] | IO[bytes], *, indent: int | None = 2
     ) -> None:
         value = self.to_json(indent=indent)
-        if isinstance(target, (str, os.PathLike)):
-            with open(target, "w", encoding="utf-8", newline="\n") as handle:
-                handle.write(value)
+        if isinstance(target, (str, Path)):
+            Path(target).write_text(value, encoding="utf-8", newline="\n")
+            return
+        if isinstance(target, os.PathLike):
+            Path(target.__fspath__()).write_text(value, encoding="utf-8", newline="\n")
             return
         try:
-            target.write(value)
+            cast(Any, target).write(value)
         except TypeError:
-            target.write(value.encode("utf-8"))
+            cast(Any, target).write(value.encode("utf-8"))
 
     def to_element(self) -> ET.Element:
         context = _Context()
@@ -1178,8 +1359,10 @@ class ItemContainer(BaseModel):
     def load_xml(
         cls, source: str | os.PathLike[str] | IO[str] | IO[bytes]
     ) -> ItemContainer:
-        if isinstance(source, (str, os.PathLike)):
+        if isinstance(source, (str, Path)):
             return cls.from_element(ET.parse(source).getroot())
+        if isinstance(source, os.PathLike):
+            return cls.from_element(ET.parse(source.__fspath__()).getroot())
         return cls.from_xml(source.read())
 
     def dump_xml(
@@ -1192,13 +1375,16 @@ class ItemContainer(BaseModel):
             self.to_element(), encoding="utf-8", xml_declaration=xml_declaration,
             short_empty_elements=True,
         )
-        if isinstance(target, (str, os.PathLike)):
+        if isinstance(target, (str, Path)):
             Path(target).write_bytes(value)
             return
+        if isinstance(target, os.PathLike):
+            Path(target.__fspath__()).write_bytes(value)
+            return
         try:
-            target.write(value)
+            cast(Any, target).write(value)
         except TypeError:
-            target.write(value.decode("utf-8"))
+            cast(Any, target).write(value.decode("utf-8"))
 
 
 # Registries and generated classes are appended below by COGS.

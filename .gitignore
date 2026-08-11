@@ -38,3 +38,15 @@ Cogs.Console/Properties/launchSettings.json
 /docs/.vscode
 /conformance/java/target/
 /out
+
+# macOS / OS X system files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.AppleDouble
+.LSOverride
+Icon?
+ehthumbs.db
+Thumbs.db

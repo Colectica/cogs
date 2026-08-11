@@ -248,18 +248,12 @@ public sealed class PythonPublisher
         builder.AppendLine();
         builder.AppendLine("__all__ = [");
 
-        IEnumerable<string> baseExports = Flavor == PythonFlavor.Pydantic
-            ? new[]
-            {
-                "CogsDate", "CogsItem", "CogsValue", "GDay", "GMonth", "GMonthDay", "GYear",
-                "GYearMonth", "ItemContainer", "LangString",
-            }
-            : new[]
-            {
-                "CogsDate", "CogsDateOnly", "CogsDateTime", "CogsDecimal", "CogsDuration",
-                "CogsItem", "CogsTime", "CogsValue", "GDay", "GMonth", "GMonthDay",
-                "GYear", "GYearMonth", "ItemContainer", "LangString",
-            };
+        IEnumerable<string> baseExports = new[]
+        {
+            "CogsDate", "CogsDateOnly", "CogsDateTime", "CogsDecimal", "CogsDuration",
+            "CogsItem", "CogsTime", "CogsValue", "GDay", "GMonth", "GMonthDay",
+            "GYear", "GYearMonth", "ItemContainer", "LangString",
+        };
 
         foreach (string name in baseExports.Concat(GetOrderedTypes().Select(x => x.Name)).Distinct().OrderBy(x => x, StringComparer.Ordinal))
         {
