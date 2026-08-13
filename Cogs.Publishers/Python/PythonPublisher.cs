@@ -352,6 +352,10 @@ public sealed class PythonPublisher
     private string GetTypeAnnotation(Property property, bool many)
     {
         string pythonType = GetPythonType(property.DataType);
+        if (Flavor == PythonFlavor.Pydantic && CogsTypeSystem.AllowsSubtypes(property))
+        {
+            pythonType = $"SerializeAsAny[{pythonType}]";
+        }
         return many ? $"list[{pythonType}]" : $"{pythonType} | None";
     }
 

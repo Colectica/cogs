@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, ClassVar, IO, cast
 from xml.etree import ElementTree as ET
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, SerializeAsAny
 
 class _FieldWrapper:
     def __init__(self, name: str, field_info: Any):
