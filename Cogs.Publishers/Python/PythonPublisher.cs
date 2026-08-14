@@ -15,8 +15,6 @@ namespace Cogs.Publishers.Python;
 
 public sealed class PythonPublisher
 {
-    private const string RuntimeResourceName = "Cogs.Publishers.Python.Runtime.py";
-
     private static readonly HashSet<string> PythonKeywords = new(StringComparer.Ordinal)
     {
         "False", "None", "True", "and", "as", "assert", "async", "await", "break", "class",
@@ -38,7 +36,7 @@ public sealed class PythonPublisher
     private static readonly HashSet<string> RuntimeAttributeNames = new(StringComparer.Ordinal)
     {
         "from_dict", "from_element", "from_json", "from_xml", "to_dict", "to_element",
-        "to_json", "to_reference_dict", "to_xml", "_cogs_type",
+        "to_json", "to_reference_dict", "to_xml", "_cogs_type", "_emit_type_field",
         "_is_abstract", "_is_item",
     };
 
@@ -66,7 +64,12 @@ public sealed class PythonPublisher
     public string TargetDirectory { get; }
     public string? TargetNamespace { get; set; }
     public bool Overwrite { get; set; }
+    public PythonFlavor Flavor { get; set; } = PythonFlavor.Dataclass;
     public PublicationResult? LastResult { get; private set; }
+
+    private string RuntimeResourceName => Flavor == PythonFlavor.Pydantic
+        ? "Cogs.Publishers.PythonPydantic.Runtime.py"
+        : "Cogs.Publishers.Python.Runtime.py";
 
     public PythonPublisher(CogsModel model, string targetDirectory)
     {
@@ -138,7 +141,8 @@ public sealed class PythonPublisher
             throw new InvalidOperationException($"XML namespace prefix '{namespacePrefix}' is invalid.", exception);
         }
         if (namespacePrefix.Equals("xml", StringComparison.OrdinalIgnoreCase)
-            || namespacePrefix.Equals("xmlns", StringComparison.OrdinalIgnoreCase))
+            || namespacePrefix.Equals("xmlns", StringComparison.OrdinalIgnoreCase)
+            || (Flavor == PythonFlavor.Pydantic && namespacePrefix.Equals("xsi", StringComparison.OrdinalIgnoreCase)))
         {
             throw new InvalidOperationException($"XML namespace prefix '{namespacePrefix}' is reserved.");
         }
@@ -166,6 +170,9 @@ public sealed class PythonPublisher
         string description = string.IsNullOrWhiteSpace(model.Settings.Description)
             ? model.Settings.ShortTitle
             : model.Settings.Description;
+        string dependenciesBlock = Flavor == PythonFlavor.Pydantic
+            ? "\ndependencies = [\n    \"pydantic>=2.0\"\n]\n"
+            : "";
         var builder = new StringBuilder($$"""
             [build-system]
             requires = ["setuptools>=61"]
@@ -175,8 +182,7 @@ public sealed class PythonPublisher
             name = {{Quote(distributionName)}}
             version = {{Quote(version.Pep440)}}
             description = {{Quote(description)}}
-            requires-python = ">=3.11"
-
+            requires-python = ">=3.11"{{dependenciesBlock}}
             [tool.setuptools]
             packages = [{{Quote(moduleName)}}]
 
@@ -241,12 +247,15 @@ public sealed class PythonPublisher
         builder.AppendLine("}");
         builder.AppendLine();
         builder.AppendLine("__all__ = [");
-        foreach (string name in new[]
+
+        IEnumerable<string> baseExports = new[]
         {
             "CogsDate", "CogsDateOnly", "CogsDateTime", "CogsDecimal", "CogsDuration",
             "CogsItem", "CogsTime", "CogsValue", "GDay", "GMonth", "GMonthDay",
             "GYear", "GYearMonth", "ItemContainer", "LangString",
-        }.Concat(GetOrderedTypes().Select(x => x.Name)).Distinct().OrderBy(x => x, StringComparer.Ordinal))
+        };
+
+        foreach (string name in baseExports.Concat(GetOrderedTypes().Select(x => x.Name)).Distinct().OrderBy(x => x, StringComparer.Ordinal))
         {
             builder.AppendLine($"    {Quote(name)},");
         }
@@ -260,29 +269,63 @@ public sealed class PythonPublisher
             ? dataType is ItemType ? "CogsItem" : "CogsValue"
             : dataType.ExtendsTypeName;
 
-        builder.AppendLine("@dataclass");
-        builder.AppendLine($"class {dataType.Name}({baseType}):");
-        builder.AppendLine($"    {Quote(dataType.Description ?? string.Empty)}");
-        builder.AppendLine($"    _cogs_type: ClassVar[str] = {Quote(dataType.Name)}");
-        builder.AppendLine($"    _is_abstract: ClassVar[bool] = {PythonBool(dataType.IsAbstract)}");
-        foreach (Property property in dataType.Properties)
+        if (Flavor == PythonFlavor.Pydantic)
         {
-            string attributeName = ToSnakeCase(property.Name);
-            bool many = IsMany(property);
-            string annotation = GetTypeAnnotation(property, many);
-            string defaultValue = many ? "field(default_factory=list" : "field(default=None";
-            builder.AppendLine(
-                $"    {attributeName}: {annotation} = {defaultValue}, metadata={{" +
-                $"{Quote("cogs_name")}: {Quote(property.Name)}, " +
-                $"{Quote("description")}: {Quote(property.Description)}, " +
-                $"{Quote("type_name")}: {Quote(property.DataType.Name)}, " +
-                $"{Quote("kind")}: {Quote(GetKind(property))}, " +
-                $"{Quote("many")}: {PythonBool(many)}, " +
-                $"{Quote("ordered")}: {PythonBool(property.Ordered)}, " +
-                $"{Quote("allow_subtypes")}: {PythonBool(CogsTypeSystem.AllowsSubtypes(property))}" +
-                "})");
+            builder.AppendLine($"class {dataType.Name}({baseType}):");
+            builder.AppendLine($"    {Quote(dataType.Description ?? string.Empty)}");
+            builder.AppendLine($"    _cogs_type: ClassVar[str] = {Quote(dataType.Name)}");
+            builder.AppendLine($"    _is_abstract: ClassVar[bool] = {PythonBool(dataType.IsAbstract)}");
+            if (dataType is not ItemType)
+            {
+                builder.AppendLine($"    _emit_type_field: ClassVar[bool] = {PythonBool(dataType.IsSubstitute)}");
+            }
+            foreach (Property property in dataType.Properties)
+            {
+                string attributeName = ToSnakeCase(property.Name);
+                bool many = IsMany(property);
+                string annotation = GetTypeAnnotation(property, many);
+                string defaultValue = many ? "Field(default_factory=list" : "Field(default=None";
+                builder.Append("    ").Append(attributeName).Append(": ").Append(annotation).Append(" = ").Append(defaultValue)
+                    .Append(", alias=").Append(Quote(property.Name))
+                    .Append(", description=").Append(Quote(property.Description))
+                    .Append(", json_schema_extra={")
+                    .Append(Quote("cogs_name")).Append(": ").Append(Quote(property.Name)).Append(", ")
+                    .Append(Quote("description")).Append(": ").Append(Quote(property.Description)).Append(", ")
+                    .Append(Quote("type_name")).Append(": ").Append(Quote(property.DataType.Name)).Append(", ")
+                    .Append(Quote("kind")).Append(": ").Append(Quote(GetKind(property))).Append(", ")
+                    .Append(Quote("many")).Append(": ").Append(PythonBool(many)).Append(", ")
+                    .Append(Quote("ordered")).Append(": ").Append(PythonBool(property.Ordered)).Append(", ")
+                    .Append(Quote("allow_subtypes")).Append(": ").Append(PythonBool(CogsTypeSystem.AllowsSubtypes(property)))
+                    .AppendLine("})");
+            }
+            builder.AppendLine();
         }
-        builder.AppendLine();
+        else
+        {
+            builder.AppendLine("@dataclass");
+            builder.AppendLine($"class {dataType.Name}({baseType}):");
+            builder.AppendLine($"    {Quote(dataType.Description ?? string.Empty)}");
+            builder.AppendLine($"    _cogs_type: ClassVar[str] = {Quote(dataType.Name)}");
+            builder.AppendLine($"    _is_abstract: ClassVar[bool] = {PythonBool(dataType.IsAbstract)}");
+            foreach (Property property in dataType.Properties)
+            {
+                string attributeName = ToSnakeCase(property.Name);
+                bool many = IsMany(property);
+                string annotation = GetTypeAnnotation(property, many);
+                string defaultValue = many ? "field(default_factory=list" : "field(default=None";
+                builder.AppendLine(
+                    $"    {attributeName}: {annotation} = {defaultValue}, metadata={{" +
+                    $"{Quote("cogs_name")}: {Quote(property.Name)}, " +
+                    $"{Quote("description")}: {Quote(property.Description)}, " +
+                    $"{Quote("type_name")}: {Quote(property.DataType.Name)}, " +
+                    $"{Quote("kind")}: {Quote(GetKind(property))}, " +
+                    $"{Quote("many")}: {PythonBool(many)}, " +
+                    $"{Quote("ordered")}: {PythonBool(property.Ordered)}, " +
+                    $"{Quote("allow_subtypes")}: {PythonBool(CogsTypeSystem.AllowsSubtypes(property))}" +
+                    "})");
+            }
+            builder.AppendLine();
+        }
     }
 
     private IEnumerable<DataType> GetOrderedTypes()
@@ -309,6 +352,10 @@ public sealed class PythonPublisher
     private string GetTypeAnnotation(Property property, bool many)
     {
         string pythonType = GetPythonType(property.DataType);
+        if (Flavor == PythonFlavor.Pydantic && CogsTypeSystem.AllowsSubtypes(property))
+        {
+            pythonType = $"SerializeAsAny[{pythonType}]";
+        }
         return many ? $"list[{pythonType}]" : $"{pythonType} | None";
     }
 

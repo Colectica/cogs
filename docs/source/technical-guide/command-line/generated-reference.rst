@@ -290,6 +290,38 @@ Options
    URI of the target XML namespace
 ``-o|--overwrite``
    If the target directory exists, delete and overwrite the location
+``-f|--flavor <value>``
+   Python output flavor: dataclass (default) or pydantic
+
+.. _cli-descriptor-publish-pydantic:
+
+publish-pydantic
+----------------
+
+Publish a Python Pydantic package from a COGS data model
+
+Usage
+~~~~~
+
+``cogs publish-pydantic [cogsLocation] [targetLocation] [options]``
+
+Arguments
+~~~~~~~~~
+
+``[cogsLocation]``
+   Directory where the COGS datamodel is located.
+``[targetLocation]``
+   Directory where the Python package is generated.
+
+Options
+~~~~~~~
+
+``-?|-h|--help``
+   Show help information
+``-n|--namespace <value>``
+   URI of the target XML namespace
+``-o|--overwrite``
+   If the target directory exists, delete and overwrite the location
 
 .. _cli-descriptor-publish-sphinx:
 

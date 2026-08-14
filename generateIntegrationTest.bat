@@ -72,6 +72,19 @@ exit /b %ERRORLEVEL%
 
 :npm_install
 pushd "generated\typescript" || exit /b 1
+
+rd /s /q "generated"
+
+RMDIR /S /Q "generated"
+
+RD /S /Q "generated"
+
+dotnet Cogs.Console\bin\Debug\net10.0\cogs.dll validate "cogsburger"
+dotnet Cogs.Console\bin\Debug\net10.0\cogs.dll publish-xsd --overwrite "cogsburger" "generated\xsd"
+dotnet Cogs.Console\bin\Debug\net10.0\cogs.dll publish-cs --overwrite --csproj --nullable "cogsburger" "generated\src"
+dotnet Cogs.Console\bin\Debug\net10.0\cogs.dll publish-py --overwrite "cogsburger" "generated\python"
+dotnet Cogs.Console\bin\Debug\net10.0\cogs.dll publish-pydantic --overwrite "cogsburger" "generated\pydantic"
+dotnet Cogs.Console\bin\Debug\net10.0\cogs.dll publish-ts --overwrite "cogsburger" "generated\typescript"
 if defined COGS_NPM (
     call "%COGS_NPM%" install --ignore-scripts --no-package-lock
 ) else (

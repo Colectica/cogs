@@ -37,6 +37,7 @@ including through canonical paths or links.
 
    csharp
    python
+   pydantic
    typescript
    json
    xsd

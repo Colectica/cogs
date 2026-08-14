@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass, field, fields
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, ClassVar, IO, Mapping
+from typing import Any, ClassVar, IO, Mapping, cast
 from xml.etree import ElementTree as ET
 
 TARGET_NAMESPACE = __TARGET_NAMESPACE__
@@ -143,7 +143,7 @@ def _parse_xml(
             element_namespaces[id(payload)] = namespaces
         else:
             namespace_stack.pop()
-    root = parser.root
+    root = cast(Any, parser).root
     return root, element_namespaces.get(id(root), {}), element_namespaces
 
 
@@ -390,7 +390,9 @@ class CogsDuration:
         return self.lexical
 
 
-def _format_year(value: int) -> str:
+def _format_year(value: int | str) -> str:
+    if isinstance(value, str):
+        value = int(value)
     if isinstance(value, bool) or not isinstance(value, int):
         raise ValueError("Gregorian years are nonzero integers.")
     _validate_year(str(value))
@@ -1001,7 +1003,7 @@ def _deserialize_simple_xml(type_name: str, element: ET.Element) -> Any:
 
 
 def _field_by_wire_name(cls: type[CogsValue]) -> dict[str, Any]:
-    return {item.metadata["cogs_name"]: item for item in fields(cls)}
+    return {item.metadata["cogs_name"]: item for item in fields(cls) if "cogs_name" in item.metadata}
 
 
 def _type_for_name(type_name: str) -> type[CogsValue]:
@@ -1161,6 +1163,8 @@ class CogsValue:
         if include_type:
             result["$type"] = self._cogs_type
         for item in fields(self):
+            if "cogs_name" not in item.metadata:
+                continue
             value = getattr(self, item.name)
             if value is None or (item.metadata["many"] and not value):
                 continue
@@ -1259,6 +1263,8 @@ class CogsValue:
             if allow_subtypes:
                 element.set(f"{{{XSI_NAMESPACE}}}type", f"{NAMESPACE_PREFIX}:{self._cogs_type}")
         for item in fields(self):
+            if "cogs_name" not in item.metadata:
+                continue
             value = getattr(self, item.name)
             if value is None or (item.metadata["many"] and not value):
                 continue
@@ -1376,11 +1382,12 @@ class CogsValue:
 @dataclass
 class CogsItem(CogsValue):
     _is_item: ClassVar[bool] = True
+    _cogs_is_defined: bool = field(default=False, repr=False, init=False, compare=False)
 
     @property
     def is_defined(self) -> bool:
         """Whether this item was populated by a full definition in its container."""
-        return getattr(self, "_cogs_is_defined", False)
+        return self._cogs_is_defined
 
     def _to_dict_with_context(self, context: _Context, *, include_type: bool = True) -> dict[str, Any]:
         return super()._to_dict_with_context(context, include_type=True)
@@ -1689,9 +1696,11 @@ class ItemContainer:
 
     @classmethod
     def load_json(cls, source: str | os.PathLike[str] | IO[str] | IO[bytes]) -> ItemContainer:
-        if hasattr(source, "read"):
-            return cls.from_json(source.read())
-        return cls.from_json(Path(source).read_bytes())
+        if isinstance(source, (str, Path)):
+            return cls.from_json(Path(source).read_bytes())
+        if isinstance(source, os.PathLike):
+            return cls.from_json(Path(source.__fspath__()).read_bytes())
+        return cls.from_json(source.read())
 
     def dump_json(
         self,
@@ -1700,13 +1709,16 @@ class ItemContainer:
         indent: int | None = 2,
     ) -> None:
         value = self.to_json(indent=indent)
-        if hasattr(target, "write"):
-            try:
-                target.write(value)
-            except TypeError:
-                target.write(value.encode("utf-8"))
+        if isinstance(target, (str, Path)):
+            Path(target).write_text(value, encoding="utf-8", newline="\n")
             return
-        Path(target).write_text(value, encoding="utf-8", newline="\n")
+        if isinstance(target, os.PathLike):
+            Path(target.__fspath__()).write_text(value, encoding="utf-8", newline="\n")
+            return
+        try:
+            cast(Any, target).write(value)
+        except TypeError:
+            cast(Any, target).write(value.encode("utf-8"))
 
     def to_element(self) -> ET.Element:
         context = _Context()
@@ -1811,9 +1823,11 @@ class ItemContainer:
         cls,
         source: str | os.PathLike[str] | IO[str] | IO[bytes],
     ) -> ItemContainer:
-        if hasattr(source, "read"):
-            return cls.from_xml(source.read())
-        return cls.from_xml(Path(source).read_bytes())
+        if isinstance(source, (str, Path)):
+            return cls.from_xml(Path(source).read_bytes())
+        if isinstance(source, os.PathLike):
+            return cls.from_xml(Path(source.__fspath__()).read_bytes())
+        return cls.from_xml(source.read())
 
     def dump_xml(
         self,
@@ -1827,13 +1841,16 @@ class ItemContainer:
             xml_declaration=xml_declaration,
             short_empty_elements=True,
         )
-        if hasattr(target, "write"):
-            try:
-                target.write(value)
-            except TypeError:
-                target.write(value.decode("utf-8"))
+        if isinstance(target, (str, Path)):
+            Path(target).write_bytes(value)
             return
-        Path(target).write_bytes(value)
+        if isinstance(target, os.PathLike):
+            Path(target.__fspath__()).write_bytes(value)
+            return
+        try:
+            cast(Any, target).write(value)
+        except TypeError:
+            cast(Any, target).write(value.decode("utf-8"))
 
 
 # Registries and generated classes are appended below by COGS.

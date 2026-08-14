@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2017 Colectica. All rights reserved
+// Copyright (c) 2017 Colectica. All rights reserved
 // See the LICENSE file in the project root for more information.
 using Cogs.Common;
 using Cogs.Dto;
@@ -478,6 +478,73 @@ namespace Cogs.Console
                 var overwriteOption = command.Option("-o|--overwrite",
                     "If the target directory exists, delete and overwrite the location",
                     CommandOptionType.NoValue);
+                var flavorOption = command.Option("-f|--flavor",
+                    "Python output flavor: dataclass (default) or pydantic",
+                    CommandOptionType.SingleValue);
+
+                command.OnExecute(() =>
+                {
+                    var location = locationArgument.Value ?? Environment.CurrentDirectory;
+                    var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
+
+                    var cogsModel = LoadValidatedModel(location);
+
+                    try
+                    {
+                        XmlConvert.VerifyNCName(cogsModel.Settings.NamespacePrefix);
+                    }
+                    catch (XmlException xmlEx)
+                    {
+                        HandleErrors(new List<CogsError>
+                        {
+                            new CogsError(
+                                ErrorLevel.Error, "CLI2101",
+                                $"Invalid XML namespace prefix '{cogsModel.Settings.NamespacePrefix}': {xmlEx.Message}",
+                                modelPath: "Settings.NamespacePrefix", exception: xmlEx)
+                        });
+                    }
+
+                    PythonFlavor flavor = PythonFlavor.Dataclass;
+                    if (flavorOption.HasValue())
+                    {
+                        string val = flavorOption.Value() ?? string.Empty;
+                        if (val.Equals("pydantic", StringComparison.OrdinalIgnoreCase))
+                        {
+                            flavor = PythonFlavor.Pydantic;
+                        }
+                        else if (!val.Equals("dataclass", StringComparison.OrdinalIgnoreCase))
+                        {
+                            HandleErrors(new List<CogsError>
+                            {
+                                new CogsError(ErrorLevel.Error, "CLI2102", $"Invalid Python flavor '{val}'. Valid options are 'dataclass' or 'pydantic'.")
+                            });
+                        }
+                    }
+
+                    var publisher = new PythonPublisher(cogsModel, target)
+                    {
+                        Flavor = flavor,
+                        Overwrite = overwriteOption.HasValue(),
+                        TargetNamespace = namespaceUri.Value() ?? cogsModel.Settings.NamespaceUrl,
+                    };
+                    HandleErrors(publisher.PublishResult().Diagnostics);
+                    return 0;
+                });
+            });
+
+            app.Command("publish-pydantic", (command) =>
+            {
+                command.Description = "Publish a Python Pydantic package from a COGS data model";
+                command.HelpOption("-?|-h|--help");
+
+                var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
+                var targetArgument = command.Argument("[targetLocation]", "Directory where the Python package is generated.");
+                var namespaceUri = command.Option("-n|--namespace",
+                    "URI of the target XML namespace",
+                    CommandOptionType.SingleValue);
+                var overwriteOption = command.Option("-o|--overwrite",
+                    "If the target directory exists, delete and overwrite the location",
+                    CommandOptionType.NoValue);
 
                 command.OnExecute(() =>
                 {
@@ -503,6 +570,7 @@ namespace Cogs.Console
 
                     var publisher = new PythonPublisher(cogsModel, target)
                     {
+                        Flavor = PythonFlavor.Pydantic,
                         Overwrite = overwriteOption.HasValue(),
                         TargetNamespace = namespaceUri.Value() ?? cogsModel.Settings.NamespaceUrl,
                     };
@@ -510,6 +578,7 @@ namespace Cogs.Console
                     return 0;
                 });
             });
+
 
             app.Command("publish-ts", (command) =>
             {
