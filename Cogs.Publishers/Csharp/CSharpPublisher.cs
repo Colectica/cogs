@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2017 Colectica. All rights reservedbstr
+// Copyright (c) 2017 Colectica. All rights reservedbstr
 // See the LICENSE file in the project root for more information.
 using Cogs.Model;
 using System;
@@ -623,12 +623,22 @@ namespace Cogs.Publishers.Csharp
                 else
                 {
                     // This must be a primitive property. Put out the actual value.
-                    addTriplesMethodBuilder.AppendLine($$"""
-                                if ({{memberName}} != null)
-                                {
+                    bool isValueTypeNonNullable = Isboolintdoubleulong(prop.DataTypeName) && (prop.MinCardinality != "0" || prop.MaxCardinality != "1");
+                    if (isValueTypeNonNullable)
+                    {
+                        addTriplesMethodBuilder.AppendLine($$"""
                                     {{GetStringToAddTripleForPrimitive(prop.Name, memberName, prop.DataType)}}
-                                }
-                    """);
+                        """);
+                    }
+                    else
+                    {
+                        addTriplesMethodBuilder.AppendLine($$"""
+                                    if ({{memberName}} != null)
+                                    {
+                                        {{GetStringToAddTripleForPrimitive(prop.Name, memberName, prop.DataType)}}
+                                    }
+                        """);
+                    }
                     addTriplesMethodBuilder.AppendLine();
                 }
 
@@ -664,15 +674,27 @@ namespace Cogs.Publishers.Csharp
                 else
                 {
                     // This must be a primitive property. Put out the actual value.
-                    addTriplesMethodBuilder.AppendLine($$"""
-                                foreach (var obj in {{memberName}})
-                                {
-                                    if (obj != null)
+                    if (Isboolintdoubleulong(prop.DataTypeName))
+                    {
+                        addTriplesMethodBuilder.AppendLine($$"""
+                                    foreach (var obj in {{memberName}})
                                     {
                                         {{GetStringToAddTripleForPrimitive(prop.Name, "obj", prop.DataType)}}
                                     }
-                                }
-                    """);
+                        """);
+                    }
+                    else
+                    {
+                        addTriplesMethodBuilder.AppendLine($$"""
+                                    foreach (var obj in {{memberName}})
+                                    {
+                                        if (obj != null)
+                                        {
+                                            {{GetStringToAddTripleForPrimitive(prop.Name, "obj", prop.DataType)}}
+                                        }
+                                    }
+                        """);
+                    }
                     addTriplesMethodBuilder.AppendLine();
                 }
 

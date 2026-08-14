@@ -295,6 +295,22 @@ def _validate_time_parts(match: re.Match[str]) -> None:
     _validate_timezone(match.group("tz"))
 
 
+_XML_DECIMAL_PATTERN = re.compile(r"^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)$")
+
+
+def _decimal_from_xml(raw: str) -> CogsDecimal:
+    if _XML_DECIMAL_PATTERN.fullmatch(raw) is None:
+        raise ValueError(f"Invalid decimal: {raw!r}")
+    negative = raw.startswith("-")
+    unsigned = raw[1:] if raw[:1] in {"+", "-"} else raw
+    integer, separator, fraction = unsigned.partition(".")
+    integer = (integer.lstrip("0") or "0") if integer else "0"
+    lexical = ("-" if negative else "") + integer
+    if separator and fraction:
+        lexical += "." + fraction
+    return CogsDecimal(lexical)
+
+
 @dataclass(frozen=True)
 class CogsDecimal:
     lexical: str
@@ -643,28 +659,37 @@ def _serialize_simple_json(type_name: str, value: Any) -> Any:
     if lowered in _STRING_TYPES or lowered in _INTEGER_TYPES or lowered in _FLOAT_TYPES or lowered == "boolean":
         return value
     if lowered == "decimal":
+        if isinstance(value, CogsDecimal):
+            return Decimal(value.lexical)
         return value if isinstance(value, Decimal) else Decimal(str(value))
-    if lowered == "datetime":
-        return _format_temporal(value)
-    if lowered == "date":
-        return value.isoformat()
-    if lowered == "time":
-        return _format_temporal(value)
-    if lowered == "duration":
-        return _duration_to_milliseconds(value)
-    if lowered == "gyearmonth":
-        return value.to_json_value()
-    if lowered == "gyear":
-        return value.to_json_value()
-    if lowered == "gmonthday":
-        return value.to_json_value()
-    if lowered == "gmonth":
-        return value.to_json_value()
-    if lowered == "gday":
+    lexical_helper_types: dict[str, type[Any]] = {
+        "datetime": CogsDateTime,
+        "date": CogsDateOnly,
+        "time": CogsTime,
+        "duration": CogsDuration,
+    }
+    gregorian_helper_types: dict[str, type[Any]] = {
+        "gyearmonth": GYearMonth,
+        "gyear": GYear,
+        "gmonthday": GMonthDay,
+        "gmonth": GMonth,
+        "gday": GDay,
+    }
+    if lowered in lexical_helper_types:
+        if not isinstance(value, lexical_helper_types[lowered]):
+            raise TypeError(f"{type_name} requires {lexical_helper_types[lowered].__name__}.")
+        return value.lexical
+    if lowered in gregorian_helper_types:
+        if not isinstance(value, gregorian_helper_types[lowered]):
+            raise TypeError(f"{type_name} requires {gregorian_helper_types[lowered].__name__}.")
         return value.to_json_value()
     if lowered == "langstring":
+        if not isinstance(value, LangString):
+            raise TypeError("langString requires LangString.")
         return value.to_json_value()
     if lowered == "cogsdate":
+        if not isinstance(value, CogsDate):
+            raise TypeError("cogsDate requires CogsDate.")
         return value.to_json_value()
     raise ValueError(f"Unsupported COGS primitive type: {type_name}")
 
@@ -684,66 +709,82 @@ def _deserialize_simple_json(type_name: str, raw: Any) -> Any:
             raise TypeError(f"{type_name} must be a number.")
         return float(raw)
     if lowered == "decimal":
-        if isinstance(raw, bool) or not isinstance(raw, (int, float, Decimal)):
-            raise TypeError("decimal must be a number.")
-        return Decimal(str(raw))
+        if isinstance(raw, CogsDecimal):
+            return raw
+        if isinstance(raw, bool) or not isinstance(raw, (int, Decimal, str)):
+            raise TypeError("decimal must be an exact JSON number or CogsDecimal.")
+        return CogsDecimal(raw)
     if lowered == "boolean":
         if not isinstance(raw, bool):
             raise TypeError("boolean must be true or false.")
         return raw
-    if lowered == "datetime":
+    lexical_constructors: dict[str, type[Any]] = {
+        "datetime": CogsDateTime,
+        "date": CogsDateOnly,
+        "time": CogsTime,
+        "duration": CogsDuration,
+    }
+    gregorian_constructors: dict[str, type[Any]] = {
+        "gyearmonth": GYearMonth,
+        "gyear": GYear,
+        "gmonthday": GMonthDay,
+        "gmonth": GMonth,
+        "gday": GDay,
+    }
+    if lowered in lexical_constructors:
+        if isinstance(raw, lexical_constructors[lowered]):
+            return raw
         if not isinstance(raw, str):
-            raise TypeError("dateTime must be a string.")
-        return _parse_datetime(raw)
-    if lowered == "date":
-        if not isinstance(raw, str):
-            raise TypeError("date must be a string.")
-        return date.fromisoformat(raw)
-    if lowered == "time":
-        if not isinstance(raw, str):
-            raise TypeError("time must be a string.")
-        return _parse_time(raw)
-    if lowered == "duration":
-        return _duration_from_milliseconds(raw)
-    if lowered == "gyearmonth":
-        return GYearMonth.from_json_value(raw)
-    if lowered == "gyear":
-        return GYear.from_json_value(raw)
-    if lowered == "gmonthday":
-        return GMonthDay.from_json_value(raw)
-    if lowered == "gmonth":
-        return GMonth.from_json_value(raw)
-    if lowered == "gday":
-        return GDay.from_json_value(raw)
+            raise TypeError(f"{type_name} must be a lexical string.")
+        return lexical_constructors[lowered](raw)
+    if lowered in gregorian_constructors:
+        if isinstance(raw, gregorian_constructors[lowered]):
+            return raw
+        return gregorian_constructors[lowered].from_json_value(raw)
     if lowered == "langstring":
-        return LangString.from_json_value(raw)
+        return raw if isinstance(raw, LangString) else LangString.from_json_value(raw)
     if lowered == "cogsdate":
-        return CogsDate.from_json_value(raw)
+        return raw if isinstance(raw, CogsDate) else CogsDate.from_json_value(raw)
     raise ValueError(f"Unsupported COGS primitive type: {type_name}")
 
 
 def _serialize_simple_xml(type_name: str, value: Any, element: ET.Element) -> None:
     lowered = type_name.lower()
     if lowered == "langstring":
+        if not isinstance(value, LangString):
+            raise TypeError("langString requires LangString.")
         element.text = value.value
         element.set(f"{{{XML_NAMESPACE}}}lang", value.language)
         return
+    xml_helper_types: dict[str, type[Any]] = {
+        "datetime": CogsDateTime,
+        "date": CogsDateOnly,
+        "time": CogsTime,
+        "duration": CogsDuration,
+        "gyearmonth": GYearMonth,
+        "gyear": GYear,
+        "gmonthday": GMonthDay,
+        "gmonth": GMonth,
+        "gday": GDay,
+    }
+    if lowered in xml_helper_types:
+        if not isinstance(value, xml_helper_types[lowered]):
+            raise TypeError(f"{type_name} requires {xml_helper_types[lowered].__name__}.")
+        element.text = value.to_xml_text()
+        return
+    if lowered == "cogsdate":
+        if not isinstance(value, CogsDate):
+            raise TypeError("cogsDate requires CogsDate.")
+        element.text = value.to_xml_text()
+        return
     if lowered == "boolean":
         element.text = "true" if value else "false"
-    elif lowered in _STRING_TYPES or lowered in _INTEGER_TYPES or lowered == "decimal":
-        element.text = str(value)
+    elif lowered == "decimal":
+        element.text = value.lexical if isinstance(value, CogsDecimal) else str(value)
     elif lowered in _FLOAT_TYPES:
         element.text = _format_float(value)
-    elif lowered in {"datetime", "date", "time"}:
-        element.text = _format_temporal(value) if lowered != "date" else value.isoformat()
-    elif lowered == "duration":
-        element.text = _duration_to_xml(value)
-    elif lowered in {"gyearmonth", "gyear", "gmonthday", "gmonth", "gday"}:
-        element.text = value.to_xml_text()
-    elif lowered == "cogsdate":
-        element.text = value.to_xml_text()
     else:
-        raise ValueError(f"Unsupported COGS primitive type: {type_name}")
+        element.text = str(value)
 
 
 def _deserialize_simple_xml(type_name: str, element: ET.Element) -> Any:
@@ -764,7 +805,7 @@ def _deserialize_simple_xml(type_name: str, element: ET.Element) -> Any:
     if lowered in _INTEGER_TYPES:
         return int(raw)
     if lowered == "decimal":
-        return Decimal(raw)
+        return _decimal_from_xml(raw)
     if lowered in _FLOAT_TYPES:
         return _parse_float(raw)
     if lowered == "boolean":
@@ -773,24 +814,23 @@ def _deserialize_simple_xml(type_name: str, element: ET.Element) -> Any:
         if raw in {"false", "0"}:
             return False
         raise ValueError(f"Invalid boolean: {raw!r}")
-    if lowered == "datetime":
-        return _parse_datetime(raw)
-    if lowered == "date":
-        return date.fromisoformat(raw)
-    if lowered == "time":
-        return _parse_time(raw)
-    if lowered == "duration":
-        return _duration_from_xml(raw)
-    if lowered == "gyearmonth":
-        return GYearMonth.from_xml_text(raw)
-    if lowered == "gyear":
-        return GYear.from_xml_text(raw)
-    if lowered == "gmonthday":
-        return GMonthDay.from_xml_text(raw)
-    if lowered == "gmonth":
-        return GMonth.from_xml_text(raw)
-    if lowered == "gday":
-        return GDay.from_xml_text(raw)
+    lexical_constructors: dict[str, type[Any]] = {
+        "datetime": CogsDateTime,
+        "date": CogsDateOnly,
+        "time": CogsTime,
+        "duration": CogsDuration,
+    }
+    gregorian_constructors: dict[str, type[Any]] = {
+        "gyearmonth": GYearMonth,
+        "gyear": GYear,
+        "gmonthday": GMonthDay,
+        "gmonth": GMonth,
+        "gday": GDay,
+    }
+    if lowered in lexical_constructors:
+        return lexical_constructors[lowered](raw)
+    if lowered in gregorian_constructors:
+        return gregorian_constructors[lowered].from_xml_text(raw)
     if lowered == "cogsdate":
         return CogsDate.from_xml_text(raw)
     raise ValueError(f"Unsupported COGS primitive type: {type_name}")
@@ -880,11 +920,12 @@ class CogsValue(BaseModel):
     _is_abstract: ClassVar[bool] = False
     _emit_type_field: ClassVar[bool] = False
 
-    def _to_dict_with_context(self, context: _Context) -> dict[str, Any]:
+    def _to_dict_with_context(self, context: _Context, *, include_type: bool | None = None) -> dict[str, Any]:
         if self._is_abstract:
             raise TypeError(f"Abstract type cannot be serialized: {self._cogs_type}")
         result: dict[str, Any] = {}
-        if self._emit_type_field:
+        should_emit_type = self._emit_type_field if include_type is None else include_type
+        if should_emit_type:
             result["$type"] = self._cogs_type
         for item in _fields(self):
             value = getattr(self, item.name)
@@ -1029,9 +1070,9 @@ class CogsItem(CogsValue):
         """Whether this item was populated by a full definition in its container."""
         return self._cogs_is_defined
 
-    def _to_dict_with_context(self, context: _Context) -> dict[str, Any]:
+    def _to_dict_with_context(self, context: _Context, *, include_type: bool | None = None) -> dict[str, Any]:
         result = {"$type": self._cogs_type}
-        result.update(super()._to_dict_with_context(context))
+        result.update(super()._to_dict_with_context(context, include_type=False))
         return result
 
     def to_reference_dict(self) -> dict[str, Any]:
@@ -1066,7 +1107,7 @@ def _serialize_single_json(value: Any, metadata: Any, context: _Context) -> Any:
     expected = TYPE_REGISTRY[metadata["type_name"]]
     if not isinstance(value, expected) or (not metadata["allow_subtypes"] and type(value) is not expected):
         raise TypeError(f"Invalid object type for {metadata['cogs_name']}.")
-    return value._to_dict_with_context(context)
+    return value._to_dict_with_context(context, include_type=metadata["allow_subtypes"])
 
 
 def _deserialize_field_json(raw: Any, metadata: Any, context: _Context) -> Any:
@@ -1115,6 +1156,7 @@ def _serialize_field_xml(value: Any, metadata: Any, context: _Context) -> ET.Ele
         if not isinstance(value, expected):
             raise TypeError(f"Invalid item type for {metadata['cogs_name']}.")
         element = ET.Element(_q(metadata["cogs_name"]))
+        element.set("isReference", "true")
         reference = value.to_reference_dict()
         value_fields = _field_by_wire_name(type(value))
         for wire_name, _ in IDENTIFICATION_FIELDS:
@@ -1164,8 +1206,14 @@ def _target_class_from_element(
 
 
 def _reference_dict_from_element(element: ET.Element) -> dict[str, Any]:
-    if element.attrib:
-        raise ValueError("XML references cannot contain attributes.")
+    marker = element.attrib.get("isReference")
+    if any(name != "isReference" for name in element.attrib):
+        raise ValueError("XML references can contain only the unqualified isReference attribute.")
+    if marker is not None and marker not in {"true", "1"}:
+        raise ValueError(
+            "The unqualified isReference attribute must have the fixed boolean value "
+            "true (lexically 'true' or '1')."
+        )
     if element.text and element.text.strip():
         raise ValueError("XML references cannot contain text content.")
     grouped: dict[str, ET.Element] = {}

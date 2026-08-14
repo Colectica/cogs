@@ -36,7 +36,7 @@ public class PythonPydanticIntegrationTests
         {
             ItemContainer jsonContainer = CreateContainer(includeReusableSubtype: true);
             ItemContainer xmlContainer = CreateContainer(includeReusableSubtype: false);
-            string inputJson = JsonConvert.SerializeObject(jsonContainer);
+            string inputJson = jsonContainer.ToJson();
             XDocument inputXml = xmlContainer.MakeXml();
 
             AssertValidJson(inputJson);
@@ -101,13 +101,13 @@ public class PythonPydanticIntegrationTests
             GMonth = new GMonth(2, "+01:00"),
             GDay = new GDay(29, "-06:00"),
             CDate = new CogsDate(new GYearMonth(2024, 2, "Z")),
-            Times = new List<TimeOnly> { new(1, 2, 3), new(23, 59, 58) },
-            Durations = new List<TimeSpan> { TimeSpan.FromSeconds(2), TimeSpan.FromMilliseconds(2500) },
-            Dates = new List<DateOnly> { new(2023, 1, 2), new(2024, 2, 29) },
-            DateTimes = new List<DateTimeOffset>
+            Times = new List<CogsTime> { new(new TimeOnly(1, 2, 3)), new(new TimeOnly(23, 59, 58)) },
+            Durations = new List<CogsDuration> { new(TimeSpan.FromSeconds(2)), new(TimeSpan.FromMilliseconds(2500)) },
+            Dates = new List<CogsDateOnly> { new(new DateOnly(2023, 1, 2)), new(new DateOnly(2024, 2, 29)) },
+            DateTimes = new List<CogsDateTime>
             {
-                new(2023, 1, 2, 3, 4, 5, TimeSpan.Zero),
-                new(2024, 2, 29, 23, 59, 58, TimeSpan.FromHours(2)),
+                new(new DateTimeOffset(2023, 1, 2, 3, 4, 5, TimeSpan.Zero)),
+                new(new DateTimeOffset(2024, 2, 29, 23, 59, 58, TimeSpan.FromHours(2))),
             },
             GMonthDays = new List<GMonthDay> { new(12, 31, "Z") },
             GDays = new List<GDay> { new(15, null) },
@@ -172,7 +172,7 @@ public class PythonPydanticIntegrationTests
             {
                 Width = 42,
                 Length = 12.5,
-                Height = new List<decimal> { 1.2300m, 9876543210.123456789m },
+                Height = new List<CogsDecimal> { new("1.2300"), new("9876543210.123456789") },
                 Creature = animal,
                 CogsDate = new CogsDate(new DateOnly(2024, 2, 29)),
             },
@@ -415,7 +415,7 @@ public class PythonPydanticIntegrationTests
             assert patty.source_animal[0] is animal
             assert cheese.milk_source is animal
             assert bread.size.creature is animal
-            assert bread.size.height[1] == Decimal("9876543210.123456789")
+            assert bread.size.height[1].lexical == "9876543210.123456789"
             assert burger.kitchen_profile.batch_identifier == 9_007_199_254_740_993
             assert burger.kitchen_profile.production_counter == 18_446_744_073_709_551_615
             assert cheese.cheese_bio == c.LangString("en", "Aged cave cheddar")

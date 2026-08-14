@@ -95,7 +95,7 @@ public class PythonPydanticPublisherTests
         string slug,
         string version,
         bool includeIdentificationMixin = false,
-        Action<Cogs.Dto.CogsDtoModel>? customize = null)
+        Action<Cogs.Dto.CogsDtoModel> customize = null)
     {
         var dto = new Cogs.Dto.CogsDtoModel();
         AddSetting(dto, "Title", "Test Model");
@@ -130,7 +130,9 @@ public class PythonPydanticPublisherTests
 
         customize?.Invoke(dto);
 
-        return new CogsModelBuilder().Build(dto);
+        CogsBuildResult result = new CogsModelBuilder().BuildResult(dto);
+        Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics));
+        return Assert.IsType<CogsModel>(result.Model);
     }
 
     private static void AddSetting(Cogs.Dto.CogsDtoModel dto, string key, string value)
