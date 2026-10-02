@@ -401,7 +401,7 @@ namespace Cogs.Publishers.Csharp
                     // if there can be at most one, create an instance variable
                     if (prop.MaxCardinality == "1")
                     {
-                        if (Isboolintdoubleulong(prop.DataTypeName) || IsIdentificationProperty(prop))
+                        if (IsClrValueType(prop.DataTypeName) || IsIdentificationProperty(prop))
                         {
                             // If the property is optional (min cardinality is 0), and nullable is enabled, then only write an element when one exists.
                             bool propertyIsOptional = prop.MinCardinality == "0" && IsNullableEnabled;
@@ -474,11 +474,11 @@ namespace Cogs.Publishers.Csharp
                         // always use Nullable<T> for 0..1 properties, even when nullable reference type
                         // annotations are disabled.
                         bool optionalSingleton = prop.MinCardinality == "0" && prop.MaxCardinality == "1";
-                        bool clrValueType = Isboolintdoubleulong(prop.DataTypeName);
+                        bool clrValueType = IsClrValueType(prop.DataTypeName);
                         string nullableStr = optionalSingleton && (IsNullableEnabled || clrValueType) ? "?" : "";
                         //bool isIdentificationProperty = model.Identification.Contains(prop);
                         //string nullableStr = IsNullableEnabled && !isIdentificationProperty ? "?" : "";
-                        string initializer = IsNullableEnabled && nullableStr.Length == 0 && !Isboolintdoubleulong(prop.DataTypeName)
+                        string initializer = IsNullableEnabled && nullableStr.Length == 0 && !IsClrValueType(prop.DataTypeName)
                             ? " = null!;"
                             : string.Empty;
                         classBuilder.AppendLine($"        public {prop.DataTypeName}{nullableStr} {propertyName} {{ get; set; }}{initializer}");
@@ -486,7 +486,7 @@ namespace Cogs.Publishers.Csharp
                     // otherwise, create a list object to allow multiple
                     else
                     {
-                        if (Isboolintdoubleulong(prop.DataTypeName) || IsIdentificationProperty(prop))
+                        if (IsClrValueType(prop.DataTypeName) || IsIdentificationProperty(prop))
                         {
                             toXml.AppendLine($""""
                                 xEl.Add(
@@ -623,12 +623,20 @@ namespace Cogs.Publishers.Csharp
                 else
                 {
                     // This must be a primitive property. Put out the actual value.
-                    addTriplesMethodBuilder.AppendLine($$"""
-                                if ({{memberName}} != null)
-                                {
-                                    {{GetStringToAddTripleForPrimitive(prop.Name, memberName, prop.DataType)}}
-                                }
-                    """);
+                    bool clrValueType = IsClrValueType(GetCSharpTypeName(prop.DataTypeName));
+                    if (clrValueType && prop.MinCardinality != "0")
+                    {
+                        addTriplesMethodBuilder.AppendLine($"            {GetStringToAddTripleForPrimitive(prop.Name, memberName, prop.DataType)}");
+                    }
+                    else
+                    {
+                        addTriplesMethodBuilder.AppendLine($$"""
+                                    if ({{memberName}} != null)
+                                    {
+                                        {{GetStringToAddTripleForPrimitive(prop.Name, memberName, prop.DataType)}}
+                                    }
+                        """);
+                    }
                     addTriplesMethodBuilder.AppendLine();
                 }
 
@@ -664,15 +672,27 @@ namespace Cogs.Publishers.Csharp
                 else
                 {
                     // This must be a primitive property. Put out the actual value.
-                    addTriplesMethodBuilder.AppendLine($$"""
-                                foreach (var obj in {{memberName}})
-                                {
-                                    if (obj != null)
+                    if (IsClrValueType(GetCSharpTypeName(prop.DataTypeName)))
+                    {
+                        addTriplesMethodBuilder.AppendLine($$"""
+                                    foreach (var obj in {{memberName}})
                                     {
                                         {{GetStringToAddTripleForPrimitive(prop.Name, "obj", prop.DataType)}}
                                     }
-                                }
-                    """);
+                        """);
+                    }
+                    else
+                    {
+                        addTriplesMethodBuilder.AppendLine($$"""
+                                    foreach (var obj in {{memberName}})
+                                    {
+                                        if (obj != null)
+                                        {
+                                            {{GetStringToAddTripleForPrimitive(prop.Name, "obj", prop.DataType)}}
+                                        }
+                                    }
+                        """);
+                    }
                     addTriplesMethodBuilder.AppendLine();
                 }
 
@@ -703,14 +723,8 @@ namespace Cogs.Publishers.Csharp
         private string GetRdfPropertyIri(string propertyName) =>
             CogsRdfNaming.PropertyIri(TargetNamespace ?? model.Settings.NamespaceUrl, propertyName);
 
-        private bool Isboolintdoubleulong(string name)
-        {
-            if (name.Equals("bool") || name.Equals("int") || name.Equals("double") || name.Equals("ulong") || name.Equals("long") || name.Equals("BigInteger") || name.Equals("float"))
-            {
-                return true;
-            }
-            return false;
-        }
+        private static bool IsClrValueType(string name) =>
+            name is "bool" or "int" or "double" or "ulong" or "long" or "BigInteger" or "float";
 
         private bool IsIdentificationProperty(Property property) =>
             model.Identification.Any(candidate => string.Equals(candidate.Name, property.Name, StringComparison.Ordinal));

@@ -5,6 +5,7 @@ using Cogs.SimpleTypes;
 using __CogsGeneratedNamespace;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -18,6 +19,94 @@ namespace Cogs.Tests;
 
 public sealed class CSharpPublisherTests
 {
+    private static readonly (string CogsType, string ClrType, string Suffix)[] RdfValueTypes =
+    {
+        ("boolean", "bool", "Boolean"),
+        ("float", "float", "Float"),
+        ("double", "double", "Double"),
+        ("int", "int", "Int"),
+        ("long", "long", "Long"),
+        ("unsignedLong", "ulong", "UnsignedLong"),
+        ("nonPositiveInteger", "BigInteger", "NonPositiveInteger"),
+        ("negativeInteger", "BigInteger", "NegativeInteger"),
+        ("nonNegativeInteger", "BigInteger", "NonNegativeInteger"),
+        ("positiveInteger", "BigInteger", "PositiveInteger"),
+    };
+
+    private static readonly (string CogsType, string Suffix)[] RdfReferencePrimitives =
+    {
+        ("string", "String"), ("anyURI", "Uri"), ("decimal", "Decimal"),
+        ("duration", "Duration"), ("dateTime", "DateTime"), ("date", "Date"),
+        ("time", "Time"), ("gYear", "Year"), ("gYearMonth", "YearMonth"),
+        ("gMonthDay", "MonthDay"), ("gDay", "Day"), ("gMonth", "Month"),
+        ("langString", "LangString"), ("cogsDate", "CogsDate"),
+    };
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void RdfNullChecksMatchGeneratedClrTypes(bool nullableEnabled)
+    {
+        WithTemporaryDirectory(parent =>
+        {
+            string target = Path.Combine(parent, "output");
+            new CSharpPublisher(BuildRdfNullCheckModel(), target)
+            {
+                IsNullableEnabled = nullableEnabled,
+            }.Publish();
+
+            string source = File.ReadAllText(Path.Combine(target, "ValueObject.cs"));
+            string rdf = source[source.IndexOf("public virtual INode AddTriples", StringComparison.Ordinal)..];
+            foreach (var (_, clrType, suffix) in RdfValueTypes)
+            {
+                Assert.Contains($"public {clrType} Required{suffix}", source);
+                Assert.Contains($"public {clrType}? Optional{suffix}", source);
+                Assert.Contains($"public List<{clrType}> {suffix}Values", source);
+                Assert.DoesNotContain($"if (Required{suffix} != null)", rdf);
+                Assert.Contains($"if (Optional{suffix} != null)", rdf);
+                Assert.Matches($@"foreach \(var obj in {suffix}Values\)\s*\{{\s*graph.Assert", rdf);
+            }
+            foreach (var (_, suffix) in RdfReferencePrimitives)
+            {
+                Assert.Contains($"if (Required{suffix} != null)", rdf);
+                Assert.Contains($"if (Optional{suffix} != null)", rdf);
+                Assert.Matches($@"foreach \(var obj in {suffix}Values\)\s*\{{\s*if \(obj != null\)", rdf);
+            }
+            Assert.Contains("if (NestedValue != null)", rdf);
+            Assert.Contains("if (RelatedItem != null)", rdf);
+            foreach (string name in new[] { "NestedValues", "RelatedItems" })
+                Assert.Matches($@"foreach \(var referencedItem in {name}\)\s*\{{\s*if \(referencedItem != null\)", rdf);
+        });
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void GeneratedRdfPackageCompilesWithoutValueNullWarningsAndPreservesTriples(bool nullableEnabled)
+    {
+        WithTemporaryDirectory(parent =>
+        {
+            string target = Path.Combine(parent, "output");
+            new CSharpPublisher(BuildRdfNullCheckModel(), target)
+            {
+                IsNullableEnabled = nullableEnabled,
+                WriteCsproj = true,
+            }.Publish();
+            string projectPath = Path.Combine(target, "Test.Generated.csproj");
+            XDocument project = XDocument.Load(projectPath);
+            project.Root.Element("PropertyGroup").Add(new XElement("OutputType", "Exe"));
+            project.Save(projectPath);
+            string cases = string.Join("," + Environment.NewLine, RdfValueTypes.Select(x =>
+                $"    ({JsonSerializer.Serialize(x.Suffix)}, {JsonSerializer.Serialize(x.CogsType)})"));
+            File.WriteAllText(Path.Combine(target, "Program.cs"),
+                RdfNullCheckProbe.Replace("__CASES__", cases, StringComparison.Ordinal), new UTF8Encoding(false));
+
+            RunDotNet(target, "build", projectPath, "--configuration", "Release",
+                "--verbosity", "minimal", "-p:WarningsAsErrors=CS0472");
+            RunDotNet(target, Path.Combine(target, "bin", "Release", "net10.0", "Test.Generated.dll"));
+        });
+    }
+
     [Fact]
     public void PublishEmitsNet10StrictSystemTextJsonPackageAndLosslessMappings()
     {
@@ -423,6 +512,135 @@ public sealed class CSharpPublisherTests
         Assert.Equal("en-us", language.Language);
         Assert.Equal("value", language.Value);
     }
+
+    private static CogsModel BuildRdfNullCheckModel() => BuildModel(dto =>
+    {
+        var value = dto.ReusableDataTypes.Single(x => x.Name == "ValueObject");
+        value.Properties.Clear();
+        foreach (var (type, _, suffix) in RdfValueTypes)
+            AddProperties(type, suffix);
+        foreach (var (type, suffix) in RdfReferencePrimitives)
+            AddProperties(type, suffix);
+        value.Properties.Add(DtoProperty("NestedValue", "ValueObject"));
+        value.Properties.Add(DtoProperty("NestedValues", "ValueObject", maximum: "n"));
+        value.Properties.Add(DtoProperty("RelatedItem", "DerivedItem"));
+        value.Properties.Add(DtoProperty("RelatedItems", "DerivedItem", maximum: "n"));
+
+        void AddProperties(string type, string suffix)
+        {
+            value.Properties.Add(DtoProperty("Required" + suffix, type, "1", "1"));
+            value.Properties.Add(DtoProperty("Optional" + suffix, type));
+            value.Properties.Add(DtoProperty(suffix + "Values", type, maximum: "n"));
+        }
+    });
+
+    private static void RunDotNet(string workingDirectory, params string[] arguments)
+    {
+        var startInfo = new ProcessStartInfo("dotnet")
+        {
+            WorkingDirectory = workingDirectory,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        foreach (string argument in arguments) startInfo.ArgumentList.Add(argument);
+        using Process process = Process.Start(startInfo);
+        var stdout = process.StandardOutput.ReadToEndAsync();
+        var stderr = process.StandardError.ReadToEndAsync();
+        bool completed = process.WaitForExit(60_000);
+        if (!completed)
+        {
+            process.Kill(entireProcessTree: true);
+            process.WaitForExit();
+        }
+        Assert.True(completed && process.ExitCode == 0,
+            $"dotnet {string.Join(" ", arguments)} failed or timed out.\n" +
+            stdout.GetAwaiter().GetResult() + stderr.GetAwaiter().GetResult());
+    }
+
+    private const string RdfNullCheckProbe = """
+        using System;
+        using System.Collections;
+        using System.Globalization;
+        using System.Linq;
+        using System.Numerics;
+        using Cogs.SimpleTypes;
+        using Test.Generated;
+        using VDS.RDF;
+
+        const string termBase = "https://example.org/test#";
+        var cases = new (string Suffix, string Type)[] {
+        __CASES__
+        };
+        var value = new ValueObject();
+        var expected = new Graph();
+        var subject = expected.CreateBlankNode();
+        expected.Assert(new Triple(subject,
+            expected.CreateUriNode(UriFactory.Create(NamespaceMapper.RDF + "type")),
+            expected.CreateUriNode(UriFactory.Create(termBase + "ValueObject"))));
+        foreach (var (suffix, type) in cases)
+        {
+            object first = Sample(type, false), second = Sample(type, true);
+            typeof(ValueObject).GetProperty("Required" + suffix)!.SetValue(value, first);
+            var list = (IList)typeof(ValueObject).GetProperty(suffix + "Values")!.GetValue(value)!;
+            list.Add(first);
+            list.Add(second);
+            Add("required" + suffix, type, Lexical(first));
+            Add(char.ToLowerInvariant(suffix[0]) + suffix[1..] + "Values", type, Lexical(first), Lexical(second));
+        }
+        value.RequiredString = "required";
+        value.StringValues.AddRange(["first", null!, "last"]);
+        value.RequiredUri = new Uri("relative/path", UriKind.Relative);
+        value.RequiredDecimal = new CogsDecimal("0.000");
+        value.DecimalValues.AddRange([new CogsDecimal("12345678901234567890.123"), null!]);
+        Add("requiredString", "string", "required");
+        Add("stringValues", "string", "first", "last");
+        Add("requiredUri", "anyURI", "relative/path");
+        Add("requiredDecimal", "decimal", "0.000");
+        Add("decimalValues", "decimal", "12345678901234567890.123");
+        Check();
+
+        foreach (var (suffix, type) in cases)
+        {
+            object sample = Sample(type, false);
+            typeof(ValueObject).GetProperty("Optional" + suffix)!.SetValue(value, sample);
+            Add("optional" + suffix, type, Lexical(sample));
+        }
+        value.OptionalString = "optional";
+        Add("optionalString", "string", "optional");
+        Check();
+        Console.WriteLine("PASS generated RDF: zero/false, null omission, repeated values, precision, and typed literals");
+
+        void Check()
+        {
+            var actual = new Graph();
+            value.AddTriples(actual);
+            if (!actual.Equals(expected)) throw new Exception("Generated RDF differs from the expected graph.");
+        }
+
+        void Add(string property, string type, params string[] lexemes)
+        {
+            foreach (string lexical in lexemes)
+                expected.Assert(new Triple(subject,
+                    expected.CreateUriNode(UriFactory.Create(termBase + property)),
+                    expected.CreateLiteralNode(lexical, UriFactory.Create(NamespaceMapper.XMLSCHEMA + type))));
+        }
+
+        static string Lexical(object value) => value is bool flag ? (flag ? "true" : "false")
+            : ((IFormattable)value).ToString(null, CultureInfo.InvariantCulture);
+
+        static object Sample(string type, bool alternate) => type switch
+        {
+            "boolean" => alternate,
+            "float" => alternate ? 1f : 0f,
+            "double" => alternate ? 1d : 0d,
+            "int" => alternate ? 1 : 0,
+            "long" => alternate ? 1L : 0L,
+            "unsignedLong" => alternate ? 1UL : 0UL,
+            _ => BigInteger.Parse(alternate ? "123456789012345678901234567891" : "123456789012345678901234567890",
+                CultureInfo.InvariantCulture) * (type is "negativeInteger" or "nonPositiveInteger" ? -1 : 1),
+        };
+        """;
 
     private static CogsModel BuildModel(
         Action<Cogs.Dto.CogsDtoModel> customize = null,
