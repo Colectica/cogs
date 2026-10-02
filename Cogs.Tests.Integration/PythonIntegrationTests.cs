@@ -20,12 +20,14 @@ namespace Cogs.Tests.Integration;
 
 public class PythonIntegrationTests
 {
-    [Fact]
-    public void PythonRoundTripsCsharpJsonAndXmlThroughBothSchemas()
+    [Theory]
+    [InlineData("python")]
+    [InlineData("pydantic")]
+    public void PythonRoundTripsCsharpJsonAndXmlThroughBothSchemas(string flavor)
     {
         string repositoryRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
         string generatedRoot = Path.Combine(repositoryRoot, "generated");
-        string packageRoot = Path.Combine(generatedRoot, "python");
+        string packageRoot = Path.Combine(generatedRoot, flavor == "pydantic" ? "python-pydantic" : "python");
         Assert.True(File.Exists(Path.Combine(packageRoot, "cogsburger", "model.py")),
             "Run generateIntegrationTest.bat before integration tests.");
 
@@ -55,6 +57,7 @@ public class PythonIntegrationTests
             RunPython(
                 repositoryRoot,
                 scriptPath,
+                flavor,
                 packageRoot,
                 inputJsonPath,
                 inputXmlPath,
@@ -421,7 +424,7 @@ public class PythonIntegrationTests
         from pathlib import Path
 
         assert sys.version_info >= (3, 11)
-        package_root, input_json, input_xml, direct_json, output_json, json_xml, output_xml = sys.argv[1:]
+        flavor, package_root, input_json, input_xml, direct_json, output_json, json_xml, output_xml = sys.argv[1:]
         assert compileall.compile_dir(package_root, quiet=1)
         sys.path.insert(0, package_root)
 
@@ -467,6 +470,59 @@ public class PythonIntegrationTests
 
         from_json = c.ItemContainer.load_json(Path(input_json))
         check(from_json, True)
+
+        if flavor == "pydantic":
+            from pydantic import BaseModel, ValidationError
+            from dataclasses import is_dataclass
+
+            assert all(issubclass(cls, BaseModel) for cls in
+                       (c.CogsValue, c.CogsItem, c.ItemContainer, c.Animal, c.Part, c.SubPart))
+            assert is_dataclass(c.CogsDecimal) and is_dataclass(c.GYear)
+            assert issubclass(c.SubPart, c.Part)
+            recursive = c.Part.model_validate({"part_name": "parent", "sub_components": [{"part_name": "child"}]})
+            assert recursive.sub_components[0].part_name == "child"
+            assert recursive.model_dump()["sub_components"][0]["part_name"] == "child"
+            assert "part_name" in c.Part.model_json_schema()["$defs"]["Part"]["properties"]
+            assert "$defs" in c.ItemContainer.model_json_schema()
+            helper = c.CogsDateOnly("-0001-01-02Z")
+            subpart = c.SubPart(part_name="cut", sub_part_name="center")
+            animal = c.Animal(id="native", date=helper, meat_pieces=[subpart])
+            assert animal.date is helper and animal.meat_pieces[0] is subpart
+            decimal = c.CogsDecimal("12345678901234567890.1234500")
+            size = c.Dimensions(height=[decimal], creature=animal)
+            assert size.height[0] is decimal and size.creature is animal
+            lang = c.LangString("en", "native helper")
+            assert c.Cheese(cheese_bio=lang).cheese_bio is lang
+            assert c.Animal.model_validate(animal) is animal
+            native = c.ItemContainer(items=[animal], top_level_references=[animal])
+            assert native.items[0] is native.top_level_references[0] is animal
+            dumped = native.model_dump()
+            assert dumped["items"][0]["meat_pieces"][0]["sub_part_name"] == "center"
+            assert "ID" not in dumped["items"][0] and dumped["items"][0]["id"] == "native"
+            assert "_cogs_is_defined" not in dumped["items"][0]
+            assert '"sub_part_name":"center"' in native.model_dump_json()
+            assert c.Part.model_validate_json('{"part_name":"native JSON"}').part_name == "native JSON"
+            animal.name = "Native name"
+            assert animal.name == "Native name"
+            assert c.Part().sub_components is not c.Part().sub_components
+            assert c.ItemContainer().items is not c.ItemContainer().items
+            assert from_json.items[0].is_defined
+            for action in (
+                lambda: c.Animal.model_validate({"name": 42}),
+                lambda: c.Animal.model_validate({"unknown": True}),
+                lambda: c.Animal(date="2024-02-29"),
+                lambda: c.Dimensions(height=["123.45"]),
+                lambda: c.KitchenMetrics(quality_rating=True),
+                lambda: c.KitchenMetrics(temperature_delta=float("inf")),
+                lambda: setattr(animal, "name", 42),
+                lambda: setattr(animal, "unknown", True),
+            ):
+                try:
+                    action()
+                    raise AssertionError("invalid native Pydantic field data was accepted")
+                except ValidationError:
+                    pass
+            check(from_json, True)
 
         json_stream = io.StringIO()
         from_json.dump_json(json_stream)

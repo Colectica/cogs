@@ -472,6 +472,8 @@ namespace Cogs.Console
 
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
                 var targetArgument = command.Argument("[targetLocation]", "Directory where the Python package is generated.");
+                var flavorOption = command.Option("--flavor", "Python flavor: python (dependency-free, default) or pydantic (v2)",
+                    CommandOptionType.SingleValue);
                 var namespaceUri = command.Option("-n|--namespace",
                     "URI of the target XML namespace",
                     CommandOptionType.SingleValue);
@@ -481,6 +483,13 @@ namespace Cogs.Console
 
                 command.OnExecute(() =>
                 {
+                    string flavorValue = flavorOption.Value() ?? "python";
+                    PythonFlavor flavor = flavorValue.ToLowerInvariant() switch
+                    {
+                        "python" => PythonFlavor.Python,
+                        "pydantic" => PythonFlavor.Pydantic,
+                        _ => throw new CommandParsingException(command, "--flavor must be either 'python' or 'pydantic'."),
+                    };
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
 
@@ -503,6 +512,7 @@ namespace Cogs.Console
 
                     var publisher = new PythonPublisher(cogsModel, target)
                     {
+                        Flavor = flavor,
                         Overwrite = overwriteOption.HasValue(),
                         TargetNamespace = namespaceUri.Value() ?? cogsModel.Settings.NamespaceUrl,
                     };

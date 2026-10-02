@@ -28,6 +28,7 @@ call :cogs validate "cogsburger" || goto :fail
 call :cogs publish-xsd --overwrite "cogsburger" "generated\xsd" || goto :fail
 call :cogs publish-cs --overwrite --csproj --nullable "cogsburger" "generated\src" || goto :fail
 call :cogs publish-py --overwrite "cogsburger" "generated\python" || goto :fail
+call :cogs publish-py --flavor pydantic --overwrite "cogsburger" "generated\python-pydantic" || goto :fail
 call :cogs publish-ts --overwrite "cogsburger" "generated\typescript" || goto :fail
 call :cogs publish-json --overwrite "cogsburger" "generated\json" || goto :fail
 call :cogs publish-owl --overwrite "cogsburger" "generated\owl" || goto :fail
@@ -49,11 +50,11 @@ if defined COGS_NPM (
 )
 
 if defined COGS_PYTHON (
-    "%COGS_PYTHON%" -m compileall -q "generated\python" || goto :fail
+    "%COGS_PYTHON%" -m compileall -q "generated\python" "generated\python-pydantic" || goto :fail
 ) else (
-    where python3 >nul 2>&1 && (python3 -m compileall -q "generated\python" || goto :fail) || (
-        where python >nul 2>&1 && (python -m compileall -q "generated\python" || goto :fail) || (
-            where py >nul 2>&1 && (py -3 -m compileall -q "generated\python" || goto :fail) || (
+    where python3 >nul 2>&1 && (python3 -m compileall -q "generated\python" "generated\python-pydantic" || goto :fail) || (
+        where python >nul 2>&1 && (python -m compileall -q "generated\python" "generated\python-pydantic" || goto :fail) || (
+            where py >nul 2>&1 && (py -3 -m compileall -q "generated\python" "generated\python-pydantic" || goto :fail) || (
                 echo No Python interpreter found. Set COGS_PYTHON. 1>&2
                 goto :fail
             )

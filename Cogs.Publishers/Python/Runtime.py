@@ -10,6 +10,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, ClassVar, IO, Mapping
 from xml.etree import ElementTree as ET
+__FLAVOR_IMPORTS__
 
 TARGET_NAMESPACE = __TARGET_NAMESPACE__
 NAMESPACE_PREFIX = __NAMESPACE_PREFIX__
@@ -1000,8 +1001,11 @@ def _deserialize_simple_xml(type_name: str, element: ET.Element) -> Any:
     raise ValueError(f"Unsupported COGS primitive type: {type_name}")
 
 
+__FIELD_INSPECTION__
+
+
 def _field_by_wire_name(cls: type[CogsValue]) -> dict[str, Any]:
-    return {item.metadata["cogs_name"]: item for item in fields(cls)}
+    return {item.metadata["cogs_name"]: item for item in _cogs_fields(cls)}
 
 
 def _type_for_name(type_name: str) -> type[CogsValue]:
@@ -1148,8 +1152,9 @@ class _Context:
         item._cogs_is_defined = True
 
 
-@dataclass
-class CogsValue:
+__MODEL_DECORATOR__
+class CogsValue(__MODEL_BASE__):
+__MODEL_CONFIG__
     _cogs_type: ClassVar[str] = ""
     _is_item: ClassVar[bool] = False
     _is_abstract: ClassVar[bool] = False
@@ -1160,7 +1165,7 @@ class CogsValue:
         result: dict[str, Any] = {}
         if include_type:
             result["$type"] = self._cogs_type
-        for item in fields(self):
+        for item in _cogs_fields(self):
             value = getattr(self, item.name)
             if value is None or (item.metadata["many"] and not value):
                 continue
@@ -1258,7 +1263,7 @@ class CogsValue:
                 raise TypeError(f"Subtypes are not allowed where {declared_type} is declared.")
             if allow_subtypes:
                 element.set(f"{{{XSI_NAMESPACE}}}type", f"{NAMESPACE_PREFIX}:{self._cogs_type}")
-        for item in fields(self):
+        for item in _cogs_fields(self):
             value = getattr(self, item.name)
             if value is None or (item.metadata["many"] and not value):
                 continue
@@ -1373,9 +1378,10 @@ class CogsValue:
                 setattr(self, item.name, _deserialize_field_xml(matches[0], item.metadata, context))
 
 
-@dataclass
+__MODEL_DECORATOR__
 class CogsItem(CogsValue):
     _is_item: ClassVar[bool] = True
+__ITEM_PRIVATE_STATE__
 
     @property
     def is_defined(self) -> bool:
@@ -1639,10 +1645,11 @@ def _item_reference_from_element(element: ET.Element, type_name: str) -> dict[st
     return reference
 
 
-@dataclass
-class ItemContainer:
-    items: list[CogsItem] = field(default_factory=list)
-    top_level_references: list[CogsItem] = field(default_factory=list)
+__MODEL_DECORATOR__
+class ItemContainer(__MODEL_BASE__):
+__MODEL_CONFIG__
+    items: list[__CONTAINER_ITEM_TYPE__] = __LIST_FIELD__(default_factory=list)
+    top_level_references: list[__CONTAINER_ITEM_TYPE__] = __LIST_FIELD__(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         context = _Context()

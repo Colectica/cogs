@@ -13,6 +13,12 @@ using System.Xml;
 
 namespace Cogs.Publishers.Python;
 
+public enum PythonFlavor
+{
+    Python,
+    Pydantic,
+}
+
 public sealed class PythonPublisher
 {
     private const string RuntimeResourceName = "Cogs.Publishers.Python.Runtime.py";
@@ -42,6 +48,12 @@ public sealed class PythonPublisher
         "_is_abstract", "_is_item",
     };
 
+    private static readonly HashSet<string> PydanticAttributeNames = new(StringComparer.Ordinal)
+    {
+        "construct", "copy", "dict", "from_orm", "is_defined", "json", "parse_file",
+        "parse_obj", "parse_raw", "schema", "schema_json", "update_forward_refs", "validate",
+    };
+
     private static readonly HashSet<string> StringTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "string", "language", "anyURI",
@@ -66,6 +78,7 @@ public sealed class PythonPublisher
     public string TargetDirectory { get; }
     public string? TargetNamespace { get; set; }
     public bool Overwrite { get; set; }
+    public PythonFlavor Flavor { get; set; } = PythonFlavor.Python;
     public PublicationResult? LastResult { get; private set; }
 
     public PythonPublisher(CogsModel model, string targetDirectory)
@@ -109,7 +122,10 @@ public sealed class PythonPublisher
 
     private void PublishToDirectory(string targetDirectory)
     {
-
+        if (!Enum.IsDefined(Flavor))
+        {
+            throw new InvalidOperationException($"Unknown Python publisher flavor '{Flavor}'.");
+        }
         ValidateModelNames();
         string moduleName = NormalizeModuleName(model.Settings.Slug);
         string distributionName = NormalizeDistributionName(model.Settings.Slug);
@@ -175,7 +191,7 @@ public sealed class PythonPublisher
             name = {{Quote(distributionName)}}
             version = {{Quote(version.Pep440)}}
             description = {{Quote(description)}}
-            requires-python = ">=3.11"
+            requires-python = ">=3.11"{{(Flavor == PythonFlavor.Pydantic ? "\ndependencies = [\"pydantic>=2.12,<3\"]" : string.Empty)}}
 
             [tool.setuptools]
             packages = [{{Quote(moduleName)}}]
@@ -213,7 +229,39 @@ public sealed class PythonPublisher
         string runtime = reader.ReadToEnd()
             .Replace("__TARGET_NAMESPACE__", Quote(targetNamespace), StringComparison.Ordinal)
             .Replace("__NAMESPACE_PREFIX__", Quote(namespacePrefix), StringComparison.Ordinal)
-            .Replace("__IDENTIFICATION_FIELDS__", GetIdentificationTuple(), StringComparison.Ordinal);
+            .Replace("__IDENTIFICATION_FIELDS__", GetIdentificationTuple(), StringComparison.Ordinal)
+            .Replace("__FLAVOR_IMPORTS__", Flavor == PythonFlavor.Pydantic ? """
+                from pydantic import (
+                    BaseModel as _PydanticBaseModel, ConfigDict as _PydanticConfigDict,
+                    Field as _PydanticField, InstanceOf as _PydanticInstanceOf,
+                    PrivateAttr as _PydanticPrivateAttr, SerializeAsAny as _PydanticSerializeAsAny,
+                )
+                """ : string.Empty, StringComparison.Ordinal)
+            .Replace("__MODEL_DECORATOR__", Flavor == PythonFlavor.Python ? "@dataclass" : string.Empty, StringComparison.Ordinal)
+            .Replace("__MODEL_BASE__", Flavor == PythonFlavor.Pydantic ? "_PydanticBaseModel" : "object", StringComparison.Ordinal)
+            .Replace("__MODEL_CONFIG__", Flavor == PythonFlavor.Pydantic ? """
+                    model_config = _PydanticConfigDict(
+                        strict=True, extra="forbid", validate_assignment=True, allow_inf_nan=False,
+                        arbitrary_types_allowed=True, revalidate_instances="never", defer_build=True,
+                    )
+                """ : string.Empty, StringComparison.Ordinal)
+            .Replace("__ITEM_PRIVATE_STATE__", Flavor == PythonFlavor.Pydantic
+                ? "    _cogs_is_defined: bool = _PydanticPrivateAttr(default=False)" : string.Empty, StringComparison.Ordinal)
+            .Replace("__CONTAINER_ITEM_TYPE__", Flavor == PythonFlavor.Pydantic
+                ? "_PydanticSerializeAsAny[CogsItem]" : "CogsItem", StringComparison.Ordinal)
+            .Replace("__LIST_FIELD__", Flavor == PythonFlavor.Pydantic ? "_PydanticField" : "field", StringComparison.Ordinal)
+            .Replace("__FIELD_INSPECTION__", Flavor == PythonFlavor.Pydantic ? """
+                @dataclass(frozen=True)
+                class _CogsField:
+                    name: str
+                    metadata: Mapping[str, Any]
+
+
+                def _cogs_fields(value: Any) -> list[_CogsField]:
+                    cls = value if isinstance(value, type) else type(value)
+                    return [_CogsField(name, info.json_schema_extra)
+                            for name, info in cls.model_fields.items()]
+                """ : "_cogs_fields = fields", StringComparison.Ordinal);
 
         var builder = new StringBuilder();
         builder.AppendLine("# Generated by COGS. Do not edit by hand.");
@@ -240,6 +288,14 @@ public sealed class PythonPublisher
         }
         builder.AppendLine("}");
         builder.AppendLine();
+        if (Flavor == PythonFlavor.Pydantic)
+        {
+            builder.AppendLine("# Resolve forward references only after every model declaration is available.");
+            builder.AppendLine("for _model in (CogsValue, CogsItem, ItemContainer, *TYPE_REGISTRY.values()):");
+            builder.AppendLine("    _model.model_rebuild(_types_namespace=globals())");
+            builder.AppendLine("del _model");
+            builder.AppendLine();
+        }
         builder.AppendLine("__all__ = [");
         foreach (string name in new[]
         {
@@ -260,7 +316,7 @@ public sealed class PythonPublisher
             ? dataType is ItemType ? "CogsItem" : "CogsValue"
             : dataType.ExtendsTypeName;
 
-        builder.AppendLine("@dataclass");
+        if (Flavor == PythonFlavor.Python) builder.AppendLine("@dataclass");
         builder.AppendLine($"class {dataType.Name}({baseType}):");
         builder.AppendLine($"    {Quote(dataType.Description ?? string.Empty)}");
         builder.AppendLine($"    _cogs_type: ClassVar[str] = {Quote(dataType.Name)}");
@@ -270,9 +326,11 @@ public sealed class PythonPublisher
             string attributeName = ToSnakeCase(property.Name);
             bool many = IsMany(property);
             string annotation = GetTypeAnnotation(property, many);
-            string defaultValue = many ? "field(default_factory=list" : "field(default=None";
+            string fieldFunction = Flavor == PythonFlavor.Pydantic ? "_PydanticField" : "field";
+            string defaultValue = many ? $"{fieldFunction}(default_factory=list" : $"{fieldFunction}(default=None";
+            string metadataArgument = Flavor == PythonFlavor.Pydantic ? "json_schema_extra" : "metadata";
             builder.AppendLine(
-                $"    {attributeName}: {annotation} = {defaultValue}, metadata={{" +
+                $"    {attributeName}: {annotation} = {defaultValue}, {metadataArgument}={{" +
                 $"{Quote("cogs_name")}: {Quote(property.Name)}, " +
                 $"{Quote("description")}: {Quote(property.Description)}, " +
                 $"{Quote("type_name")}: {Quote(property.DataType.Name)}, " +
@@ -309,6 +367,12 @@ public sealed class PythonPublisher
     private string GetTypeAnnotation(Property property, bool many)
     {
         string pythonType = GetPythonType(property.DataType);
+        if (Flavor == PythonFlavor.Pydantic)
+        {
+            if (GetKind(property) != "simple") pythonType = $"_PydanticSerializeAsAny[{pythonType}]";
+            else if (pythonType is not ("str" or "int" or "bool" or "float"))
+                pythonType = $"_PydanticInstanceOf[{pythonType}]";
+        }
         return many ? $"list[{pythonType}]" : $"{pythonType} | None";
     }
 
@@ -369,6 +433,12 @@ public sealed class PythonPublisher
                 {
                     throw new InvalidOperationException(
                         $"Property '{property.Name}' on '{dataType.Name}' conflicts with generated Python member '{normalized}'.");
+                }
+                if (Flavor == PythonFlavor.Pydantic
+                    && (normalized.StartsWith("model_", StringComparison.Ordinal) || PydanticAttributeNames.Contains(normalized)))
+                {
+                    throw new InvalidOperationException(
+                        $"Property '{property.Name}' on '{dataType.Name}' conflicts with Pydantic member '{normalized}'.");
                 }
                 if (attributes.TryGetValue(normalized, out string? existing))
                 {

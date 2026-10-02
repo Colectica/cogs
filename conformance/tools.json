@@ -1,6 +1,7 @@
 {
   "dotnetSdk": "10.0.x",
   "python": "3.11",
+  "pydantic": "2.13.5",
   "node": "22",
   "java": "21",
   "maven": "3.9.11",

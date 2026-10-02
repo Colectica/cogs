@@ -1,13 +1,15 @@
 Python Generation
 -----------------
 
-The :doc:`/technical-guide/command-line/publish-py` command generates a typed,
-standard-library-only Python package for Python 3.11 and newer.
+The :doc:`/technical-guide/command-line/publish-py` command generates a typed
+Python 3.11+ package. Its default ``--flavor python`` uses only the standard
+library; ``--flavor pydantic`` generates real Pydantic v2 ``BaseModel`` classes
+and declares ``pydantic>=2.12,<3`` as a package dependency.
 
 Model mapping
 ~~~~~~~~~~~~~
 
-* Item and composite type names remain PascalCase dataclass names.
+* Item and composite type names remain PascalCase class names.
 * Property names become snake_case attributes. Their exact COGS names are kept
   as serialization metadata for JSON and XML.
 * COGS inheritance becomes Python class inheritance, and abstract model types
@@ -20,14 +22,42 @@ Primitive mappings
 ~~~~~~~~~~~~~~~~~~
 
 Strings and URIs map to ``str``; integer families to arbitrary-precision
-``int``; float and double to finite ``float``; and decimal to
-``decimal.Decimal``. Date, time, Gregorian, and full XSD duration values use
+``int``; float and double to finite ``float``; and decimal to lossless
+``CogsDecimal`` (with an exact ``decimal.Decimal`` conversion). Date, time,
+Gregorian, and full XSD duration values use
 validated helpers so optional timezone information, fractional digits, and
 year/month duration components are not narrowed by ``datetime`` or
 ``timedelta``. Gregorian helpers serialize to PascalCase component objects in
 JSON and XSD lexical text in XML. Calendar years are range-checked nonzero
 Python integers in the signed 32-bit range. The package also supplies lossless
 ``LangString`` and exactly-one-arm ``CogsDate`` helpers.
+
+Pydantic flavor
+~~~~~~~~~~~~~~~
+
+``CogsValue``, ``CogsItem``, ``ItemContainer``, and every generated item/composite
+class inherit from Pydantic ``BaseModel``. Lossless primitive helpers remain
+dataclasses in both flavors. Pass already constructed helper instances to
+native Pydantic fields; validation preserves those instances rather than
+reconstructing them. Models use strict types, forbidden extra fields,
+assignment validation, and finite floating-point values. Singleton fields
+default to ``None`` and repeated fields have independent list defaults so
+reference placeholders can be populated. Forward declarations and recursive
+composites are resolved after all model classes have been generated.
+
+Native ``model_validate``, ``model_dump``, ``model_dump_json``, and
+``model_json_schema`` operate on Python field data with snake_case names, not
+the COGS wire format. Nested concrete subtype fields are retained in native
+dumps and existing nested model instances retain their identity. Native dumps
+expand nested values, including item references, rather than implementing the
+COGS identity graph; cyclic graphs may therefore be unsuitable for native
+dumping. Native Pydantic schemas do not replace COGS JSON Schema or XSD.
+
+Use the COGS methods below for lossless JSON/XML, concrete-type discriminators,
+and graphs with item references. Their behavior is shared by both flavors.
+COGS schemas and instance validation still own cardinality, facets, identity,
+and the wire-format rules. Property names that collide with Pydantic APIs or
+the ``model_`` namespace are rejected before output is replaced.
 
 Serialization
 ~~~~~~~~~~~~~
@@ -51,7 +81,7 @@ qualified ``xsi:type`` can be resolved without reparsing the source document.
 All XML writer APIs add the unqualified ``isReference="true"`` attribute to
 top-level and item-property references. Readers accept ``true``, ``1``, and
 legacy absence, but reject false, qualified, or unknown reference attributes
-and markers on full items. No dataclass field is generated for the marker.
+and markers on full items. No model field is generated for the marker.
 
 The runtime rejects duplicate or unknown JSON fields, missing or empty identity
 components, invalid discriminators, duplicate item definitions, and malformed

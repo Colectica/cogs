@@ -102,7 +102,8 @@ jobs:
             "sphinx==$($tools.sphinx)" `
             "myst-parser==$($tools.mystParser)" `
             "linkml==$($tools.linkml)" `
-            "linkml-runtime==$($tools.linkmlRuntime)"
+            "linkml-runtime==$($tools.linkmlRuntime)" `
+            "pydantic==$($tools.pydantic)"
 
       - name: Install GraphQL conformance tools
         working-directory: ./conformance/node
@@ -199,6 +200,7 @@ jobs:
             Invoke-Cogs publish-xsd --overwrite $model "$root/xsd"
             Invoke-Cogs publish-cs --overwrite --csproj --nullable $model "$root/src"
             Invoke-Cogs publish-py --overwrite $model "$root/python"
+            Invoke-Cogs publish-py --flavor pydantic --overwrite $model "$root/python-pydantic"
             Invoke-Cogs publish-ts --overwrite $model "$root/typescript"
             Invoke-Cogs publish-json --overwrite $model "$root/json"
             Invoke-Cogs publish-owl --overwrite $model "$root/owl"
@@ -307,12 +309,21 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
 
-      - name: Compile generated Python packages
-        run: >
-          python -m compileall -q
-          ./generated/python
-          ./generated/conformance/python
-          ./generated/new-model-artifacts/python
+      - name: Compile and import both generated Python flavors
+        shell: pwsh
+        run: |
+          $packages = @(
+            './generated/python', './generated/python-pydantic',
+            './generated/conformance/python', './generated/conformance/python-pydantic',
+            './generated/new-model-artifacts/python', './generated/new-model-artifacts/python-pydantic'
+          )
+          foreach ($package in $packages) {
+            python -m compileall -q $package
+            if ($LASTEXITCODE -ne 0) { throw "Python compilation failed for $package" }
+            # The flavors share an import name: isolate each import in its own process.
+            python -c 'import importlib, pathlib, sys, tomllib; root = pathlib.Path(sys.argv[1]); metadata = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8")); sys.path.insert(0, str(root)); importlib.import_module(metadata["tool"]["setuptools"]["packages"][0])' $package
+            if ($LASTEXITCODE -ne 0) { throw "Python import failed for $package" }
+          }
 
       - name: Compile generated C# packages
         shell: pwsh

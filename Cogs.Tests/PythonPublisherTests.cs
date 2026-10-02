@@ -9,14 +9,16 @@ namespace Cogs.Tests;
 
 public class PythonPublisherTests
 {
-    [Fact]
-    public void PublishWritesNormalizedPackageLayoutAndMetadata()
+    [Theory]
+    [InlineData(PythonFlavor.Python)]
+    [InlineData(PythonFlavor.Pydantic)]
+    public void PublishWritesNormalizedPackageLayoutAndMetadata(PythonFlavor flavor)
     {
         CogsModel model = BuildModel("My Model.Package", "1.2.3-rc.1");
         WithTemporaryDirectory(parent =>
         {
             string target = Path.Combine(parent, "output");
-            new PythonPublisher(model, target).Publish();
+            new PythonPublisher(model, target) { Flavor = flavor }.Publish();
 
             string package = Path.Combine(target, "my_model_package");
             Assert.True(File.Exists(Path.Combine(target, "pyproject.toml")));
@@ -30,12 +32,59 @@ public class PythonPublisherTests
             Assert.Contains("model-version = \"1.2.3-rc.1\"", project);
             Assert.Contains("package-version-mapping = \"direct\"", project);
             Assert.Contains("requires-python = \">=3.11\"", project);
+            if (flavor == PythonFlavor.Pydantic)
+                Assert.Contains("dependencies = [\"pydantic>=2.12,<3\"]", project);
+            else
+                Assert.DoesNotContain("dependencies =", project);
 
             string generated = File.ReadAllText(Path.Combine(package, "model.py"));
             Assert.Contains("class BaseItem(CogsItem):", generated);
             Assert.Contains("class DerivedItem(BaseItem):", generated);
             Assert.Contains("display_name: str | None", generated);
             Assert.DoesNotContain("class Topic", generated);
+            Assert.DoesNotMatch(@"__[A-Z][A-Z_]+__", generated);
+            Assert.Equal(flavor == PythonFlavor.Pydantic, generated.Contains("from pydantic import", StringComparison.Ordinal));
+            if (flavor == PythonFlavor.Pydantic)
+            {
+                Assert.Contains("class CogsValue(_PydanticBaseModel):", generated);
+                Assert.Contains("model_rebuild(_types_namespace=globals())", generated);
+                Assert.Contains("_PydanticPrivateAttr(default=False)", generated);
+                Assert.Contains("json_schema_extra={\"cogs_name\": \"DisplayName\"", generated);
+            }
+        });
+    }
+
+    [Fact]
+    public void PublishDefaultsToDependencyFreePython()
+    {
+        Assert.Equal(PythonFlavor.Python, new PythonPublisher(BuildModel("example", "1.0.0"), "unused").Flavor);
+    }
+
+    [Theory]
+    [InlineData("ModelDump")]
+    [InlineData("ModelFields")]
+    [InlineData("ModelCustom")]
+    [InlineData("Dict")]
+    [InlineData("Schema")]
+    [InlineData("Validate")]
+    public void PublishRejectsPydanticMemberCollisionsWithoutReplacingOutput(string propertyName)
+    {
+        CogsModel model = BuildModel("example", "1.0.0", customize: dto =>
+            dto.ItemTypes[0].Properties.Add(SimpleDtoProperty(propertyName)));
+        WithTemporaryDirectory(parent =>
+        {
+            string target = Path.Combine(parent, "output");
+            // The same names remain valid in the default flavor.
+            new PythonPublisher(model, target).Publish();
+            string original = File.ReadAllText(Path.Combine(target, "example", "model.py"));
+            PublicationResult result = new PythonPublisher(model, target)
+            {
+                Flavor = PythonFlavor.Pydantic, Overwrite = true,
+            }.PublishResult();
+            Assert.False(result.Success);
+            Assert.Empty(result.Artifacts);
+            Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Message.Contains("conflicts with Pydantic member", StringComparison.Ordinal));
+            Assert.Equal(original, File.ReadAllText(Path.Combine(target, "example", "model.py")));
         });
     }
 

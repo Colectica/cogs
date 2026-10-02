@@ -24,7 +24,9 @@ dotnet test Cogs.Tests.Integration\Cogs.Tests.Integration.csproj --no-restore
 validates `cogsburger`, safely deletes only the fixed repository child
 `generated`, and regenerates every authoritative and projection publisher
 target. It installs, builds, and dry-run packs the generated TypeScript package,
-compiles the generated Python package, and restores the generated C# project.
+compiles both generated Python flavors, and restores the generated C# project.
+Python integration tests need the pinned Pydantic version from
+`conformance\tools.json` installed in the selected interpreter.
 Because regeneration replaces `generated\src`, restore again before any
 integration-test invocation that uses `--no-restore`. Generated output is
 ignored and should be regenerated for verification, not edited as source.
@@ -363,10 +365,26 @@ formats require Graphviz; raw DOT does not.
 
 ## Python publisher rules
 
-`Cogs.Publishers\Python\PythonPublisher.cs` combines generated dataclass
-declarations with the embedded `Python\Runtime.py` template. It targets Python
-3.11+, uses only the standard library, and writes `pyproject.toml` plus
+`Cogs.Publishers\Python\PythonPublisher.cs` combines generated declarations
+with the single embedded `Python\Runtime.py` template. `publish-py --flavor
+python|pydantic` defaults to dependency-free dataclasses; the Pydantic flavor
+uses real v2 `BaseModel` classes and declares `pydantic>=2.12,<3`. Both target
+Python 3.11+ and write `pyproject.toml` plus
 `<normalized-slug>\model.py`, `__init__.py`, and `py.typed`.
+
+Keep flavor-specific changes in template substitutions and one field-inspection
+adapter, not separate runtimes. Lossless helpers remain dataclasses, validated
+as supplied instances in Pydantic fields. Pydantic models forbid extra fields,
+use strict types and assignment validation, reject nonfinite floats, preserve
+nested instances, retain subtype fields in native dumps, and resolve forward
+references after all declarations. Definition state is private. Reject native
+member/`model_` naming collisions during target validation. Native `model_*`
+APIs use snake_case Python field data; COGS methods preserve the lossless wire
+format and item-reference identity. Native schemas do not replace COGS schemas.
+Both flavors use the same package name: generate alternatives under
+`generated\python` and `generated\python-pydantic`, and test them in separate
+processes through the shared `PythonIntegrationTests` fixture/script. CI
+explicitly installs Pydantic pinned by `conformance\tools.json`.
 
 Generated class names remain PascalCase. Public attributes are snake_case, but
 field metadata retains exact COGS JSON/XML names. The package exports

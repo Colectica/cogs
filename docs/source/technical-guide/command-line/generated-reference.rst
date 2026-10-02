@@ -286,6 +286,8 @@ Options
 
 ``-?|-h|--help``
    Show help information
+``--flavor <value>``
+   Python flavor: python (dependency-free, default) or pydantic (v2)
 ``-n|--namespace <value>``
    URI of the target XML namespace
 ``-o|--overwrite``
