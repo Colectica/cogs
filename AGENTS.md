@@ -377,7 +377,11 @@ adapter, not separate runtimes. Lossless helpers remain dataclasses, validated
 as supplied instances in Pydantic fields. Pydantic models forbid extra fields,
 use strict types and assignment validation, reject nonfinite floats, preserve
 nested instances, retain subtype fields in native dumps, and resolve forward
-references after all declarations. Definition state is private. Reject native
+references after all declarations. Native Pydantic field descriptions retain
+exact COGS property descriptions without field aliases. Definition state is
+private: the dataclass flavor declares it with ``init=False``, ``repr=False``,
+and ``compare=False``; its field-inspection adapter selects only COGS wire
+metadata so internal fields never enter serialization. Reject native
 member/`model_` naming collisions during target validation. Native `model_*`
 APIs use snake_case Python field data; COGS methods preserve the lossless wire
 format and item-reference identity. Native schemas do not replace COGS schemas.

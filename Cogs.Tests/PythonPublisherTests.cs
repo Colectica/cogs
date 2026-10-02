@@ -51,6 +51,45 @@ public class PythonPublisherTests
                 Assert.Contains("_PydanticPrivateAttr(default=False)", generated);
                 Assert.Contains("json_schema_extra={\"cogs_name\": \"DisplayName\"", generated);
             }
+            else
+            {
+                Assert.Contains("_cogs_is_defined: bool = field(default=False, init=False, repr=False, compare=False)", generated);
+                Assert.Contains("if \"cogs_name\" in item.metadata", generated);
+                Assert.DoesNotContain("_PydanticField", generated);
+            }
+            Assert.DoesNotContain("parser.root", generated);
+            Assert.DoesNotContain("cast(Any", generated);
+        });
+    }
+
+    [Theory]
+    [InlineData(PythonFlavor.Python)]
+    [InlineData(PythonFlavor.Pydantic)]
+    public void PublishPreservesExactFieldDescriptions(PythonFlavor flavor)
+    {
+        CogsModel model = BuildModel("example", "1.0.0", customize: dto =>
+        {
+            dto.ItemTypes[0].Properties[0].Description = "The \"display\" name — café.\nSecond line.";
+            dto.ItemTypes[1].Properties.Add(SimpleDtoProperty("LocalName"));
+        });
+        WithTemporaryDirectory(parent =>
+        {
+            string target = Path.Combine(parent, "output");
+            new PythonPublisher(model, target) { Flavor = flavor }.Publish();
+            string generated = File.ReadAllText(Path.Combine(target, "example", "model.py"));
+            const string description = "\"The \\\"display\\\" name — café.\\nSecond line.\"";
+            Assert.Contains($"\"description\": {description}", generated);
+            Assert.Contains("\"description\": \"\"", generated);
+            if (flavor == PythonFlavor.Pydantic)
+            {
+                Assert.Contains($"_PydanticField(default=None, description={description}, json_schema_extra=", generated);
+                Assert.Contains("local_name: str | None = _PydanticField(default=None, description=\"\", json_schema_extra=", generated);
+                Assert.DoesNotContain("alias=", generated);
+            }
+            else
+            {
+                Assert.DoesNotContain("description=", generated);
+            }
         });
     }
 

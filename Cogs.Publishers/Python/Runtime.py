@@ -5,10 +5,10 @@ import json
 import math
 import os
 import re
-from dataclasses import dataclass, field, fields
+from dataclasses import Field as _DataclassField, dataclass, field, fields
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, ClassVar, IO, Mapping
+from typing import Any, ClassVar, IO, Mapping, cast
 from xml.etree import ElementTree as ET
 __FLAVOR_IMPORTS__
 
@@ -131,12 +131,15 @@ def _parse_xml(
     pending_namespaces: list[tuple[str, str]] = []
     namespace_stack: list[dict[str, str]] = []
     element_namespaces: dict[int, dict[str, str]] = {}
+    root: ET.Element | None = None
     parser = ET.iterparse(io.BytesIO(data), events=("start-ns", "start", "end"))
     for event, payload in parser:
         if event == "start-ns":
             prefix, uri = payload
             pending_namespaces.append((prefix or "", uri))
         elif event == "start":
+            if root is None:
+                root = cast(ET.Element, payload)
             namespaces = dict(namespace_stack[-1]) if namespace_stack else {}
             namespaces.update(pending_namespaces)
             pending_namespaces.clear()
@@ -144,7 +147,8 @@ def _parse_xml(
             element_namespaces[id(payload)] = namespaces
         else:
             namespace_stack.pop()
-    root = parser.root
+    if root is None:
+        raise ValueError("XML contains no root element.")
     return root, element_namespaces.get(id(root), {}), element_namespaces
 
 
@@ -1386,7 +1390,7 @@ __ITEM_PRIVATE_STATE__
     @property
     def is_defined(self) -> bool:
         """Whether this item was populated by a full definition in its container."""
-        return getattr(self, "_cogs_is_defined", False)
+        return self._cogs_is_defined
 
     def _to_dict_with_context(self, context: _Context, *, include_type: bool = True) -> dict[str, Any]:
         return super()._to_dict_with_context(context, include_type=True)
@@ -1697,8 +1701,8 @@ __MODEL_CONFIG__
     @classmethod
     def load_json(cls, source: str | os.PathLike[str] | IO[str] | IO[bytes]) -> ItemContainer:
         if hasattr(source, "read"):
-            return cls.from_json(source.read())
-        return cls.from_json(Path(source).read_bytes())
+            return cls.from_json(cast(IO[str] | IO[bytes], source).read())
+        return cls.from_json(Path(cast(str | os.PathLike[str], source)).read_bytes())
 
     def dump_json(
         self,
@@ -1709,11 +1713,11 @@ __MODEL_CONFIG__
         value = self.to_json(indent=indent)
         if hasattr(target, "write"):
             try:
-                target.write(value)
+                cast(IO[str], target).write(value)
             except TypeError:
-                target.write(value.encode("utf-8"))
+                cast(IO[bytes], target).write(value.encode("utf-8"))
             return
-        Path(target).write_text(value, encoding="utf-8", newline="\n")
+        Path(cast(str | os.PathLike[str], target)).write_text(value, encoding="utf-8", newline="\n")
 
     def to_element(self) -> ET.Element:
         context = _Context()
@@ -1819,8 +1823,8 @@ __MODEL_CONFIG__
         source: str | os.PathLike[str] | IO[str] | IO[bytes],
     ) -> ItemContainer:
         if hasattr(source, "read"):
-            return cls.from_xml(source.read())
-        return cls.from_xml(Path(source).read_bytes())
+            return cls.from_xml(cast(IO[str] | IO[bytes], source).read())
+        return cls.from_xml(Path(cast(str | os.PathLike[str], source)).read_bytes())
 
     def dump_xml(
         self,
@@ -1836,11 +1840,11 @@ __MODEL_CONFIG__
         )
         if hasattr(target, "write"):
             try:
-                target.write(value)
+                cast(IO[bytes], target).write(value)
             except TypeError:
-                target.write(value.decode("utf-8"))
+                cast(IO[str], target).write(value.decode("utf-8"))
             return
-        Path(target).write_bytes(value)
+        Path(cast(str | os.PathLike[str], target)).write_bytes(value)
 
 
 # Registries and generated classes are appended below by COGS.

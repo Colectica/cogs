@@ -420,8 +420,10 @@ public class PythonIntegrationTests
 
         import compileall
         import io
+        import os
         import sys
         from pathlib import Path
+        from xml.etree import ElementTree as ET
 
         assert sys.version_info >= (3, 11)
         flavor, package_root, input_json, input_xml, direct_json, output_json, json_xml, output_xml = sys.argv[1:]
@@ -470,6 +472,39 @@ public class PythonIntegrationTests
 
         from_json = c.ItemContainer.load_json(Path(input_json))
         check(from_json, True)
+        assert all(item.is_defined for item in from_json.items)
+
+        external = c.ItemContainer.from_dict({
+            "items": [], "topLevelReferences": [
+                {"$type": "Animal", "ID": "external"},
+                {"$type": "Animal", "ID": "external"},
+            ],
+        })
+        assert external.top_level_references[0] is external.top_level_references[1]
+        assert not external.top_level_references[0].is_defined
+        assert "_cogs_is_defined" not in external.to_json()
+        assert "_cogs_is_defined" not in external.to_xml()
+        external_xml = c.ItemContainer.from_xml(external.to_xml())
+        assert external_xml.top_level_references[0] is external_xml.top_level_references[1]
+        assert not external_xml.top_level_references[0].is_defined
+        assert not c.ItemContainer.from_xml(c.ItemContainer().to_xml()).items
+        for malformed in ("", "<ItemContainer", "<ItemContainer>"):
+            try:
+                c.ItemContainer.from_xml(malformed)
+                raise AssertionError("malformed XML was accepted")
+            except ET.ParseError:
+                pass
+        for invalid in (
+            lambda: c.ItemContainer.from_xml('<!DOCTYPE ItemContainer><ItemContainer/>'),
+            lambda: c.ItemContainer.from_dict({
+                "items": [{"$type": "Animal", "ID": "internal", "_cogs_is_defined": True}],
+            }),
+        ):
+            try:
+                invalid()
+                raise AssertionError("DTD or internal wire field was accepted")
+            except ValueError:
+                pass
 
         if flavor == "pydantic":
             from pydantic import BaseModel, ValidationError
@@ -484,6 +519,15 @@ public class PythonIntegrationTests
             assert recursive.model_dump()["sub_components"][0]["part_name"] == "child"
             assert "part_name" in c.Part.model_json_schema()["$defs"]["Part"]["properties"]
             assert "$defs" in c.ItemContainer.model_json_schema()
+            for cls in c.model.TYPE_REGISTRY.values():
+                schema = cls.model_json_schema()
+                properties = schema.get("properties", schema.get("$defs", {}).get(cls.__name__, {}).get("properties", {}))
+                for name, info in cls.model_fields.items():
+                    assert info.description == info.json_schema_extra["description"]
+                    assert properties[name]["description"] == info.description
+                    assert info.alias is None
+            assert c.SubPart.model_fields["part_name"].description == "name of a part"
+            assert c.SubPart.model_fields["part_name"].description == c.Part.model_fields["part_name"].description
             helper = c.CogsDateOnly("-0001-01-02Z")
             subpart = c.SubPart(part_name="cut", sub_part_name="center")
             animal = c.Animal(id="native", date=helper, meat_pieces=[subpart])
@@ -523,6 +567,48 @@ public class PythonIntegrationTests
                 except ValidationError:
                     pass
             check(from_json, True)
+        else:
+            from dataclasses import fields
+            from inspect import signature
+
+            state = next(item for item in fields(c.Animal) if item.name == "_cogs_is_defined")
+            assert state.default is False
+            assert not state.init and not state.repr and not state.compare
+            assert "_cogs_is_defined" not in signature(c.Animal).parameters
+            left, right = c.Animal(id="same"), c.Animal(id="same")
+            assert not left.is_defined and not right.is_defined
+            left._cogs_is_defined = True
+            assert left == right
+            assert "_cogs_is_defined" not in repr(left)
+            assert "_cogs_is_defined" not in left.to_json()
+            assert "_cogs_is_defined" not in left.to_xml()
+
+        class ModelPath(os.PathLike[str]):
+            def __init__(self, path: Path):
+                self.path = path
+
+            def __fspath__(self) -> str:
+                return str(self.path)
+
+        class PathStream(io.StringIO, os.PathLike[str]):
+            def __fspath__(self) -> str:
+                raise AssertionError("Path-like streams must use their stream interface")
+
+        io_root = Path(direct_json).parent / "path stream café"
+        io_root.mkdir()
+        for format in ("json", "xml"):
+            load = getattr(c.ItemContainer, f"load_{format}")
+            dump = getattr(from_json, f"dump_{format}")
+            for index, path_type in enumerate((str, Path, ModelPath)):
+                path = path_type(io_root / f"{index}.{format}")
+                dump(path)
+                check(load(path), True)
+            for stream_type in (io.StringIO, io.BytesIO, PathStream):
+                stream = stream_type()
+                dump(stream)
+                stream.seek(0)
+                check(load(stream), True)
+                assert not stream.closed
 
         json_stream = io.StringIO()
         from_json.dump_json(json_stream)

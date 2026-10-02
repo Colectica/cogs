@@ -44,6 +44,9 @@ assignment validation, and finite floating-point values. Singleton fields
 default to ``None`` and repeated fields have independent list defaults so
 reference placeholders can be populated. Forward declarations and recursive
 composites are resolved after all model classes have been generated.
+Native field descriptions and schema annotations retain the exact COGS
+property descriptions, including inherited fields; no wire-name aliases are
+introduced.
 
 Native ``model_validate``, ``model_dump``, ``model_dump_json``, and
 ``model_json_schema`` operate on Python field data with snake_case names, not
@@ -66,6 +69,11 @@ Generated values provide ``to_dict``/``from_dict``, ``to_json``/``from_json``,
 ``to_element``/``from_element``, and ``to_xml``/``from_xml``.
 ``ItemContainer`` additionally provides path-or-stream ``load_*``/``dump_*``
 helpers.
+
+Both flavors expose ``is_defined`` on items to distinguish full definitions from
+unresolved external-reference placeholders. Its internal state is excluded
+from COGS serialization; in the dataclass flavor it is also excluded from
+constructor arguments, representations, and equality comparisons.
 
 JSON uses the flat COGS contract: ``items``, optional
 ``topLevelReferences``, ``$type`` discriminators, and identification-only item
