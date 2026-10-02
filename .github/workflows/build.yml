@@ -21,7 +21,6 @@ jobs:
       DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
       DOTNET_NOLOGO: true
       BUILD_CONFIGURATION: Release
-      COGS_PYTHON: python
       COGS_NODE: node
       COGS_NPM: npm
 
@@ -37,9 +36,21 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Setup Python 3.11
+        id: python
         uses: actions/setup-python@v6
         with:
           python-version: '3.11'
+
+      - name: Pin CI Python interpreter
+        shell: pwsh
+        env:
+          COGS_PYTHON: ${{ steps.python.outputs.python-path }}
+        run: |
+          if (-not [IO.Path]::IsPathFullyQualified($env:COGS_PYTHON) -or
+              -not (Test-Path -LiteralPath $env:COGS_PYTHON -PathType Leaf)) {
+            throw 'setup-python did not provide an absolute interpreter executable.'
+          }
+          "COGS_PYTHON=$env:COGS_PYTHON" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Setup Node 22
         uses: actions/setup-node@v6
@@ -96,14 +107,18 @@ jobs:
         shell: pwsh
         run: |
           $tools = Get-Content ./conformance/tools.json -Raw | ConvertFrom-Json
-          python -m pip install --disable-pip-version-check --upgrade pip
-          python -m pip install --disable-pip-version-check `
+          & $env:COGS_PYTHON -m pip install --disable-pip-version-check --upgrade pip
+          if ($LASTEXITCODE -ne 0) { throw "pip upgrade failed with exit $LASTEXITCODE" }
+          & $env:COGS_PYTHON -m pip install --disable-pip-version-check `
             -r ./docs/requirements.txt `
             "sphinx==$($tools.sphinx)" `
             "myst-parser==$($tools.mystParser)" `
             "linkml==$($tools.linkml)" `
             "linkml-runtime==$($tools.linkmlRuntime)" `
             "pydantic==$($tools.pydantic)"
+          if ($LASTEXITCODE -ne 0) { throw "Python conformance tool installation failed with exit $LASTEXITCODE" }
+          & $env:COGS_PYTHON -c 'import pydantic, sys; print("Python:", sys.version.split()[0], sys.executable); print("Pydantic:", pydantic.__version__, pydantic.__file__); assert ".".join(map(str, sys.version_info[:2])) == sys.argv[1], "Expected Python " + sys.argv[1]; assert pydantic.__version__ == sys.argv[2], "Expected Pydantic " + sys.argv[2]' $tools.python $tools.pydantic
+          if ($LASTEXITCODE -ne 0) { throw 'Installed Python/Pydantic versions do not match conformance/tools.json.' }
 
       - name: Install GraphQL conformance tools
         working-directory: ./conformance/node
@@ -127,14 +142,19 @@ jobs:
           if (-not $candidate) { throw 'Graphviz dot was installed but could not be discovered.' }
           $dot = $candidate.Source ?? $candidate.FullName
           "COGS_DOT=$dot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          ([IO.Path]::GetDirectoryName($dot)) | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          if ($IsWindows) {
+            ([IO.Path]::GetDirectoryName($dot)) | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+          # On Linux, prepending /usr/bin would shadow setup-python with system Python.
           & $dot -V
 
       - name: Display pinned runtimes
         shell: pwsh
         run: |
+          $tools = Get-Content ./conformance/tools.json -Raw | ConvertFrom-Json
           dotnet --version
-          python --version
+          & $env:COGS_PYTHON -c 'import pydantic, sys; print("Python:", sys.version.split()[0], sys.executable); print("Pydantic:", pydantic.__version__, pydantic.__file__); assert ".".join(map(str, sys.version_info[:2])) == sys.argv[1], "Expected Python " + sys.argv[1]; assert pydantic.__version__ == sys.argv[2], "Expected Pydantic " + sys.argv[2]' $tools.python $tools.pydantic
+          if ($LASTEXITCODE -ne 0) { throw 'Python/Pydantic selection changed after tool setup.' }
           node --version
           npm --version
           java -version
@@ -318,10 +338,10 @@ jobs:
             './generated/new-model-artifacts/python', './generated/new-model-artifacts/python-pydantic'
           )
           foreach ($package in $packages) {
-            python -m compileall -q $package
+            & $env:COGS_PYTHON -m compileall -q $package
             if ($LASTEXITCODE -ne 0) { throw "Python compilation failed for $package" }
             # The flavors share an import name: isolate each import in its own process.
-            python -c 'import importlib, pathlib, sys, tomllib; root = pathlib.Path(sys.argv[1]); metadata = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8")); sys.path.insert(0, str(root)); importlib.import_module(metadata["tool"]["setuptools"]["packages"][0])' $package
+            & $env:COGS_PYTHON -c 'import importlib, pathlib, sys, tomllib; root = pathlib.Path(sys.argv[1]); metadata = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8")); sys.path.insert(0, str(root)); importlib.import_module(metadata["tool"]["setuptools"]["packages"][0])' $package
             if ($LASTEXITCODE -ne 0) { throw "Python import failed for $package" }
           }
 
@@ -363,7 +383,7 @@ jobs:
               Set-Content -LiteralPath "$root/linkml_model.py" -Encoding utf8
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
-          python -m py_compile `
+          & $env:COGS_PYTHON -m py_compile `
             ./generated/linkml/linkml_model.py `
             ./generated/conformance/linkml/linkml_model.py `
             ./generated/new-model-artifacts/linkml/linkml_model.py
