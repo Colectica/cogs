@@ -30,6 +30,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set CI package version from Git history
+        shell: pwsh
+        run: |
+          $commitCount = git rev-list --count HEAD
+          if ($LASTEXITCODE -ne 0 -or $commitCount -notmatch '^[1-9][0-9]*$') {
+            throw 'Could not determine the commit count for HEAD.'
+          }
+          [xml]$project = Get-Content ./Cogs.Console/Cogs.Console.csproj -Raw
+          [version]$baseVersion = $project.Project.PropertyGroup.Version
+          $version = "$($baseVersion.Major).$($baseVersion.Minor).$commitCount"
+          "COGS_PACKAGE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "CI package version: $version"
+
       - name: Setup .NET 10 SDK
         uses: actions/setup-dotnet@v5.2.0
         with:
@@ -173,12 +186,13 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore ./Cogs.Console.sln --verbosity minimal
 
-      - name: Build solution at repository version 2.0.0
+      - name: Build solution with commit-count version
         run: >
           dotnet build ./Cogs.Console.sln
           --configuration ${{ env.BUILD_CONFIGURATION }}
           --verbosity minimal
           --no-restore
+          -p:Version=${{ env.COGS_PACKAGE_VERSION }}
 
       - name: Self-test RDF graph comparer
         run: >
@@ -433,6 +447,7 @@ jobs:
           --configuration ${{ env.BUILD_CONFIGURATION }}
           --no-build
           -o ./nupkg
+          -p:Version=${{ env.COGS_PACKAGE_VERSION }}
           -p:IncludeSymbols=true
           -p:SymbolPackageFormat=snupkg
 

@@ -10,6 +10,19 @@ transparent development process and fast iterations.
 This repository currently uses GitHub Actions for its own build automation, but
 the same validate-and-publish workflow can be implemented in any CI system.
 
+CI package versions
+-------------------
+
+The repository workflow keeps the major and minor version numbers from
+``Cogs.Console/Cogs.Console.csproj`` and sets the third number to
+``git rev-list --count HEAD``. For example, version ``2.0.0`` with 777 commits
+produces package version ``2.0.777``. The checkout includes the full Git history,
+and the workflow passes the same version to both build and pack.
+
+Rebuilding the same commit produces the same version. Pull-request builds count
+the checked-out merge commit and its history. Local builds continue to use the
+project's declared version unless a version override is supplied.
+
 Scenario
 ----------------
 
