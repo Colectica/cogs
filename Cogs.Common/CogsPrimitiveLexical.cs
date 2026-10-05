@@ -38,25 +38,49 @@ namespace Cogs.Common
         };
 
         public static readonly string Bcp47Pattern = BuildBcp47Pattern();
-        private static readonly Regex Bcp47Regex = new Regex(Bcp47Pattern, RegexOptions.CultureInvariant);
+        private static readonly Regex Bcp47Regex = new Regex(Bcp47Pattern + @"(?![\s\S])", RegexOptions.CultureInvariant);
         private static readonly Regex UriCharactersRegex = new Regex(UriReferenceCharacterPattern, RegexOptions.CultureInvariant);
         private static readonly Regex DurationRegex = new Regex(DurationPattern, RegexOptions.CultureInvariant);
 
         public static bool IsValid(string dataType, string lexical)
         {
-            if (lexical == null) return false;
+            if (lexical == null)
+            {
+                return false;
+            }
+            try
+            {
+                switch (dataType)
+                {
+                    case "decimal":
+                        return CogsScalarValues.TryDecimal(lexical, out _);
+                    case "dateTime":
+                        CogsScalarValues.DateTime(lexical);
+                        return true;
+                    case "date":
+                        CogsScalarValues.Date(lexical);
+                        return true;
+                    case "time":
+                        CogsScalarValues.Time(lexical);
+                        return true;
+                    case "duration":
+                        CogsScalarValues.Duration(lexical);
+                        return true;
+                }
+            }
+            catch (FormatException)
+            {
+                return false;
+            }
             return dataType switch
             {
-                "string" or "langString" => true,
+                "string" or "langString" => CogsScalarValues.IsText(lexical),
                 "boolean" => lexical is "true" or "false",
-                "decimal" => Regex.IsMatch(lexical, JsonDecimalPattern, RegexOptions.CultureInvariant),
-                "float" or "double" => IsFiniteJsonNumber(lexical),
+                "float" => Regex.IsMatch(lexical, JsonNumberPattern, RegexOptions.CultureInvariant) &&
+                    float.TryParse(lexical, NumberStyles.Float, CultureInfo.InvariantCulture, out float single) && float.IsFinite(single),
+                "double" => IsFiniteJsonNumber(lexical),
                 "nonPositiveInteger" or "negativeInteger" or "long" or "int" or
-                    "nonNegativeInteger" or "unsignedLong" or "positiveInteger" => IsInteger(dataType, lexical),
-                "duration" => DurationRegex.IsMatch(lexical),
-                "dateTime" => TryParseTemporal("dateTime", lexical, out _),
-                "time" => TryParseTemporal("time", lexical, out _),
-                "date" => TryParseTemporal("date", lexical, out _),
+                    "nonNegativeInteger" or "unsignedLong" or "positiveInteger" => CogsScalarValues.TryInteger(lexical, dataType, out _),
                 "gYearMonth" or "gYear" or "gMonthDay" or "gDay" or "gMonth" =>
                     CogsGregorianLexical.TryParse(dataType, lexical, out _),
                 "anyURI" => IsUriReference(lexical),
@@ -70,18 +94,40 @@ namespace Cogs.Common
             if (!IsValid(dataType, left) || !IsValid(dataType, right)) return CogsPrimitiveOrder.Indeterminate;
             if (IsIntegerType(dataType))
             {
-                BigInteger.TryParse(left, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var a);
-                BigInteger.TryParse(right, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var b);
+                CogsScalarValues.TryInteger(left, dataType, out long a);
+                CogsScalarValues.TryInteger(right, dataType, out long b);
                 return FromSign(a.CompareTo(b));
             }
-            if (dataType == "decimal") return FromSign(ParseExactDecimal(left).CompareTo(ParseExactDecimal(right)));
-            if (dataType is "float" or "double")
+            if (dataType == "decimal")
+            {
+                return FromSign(CogsScalarValues.Decimal(left).CompareTo(CogsScalarValues.Decimal(right)));
+            }
+            if (dataType == "float")
+            {
+                return FromSign(float.Parse(left, CultureInfo.InvariantCulture).CompareTo(float.Parse(right, CultureInfo.InvariantCulture)));
+            }
+            if (dataType == "double")
             {
                 var a = double.Parse(left, NumberStyles.Float, CultureInfo.InvariantCulture);
                 var b = double.Parse(right, NumberStyles.Float, CultureInfo.InvariantCulture);
                 return FromSign(a.CompareTo(b));
             }
-            if (dataType == "duration") return CompareDurations(left, right);
+            if (dataType == "duration")
+            {
+                return FromSign(CogsScalarValues.Duration(left).CompareTo(CogsScalarValues.Duration(right)));
+            }
+            if (dataType == "dateTime")
+            {
+                return FromSign(CogsScalarValues.DateTime(left).CompareTo(CogsScalarValues.DateTime(right)));
+            }
+            if (dataType == "date")
+            {
+                return FromSign(CogsScalarValues.Date(left).CompareTo(CogsScalarValues.Date(right)));
+            }
+            if (dataType == "time")
+            {
+                return FromSign(CogsScalarValues.Time(left).CompareTo(CogsScalarValues.Time(right)));
+            }
             if (IsTemporalType(dataType))
             {
                 TryParseTemporal(dataType, left, out var a);
@@ -93,22 +139,25 @@ namespace Cogs.Common
 
         public static bool IsUriReference(string value)
         {
-            if (value == null || !UriCharactersRegex.IsMatch(value)) return false;
-            var fragment = value.IndexOf('#');
-            if (fragment >= 0 && value.IndexOf('#', fragment + 1) >= 0) return false;
+            return CogsUriReference.IsValid(value);
+        }
 
-            var firstDelimiter = new[] { value.IndexOf('/'), value.IndexOf('?'), fragment }
-                .Where(index => index >= 0)
-                .DefaultIfEmpty(value.Length)
-                .Min();
-            var colon = value.IndexOf(':');
-            if (colon >= 0 && colon < firstDelimiter &&
-                !Regex.IsMatch(value.Substring(0, colon), @"^[A-Za-z][A-Za-z0-9+.-]*$", RegexOptions.CultureInvariant))
+        public static string XmlLexical(string dataType, string lexical)
+        {
+            if (IsIntegerType(dataType) || dataType is "decimal" or "float" or "double")
             {
-                return false;
+                return CogsScalarValues.XmlNumeric(lexical, dataType);
             }
-
-            return value.Count(x => x == '[') == value.Count(x => x == ']');
+            if (dataType == "boolean")
+            {
+                return lexical.Trim(' ', '\t', '\r', '\n') switch
+                {
+                    "1" or "true" => "true",
+                    "0" or "false" => "false",
+                    _ => throw new FormatException("Invalid XML boolean.")
+                };
+            }
+            return IsTemporalType(dataType) || dataType == "duration" ? lexical.Trim(' ', '\t', '\r', '\n') : lexical;
         }
 
         public static bool TryGetCogsDateDataType(string lexical, out string dataType)

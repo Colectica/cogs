@@ -35,6 +35,7 @@ including through canonical paths or links.
 .. toctree::
    :maxdepth: 2
 
+   native-types
    csharp
    python
    typescript

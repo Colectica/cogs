@@ -56,6 +56,9 @@ public sealed class DcTapPublisher
 
     private void PublishCore(string targetDirectory)
     {
+        _diagnostics.Add(new CogsError(ErrorLevel.Warning, "DCT2010",
+            "DCTAP XSD datatype terms do not enforce the narrower COGS native scalar domains; use COGS instance validation.",
+            sourcePath: CogsModel.SourceDirectory));
         string prefix = CogsModel.Settings.NamespacePrefix;
         if (prefix is "dcterms" or "rdf" or "xsd")
         {

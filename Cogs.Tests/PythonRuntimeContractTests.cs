@@ -261,6 +261,7 @@ public class PythonRuntimeContractTests
         import tomllib
         import xml.etree.ElementTree as ET
         from decimal import Decimal
+        from datetime import datetime, date, time, timedelta, timezone
         from pathlib import Path
 
         assert sys.version_info >= (3, 11)
@@ -285,24 +286,28 @@ public class PythonRuntimeContractTests
             raise AssertionError("invalid input was accepted")
 
 
-        # The value helpers retain the complete approved XSD lexical domains.
-        assert c.CogsDecimal("12345678901234567890.0012300").lexical.endswith("0012300")
-        assert c.CogsDecimal(Decimal("1.2300")).lexical == "1.2300"
-        rejects(lambda: c.CogsDecimal("1e2"))
-        assert c.CogsDateTime("-0001-02-28T24:00:00Z").lexical.startswith("-0001")
-        assert c.CogsDateTime("-0001-02-29T24:00:00.000Z").lexical.endswith(".000Z")
-        assert c.CogsDateOnly("12024-02-29+14:00").lexical.startswith("12024")
-        assert c.CogsDateOnly("2147483647-12-31").lexical.startswith("2147483647")
-        assert c.CogsDateTime("-2147483648-01-01T00:00:00").lexical.startswith("-2147483648")
-        rejects(lambda: c.CogsDateOnly("2147483648-01-01"))
-        rejects(lambda: c.CogsDateTime("-2147483649-01-01T00:00:00"))
-        rejects(lambda: c.CogsDateOnly("0000-01-01"))
-        assert c.CogsTime("24:00:00Z").lexical == "24:00:00Z"
-        assert c.CogsTime("24:00:00.000Z").lexical.endswith(".000Z")
-        rejects(lambda: c.CogsTime("24:00:00.001Z"))
-        assert c.CogsDuration("-P1Y2M3DT4H5M6.700S").lexical.endswith("6.700S")
-        assert c.CogsDuration("PT.5S").lexical == "PT.5S"
-        assert c.CogsDuration("PT1.S").lexical == "PT1.S"
+        # Native fields retain values; wire readers enforce the interchange domain.
+        native = c.DerivedItem.from_json(
+            '{"$type":"DerivedItem","ID":"a","AgencyID":"x","DecimalValue":1e2,'
+            '"DateTimeValue":"2024-02-29T24:00:00.000Z","TimeValue":"24:00:00",'
+            '"DateValue":"2024-02-29","DurationValue":"PT.5S"}')
+        assert native.decimal_value == Decimal("100")
+        assert native.date_time_value == datetime(2024, 3, 1, tzinfo=timezone.utc)
+        assert native.time_value == time(0)
+        assert native.date_value == date(2024, 2, 29)
+        assert native.duration_value == timedelta(milliseconds=500)
+        for field, raw in [
+            ("DecimalValue", "0.10000000000000001"),
+            ("LongValue", "9007199254740992"),
+            ("DateTimeValue", '"2024-01-01T00:00:00"'),
+            ("DateTimeValue", '"2024-01-01T00:00:00.0001Z"'),
+            ("DateValue", '"2024-01-01Z"'),
+            ("TimeValue", '"12:00:00.1234561"'),
+            ("DurationValue", '"P1Y"'),
+            ("DurationValue", '"PT0.0001S"'),
+        ]:
+            rejects(lambda: c.DerivedItem.from_json(
+                '{"$type":"DerivedItem","ID":"a","AgencyID":"x","'+field+'":'+raw+'}'))
         assert c.GYearMonth("-0001-02Z").lexical == "-0001-02Z"
         assert c.GYear("12024+05:30").lexical == "12024+05:30"
         assert c.GYearMonth.from_json_value(
@@ -335,7 +340,7 @@ public class PythonRuntimeContractTests
         rejects(lambda: c.CogsDate.from_json_value({}))
         rejects(lambda: c.CogsDate.from_json_value({"Date": "2024-01-01", "GYear": "2024"}))
         rejects(lambda: c.CogsDate.from_json_value({"Unknown": "2024"}))
-        assert c.CogsDate.from_json_value({"Duration": "P2M"}).to_xml_text() == "P2M"
+        assert c.CogsDate.from_json_value({"Duration": "P2D"}).value == timedelta(days=2)
         assert c.CogsDate.from_json_value(
             {"GYear": {"Year": 2024, "Timezone": "Z"}}).to_xml_text() == "2024Z"
         assert c.CogsDate(c.GYearMonth("2024-02Z")).to_json_value() == {
@@ -358,11 +363,11 @@ public class PythonRuntimeContractTests
               "ExactValue":{"Label":"exact","RepeatedValues":["one","two"],"Tail":"tail"},
               "FlexibleValue":{"$type":"ValueChild","Label":"child","Extra":"extra"},
               "StringValue":"text", "BooleanValue":true,
-              "DecimalValue":12345678901234567890.0012300,
+              "DecimalValue":12345.0012300,
               "FloatValue":3.25, "DoubleValue":1e100,
-              "DurationValue":"-P1Y2M3DT4H5M6.700S",
-              "DateTimeValue":"-0001-02-28T24:00:00Z",
-              "TimeValue":"24:00:00Z", "DateValue":"12024-02-29+14:00",
+              "DurationValue":"-P3DT4H5M6.700S",
+              "DateTimeValue":"2024-02-29T24:00:00Z",
+              "TimeValue":"24:00:00", "DateValue":"2024-02-29",
               "YearMonthValue":{"Year":-1,"Month":2,"Timezone":"Z"},
               "YearValue":{"Year":12024,"Timezone":"+05:30"},
               "MonthDayValue":{"Month":2,"Day":29,"Timezone":"Z"},
@@ -370,8 +375,8 @@ public class PythonRuntimeContractTests
               "MonthValue":{"Month":2,"Timezone":"Z"},
               "UriValue":"https://example.org/value", "LanguageValue":"en-US",
               "NonPositiveValue":0, "NegativeValue":-1,
-              "LongValue":9007199254740993, "IntValue":2147483647,
-              "NonNegativeValue":0, "UnsignedLongValue":18446744073709551615,
+              "LongValue":9007199254740991, "IntValue":2147483647,
+              "NonNegativeValue":0, "UnsignedLongValue":9007199254740991,
               "PositiveValue":1, "CogsDateValue":{"DateTime":"2024-02-29T12:34:56.789Z"},
               "LangValue":{"@language":"fr","@value":"Très bon"}
             },
@@ -389,13 +394,13 @@ public class PythonRuntimeContractTests
         assert container.top_level_references[1] not in container.items
         assert isinstance(a.flexible_value, c.ValueChild)
         assert type(a.exact_value) is c.ValueBase
-        assert a.decimal_value.lexical == "12345678901234567890.0012300"
-        assert a.long_value == 9007199254740993
-        assert a.unsigned_long_value == 18446744073709551615
+        assert a.decimal_value == Decimal("12345.0012300")
+        assert a.long_value == 9007199254740991
+        assert a.unsigned_long_value == 9007199254740991
 
         json_wire = container.to_json()
-        assert '"DecimalValue":12345678901234567890.0012300' in json_wire
-        assert '"LongValue":9007199254740993' in json_wire
+        assert '"DecimalValue":12345.0012300' in json_wire
+        assert '"LongValue":9007199254740991' in json_wire
         assert '"FlexibleValue":{"$type":"ValueChild"' in json_wire
         assert '"ExactValue":{"Label"' in json_wire
         assert '"YearMonthValue":{"Year":-1,"Month":2,"Timezone":"Z"}' in json_wire
@@ -475,7 +480,7 @@ public class PythonRuntimeContractTests
         assert xml_again.items[0].peer is xml_again.items[1]
         assert xml_again.items[1].peer is xml_again.items[0]
         assert isinstance(xml_again.items[0].flexible_value, c.ValueChild)
-        assert xml_again.items[0].decimal_value.lexical == "12345678901234567890.0012300"
+        assert xml_again.items[0].decimal_value == Decimal("12345.0012300")
         assert xml_again.items[0].year_month_value.lexical == "-0001-02Z"
         assert xml_again.items[0].year_value.lexical == "12024+05:30"
         direct_item_xml = c.BaseItem.from_xml(a.to_xml())
@@ -486,10 +491,10 @@ public class PythonRuntimeContractTests
         xml_lexical = c.ItemContainer.from_xml(
             f'<ItemContainer xmlns="{NS}"><DerivedItem><ID>x</ID><AgencyID>a</AgencyID>'
             '<DecimalValue> +001.2300 </DecimalValue><DurationValue> PT.5S </DurationValue>'
-            '<TimeValue> 24:00:00.000Z </TimeValue></DerivedItem></ItemContainer>')
-        assert xml_lexical.items[0].decimal_value.lexical == "1.2300"
-        assert xml_lexical.items[0].duration_value.lexical == "PT.5S"
-        assert xml_lexical.items[0].time_value.lexical == "24:00:00.000Z"
+            '<TimeValue> 24:00:00.000 </TimeValue></DerivedItem></ItemContainer>')
+        assert xml_lexical.items[0].decimal_value == Decimal("1.2300")
+        assert xml_lexical.items[0].duration_value == timedelta(milliseconds=500)
+        assert xml_lexical.items[0].time_value == time(0)
 
         alternate_prefix = xml_wire.replace(
             f'xmlns:test="{NS}"', f'xmlns:alt="{NS}"').replace(

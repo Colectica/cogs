@@ -1,4 +1,5 @@
 using Cogs.DataAnnotations;
+using Cogs.Common;
 using Cogs.SimpleTypes;
 using System;
 using System.Collections;
@@ -208,14 +209,14 @@ namespace __CogsGeneratedNamespace
                     "int" => ReadInt32(element),
                     "long" => ReadInt64(element),
                     "unsignedLong" => ReadUInt64(element),
-                    "nonPositiveInteger" or "negativeInteger" or "nonNegativeInteger" or "positiveInteger" => ReadBigInteger(element, dataType),
+                    "nonPositiveInteger" or "negativeInteger" or "nonNegativeInteger" or "positiveInteger" => CogsScalarValues.Integer(RequireNumber(element, dataType), dataType),
                     "float" => ReadFiniteSingle(element),
                     "double" => ReadFiniteDouble(element),
-                    "decimal" => new CogsDecimal(RequireNumber(element, dataType)),
-                    "dateTime" => new CogsDateTime(RequireString(element, dataType)),
-                    "date" => new CogsDateOnly(RequireString(element, dataType)),
-                    "time" => new CogsTime(RequireString(element, dataType)),
-                    "duration" => new CogsDuration(RequireString(element, dataType)),
+                    "decimal" => CogsScalarValues.Decimal(RequireNumber(element, dataType)),
+                    "dateTime" => CogsScalarValues.DateTime(RequireString(element, dataType)),
+                    "date" => CogsScalarValues.Date(RequireString(element, dataType)),
+                    "time" => CogsScalarValues.Time(RequireString(element, dataType)),
+                    "duration" => CogsScalarValues.Duration(RequireString(element, dataType)),
                     "gYear" => ReadGYear(element),
                     "gYearMonth" => ReadGYearMonth(element),
                     "gMonthDay" => ReadGMonthDay(element),
@@ -235,25 +236,28 @@ namespace __CogsGeneratedNamespace
 
         internal static object ReadXml(string lexical, string dataType, Type targetType, XAttribute? languageAttribute = null)
         {
+            if (dataType is "gYear" or "gYearMonth" or "gMonthDay" or "gDay" or "gMonth" or "cogsDate")
+            {
+                lexical = lexical.Trim(' ', '\t', '\r', '\n');
+            }
             try
             {
                 return dataType switch
                 {
-                    "string" => lexical,
+                    "string" => CogsScalarValues.Text(lexical),
                     "language" => XsdLanguage(lexical),
                     "anyURI" => ReadUriLexical(lexical),
                     "boolean" => XmlConvert.ToBoolean(lexical),
-                    "int" => XmlConvert.ToInt32(lexical),
-                    "long" => XmlConvert.ToInt64(lexical),
-                    "unsignedLong" => XmlConvert.ToUInt64(lexical),
-                    "nonPositiveInteger" or "negativeInteger" or "nonNegativeInteger" or "positiveInteger" => ReadBigIntegerLexical(lexical, dataType),
+                    "int" => (int)CogsScalarValues.Integer(CogsScalarValues.XmlNumeric(lexical, dataType), dataType),
+                    "unsignedLong" => (ulong)CogsScalarValues.Integer(CogsScalarValues.XmlNumeric(lexical, dataType), dataType),
+                    "long" or "nonPositiveInteger" or "negativeInteger" or "nonNegativeInteger" or "positiveInteger" => CogsScalarValues.Integer(CogsScalarValues.XmlNumeric(lexical, dataType), dataType),
                     "float" => Finite(XmlConvert.ToSingle(lexical)),
                     "double" => Finite(XmlConvert.ToDouble(lexical)),
-                    "decimal" => new CogsDecimal(lexical),
-                    "dateTime" => new CogsDateTime(lexical),
-                    "date" => new CogsDateOnly(lexical),
-                    "time" => new CogsTime(lexical),
-                    "duration" => new CogsDuration(lexical),
+                    "decimal" => CogsScalarValues.Decimal(CogsScalarValues.XmlNumeric(lexical, dataType)),
+                    "dateTime" => CogsScalarValues.DateTime(lexical.Trim()),
+                    "date" => CogsScalarValues.Date(lexical.Trim()),
+                    "time" => CogsScalarValues.Time(lexical.Trim()),
+                    "duration" => CogsScalarValues.Duration(lexical.Trim()),
                     "gYear" => new GYear(lexical),
                     "gYearMonth" => new GYearMonth(lexical),
                     "gMonthDay" => new GMonthDay(lexical),
@@ -275,20 +279,28 @@ namespace __CogsGeneratedNamespace
         {
             switch (dataType)
             {
-                case "string": writer.WriteStringValue((string)value); return;
+                case "string":
+                    writer.WriteStringValue(CogsScalarValues.Text((string)value));
+                    return;
                 case "language": writer.WriteStringValue(XsdLanguage((string)value)); return;
-                case "anyURI": writer.WriteStringValue(ValidateUri((Uri)value)); return;
+                case "anyURI":
+                    writer.WriteStringValue(ValidateUri((string)value));
+                    return;
                 case "boolean": writer.WriteBooleanValue((bool)value); return;
                 case "int": writer.WriteNumberValue((int)value); return;
-                case "long": writer.WriteNumberValue((long)value); return;
-                case "unsignedLong": writer.WriteNumberValue((ulong)value); return;
+                case "long":
+                case "unsignedLong":
                 case "nonPositiveInteger": case "negativeInteger": case "nonNegativeInteger": case "positiveInteger":
-                    writer.WriteRawValue(((BigInteger)value).ToString(CultureInfo.InvariantCulture), skipInputValidation: false); return;
+                    writer.WriteNumberValue(CogsScalarValues.Integer(Convert.ToString(value, CultureInfo.InvariantCulture)!, dataType));
+                    return;
                 case "float": writer.WriteNumberValue(Finite((float)value)); return;
                 case "double": writer.WriteNumberValue(Finite((double)value)); return;
-                case "decimal": writer.WriteRawValue(((CogsDecimal)value).LexicalValue, skipInputValidation: false); return;
+                case "decimal":
+                    writer.WriteRawValue(CogsScalarValues.DecimalText((decimal)value), skipInputValidation: false);
+                    return;
                 case "dateTime": case "date": case "time": case "duration":
-                    writer.WriteStringValue(((IXsdLexicalValue)value).LexicalValue); return;
+                    writer.WriteStringValue(WriteXml(value, dataType));
+                    return;
                 case "gYear": WriteGYear(writer, (GYear)value); return;
                 case "gYearMonth": WriteGYearMonth(writer, (GYearMonth)value); return;
                 case "gMonthDay": WriteGMonthDay(writer, (GMonthDay)value); return;
@@ -304,17 +316,20 @@ namespace __CogsGeneratedNamespace
 
         internal static string WriteXml(object value, string dataType) => dataType switch
         {
+            "string" => CogsScalarValues.Text((string)value),
             "language" => XsdLanguage((string)value),
-            "anyURI" => ValidateUri((Uri)value),
+            "anyURI" => ValidateUri((string)value),
             "boolean" => XmlConvert.ToString((bool)value),
             "int" => XmlConvert.ToString((int)value),
-            "long" => XmlConvert.ToString((long)value),
-            "unsignedLong" => XmlConvert.ToString((ulong)value),
             "float" => XmlConvert.ToString(Finite((float)value)),
             "double" => XmlConvert.ToString(Finite((double)value)),
-            "nonPositiveInteger" or "negativeInteger" or "nonNegativeInteger" or "positiveInteger" => ((BigInteger)value).ToString(CultureInfo.InvariantCulture),
-            "decimal" => ((CogsDecimal)value).LexicalValue,
-            "dateTime" or "date" or "time" or "duration" or "gYear" or "gYearMonth" or "gMonthDay" or "gDay" or "gMonth" => ((IXsdLexicalValue)value).LexicalValue,
+            "long" or "unsignedLong" or "nonPositiveInteger" or "negativeInteger" or "nonNegativeInteger" or "positiveInteger" => CogsScalarValues.Integer(Convert.ToString(value, CultureInfo.InvariantCulture)!, dataType).ToString(CultureInfo.InvariantCulture),
+            "decimal" => CogsScalarValues.DecimalText((decimal)value),
+            "dateTime" => CogsScalarValues.DateTimeText((DateTimeOffset)value),
+            "date" => ((DateOnly)value).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            "time" => CogsScalarValues.TimeText((TimeOnly)value),
+            "duration" => CogsScalarValues.DurationText((TimeSpan)value),
+            "gYear" or "gYearMonth" or "gMonthDay" or "gDay" or "gMonth" => ((IXsdLexicalValue)value).LexicalValue,
             "cogsDate" => ((CogsDate)value).ToString() ?? throw new XmlException("cogsDate has no selected value."),
             "langString" => ((LangString)value).Value,
             _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty,
@@ -350,7 +365,7 @@ namespace __CogsGeneratedNamespace
         };
 
         private static string RequireString(JsonElement element, string type) =>
-            element.ValueKind == JsonValueKind.String ? element.GetString()! : throw Expected(type);
+            element.ValueKind == JsonValueKind.String ? CogsScalarValues.Text(element.GetString()!) : throw Expected(type);
         private static string RequireNumber(JsonElement element, string type) =>
             element.ValueKind == JsonValueKind.Number ? element.GetRawText() : throw Expected(type);
         private static JsonException Expected(string type) => new($"Expected a valid JSON value for COGS type '{type}'.");
@@ -360,16 +375,17 @@ namespace __CogsGeneratedNamespace
             _ = new LangString(value, string.Empty);
             return value;
         }
-        private static Uri ReadUri(JsonElement element) => ReadUriLexical(RequireString(element, "anyURI"));
-        private static Uri ReadUriLexical(string lexical)
+        private static string ReadUri(JsonElement element) => ReadUriLexical(RequireString(element, "anyURI"));
+        private static string ReadUriLexical(string lexical)
         {
-            if (!XsdLexical.IsUriReference(lexical)) throw new FormatException($"'{lexical}' is not an RFC 3986 URI reference.");
-            return new Uri(lexical, UriKind.RelativeOrAbsolute);
+            return ValidateUri(lexical);
         }
-        private static string ValidateUri(Uri value)
+        private static string ValidateUri(string lexical)
         {
-            string lexical = value.OriginalString;
-            if (!XsdLexical.IsUriReference(lexical)) throw new FormatException($"'{lexical}' is not an RFC 3986 URI reference.");
+            if (!CogsUriReference.IsValid(lexical))
+            {
+                throw new FormatException($"'{lexical}' is not an RFC 3986 URI reference.");
+            }
             return lexical;
         }
         private static BigInteger ReadCanonicalJsonInteger(JsonElement element, string dataType)
@@ -381,18 +397,17 @@ namespace __CogsGeneratedNamespace
         }
         private static int ReadInt32(JsonElement element)
         {
-            BigInteger value = ReadCanonicalJsonInteger(element, "int");
+            long value = CogsScalarValues.Integer(RequireNumber(element, "int"), "int");
             return value >= int.MinValue && value <= int.MaxValue ? (int)value : throw Expected("int");
         }
         private static long ReadInt64(JsonElement element)
         {
-            BigInteger value = ReadCanonicalJsonInteger(element, "long");
+            long value = CogsScalarValues.Integer(RequireNumber(element, "long"), "long");
             return value >= long.MinValue && value <= long.MaxValue ? (long)value : throw Expected("long");
         }
         private static ulong ReadUInt64(JsonElement element)
         {
-            BigInteger value = ReadCanonicalJsonInteger(element, "unsignedLong");
-            return value >= ulong.MinValue && value <= ulong.MaxValue ? (ulong)value : throw Expected("unsignedLong");
+            return (ulong)CogsScalarValues.Integer(RequireNumber(element, "unsignedLong"), "unsignedLong");
         }
         private static BigInteger ReadBigInteger(JsonElement element, string dataType)
         {
@@ -423,10 +438,13 @@ namespace __CogsGeneratedNamespace
         }
         private static System.Text.RegularExpressions.Regex RegexInteger() =>
             new(@"^[+-]?[0-9]+$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
-        private static float ReadFiniteSingle(JsonElement element) => element.ValueKind == JsonValueKind.Number ? Finite(element.GetSingle()) : throw Expected("float");
+        private static float ReadFiniteSingle(JsonElement element)
+        {
+            return element.ValueKind == JsonValueKind.Number ? CogsScalarValues.JsonFloat(element.GetRawText()) : throw Expected("float");
+        }
         private static double ReadFiniteDouble(JsonElement element) => element.ValueKind == JsonValueKind.Number ? Finite(element.GetDouble()) : throw Expected("double");
-        private static float Finite(float value) => float.IsFinite(value) ? value : throw new FormatException("Non-finite floating point value.");
-        private static double Finite(double value) => double.IsFinite(value) ? value : throw new FormatException("Non-finite floating point value.");
+        private static float Finite(float value) => float.IsFinite(value) ? value == 0 ? 0 : value : throw new FormatException("Non-finite floating point value.");
+        private static double Finite(double value) => double.IsFinite(value) ? value == 0 ? 0 : value : throw new FormatException("Non-finite floating point value.");
 
         private static LangString ReadLangString(JsonElement element)
         {
@@ -503,11 +521,11 @@ namespace __CogsGeneratedNamespace
             JsonProperty field = fields[0];
             return field.Name switch
             {
-                "DateTime" => new CogsDate(new CogsDateTime(RequireString(field.Value, "dateTime"))),
-                "Date" => new CogsDate(new CogsDateOnly(RequireString(field.Value, "date"))),
+                "DateTime" => new CogsDate(CogsScalarValues.DateTime(RequireString(field.Value, "dateTime"))),
+                "Date" => new CogsDate(CogsScalarValues.Date(RequireString(field.Value, "date"))),
                 "GYearMonth" => new CogsDate(ReadGYearMonth(field.Value)),
                 "GYear" => new CogsDate(ReadGYear(field.Value)),
-                "Duration" => new CogsDate(new CogsDuration(RequireString(field.Value, "duration"))),
+                "Duration" => new CogsDate(CogsScalarValues.Duration(RequireString(field.Value, "duration"))),
                 _ => throw new JsonException($"Unknown cogsDate arm '{field.Name}'."),
             };
         }
@@ -516,9 +534,9 @@ namespace __CogsGeneratedNamespace
         {
             Func<CogsDate>[] parsers =
             {
-                () => new CogsDate(new CogsDateTime(lexical)), () => new CogsDate(new CogsDateOnly(lexical)),
+                () => new CogsDate(CogsScalarValues.DateTime(lexical)), () => new CogsDate(CogsScalarValues.Date(lexical)),
                 () => new CogsDate(new GYearMonth(lexical)), () => new CogsDate(new GYear(lexical)),
-                () => new CogsDate(new CogsDuration(lexical)),
+                () => new CogsDate(CogsScalarValues.Duration(lexical)),
             };
             foreach (Func<CogsDate> parser in parsers)
                 try { return parser(); } catch (FormatException) { }
@@ -874,12 +892,22 @@ namespace __CogsGeneratedNamespace
                 var names = new HashSet<string>(StringComparer.Ordinal);
                 foreach (JsonProperty property in element.EnumerateObject())
                 {
+                    CogsScalarValues.Text(property.Name);
                     if (!names.Add(property.Name)) throw new JsonException($"Duplicate JSON field '{property.Name}'.");
                     EnsureNoDuplicates(property.Value);
                 }
             }
             else if (element.ValueKind == JsonValueKind.Array)
-                foreach (JsonElement child in element.EnumerateArray()) EnsureNoDuplicates(child);
+            {
+                foreach (JsonElement child in element.EnumerateArray())
+                {
+                    EnsureNoDuplicates(child);
+                }
+            }
+            else if (element.ValueKind == JsonValueKind.String)
+            {
+                CogsScalarValues.Text(element.GetString()!);
+            }
         }
 
         private static void EnsureAllowedFields(JsonElement element, params string[] allowed)
@@ -928,6 +956,7 @@ namespace __CogsGeneratedNamespace
         public string ToJson(bool indented = false) => JsonSerializer.Serialize(this, CreateJsonOptions(indented));
         public static ItemContainer FromJson(string json)
         {
+            _ = new UTF8Encoding(false, true).GetByteCount(json);
             using JsonDocument document = JsonDocument.Parse(json, new JsonDocumentOptions { AllowDuplicateProperties = false, CommentHandling = JsonCommentHandling.Disallow });
             return CogsJsonCodec.Read(document.RootElement);
         }
@@ -952,7 +981,21 @@ namespace __CogsGeneratedNamespace
             using var writer = new StreamWriter(stream, new UTF8Encoding(false), leaveOpen: true); await writer.WriteAsync(ToJson(indented).AsMemory(), cancellationToken); await writer.FlushAsync(cancellationToken);
         }
         public XDocument MakeXml() => CogsXmlCodec.Write(this);
-        public string ToXml(bool indented = false) => MakeXml().ToString(indented ? SaveOptions.None : SaveOptions.DisableFormatting);
+        public string ToXml(bool indented = false)
+        {
+            StringBuilder output = new StringBuilder();
+            XmlWriterSettings settings = new XmlWriterSettings
+            {
+                Indent = indented,
+                OmitXmlDeclaration = true,
+                NewLineHandling = NewLineHandling.Entitize
+            };
+            using (XmlWriter writer = XmlWriter.Create(output, settings))
+            {
+                MakeXml().WriteTo(writer);
+            }
+            return output.ToString();
+        }
         public static ItemContainer FromXml(string xml) => CogsXmlCodec.Read(ParseXml(xml));
         public static ItemContainer LoadXml(string path)
         {

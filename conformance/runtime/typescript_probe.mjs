@@ -32,17 +32,16 @@ function check(container) {
     ["record.one", "scope/one", "primary", "one"], "Compound identity values changed.");
   assert.equal(special.title, "Conformance record 1");
   assert.equal(special.status, "draft");
-  assert.equal(special.count, 999999999999999999n);
-  assert.equal(special.ratio.value, "123.4500");
-  assert.equal(special.created.value, "2024-02-29T23:59:59.123456789+05:30");
-  assert.equal(special.elapsed.value, "P1Y2M3DT4H5M6.789S");
-  assert.deepEqual(special.elapsedHistory.map(value => value.value),
-    ["PT0.001S", "-P1DT0.5S", "P1Y2M"]);
+  assert.equal(special.count, 9007199254740991);
+  assert.equal(special.ratio, 123.45);
+  assert.equal(special.created.toISOString(), "2024-02-29T18:29:59.123Z");
+  assert.equal(special.elapsed, 273906789);
+  assert.deepEqual(special.elapsedHistory,
+    [1, -86400500, 34560000000]);
   assert.equal(special.languageTag, "en-Latn-US");
   assert.equal(special.link, "../relative?x=1#fragment");
   assert.deepEqual(special.label.map(value => [value.language, value.value]), [["en", "Example"], ["fr", "Exemple"]]);
-  assert.equal(special.when.kind, "Date");
-  assert.equal(special.when.value.value, "2024-02-29Z");
+  assert.deepEqual(special.when, {Date: "2024-02-29"});
   assert.ok(special.choice instanceof c.TextValue);
   assert.equal(special.choice.content, "substituted text");
   assert.equal(special.parts[0].name, "root");
@@ -51,24 +50,24 @@ function check(container) {
 
   const d = special.details;
   assert.equal(d.booleanValue, true);
-  assert.equal(d.decimalValue.value, "12345678901234567890.1234500");
+  assert.equal(d.decimalValue, 12345.12345);
   assert.equal(d.floatValue, 125);
   assert.equal(d.doubleValue, -0.0025);
-  assert.equal(d.dateTimeValue.value, "2147483647-12-31T23:59:59Z");
-  assert.equal(d.timeValue.value, "24:00:00Z");
-  assert.equal(d.dateValue.value, "-2147483648-01-01-06:00");
+  assert.equal(d.dateTimeValue.toISOString(), "9999-12-31T23:59:59.000Z");
+  assert.equal(d.timeValue, "00:00:00");
+  assert.equal(d.dateValue, "0001-01-01");
   assert.equal(d.gYearMonthValue.toXml(), "2147483647-02Z");
   assert.equal(d.gYearValue.toXml(), "-2147483648+05:30");
   assert.equal(d.gMonthDayValue.toXml(), "--02-29Z");
   assert.equal(d.gDayValue.toXml(), "---31-06:00");
   assert.equal(d.gMonthValue.toXml(), "--12--Z");
-  assert.equal(d.nonPositiveIntegerValue, -123456789012345678901234567890n);
-  assert.equal(d.negativeIntegerValue, -123456789012345678901234567890n);
-  assert.equal(d.longValue, -9223372036854775808n);
+  assert.equal(d.nonPositiveIntegerValue, -9007199254740991);
+  assert.equal(d.negativeIntegerValue, -9007199254740991);
+  assert.equal(d.longValue, -9007199254740991);
   assert.equal(d.intValue, -2147483648);
-  assert.equal(d.nonNegativeIntegerValue, 123456789012345678901234567890n);
-  assert.equal(d.unsignedLongValue, 18446744073709551615n);
-  assert.equal(d.positiveIntegerValue, 123456789012345678901234567890n);
+  assert.equal(d.nonNegativeIntegerValue, 9007199254740991);
+  assert.equal(d.unsignedLongValue, 9007199254740991);
+  assert.equal(d.positiveIntegerValue, 9007199254740991);
   assert.deepEqual(d.hugeFiniteCollection, ["first", "second"]);
 }
 
@@ -101,12 +100,17 @@ function checkNegatives(source) {
     { Year: 2_147_483_648 }), "a calendar year above Int32");
   rejects(() => c.GMonthDay.fromObject(
     { Month: 2, Day: 30 }), "an invalid Gregorian month/day");
-  assert.equal(new c.CogsTime("24:00:00.000Z").value, "24:00:00.000Z");
-  rejects(() => new c.CogsTime("24:00:00.001Z"), "a nonzero end-of-day time fraction");
-  assert.equal(new c.CogsDateTime(
-    "2024-02-29T24:00:00.000Z").value, "2024-02-29T24:00:00.000Z");
-  rejects(() => new c.CogsDateTime(
-    "2024-02-29T24:00:00.001Z"), "a nonzero end-of-day dateTime fraction");
+  const native = c.ItemContainer.fromObject(JSON.parse(JSON.stringify(source)));
+  check(native);
+  for (const [field, value] of [
+    ["LongValue", 9007199254740992], ["DateTimeValue", "2024-01-01T00:00:00"],
+    ["TimeValue", "12:00:00Z"], ["DurationValue", "P1M"],
+  ]) {
+    const invalid = document();
+    if (field === "DurationValue") invalid.items[0].Elapsed = value;
+    else invalid.items[0].Details[field] = value;
+    rejects(() => c.ItemContainer.fromObject(invalid), "out-of-domain " + field);
+  }
 
   rejects(() => c.ItemContainer.fromObject({
     items: [{ $type: "Entity", ID: "abstract", Scope: "scope", Partition: "p", Segment: "s" }],

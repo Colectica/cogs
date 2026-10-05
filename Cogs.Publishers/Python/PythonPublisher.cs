@@ -33,8 +33,8 @@ public sealed class PythonPublisher
 
     private static readonly HashSet<string> RuntimeTypeNames = new(StringComparer.Ordinal)
     {
-        "Any", "ClassVar", "CogsDate", "CogsDateOnly", "CogsDateTime", "CogsDecimal",
-        "CogsDuration", "CogsItem", "CogsTime", "CogsValue", "Decimal", "ET", "GDay",
+        "Any", "ClassVar", "CogsDate", "date", "datetime", "Decimal",
+        "timedelta", "CogsItem", "time", "CogsValue", "Decimal", "ET", "GDay",
         "GMonth", "GMonthDay", "GYear", "GYearMonth", "IDENTIFICATION_FIELDS", "IO",
         "ITEM_TYPE_REGISTRY", "IdentityKey", "InvalidOperation", "ItemContainer", "LangString",
         "Mapping", "NAMESPACE_PREFIX", "Path", "TARGET_NAMESPACE", "TYPE_REGISTRY",
@@ -228,6 +228,7 @@ public sealed class PythonPublisher
         using var reader = new StreamReader(stream);
         string runtime = reader.ReadToEnd()
             .Replace("__TARGET_NAMESPACE__", Quote(targetNamespace), StringComparison.Ordinal)
+            .Replace("__URI_REFERENCE_PATTERN__", Quote(CogsUriReference.Pattern), StringComparison.Ordinal)
             .Replace("__NAMESPACE_PREFIX__", Quote(namespacePrefix), StringComparison.Ordinal)
             .Replace("__IDENTIFICATION_FIELDS__", GetIdentificationTuple(), StringComparison.Ordinal)
             .Replace("__FLAVOR_IMPORTS__", Flavor == PythonFlavor.Pydantic ? """
@@ -303,8 +304,8 @@ public sealed class PythonPublisher
         builder.AppendLine("__all__ = [");
         foreach (string name in new[]
         {
-            "CogsDate", "CogsDateOnly", "CogsDateTime", "CogsDecimal", "CogsDuration",
-            "CogsItem", "CogsTime", "CogsValue", "GDay", "GMonth", "GMonthDay",
+            "CogsDate", "date", "datetime", "Decimal", "timedelta",
+            "CogsItem", "time", "CogsValue", "GDay", "GMonth", "GMonthDay",
             "GYear", "GYearMonth", "ItemContainer", "LangString",
         }.Concat(GetOrderedTypes().Select(x => x.Name)).Distinct().OrderBy(x => x, StringComparer.Ordinal))
         {
@@ -389,12 +390,12 @@ public sealed class PythonPublisher
         return dataType.Name.ToLowerInvariant() switch
         {
             "boolean" => "bool",
-            "decimal" => "CogsDecimal",
+            "decimal" => "Decimal",
             "float" or "double" => "float",
-            "datetime" => "CogsDateTime",
-            "date" => "CogsDateOnly",
-            "time" => "CogsTime",
-            "duration" => "CogsDuration",
+            "datetime" => "_dt.datetime",
+            "date" => "_dt.date",
+            "time" => "_dt.time",
+            "duration" => "_dt.timedelta",
             "gyearmonth" => "GYearMonth",
             "gyear" => "GYear",
             "gmonthday" => "GMonthDay",

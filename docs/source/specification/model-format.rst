@@ -260,127 +260,184 @@ so it has the same substring behavior as JSON Schema.
 Primitive value spaces
 ----------------------
 
-The table below defines the shared COGS 2 domain. XML uses the corresponding
-XML Schema lexical form; JSON uses the stated representation. Runtimes may use
-native or helper types, but cannot narrow the value space or lose precision.
+COGS 2 uses the following native interchange profile. JSON kinds and XML
+element structures are unchanged. Implementations MUST reject out-of-domain
+values rather than round an exact decimal or truncate temporal precision.
+Numeric instance limits do not restrict modeled cardinalities.
+
+Let S = 9007199254740991 (JavaScript's maximum safe integer), and
+D = 922337203685477 milliseconds (the shared whole-millisecond duration limit).
 
 .. list-table::
    :header-rows: 1
-   :widths: 27 31 42
+   :widths: 25 28 47
 
    * - COGS datatype
-     - JSON
-     - COGS 2 value space
+     - JSON representation
+     - Value space
    * - ``boolean``
      - boolean
      - true or false
    * - ``string``
      - string
-     - Unicode string
+     - XML 1.0 Unicode characters
    * - ``language``
      - string
-     - BCP 47 language-tag syntax, without registry lookup
+     - BCP 47 syntax; no registry lookup
    * - ``anyURI``
      - string
-     - RFC 3986 absolute or relative URI reference
+     - RFC 3986 absolute or relative URI reference; no normalization
    * - ``int``
      - integer number
-     - -2^31 through 2^31-1
+     - -2147483648 through 2147483647
    * - ``long``
      - integer number
-     - -2^63 through 2^63-1
+     - -S through S
    * - ``unsignedLong``
      - integer number
-     - 0 through 2^64-1
+     - 0 through S
    * - ``nonNegativeInteger``
      - integer number
-     - unbounded, value >= 0
+     - 0 through S
    * - ``nonPositiveInteger``
      - integer number
-     - unbounded, value <= 0
+     - -S through 0
    * - ``negativeInteger``
      - integer number
-     - unbounded, value < 0
+     - -S through -1
    * - ``positiveInteger``
      - integer number
-     - unbounded, value > 0
+     - 1 through S
    * - ``decimal``
      - number
-     - exact arbitrary-precision decimal; no exponent
+     - Exact System.Decimal values stable under native JavaScript JSON interchange
    * - ``float``
      - number
-     - finite IEEE-754 binary32
+     - Finite IEEE-754 binary32, round to nearest with ties to even
    * - ``double``
      - number
-     - finite IEEE-754 binary64
+     - Finite IEEE-754 binary64, round to nearest with ties to even
    * - ``dateTime``
-     - string, ``format: date-time``
-     - XSD dateTime space with a nonzero signed 32-bit year
+     - string; ``date-time`` annotation
+     - Timezone-required instant; UTC years 0001–9999; whole milliseconds
    * - ``date``
-     - string, ``format: date``
-     - XSD date space with a nonzero signed 32-bit year
+     - string; ``date`` annotation
+     - Local date in years 0001–9999; no timezone
    * - ``time``
-     - string, ``format: time``
-     - full XSD time space
+     - string; ``time`` annotation
+     - Local time without timezone; whole microseconds
    * - ``gYearMonth``
      - ``Year``/``Month``/optional ``Timezone`` object
-     - XSD gYearMonth space with a nonzero signed 32-bit year
+     - XSD partial date; nonzero signed 32-bit year
    * - ``gYear``
      - ``Year``/optional ``Timezone`` object
-     - XSD gYear space with a nonzero signed 32-bit year
+     - XSD partial date; nonzero signed 32-bit year
    * - ``gMonthDay``
      - ``Month``/``Day``/optional ``Timezone`` object
-     - full XSD gMonthDay space
+     - XSD partial date
    * - ``gDay``
      - ``Day``/optional ``Timezone`` object
-     - full XSD gDay space
+     - XSD day
    * - ``gMonth``
      - ``Month``/optional ``Timezone`` object
-     - full XSD gMonth space
+     - XSD month
    * - ``duration``
-     - string, ``format: duration``
-     - full XSD duration space
+     - string; ``duration`` annotation
+     - Elapsed duration, -D through D whole milliseconds; no years/months
    * - ``cogsDate``
-     - tagged structured object
-     - exactly one supported arm
+     - exactly-one-arm object
+     - ``DateTime``, ``Date``, ``GYearMonth``, ``GYear``, or ``Duration``
    * - ``langString``
-     - language/value object
-     - language plus string value
+     - ``{"@language": ..., "@value": ...}``
+     - BCP 47 language tag plus XML-compatible text
 
-``float`` and ``double`` exclude NaN and infinities because JSON has no
-corresponding numbers. Decimal and all integer families serialize as JSON
-numbers, not strings, even when a generated language needs a lossless wrapper.
+Text MUST satisfy the XML 1.0 Char production. Unpaired surrogates, forbidden
+control characters, U+FFFE and U+FFFF are invalid in either format. Lengths
+count Unicode scalar values: one supplementary character has length one.
+Writers MUST entitize carriage returns in XML text to preserve strings and
+identification values across XML line-ending normalization.
 
-``dateTime`` and ``date`` use the XML Schema lexical and value spaces with one
-COGS restriction: the calendar year is a nonzero signed 32-bit integer
-(``-2147483648`` through ``2147483647``). ``gYearMonth`` and ``gYear`` use the
-same year restriction. A timezone is optional wherever XML Schema permits it;
-a present offset is limited to plus or minus 14:00.
+Numeric values
+~~~~~~~~~~~~~~
 
-JSON represents the five Gregorian ``g*`` values as closed component objects
-with exact PascalCase names. ``Year`` is an integer, ``Month`` and ``Day`` are
-range checked, and ``Timezone`` is an optional string. XML and RDF use the
-corresponding XSD lexical value. Component conversion pads years to at least
-four digits and months and days to two digits while preserving the timezone
-lexeme.
+Integer-valued JSON numbers such as ``1.0`` and ``1e2`` are accepted when their
+exact mathematical value satisfies the declared domain. XML uses XSD lexical
+grammar, including ``+001`` and surrounding XML whitespace. Integer writers
+check both sign and range, including directly constructed values.
 
-JSON Schema labels ``duration``, ``dateTime``, ``time``, and ``date`` with the
-standard Draft 2020-12 ``format`` annotations. Those annotations use RFC 3339
-domains and are not assertions in the generated schema because those domains
-are not identical to the full XSD lexical spaces. COGS primitive validation is
-authoritative. ``duration`` retains the complete XSD duration space, including
-negative values, fractional seconds, and year/month components.
+A decimal is accepted only if its exact mathematical decimal value can be
+represented as a signed 96-bit coefficient with scale 0–28 (System.Decimal)
+and is unchanged by parsing as a JavaScript number and writing it with ordinary
+``JSON.stringify``. Trailing zeros and JSON exponent notation do not change
+that value. For example ``0.1``, ``1e-28`` and ``12345.1234500`` are accepted;
+``0.10000000000000001`` and ``1e-29`` are rejected. XML decimal syntax has no
+exponent; ``+001.2500``, ``.5`` and ``1.`` remain valid. This is an interchange
+domain, not a promise of decimal arithmetic in JavaScript. Range, significant
+digits and scale alone do not establish eligibility. A writer MUST validate
+arithmetic results and MUST NOT silently round a decimal into this domain.
 
-``cogsDate`` contains exactly one existing PascalCase arm: ``DateTime``,
-``Date``, ``GYearMonth``, ``GYear``, or ``Duration``. ``langString`` is
-``{"@language": ..., "@value": ...}`` in JSON and text with required
-``xml:lang`` in XML.
+Float and double use their respective IEEE value spaces, rather than treating
+both as binary64. Conversion preserves subnormals, rounds ties to even, permits
+underflow to zero, and rejects overflow to infinity. NaN and infinities are
+invalid. All floating zeros canonicalize to positive zero. Enumeration and
+bounds compare converted binary values; values that round to the same binary32
+value compare equal. A JSON float token MUST produce that same binary32 value
+after an ordinary binary64 JavaScript parse. Rare decimal tokens whose
+double rounding would change that value are rejected; a stable spelling of
+every finite binary32 value remains available. XML retains XSD's direct
+binary32 conversion. Writers produce stable JSON spellings.
 
-Facet applicability follows the primitive domain. Length and pattern apply to
-``string``, ``anyURI``, ``language``, and the content of ``langString``.
-Enumeration applies to scalar builtin values; on ``langString`` it constrains
-the content value rather than the language tag. Bounds apply to numeric,
-temporal, and duration values, but not ``cogsDate``. Temporal and duration
-bounds use the partial-order rule above. A validator MUST reject an
-inapplicable or contradictory facet rather than letting individual publishers
-choose different interpretations.
+Temporal values
+~~~~~~~~~~~~~~~
+
+A dateTime requires a timezone; input offsets are limited to plus or minus
+14:00. Writers normalize the instant to UTC with a ``Z`` suffix. The local
+lexical year and resulting UTC year must both be in 0001–9999. Fractional
+seconds have at most three significant fractional places; additional trailing
+zeros are permitted. ``24:00:00`` denotes the following midnight if the
+resulting UTC instant remains in range.
+
+Dates have no timezone. Local times have at most six significant fractional
+places and no timezone. Time ``24:00:00`` canonicalizes to ``00:00:00``.
+Durations contain only days, hours, minutes and seconds, with optional leading
+minus. Years/months are rejected even when zero. Fractions must represent whole
+milliseconds. Equivalent elapsed forms such as ``P1D`` and ``PT24H`` compare
+equal. Serialization may decompose elapsed time differently without changing
+its value; a submillisecond native value is rejected.
+
+Partial Gregorian values retain their information instead of inventing a full
+date. Years remain nonzero signed 32-bit integers (-2147483648 through
+2147483647); optional timezone offsets retain their lexical form. JSON uses
+closed PascalCase component objects, while XML/RDF use XSD text. These are
+meaningful structured types, not replacements for native scalar types.
+``cogsDate`` retains exactly one existing arm and applies the corresponding
+profile. ``langString`` remains text with required ``xml:lang`` in XML.
+
+Schema enforcement
+~~~~~~~~~~~~~~~~~~
+
+Standard JSON ``format`` entries remain annotations. Their domains are not
+identical to COGS (for example negative durations, local times, ``24:00:00``
+and relative URI references). Format assertion cannot replace COGS validation.
+
+Schemas enforce structure, cardinality and representable facets. Temporal and
+floating-point enumeration and bounds use value comparisons; JSON Schema
+cannot express these with a finite lexical ``enum`` or exact binary32 bound.
+They remain in ``x-cogs-enumeration`` and ``x-cogs-*`` bound metadata and are
+enforced by ``validate-instance``. The same command adds decimal interchange,
+native temporal precision, URI grammar, Unicode and duplicate-definition checks
+to both schema authorities. Raw schema acceptance alone is insufficient.
+
+Length/pattern apply to string, anyURI, language and langString content.
+Enumeration applies to scalar builtins; langString enumeration constrains its
+content. Bounds apply to numeric and temporal values, not cogsDate. Native
+instants, dates, times and elapsed durations have total value ordering; partial
+Gregorian comparisons retain XSD's partial-order rule. A validator MUST reject
+inapplicable or contradictory facets.
+
+Portable patterns use scalar characters, substring matching, and dot excluding
+CR, LF, U+2028 and U+2029. Nested classes, class subtraction and lazy quantifiers
+are outside the subset. The authoritative validator compensates for .NET
+processors that count UTF-16 code units in lengths or patterns.
+
+See :doc:`/technical-guide/generation/native-types` for API mappings and migration.

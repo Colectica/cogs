@@ -72,15 +72,8 @@ dotnet "%COGS%" %*
 exit /b %ERRORLEVEL%
 
 :npm_install
-pushd "generated\typescript" || exit /b 1
-if defined COGS_NPM (
-    call "%COGS_NPM%" install --ignore-scripts --no-package-lock
-) else (
-    call npm install --ignore-scripts --no-package-lock
-)
-set "NPM_RESULT=%ERRORLEVEL%"
-popd
-exit /b %NPM_RESULT%
+pwsh -NoProfile -File "%ROOT%conformance\scripts\Install-TypeScriptDependencies.ps1" -Package "%GENERATED%\typescript"
+exit /b %ERRORLEVEL%
 
 :fail
 set "RESULT=%ERRORLEVEL%"

@@ -5,6 +5,12 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
+if (args.Length == 3 && args[0] == "scalars")
+{
+    NativeScalarProbe.Run(args[1], args[2]);
+    return 0;
+}
+
 if (args.Length != 4 || args[0] is not ("json" or "xml"))
 {
     Console.Error.WriteLine("Usage: ConformanceRuntimeProbe <json|xml> <input> <output-json> <output-xml>");
@@ -72,40 +78,40 @@ static void Check(ItemContainer container)
     Require(container.IsDefined(special) && container.IsDefined(first) && container.IsDefined(second), "Definitions are not tracked.");
     Require(!container.IsDefined(external), "External placeholder is marked as fully defined.");
 
-    Require(special.ID == "record.one" && special.Scope.OriginalString == "scope/one", "Compound identity values changed.");
+    Require(special.ID == "record.one" && special.Scope == "scope/one", "Compound identity values changed.");
     Require(special.Partition == "primary" && special.Segment == "one", "Compound identity strings changed.");
     Require(special.Title == "Conformance record 1" && special.Status == "draft", "Inherited scalar values changed.");
-    Require(special.Count == BigInteger.Parse("999999999999999999"), "Arbitrary item integer changed.");
-    Require(special.Ratio?.LexicalValue == "123.4500", "Item decimal lexical value changed.");
-    Require(special.Created?.LexicalValue == "2024-02-29T23:59:59.123456789+05:30", "dateTime lexical value changed.");
-    Require(special.Elapsed?.LexicalValue == "P1Y2M3DT4H5M6.789S", "Duration lexical value changed.");
-    Require(special.ElapsedHistory.Select(value => value.LexicalValue).SequenceEqual(
-        ["PT0.001S", "-P1DT0.5S", "P1Y2M"]), "Repeated duration lexical values changed.");
-    Require(special.LanguageTag == "en-Latn-US" && special.Link?.OriginalString == "../relative?x=1#fragment", "Language or URI changed.");
+    Require(special.Count == 9007199254740991L, "Arbitrary item integer changed.");
+    Require(special.Ratio == 123.45m, "Item decimal lexical value changed.");
+    Require(special.Created == DateTimeOffset.Parse("2024-02-29T18:29:59.123Z"), "dateTime lexical value changed.");
+    Require(special.Elapsed == TimeSpan.FromMilliseconds(273906789), "Duration lexical value changed.");
+    Require(special.ElapsedHistory.SequenceEqual(
+        [TimeSpan.FromMilliseconds(1), TimeSpan.FromMilliseconds(-86400500), TimeSpan.FromDays(400)]), "Repeated duration lexical values changed.");
+    Require(special.LanguageTag == "en-Latn-US" && special.Link == "../relative?x=1#fragment", "Language or URI changed.");
     Require(special.Label.Count == 2 && special.Label[0].Equals(new LangString("en", "Example")) && special.Label[1].Equals(new LangString("fr", "Exemple")), "Language strings changed.");
-    Require(special.When?.Date?.LexicalValue == "2024-02-29Z", "cogsDate arm or lexical value changed.");
+    Require(special.When?.Date == new DateOnly(2024, 2, 29), "cogsDate arm or lexical value changed.");
     Require(special.Choice is TextValue { Content: "substituted text" }, "Composite substitution type/value changed.");
     Require(special.Parts is [{ Name: "root", Children: [{ Name: "child" }] }], "Recursive ordered composite changed.");
     Require(special.Note == "descendant property value is preserved", "Descendant property changed.");
 
     Details details = special.Details ?? throw new InvalidOperationException("Details were lost.");
     Require(details.BooleanValue is true, "Boolean changed.");
-    Require(details.DecimalValue?.LexicalValue == "12345678901234567890.1234500", "Exact decimal changed.");
+    Require(details.DecimalValue == 12345.12345m, "Exact decimal changed.");
     Require(details.FloatValue == 125f && details.DoubleValue == -0.0025d, "Floating-point values changed.");
-    Require(details.DateTimeValue?.LexicalValue == "2147483647-12-31T23:59:59Z", "Details dateTime changed.");
-    Require(details.TimeValue?.LexicalValue == "24:00:00Z", "XSD midnight time changed.");
-    Require(details.DateValue?.LexicalValue == "-2147483648-01-01-06:00", "XSD date changed.");
+    Require(details.DateTimeValue == DateTimeOffset.Parse("9999-12-31T23:59:59Z"), "Details dateTime changed.");
+    Require(details.TimeValue == TimeOnly.MinValue, "XSD midnight time changed.");
+    Require(details.DateValue == DateOnly.MinValue, "XSD date changed.");
     Require(details.GYearMonthValue?.LexicalValue == "2147483647-02Z", "gYearMonth changed.");
     Require(details.GYearValue?.LexicalValue == "-2147483648+05:30", "gYear changed.");
     Require(details.GMonthDayValue?.LexicalValue == "--02-29Z", "gMonthDay changed.");
     Require(details.GDayValue?.LexicalValue == "---31-06:00", "gDay changed.");
     Require(details.GMonthValue?.LexicalValue == "--12--Z", "gMonth changed.");
-    Require(details.NonPositiveIntegerValue == BigInteger.Parse("-123456789012345678901234567890"), "nonPositiveInteger changed.");
-    Require(details.NegativeIntegerValue == BigInteger.Parse("-123456789012345678901234567890"), "negativeInteger changed.");
-    Require(details.LongValue == long.MinValue && details.IntValue == int.MinValue, "Fixed signed integer changed.");
-    Require(details.NonNegativeIntegerValue == BigInteger.Parse("123456789012345678901234567890"), "nonNegativeInteger changed.");
-    Require(details.UnsignedLongValue == ulong.MaxValue, "unsignedLong changed.");
-    Require(details.PositiveIntegerValue == BigInteger.Parse("123456789012345678901234567890"), "positiveInteger changed.");
+    Require(details.NonPositiveIntegerValue == -9007199254740991L, "nonPositiveInteger changed.");
+    Require(details.NegativeIntegerValue == -9007199254740991L, "negativeInteger changed.");
+    Require(details.LongValue == -9007199254740991L && details.IntValue == int.MinValue, "Fixed signed integer changed.");
+    Require(details.NonNegativeIntegerValue == 9007199254740991L, "nonNegativeInteger changed.");
+    Require(details.UnsignedLongValue == 9007199254740991UL, "unsignedLong changed.");
+    Require(details.PositiveIntegerValue == 9007199254740991L, "positiveInteger changed.");
     Require(details.HugeFiniteCollection.SequenceEqual(["first", "second"]), "Huge-cardinality ordered values changed.");
 }
 

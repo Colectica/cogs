@@ -878,8 +878,8 @@ namespace Cogs.Validation
             {
                 foreach (var value in enumeration.Where(value => CogsPrimitiveLexical.IsValid(property.DataType, value)))
                 {
-                    if (property.MinLength.HasValue && value.Length < property.MinLength.Value ||
-                        property.MaxLength.HasValue && value.Length > property.MaxLength.Value ||
+                    if (property.MinLength.HasValue && CogsScalarValues.TextLength(value) < property.MinLength.Value ||
+                        property.MaxLength.HasValue && CogsScalarValues.TextLength(value) > property.MaxLength.Value ||
                         !string.IsNullOrWhiteSpace(property.Pattern) && !SafePatternMatches(value, property.Pattern) ||
                         !EnumerationSatisfiesBounds(property, value))
                     {
@@ -903,7 +903,7 @@ namespace Cogs.Validation
         {
             try
             {
-                return Regex.IsMatch(value, pattern, RegexOptions.CultureInvariant);
+                return CogsPortablePattern.IsMatch(value, pattern);
             }
             catch (ArgumentException)
             {

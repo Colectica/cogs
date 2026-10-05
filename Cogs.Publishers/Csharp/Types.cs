@@ -1,3 +1,4 @@
+using Cogs.Common;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -102,57 +103,13 @@ namespace Cogs.SimpleTypes
     {
         internal const string TimeZone = @"(?:Z|[+-](?:(?:0[0-9]|1[0-3]):[0-5][0-9]|14:00))";
         internal const string Year = @"-?(?:[0-9]{4}|[1-9][0-9]{4,})";
-        internal static readonly Regex Date = new(
-            $@"^(?<year>{Year})-(?<month>0[1-9]|1[0-2])-(?<day>0[1-9]|[12][0-9]|3[01])(?<tz>{TimeZone})?$",
-            RegexOptions.CultureInvariant);
-        internal static readonly Regex Time = new(
-            $@"^(?:(?<hour>[01][0-9]|2[0-3]):(?<minute>[0-5][0-9]):(?<second>[0-5][0-9])(?<fraction>\.[0-9]+)?|24:00:00(?:\.0+)?)(?<tz>{TimeZone})?$",
-            RegexOptions.CultureInvariant);
-        internal static readonly Regex DateTime = new(
-            $@"^(?<date>{Year}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01]))T(?<time>(?:(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\.[0-9]+)?|24:00:00(?:\.0+)?))(?<tz>{TimeZone})?$",
-            RegexOptions.CultureInvariant);
-        internal static readonly Regex Duration = new(
-            @"^-?P(?=[0-9]|T(?:[0-9]|\.[0-9]))(?:[0-9]+Y)?(?:[0-9]+M)?(?:[0-9]+D)?(?:T(?=[0-9]|\.[0-9])(?:[0-9]+H)?(?:[0-9]+M)?(?:(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)S)?)?$",
-            RegexOptions.CultureInvariant);
-        internal static readonly Regex Decimal = new(
-            @"^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$",
-            RegexOptions.CultureInvariant);
         internal static readonly Regex Language = new(
-            @"^(?:(?:(?:[A-Za-z]{2,3}(?:-[A-Za-z]{3}){0,3}|[A-Za-z]{4}|[A-Za-z]{5,8})(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|[0-9]{3}))?(?:-(?:[A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3}))*(?:-[0-9A-WY-Za-wy-z](?:-[A-Za-z0-9]{2,8})+)*(?:-x(?:-[A-Za-z0-9]{1,8})+)?)|(?:x(?:-[A-Za-z0-9]{1,8})+)|(?:en-GB-oed|i-ami|i-bnn|i-default|i-enochian|i-hak|i-klingon|i-lux|i-mingo|i-navajo|i-pwn|i-tao|i-tay|i-tsu|sgn-BE-FR|sgn-BE-NL|sgn-CH-DE|art-lojban|cel-gaulish|no-bok|no-nyn|zh-guoyu|zh-hakka|zh-min|zh-min-nan|zh-xiang))$",
+            @"^(?:(?:(?:[A-Za-z]{2,3}(?:-[A-Za-z]{3}){0,3}|[A-Za-z]{4}|[A-Za-z]{5,8})(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|[0-9]{3}))?(?:-(?:[A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3}))*(?:-[0-9A-WY-Za-wy-z](?:-[A-Za-z0-9]{2,8})+)*(?:-x(?:-[A-Za-z0-9]{1,8})+)?)|(?:x(?:-[A-Za-z0-9]{1,8})+)|(?:en-GB-oed|i-ami|i-bnn|i-default|i-enochian|i-hak|i-klingon|i-lux|i-mingo|i-navajo|i-pwn|i-tao|i-tay|i-tsu|sgn-BE-FR|sgn-BE-NL|sgn-CH-DE|art-lojban|cel-gaulish|no-bok|no-nyn|zh-guoyu|zh-hakka|zh-min|zh-min-nan|zh-xiang))\z",
             RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
-        internal static readonly Regex UriReferenceCharacters = new(
-            @"^(?:[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=-]|%[0-9A-Fa-f]{2})*$",
-            RegexOptions.CultureInvariant);
-
-        internal static bool IsDate(string value)
-        {
-            Match match = Date.Match(value);
-            return match.Success && IsCalendarDate(match.Groups["year"].Value,
-                int.Parse(match.Groups["month"].Value, CultureInfo.InvariantCulture),
-                int.Parse(match.Groups["day"].Value, CultureInfo.InvariantCulture));
-        }
-
-        internal static bool IsDateTime(string value)
-        {
-            Match match = DateTime.Match(value);
-            if (!match.Success)
-            {
-                return false;
-            }
-
-            string date = match.Groups["date"].Value;
-            int secondDash = date.LastIndexOf('-');
-            int firstDash = date.LastIndexOf('-', secondDash - 1);
-            return IsCalendarDate(
-                date[..firstDash],
-                int.Parse(date[(firstDash + 1)..secondDash], CultureInfo.InvariantCulture),
-                int.Parse(date[(secondDash + 1)..], CultureInfo.InvariantCulture));
-        }
-
         internal static bool IsYear(string value)
         {
             string year = RemoveTimeZone(value);
-            return Regex.IsMatch(year, $@"^{Year}$", RegexOptions.CultureInvariant)
+            return Regex.IsMatch(year, $@"^{Year}\z", RegexOptions.CultureInvariant)
                 && int.TryParse(year, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out int parsed)
                 && parsed != 0;
         }
@@ -190,11 +147,11 @@ namespace Cogs.SimpleTypes
             {
                 return string.Empty;
             }
-            if (timezone == "Z" || Regex.IsMatch(timezone, $@"^{TimeZone}$", RegexOptions.CultureInvariant))
+            if (timezone == "Z" || Regex.IsMatch(timezone, $@"^{TimeZone}\z", RegexOptions.CultureInvariant))
             {
                 return timezone;
             }
-            if (Regex.IsMatch(timezone, @"^(?:0[0-9]|1[0-3]):[0-5][0-9]$", RegexOptions.CultureInvariant))
+            if (Regex.IsMatch(timezone, @"^(?:0[0-9]|1[0-3]):[0-5][0-9]\z", RegexOptions.CultureInvariant))
             {
                 return "+" + timezone;
             }
@@ -203,147 +160,16 @@ namespace Cogs.SimpleTypes
 
         internal static string RemoveTimeZone(string value)
         {
-            Match match = Regex.Match(value, $@"(?<tz>{TimeZone})$", RegexOptions.CultureInvariant);
+            Match match = Regex.Match(value, $@"(?<tz>{TimeZone})\z", RegexOptions.CultureInvariant);
             return match.Success ? value[..match.Index] : value;
         }
 
         internal static string? GetTimeZone(string value)
         {
-            Match match = Regex.Match(value, $@"(?<tz>{TimeZone})$", RegexOptions.CultureInvariant);
+            Match match = Regex.Match(value, $@"(?<tz>{TimeZone})\z", RegexOptions.CultureInvariant);
             return match.Success ? match.Value : null;
         }
 
-        internal static bool IsUriReference(string value)
-        {
-            if (!UriReferenceCharacters.IsMatch(value)) return false;
-            int fragment = value.IndexOf('#');
-            if (fragment >= 0 && value.IndexOf('#', fragment + 1) >= 0) return false;
-
-            int firstDelimiter = value.Length;
-            foreach (char delimiter in new[] { '/', '?', '#' })
-            {
-                int index = value.IndexOf(delimiter);
-                if (index >= 0 && index < firstDelimiter) firstDelimiter = index;
-            }
-            int colon = value.IndexOf(':');
-            if (colon >= 0 && colon < firstDelimiter &&
-                !Regex.IsMatch(value[..colon], @"^[A-Za-z][A-Za-z0-9+.-]*$", RegexOptions.CultureInvariant))
-                return false;
-
-            int openBrackets = 0;
-            int closeBrackets = 0;
-            foreach (char character in value)
-            {
-                if (character == '[') openBrackets++;
-                else if (character == ']') closeBrackets++;
-            }
-            return openBrackets == closeBrackets;
-        }
-    }
-
-    public sealed class CogsDecimal : IEquatable<CogsDecimal>
-    {
-        public CogsDecimal(string lexicalValue)
-        {
-            if (!XsdLexical.Decimal.IsMatch(lexicalValue))
-            {
-                throw new FormatException($"'{lexicalValue}' is not an exact JSON/XSD decimal lexical value.");
-            }
-            LexicalValue = lexicalValue;
-        }
-
-        public CogsDecimal(decimal value) : this(value.ToString(CultureInfo.InvariantCulture)) { }
-        public string LexicalValue { get; }
-        public override string ToString() => LexicalValue;
-        public bool Equals(CogsDecimal? other) => other?.LexicalValue == LexicalValue;
-        public override bool Equals(object? obj) => Equals(obj as CogsDecimal);
-        public override int GetHashCode() => LexicalValue.GetHashCode(StringComparison.Ordinal);
-        public bool TryGetDecimal(out decimal value)
-        {
-            if (!decimal.TryParse(LexicalValue, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint,
-                    CultureInfo.InvariantCulture, out value)) return false;
-            return Normalize(LexicalValue) == Normalize(value.ToString(CultureInfo.InvariantCulture));
-        }
-        public static implicit operator CogsDecimal(decimal value) => new(value);
-        public static explicit operator decimal(CogsDecimal value) => value.TryGetDecimal(out decimal result)
-            ? result
-            : throw new OverflowException($"'{value.LexicalValue}' cannot be represented exactly as System.Decimal.");
-
-        private static string Normalize(string lexical)
-        {
-            bool negative = lexical.StartsWith("-", StringComparison.Ordinal);
-            string unsigned = negative ? lexical[1..] : lexical;
-            string[] parts = unsigned.Split('.', 2);
-            string integer = parts[0].TrimStart('0');
-            if (integer.Length == 0) integer = "0";
-            string fraction = parts.Length == 2 ? parts[1].TrimEnd('0') : string.Empty;
-            string normalized = fraction.Length == 0 ? integer : integer + "." + fraction;
-            return negative && normalized != "0" ? "-" + normalized : normalized;
-        }
-    }
-
-    public sealed class CogsDateTime : XsdLexicalValue
-    {
-        public CogsDateTime(string value) : base(value) { }
-        public CogsDateTime(DateTimeOffset value) : this(value.ToString("yyyy-MM-dd'T'HH:mm:ss.FFFFFFFK", CultureInfo.InvariantCulture)) { }
-        protected override bool IsValid(string value) => XsdLexical.IsDateTime(value);
-        public bool TryGetDateTimeOffset(out DateTimeOffset value)
-        {
-            if (XsdLexical.GetTimeZone(LexicalValue) is null) { value = default; return false; }
-            return DateTimeOffset.TryParseExact(
-                LexicalValue, new[] { "yyyy-MM-dd'T'HH:mm:ssK", "yyyy-MM-dd'T'HH:mm:ss.FFFFFFFK" },
-                CultureInfo.InvariantCulture, DateTimeStyles.None, out value);
-        }
-        public static implicit operator CogsDateTime(DateTimeOffset value) => new(value);
-    }
-
-    public sealed class CogsDateOnly : XsdLexicalValue
-    {
-        public CogsDateOnly(string value) : base(value) { }
-        public CogsDateOnly(DateOnly value) : this(value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)) { }
-        protected override bool IsValid(string value) => XsdLexical.IsDate(value);
-        public bool TryGetDateOnly(out DateOnly value)
-        {
-            if (XsdLexical.GetTimeZone(LexicalValue) is not null) { value = default; return false; }
-            return DateOnly.TryParseExact(LexicalValue, "yyyy-MM-dd", CultureInfo.InvariantCulture,
-                DateTimeStyles.None, out value);
-        }
-        public static implicit operator CogsDateOnly(DateOnly value) => new(value);
-    }
-
-    public sealed class CogsTime : XsdLexicalValue
-    {
-        public CogsTime(string value) : base(value) { }
-        public CogsTime(TimeOnly value) : this(value.ToString("HH:mm:ss.FFFFFFF", CultureInfo.InvariantCulture)) { }
-        protected override bool IsValid(string value) => XsdLexical.Time.IsMatch(value);
-        public bool TryGetTimeOnly(out TimeOnly value)
-        {
-            if (XsdLexical.GetTimeZone(LexicalValue) is not null) { value = default; return false; }
-            return TimeOnly.TryParseExact(LexicalValue, new[] { "HH:mm:ss", "HH:mm:ss.FFFFFFF" },
-                CultureInfo.InvariantCulture, DateTimeStyles.None, out value);
-        }
-        public static implicit operator CogsTime(TimeOnly value) => new(value);
-    }
-
-    public sealed class CogsDuration : XsdLexicalValue
-    {
-        public CogsDuration(string value) : base(value) { }
-        public CogsDuration(TimeSpan value) : this(System.Xml.XmlConvert.ToString(value)) { }
-        protected override bool IsValid(string value) => XsdLexical.Duration.IsMatch(value);
-        public bool TryGetTimeSpan(out TimeSpan value)
-        {
-            try
-            {
-                value = System.Xml.XmlConvert.ToTimeSpan(LexicalValue);
-                return !Regex.IsMatch(LexicalValue, @"^-?P(?:[0-9]+Y|[0-9]+M)", RegexOptions.CultureInvariant);
-            }
-            catch (FormatException)
-            {
-                value = default;
-                return false;
-            }
-        }
-        public static implicit operator CogsDuration(TimeSpan value) => new(value);
     }
 
     public sealed class GYear : XsdLexicalValue
@@ -363,7 +189,7 @@ namespace Cogs.SimpleTypes
 
     public sealed class GYearMonth : XsdLexicalValue
     {
-        private static readonly Regex Pattern = new($@"^(?<year>{XsdLexical.Year})-(?<month>0[1-9]|1[0-2])(?:{XsdLexical.TimeZone})?$", RegexOptions.CultureInvariant);
+        private static readonly Regex Pattern = new($@"^(?<year>{XsdLexical.Year})-(?<month>0[1-9]|1[0-2])(?:{XsdLexical.TimeZone})?\z", RegexOptions.CultureInvariant);
         public GYearMonth(string value) : base(value) { }
         public GYearMonth(int year, int month, string? timezone = null) : this($"{GYear.FormatYear(year)}-{month:00}" + XsdLexical.NormalizeTimeZone(timezone)) { }
         protected override bool IsValid(string value)
@@ -384,7 +210,7 @@ namespace Cogs.SimpleTypes
 
     public sealed class GMonthDay : XsdLexicalValue
     {
-        private static readonly Regex Pattern = new($@"^--(?<month>0[1-9]|1[0-2])-(?<day>0[1-9]|[12][0-9]|3[01])(?:{XsdLexical.TimeZone})?$", RegexOptions.CultureInvariant);
+        private static readonly Regex Pattern = new($@"^--(?<month>0[1-9]|1[0-2])-(?<day>0[1-9]|[12][0-9]|3[01])(?:{XsdLexical.TimeZone})?\z", RegexOptions.CultureInvariant);
         public GMonthDay(string value) : base(value) { }
         public GMonthDay(int month, int day, string? timezone = null) : this($"--{month:00}-{day:00}" + XsdLexical.NormalizeTimeZone(timezone)) { }
         protected override bool IsValid(string value)
@@ -399,7 +225,7 @@ namespace Cogs.SimpleTypes
 
     public sealed class GDay : XsdLexicalValue
     {
-        private static readonly Regex Pattern = new($@"^---(?<day>0[1-9]|[12][0-9]|3[01])(?:{XsdLexical.TimeZone})?$", RegexOptions.CultureInvariant);
+        private static readonly Regex Pattern = new($@"^---(?<day>0[1-9]|[12][0-9]|3[01])(?:{XsdLexical.TimeZone})?\z", RegexOptions.CultureInvariant);
         public GDay(string value) : base(value) { }
         public GDay(int day, string? timezone = null) : this($"---{day:00}" + XsdLexical.NormalizeTimeZone(timezone)) { }
         protected override bool IsValid(string value) => Pattern.IsMatch(value);
@@ -409,7 +235,7 @@ namespace Cogs.SimpleTypes
 
     public sealed class GMonth : XsdLexicalValue
     {
-        private static readonly Regex Pattern = new($@"^--(?<month>0[1-9]|1[0-2])--(?:{XsdLexical.TimeZone})?$", RegexOptions.CultureInvariant);
+        private static readonly Regex Pattern = new($@"^--(?<month>0[1-9]|1[0-2])--(?:{XsdLexical.TimeZone})?\z", RegexOptions.CultureInvariant);
         public GMonth(string value) : base(value) { }
         public GMonth(int month, string? timezone = null) : this($"--{month:00}--" + XsdLexical.NormalizeTimeZone(timezone)) { }
         protected override bool IsValid(string value) => Pattern.IsMatch(value);
@@ -426,7 +252,7 @@ namespace Cogs.SimpleTypes
                 throw new FormatException($"'{languageTag}' is not a syntactically valid BCP 47 language tag.");
             }
             LanguageTag = languageTag;
-            Value = value ?? throw new ArgumentNullException(nameof(value));
+            Value = CogsScalarValues.Text(value);
         }
 
         public string Value { get; }
@@ -452,20 +278,17 @@ namespace Cogs.SimpleTypes
         private object? value;
         public CogsDateType UsedType { get; private set; }
         public CogsDate() { }
-        public CogsDate(CogsDateTime item) => DateTime = item;
-        public CogsDate(DateTimeOffset item) => DateTime = new CogsDateTime(item);
-        public CogsDate(CogsDateOnly item) => Date = item;
-        public CogsDate(DateOnly item) => Date = new CogsDateOnly(item);
+        public CogsDate(DateTimeOffset item) => DateTime = item;
+        public CogsDate(DateOnly item) => Date = item;
         public CogsDate(GYearMonth item) => GYearMonth = item;
         public CogsDate(GYear item) => GYear = item;
-        public CogsDate(CogsDuration item) => Duration = item;
-        public CogsDate(TimeSpan item) => Duration = new CogsDuration(item);
+        public CogsDate(TimeSpan item) => Duration = item;
 
-        public CogsDateTime? DateTime { get => UsedType == CogsDateType.DateTime ? (CogsDateTime?)value : null; set => Set(CogsDateType.DateTime, value); }
-        public CogsDateOnly? Date { get => UsedType == CogsDateType.Date ? (CogsDateOnly?)value : null; set => Set(CogsDateType.Date, value); }
+        public DateTimeOffset? DateTime { get => UsedType == CogsDateType.DateTime ? (DateTimeOffset?)value : null; set => Set(CogsDateType.DateTime, value); }
+        public DateOnly? Date { get => UsedType == CogsDateType.Date ? (DateOnly?)value : null; set => Set(CogsDateType.Date, value); }
         public GYearMonth? GYearMonth { get => UsedType == CogsDateType.GYearMonth ? (GYearMonth?)value : null; set => Set(CogsDateType.GYearMonth, value); }
         public GYear? GYear { get => UsedType == CogsDateType.GYear ? (GYear?)value : null; set => Set(CogsDateType.GYear, value); }
-        public CogsDuration? Duration { get => UsedType == CogsDateType.Duration ? (CogsDuration?)value : null; set => Set(CogsDateType.Duration, value); }
+        public TimeSpan? Duration { get => UsedType == CogsDateType.Duration ? (TimeSpan?)value : null; set => Set(CogsDateType.Duration, value); }
 
         public string? GetUsedType() => UsedType switch
         {
@@ -477,15 +300,15 @@ namespace Cogs.SimpleTypes
             _ => null,
         };
 
-        public object? GetValue()
-        {
-            if (value is CogsDateTime dateTime && dateTime.TryGetDateTimeOffset(out DateTimeOffset dto)) return dto;
-            if (value is CogsDateOnly date && date.TryGetDateOnly(out DateOnly dateOnly)) return dateOnly;
-            if (value is CogsDuration duration && duration.TryGetTimeSpan(out TimeSpan span)) return span;
-            return value;
-        }
+        public object? GetValue() => value;
 
-        public override string? ToString() => value?.ToString();
+        public override string? ToString() => value switch
+        {
+            DateTimeOffset instant => CogsScalarValues.DateTimeText(instant),
+            DateOnly date => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            TimeSpan duration => CogsScalarValues.DurationText(duration),
+            _ => value?.ToString()
+        };
 
         private void Set(CogsDateType type, object? item)
         {

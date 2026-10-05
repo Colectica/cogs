@@ -104,7 +104,7 @@ namespace Cogs.Common
                 var current = pattern[index];
                 if (escaped)
                 {
-                    const string allowed = @".[](){}?*+|\\-^trn";
+                    const string allowed = @".[](){}?*+|\\-^$trn";
                     if (!allowed.Contains(current))
                     {
                         error = $"escape '\\{current}' is not in the portable pattern subset";
@@ -122,11 +122,21 @@ namespace Cogs.Common
 
                 if (current == '[')
                 {
+                    if (inClass)
+                    {
+                        error = "nested character classes and class subtraction are not portable";
+                        return false;
+                    }
                     inClass = true;
                     continue;
                 }
                 if (current == ']')
                 {
+                    if (!inClass)
+                    {
+                        error = "a literal closing bracket must be escaped";
+                        return false;
+                    }
                     inClass = false;
                     continue;
                 }
@@ -140,6 +150,11 @@ namespace Cogs.Common
                     error = "special groups and lookarounds are not in the portable pattern subset";
                     return false;
                 }
+                if (!inClass && current == '?' && index > 0 && pattern[index - 1] is '?' or '*' or '+' or '}' && !IsEscaped(pattern, index - 1))
+                {
+                    error = "lazy quantifiers are not in the portable pattern subset";
+                    return false;
+                }
             }
 
             if (escaped || inClass)
@@ -150,7 +165,7 @@ namespace Cogs.Common
 
             try
             {
-                _ = new Regex(pattern, RegexOptions.CultureInvariant);
+                _ = new Regex(CogsPortablePattern.ForDotNet(pattern), RegexOptions.CultureInvariant);
                 return true;
             }
             catch (ArgumentException exception)
@@ -158,6 +173,52 @@ namespace Cogs.Common
                 error = exception.Message;
                 return false;
             }
+        }
+
+        private static bool IsEscaped(string pattern, int index)
+        {
+            int backslashes = 0;
+            while (--index >= 0 && pattern[index] == '\\')
+            {
+                backslashes++;
+            }
+            return backslashes % 2 != 0;
+        }
+
+        public static string TranslatePortablePattern(string pattern, bool xsd = false)
+        {
+            System.Text.StringBuilder result = new System.Text.StringBuilder();
+            bool inClass = false;
+            for (int index = 0; index < pattern.Length; index++)
+            {
+                char current = pattern[index];
+                if (current == '\\' && index + 1 < pattern.Length)
+                {
+                    char escaped = pattern[++index];
+                    if (!xsd || escaped is not '$' and not '^')
+                    {
+                        result.Append('\\');
+                    }
+                    result.Append(escaped);
+                }
+                else if (current == '.' && !inClass)
+                {
+                    result.Append("[^\\r\\n\u2028\u2029]");
+                }
+                else
+                {
+                    result.Append(current);
+                    if (current == '[')
+                    {
+                        inClass = true;
+                    }
+                    else if (current == ']')
+                    {
+                        inClass = false;
+                    }
+                }
+            }
+            return result.ToString();
         }
 
         private static bool TryParseCanonicalNonNegativeInteger(string text, out BigInteger value)

@@ -73,15 +73,14 @@ property uses ``allOf`` to reference the one global ``Reference`` shape and
 restricts only its inherited ``$type`` enumeration when the property permits
 fewer than all concrete item types.
 
-The schema closes unknown content, encodes all model cardinalities and facets,
+The schema closes unknown content, encodes model cardinalities and representable facets,
 and uses the primitive value spaces in :doc:`/specification/model-format`.
 ``duration``, ``dateTime``, ``time``, and ``date`` are strings carrying the
 standard Draft 2020-12 ``duration``, ``date-time``, ``time``, and ``date``
 format annotations. ``anyURI`` is a string carrying the standard ``uri`` format
 annotation and has no generated regex pattern. The five Gregorian partial-date
 types are closed objects using the applicable PascalCase ``Year``, ``Month``,
-``Day``, and optional ``Timezone`` members. Arbitrary integers and decimals
-remain lossless JSON numbers. ``cogsDate`` requires exactly one existing
+``Day``, and optional ``Timezone`` members. Integers and decimals remain JSON numbers under the shared native profile. ``cogsDate`` requires exactly one existing
 PascalCase arm and uses the component objects for its Gregorian arms.
 
 Formatting
@@ -94,14 +93,13 @@ Custom instance validation
 
 Standard Draft 2020-12 treats ``format`` as an annotation by default. COGS
 does not enable the optional format-assertion vocabulary because the RFC
-format domains differ from the full XSD lexical domains: for example, XSD
-allows negative durations, timezone-bearing dates, optional dateTime
-timezones, and ``24:00:00``. COGS ``anyURI`` also accepts RFC 3986 relative URI
+format domains differ from COGS: for example, COGS permits negative durations,
+local times and end-of-day time spelling. COGS ``anyURI`` also accepts RFC 3986 relative URI
 references, while the standard ``uri`` format describes absolute URIs. COGS
-emits companion metadata for exact temporal and duration bounds. Use
+emits companion metadata for temporal and floating-point bounds and enumeration. Use
 :doc:`/technical-guide/command-line/validate-instance` when those extensions,
 the COGS primitive domains and nonzero signed-32-bit calendar-year rule,
-duplicate JSON member rejection, exact decimal lexical checks, and duplicate
+duplicate JSON member rejection, exact decimal interchange checks, and duplicate
 definition checks must be authoritative. Enabling format assertion in a
 third-party validator may reject valid COGS temporal values or relative
 ``anyURI`` references.

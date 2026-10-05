@@ -16,38 +16,38 @@
     <Segment>one</Segment>
     <Title>Conformance record 1</Title>
     <Status>draft</Status>
-    <Count>999999999999999999</Count>
+    <Count>9007199254740991</Count>
     <Ratio>123.4500</Ratio>
-    <Created>2024-02-29T23:59:59.123456789+05:30</Created>
-    <Elapsed>P1Y2M3DT4H5M6.789S</Elapsed>
+    <Created>2024-02-29T23:59:59.123+05:30</Created>
+    <Elapsed>P3DT4H5M6.789S</Elapsed>
     <ElapsedHistory>PT0.001S</ElapsedHistory>
     <ElapsedHistory>-P1DT0.5S</ElapsedHistory>
-    <ElapsedHistory>P1Y2M</ElapsedHistory>
+    <ElapsedHistory>P400D</ElapsedHistory>
     <LanguageTag>en-Latn-US</LanguageTag>
     <Link>../relative?x=1#fragment</Link>
     <Label xml:lang="en">Example</Label>
     <Label xml:lang="fr">Exemple</Label>
-    <When>2024-02-29Z</When>
+    <When>2024-02-29</When>
     <Details>
       <BooleanValue>true</BooleanValue>
-      <DecimalValue>12345678901234567890.1234500</DecimalValue>
+      <DecimalValue>12345.1234500</DecimalValue>
       <FloatValue>1.25e2</FloatValue>
       <DoubleValue>-2.5e-3</DoubleValue>
-      <DateTimeValue>2147483647-12-31T23:59:59Z</DateTimeValue>
-      <TimeValue>24:00:00Z</TimeValue>
-      <DateValue>-2147483648-01-01-06:00</DateValue>
+      <DateTimeValue>9999-12-31T23:59:59Z</DateTimeValue>
+      <TimeValue>24:00:00</TimeValue>
+      <DateValue>0001-01-01</DateValue>
       <GYearMonthValue>2147483647-02Z</GYearMonthValue>
       <GYearValue>-2147483648+05:30</GYearValue>
       <GMonthDayValue>--02-29Z</GMonthDayValue>
       <GDayValue>---31-06:00</GDayValue>
       <GMonthValue>--12--Z</GMonthValue>
-      <NonPositiveIntegerValue>-123456789012345678901234567890</NonPositiveIntegerValue>
-      <NegativeIntegerValue>-123456789012345678901234567890</NegativeIntegerValue>
-      <LongValue>-9223372036854775808</LongValue>
+      <NonPositiveIntegerValue>-9007199254740991</NonPositiveIntegerValue>
+      <NegativeIntegerValue>-9007199254740991</NegativeIntegerValue>
+      <LongValue>-9007199254740991</LongValue>
       <IntValue>-2147483648</IntValue>
-      <NonNegativeIntegerValue>123456789012345678901234567890</NonNegativeIntegerValue>
-      <UnsignedLongValue>18446744073709551615</UnsignedLongValue>
-      <PositiveIntegerValue>123456789012345678901234567890</PositiveIntegerValue>
+      <NonNegativeIntegerValue>9007199254740991</NonNegativeIntegerValue>
+      <UnsignedLongValue>9007199254740991</UnsignedLongValue>
+      <PositiveIntegerValue>9007199254740991</PositiveIntegerValue>
       <HugeFiniteCollection>first</HugeFiniteCollection>
       <HugeFiniteCollection>second</HugeFiniteCollection>
     </Details>

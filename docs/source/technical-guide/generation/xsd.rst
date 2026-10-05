@@ -17,11 +17,13 @@ The XSD expresses the same cardinalities, facets, abstract restrictions,
 property-local substitutions, and reference assignability as JSON Schema.
 Portable user patterns retain COGS substring-match semantics even though XSD
 regular expressions are implicitly whole-value expressions.
-Date/time/Gregorian and duration values use their full XML Schema lexical
-spaces. COGS additionally limits the year component of ``dateTime``, ``date``,
-``gYearMonth``, and ``gYear`` to a nonzero signed 32-bit integer. XSD 1.0
-cannot express that local component bound portably, so the schema documents
-the constraint and ``validate-instance`` plus generated runtimes enforce it.
+Date/time/Gregorian and duration values use XSD lexical grammar restricted to the
+native profiles in :doc:`native-types`. Named restrictions express safe integer
+ranges, finite floats and native temporal forms. COGS validation additionally
+enforces decimal interchange stability, exact precision and partial Gregorian
+Int32 years. Some .NET XSD checks use UTF-16 lengths/patterns or reject valid
+RFC URI references; authoritative validation corrects those processor
+limitations with independent scalar/value checks.
 
 Reference components
 ~~~~~~~~~~~~~~~~~~~~

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import io
+from datetime import datetime, date, time, timedelta, timezone
+from decimal import Decimal
 import copy
 import re
 import sys
@@ -34,27 +36,27 @@ def check(c: object, container: object) -> None:
     require((special.id, special.scope, special.partition, special.segment) ==
             ("record.one", "scope/one", "primary", "one"), "Compound identity values changed.")
     require(special.title == "Conformance record 1" and special.status == "draft", "Inherited scalars changed.")
-    require(special.count == 999_999_999_999_999_999, "Arbitrary item integer changed.")
-    require(isinstance(special.ratio, c.CogsDecimal) and special.ratio.lexical == "123.4500", "Item decimal changed.")
-    require(special.created.lexical == "2024-02-29T23:59:59.123456789+05:30", "dateTime changed.")
-    require(special.elapsed.lexical == "P1Y2M3DT4H5M6.789S", "Duration changed.")
-    require([value.lexical for value in special.elapsed_history] ==
-            ["PT0.001S", "-P1DT0.5S", "P1Y2M"], "Repeated durations changed.")
+    require(special.count == 9_007_199_254_740_991, "Arbitrary item integer changed.")
+    require(isinstance(special.ratio, Decimal) and special.ratio == Decimal("123.45"), "Item decimal changed.")
+    require(special.created == datetime(2024, 2, 29, 18, 29, 59, 123000, tzinfo=timezone.utc), "dateTime changed.")
+    require(special.elapsed == timedelta(milliseconds=273906789), "Duration changed.")
+    require(special.elapsed_history ==
+            [timedelta(milliseconds=1), timedelta(milliseconds=-86400500), timedelta(days=400)], "Repeated durations changed.")
     require(special.language_tag == "en-Latn-US" and special.link == "../relative?x=1#fragment", "Language or URI changed.")
     require(special.label == [c.LangString("en", "Example"), c.LangString("fr", "Exemple")], "Language strings changed.")
-    require(isinstance(special.when.value, c.CogsDateOnly) and special.when.value.lexical == "2024-02-29Z", "cogsDate changed.")
+    require(type(special.when.value) is date and special.when.value == date(2024, 2, 29), "cogsDate changed.")
     require(isinstance(special.choice, c.TextValue) and special.choice.content == "substituted text", "Substitution changed.")
     require(special.parts[0].name == "root" and special.parts[0].children[0].name == "child", "Recursion changed.")
     require(special.note == "descendant property value is preserved", "Descendant property changed.")
 
     d = special.details
     require(d.boolean_value is True, "Boolean changed.")
-    require(d.decimal_value.lexical == "12345678901234567890.1234500", "Exact decimal changed.")
+    require(d.decimal_value == Decimal("12345.12345"), "Exact decimal changed.")
     require(d.float_value == 125.0 and d.double_value == -0.0025, "Floating-point values changed.")
+    require(d.date_time_value == datetime(9999, 12, 31, 23, 59, 59, tzinfo=timezone.utc), "dateTime changed.")
+    require(d.time_value == time(0), "time changed.")
+    require(d.date_value == date(1, 1, 1), "date changed.")
     expected_lexical = {
-        "date_time_value": "2147483647-12-31T23:59:59Z",
-        "time_value": "24:00:00Z",
-        "date_value": "-2147483648-01-01-06:00",
         "g_year_month_value": "2147483647-02Z",
         "g_year_value": "-2147483648+05:30",
         "g_month_day_value": "--02-29Z",
@@ -63,12 +65,12 @@ def check(c: object, container: object) -> None:
     }
     for name, lexical in expected_lexical.items():
         require(getattr(d, name).lexical == lexical, f"{name} changed.")
-    require(d.non_positive_integer_value == -123456789012345678901234567890, "nonPositiveInteger changed.")
-    require(d.negative_integer_value == -123456789012345678901234567890, "negativeInteger changed.")
-    require(d.long_value == -9223372036854775808 and d.int_value == -2147483648, "Fixed signed integer changed.")
-    require(d.non_negative_integer_value == 123456789012345678901234567890, "nonNegativeInteger changed.")
-    require(d.unsigned_long_value == 18446744073709551615, "unsignedLong changed.")
-    require(d.positive_integer_value == 123456789012345678901234567890, "positiveInteger changed.")
+    require(d.non_positive_integer_value == -9007199254740991, "nonPositiveInteger changed.")
+    require(d.negative_integer_value == -9007199254740991, "negativeInteger changed.")
+    require(d.long_value == -9007199254740991 and d.int_value == -2147483648, "Fixed signed integer changed.")
+    require(d.non_negative_integer_value == 9007199254740991, "nonNegativeInteger changed.")
+    require(d.unsigned_long_value == 9007199254740991, "unsignedLong changed.")
+    require(d.positive_integer_value == 9007199254740991, "positiveInteger changed.")
     require(d.huge_finite_collection == ["first", "second"], "Huge-cardinality values changed.")
 
 

@@ -27,7 +27,7 @@
     {
       "id": "ordered-singleton",
       "description": "Ordered=true is used on a singleton property.",
-      "mutation": { "kind": "replaceText", "path": "ItemTypes/Record/Record.csv", "old": "Created,dateTime,0,1,Full XSD dateTime lexical value.,,", "new": "Created,dateTime,0,1,Full XSD dateTime lexical value.,true," },
+      "mutation": { "kind": "replaceText", "path": "ItemTypes/Record/Record.csv", "old": "Created,dateTime,0,1,UTC instant with millisecond precision.,,", "new": "Created,dateTime,0,1,UTC instant with millisecond precision.,true," },
       "expectedCode": "COGS-VAL-CARD-002"
     },
     {

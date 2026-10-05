@@ -166,3 +166,11 @@ property CSV that needs no cardinality or flag normalization remains
 byte-for-byte unchanged. The command aborts without writes when a semantic
 decision is required. It must not infer replacements for retired pseudo-types,
 identity semantics, portable regexes, or value-space changes.
+
+Native scalar API migration
+---------------------------
+
+The release uses a narrower native interchange profile than earlier 2.0
+prereleases. Follow :doc:`/technical-guide/generation/native-types` for the
+25-type matrix, limits, examples and validation procedure. JSON/XML shapes
+and identification spelling are preserved.

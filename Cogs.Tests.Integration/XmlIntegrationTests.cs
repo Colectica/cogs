@@ -55,7 +55,7 @@ namespace Cogs.Tests.Integration
                 GMonthDay = mDay
             };
 
-            List<CogsDecimal> heights = new List<CogsDecimal> { new(5m), new(5m) };
+            List<decimal> heights = new List<decimal> { 5m, 5m };
             GYearMonth GYM = new GYearMonth(2017, 06, "Z");
 
             Bread bread = new Bread
@@ -251,10 +251,10 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                Durations = new List<CogsDuration>()
+                Durations = new List<TimeSpan>()
                 {
-                    new CogsDuration(new TimeSpan(10000000)),
-                    new CogsDuration(new TimeSpan(0))
+                    new TimeSpan(10000000),
+                    new TimeSpan(0)
                 }
             };
             container.Items.Add(animal);
@@ -283,9 +283,9 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                Dates = new List<CogsDateOnly>()
+                Dates = new List<DateOnly>()
                 {
-                    new CogsDateOnly(new DateOnly(2017, 9, 2)),
+                    new DateOnly(2017, 9, 2),
                     //new DateTime(1,1,1),
                     //new DateTime(1562, 8, 23, 5, 12, 46)
                     new DateOnly(1562, 8, 23)
@@ -317,10 +317,10 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                DateTimes = new List<CogsDateTime>()
+                DateTimes = new List<DateTimeOffset>()
                 {
-                    new CogsDateTime(new DateTimeOffset(new DateTime(2017, 9, 2, 13, 23, 32), new TimeSpan(+1, 0, 0))),
-                    new CogsDateTime(new DateTimeOffset(1,1,1,0,0,0, new TimeSpan()))
+                    new DateTimeOffset(new DateTime(2017, 9, 2, 13, 23, 32), new TimeSpan(+1, 0, 0)),
+                    new DateTimeOffset(1,1,1,0,0,0, new TimeSpan())
                 }
             };
             container.Items.Add(animal);
@@ -349,10 +349,10 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                Times = new List<CogsTime>
+                Times = new List<TimeOnly>
                 {
-                    new CogsTime(new TimeOnly(2, 32, 32)),
-                    new CogsTime(new TimeOnly(4, 32, 3))
+                    new TimeOnly(2, 32, 32),
+                    new TimeOnly(4, 32, 3)
                 }
             };
             container.Items.Add(animal);
@@ -556,7 +556,7 @@ namespace Cogs.Tests.Integration
             Condiment condiment = new Condiment
             {
                 ID = Guid.NewGuid().ToString(),
-                AnyURI = new Uri("http://www.colectica.com/")
+                AnyURI = "http://www.colectica.com/"
             };
             container.Items.Add(condiment);
 
@@ -585,10 +585,10 @@ namespace Cogs.Tests.Integration
             Condiment condiment = new Condiment
             {
                 ID = Guid.NewGuid().ToString(),
-                Uris = new List<Uri>
+                Uris = new List<string>
                 {
-                    new Uri("http://www.colectica.com/"),
-                    new Uri("https://github.com/Colectica/cogs")
+                    "http://www.colectica.com/",
+                    "https://github.com/Colectica/cogs"
                 }
             };
             container.Items.Add(condiment);
@@ -703,7 +703,7 @@ namespace Cogs.Tests.Integration
             Animal animal = new Animal
             {
                 ID = Guid.NewGuid().ToString(),
-                CDate = new CogsDate(new TimeSpan(1562))
+                CDate = new CogsDate(TimeSpan.FromMilliseconds(1562))
             };
             container.Items.Add(animal);
 
@@ -719,7 +719,7 @@ namespace Cogs.Tests.Integration
                 ID = Guid.NewGuid().ToString(),
                 CDates = new List<CogsDate>
                 {
-                    new CogsDate(new TimeSpan(1562)),
+                    new CogsDate(TimeSpan.FromMilliseconds(1562)),
                     new CogsDate(new GYear(2017, "+01:00")),
                     new CogsDate(new DateTimeOffset(new DateTime(1996, 8, 23, 4, 37, 4),
                         new TimeSpan(+3, 0, 0))),

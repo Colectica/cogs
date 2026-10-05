@@ -27,17 +27,20 @@ public sealed class CSharpPublisherTests
         ("int", "int", "Int"),
         ("long", "long", "Long"),
         ("unsignedLong", "ulong", "UnsignedLong"),
-        ("nonPositiveInteger", "BigInteger", "NonPositiveInteger"),
-        ("negativeInteger", "BigInteger", "NegativeInteger"),
-        ("nonNegativeInteger", "BigInteger", "NonNegativeInteger"),
-        ("positiveInteger", "BigInteger", "PositiveInteger"),
+        ("nonPositiveInteger", "long", "NonPositiveInteger"),
+        ("negativeInteger", "long", "NegativeInteger"),
+        ("nonNegativeInteger", "long", "NonNegativeInteger"),
+        ("positiveInteger", "long", "PositiveInteger"),
+        ("decimal", "decimal", "Decimal"),
+        ("duration", "TimeSpan", "Duration"),
+        ("dateTime", "DateTimeOffset", "DateTime"),
+        ("date", "DateOnly", "Date"),
+        ("time", "TimeOnly", "Time"),
     };
 
     private static readonly (string CogsType, string Suffix)[] RdfReferencePrimitives =
     {
-        ("string", "String"), ("anyURI", "Uri"), ("decimal", "Decimal"),
-        ("duration", "Duration"), ("dateTime", "DateTime"), ("date", "Date"),
-        ("time", "Time"), ("gYear", "Year"), ("gYearMonth", "YearMonth"),
+        ("string", "String"), ("anyURI", "Uri"), ("gYear", "Year"), ("gYearMonth", "YearMonth"),
         ("gMonthDay", "MonthDay"), ("gDay", "Day"), ("gMonth", "Month"),
         ("langString", "LangString"), ("cogsDate", "CogsDate"),
     };
@@ -151,7 +154,7 @@ public sealed class CSharpPublisherTests
             Assert.Contains("attribute.Name == XName.Get(\"isReference\")", runtime);
             Assert.Contains("attribute.Value is not (\"true\" or \"1\")", runtime);
             Assert.Contains("ReadCanonicalJsonInteger", runtime);
-            Assert.Contains("IsUriReference", runtime);
+            Assert.Contains("CogsUriReference.IsValid", runtime);
             Assert.Contains("\"gYear\" => ReadGYear(element)", runtime);
             Assert.Contains("EnsureFields(element, \"gYearMonth\", [\"Year\", \"Month\"], [\"Timezone\"])", runtime);
             Assert.Contains("writer.WriteNumber(\"Year\", value.Year)", runtime);
@@ -164,10 +167,10 @@ public sealed class CSharpPublisherTests
             Assert.DoesNotContain("Newtonsoft", runtime, StringComparison.OrdinalIgnoreCase);
 
             string value = File.ReadAllText(Path.Combine(target, "ValueObject.cs"));
-            Assert.Contains("public CogsDecimal? ExactDecimal", value);
-            Assert.Contains("public BigInteger? ArbitraryInteger", value);
-            Assert.Contains("public CogsDuration? FullDuration", value);
-            Assert.Contains("public CogsDateTime? Moment", value);
+            Assert.Contains("public decimal? ExactDecimal", value);
+            Assert.Contains("public long? ArbitraryInteger", value);
+            Assert.Contains("public TimeSpan? FullDuration", value);
+            Assert.Contains("public DateTimeOffset? Moment", value);
             Assert.Contains("public bool? Enabled", value);
             Assert.Contains("public int? Count", value);
             Assert.Contains("Pattern = \"[A-Z]{2}\\\\.[0-9]{2}\"", value);
@@ -315,7 +318,7 @@ public sealed class CSharpPublisherTests
 
             string identity = File.ReadAllText(Path.Combine(target, "IIdentifiable.Properties.cs"));
             Assert.Contains("string ID", identity);
-            Assert.Contains("Uri AgencyURI", identity);
+            Assert.Contains("string AgencyURI", identity);
             string runtime = File.ReadAllText(Path.Combine(target, "DependantTypes.cs"));
             Assert.Contains("internal readonly struct CogsIdentityKey", runtime);
             Assert.Contains("Values.SequenceEqual(other.Values, StringComparer.Ordinal)", runtime);
@@ -362,36 +365,19 @@ public sealed class CSharpPublisherTests
     }
 
     [Theory]
-    [InlineData("P2DT3H4M5.678S")]
-    [InlineData("-P1Y2M3DT4H5M6.0000001S")]
-    [InlineData("PT.5S")]
-    [InlineData("PT1.S")]
-    [InlineData("PT0S")]
-    public void DurationRetainsFullXsdLexicalValue(string lexical)
+    [InlineData("PT0.0000001S")]
+    [InlineData("PT0.00000001S")]
+    [InlineData("P1Y")]
+    public void NativeDurationNeverSilentlyTruncates(string lexical)
     {
-        var duration = new CogsDuration(lexical);
-        Assert.Equal(lexical, duration.LexicalValue);
-        Assert.Equal(lexical, duration.ToString());
+        Assert.Throws<FormatException>(() => Cogs.Common.CogsScalarValues.Duration(lexical));
     }
 
     [Fact]
-    public void LosslessHelpersRejectMalformedValuesAndOnlyExposeExactNativeConversions()
+    public void StructuredHelpersRetainPartialGregorianInformation()
     {
-        Assert.Throws<FormatException>(() => new CogsDuration("P2DT3H4M5.6"));
-        Assert.Throws<FormatException>(() => new CogsDecimal("1e3"));
-        Assert.Throws<FormatException>(() => new CogsDateOnly("2023-02-29"));
         Assert.Throws<FormatException>(() => new GMonthDay(2, 30));
         Assert.Throws<FormatException>(() => new LangString("not_a_language", "value"));
-
-        var huge = new CogsDecimal("123456789012345678901234567890.123456789");
-        Assert.False(huge.TryGetDecimal(out _));
-        var exact = new CogsDecimal("1.2300");
-        Assert.True(exact.TryGetDecimal(out decimal native));
-        Assert.Equal(1.23m, native);
-
-        Assert.False(new CogsDateTime("2024-02-29T12:00:00").TryGetDateTimeOffset(out _));
-        Assert.True(new CogsDateTime("2024-02-29T12:00:00Z").TryGetDateTimeOffset(out _));
-        Assert.False(new CogsDateOnly("2024-02-29Z").TryGetDateOnly(out _));
         Assert.Equal(int.MaxValue, new GYear("2147483647").Year);
         Assert.Equal(int.MinValue, new GYear("-2147483648").Year);
         Assert.Equal("-2147483648", new GYear(int.MinValue).LexicalValue);
@@ -400,11 +386,6 @@ public sealed class CSharpPublisherTests
         Assert.Throws<FormatException>(() => new GYear("-2147483649"));
         Assert.Throws<FormatException>(() => new GYear("0000"));
         Assert.Throws<FormatException>(() => new GYearMonth("2147483648-01"));
-        Assert.Throws<FormatException>(() => new CogsDateOnly("2147483648-01-01"));
-        Assert.Throws<FormatException>(() => new CogsDateTime("-2147483649-01-01T00:00:00Z"));
-        Assert.Equal("2147483647-12-31", new CogsDateOnly("2147483647-12-31").LexicalValue);
-        Assert.Equal("-2147483648-01-01T00:00:00Z",
-            new CogsDateTime("-2147483648-01-01T00:00:00Z").LexicalValue);
     }
 
     [Fact]
@@ -590,14 +571,10 @@ public sealed class CSharpPublisherTests
         }
         value.RequiredString = "required";
         value.StringValues.AddRange(["first", null!, "last"]);
-        value.RequiredUri = new Uri("relative/path", UriKind.Relative);
-        value.RequiredDecimal = new CogsDecimal("0.000");
-        value.DecimalValues.AddRange([new CogsDecimal("12345678901234567890.123"), null!]);
+        value.RequiredUri = "relative/path";
         Add("requiredString", "string", "required");
         Add("stringValues", "string", "first", "last");
         Add("requiredUri", "anyURI", "relative/path");
-        Add("requiredDecimal", "decimal", "0.000");
-        Add("decimalValues", "decimal", "12345678901234567890.123");
         Check();
 
         foreach (var (suffix, type) in cases)
@@ -626,8 +603,15 @@ public sealed class CSharpPublisherTests
                     expected.CreateLiteralNode(lexical, UriFactory.Create(NamespaceMapper.XMLSCHEMA + type))));
         }
 
-        static string Lexical(object value) => value is bool flag ? (flag ? "true" : "false")
-            : ((IFormattable)value).ToString(null, CultureInfo.InvariantCulture);
+        static string Lexical(object value) => value switch
+        {
+            bool flag => flag ? "true" : "false",
+            TimeSpan elapsed => System.Xml.XmlConvert.ToString(elapsed),
+            DateTimeOffset instant => instant.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.FFF'Z'", CultureInfo.InvariantCulture),
+            DateOnly date => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            TimeOnly time => time.ToString("HH:mm:ss.FFFFFF", CultureInfo.InvariantCulture),
+            _ => ((IFormattable)value).ToString(null, CultureInfo.InvariantCulture)
+        };
 
         static object Sample(string type, bool alternate) => type switch
         {
@@ -637,8 +621,12 @@ public sealed class CSharpPublisherTests
             "int" => alternate ? 1 : 0,
             "long" => alternate ? 1L : 0L,
             "unsignedLong" => alternate ? 1UL : 0UL,
-            _ => BigInteger.Parse(alternate ? "123456789012345678901234567891" : "123456789012345678901234567890",
-                CultureInfo.InvariantCulture) * (type is "negativeInteger" or "nonPositiveInteger" ? -1 : 1),
+            "decimal" => alternate ? 123.125m : 0m,
+            "duration" => TimeSpan.FromMilliseconds(alternate ? -123 : 0),
+            "dateTime" => DateTimeOffset.UnixEpoch.AddMilliseconds(alternate ? 123 : 0),
+            "date" => new DateOnly(alternate ? 2024 : 1, 1, 1),
+            "time" => new TimeOnly(alternate ? 123450 : 0),
+            _ => (alternate ? 9007199254740991L : 1L) * (type is "negativeInteger" or "nonPositiveInteger" ? -1 : 1),
         };
         """;
 

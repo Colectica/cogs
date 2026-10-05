@@ -300,32 +300,10 @@ jobs:
             './generated/new-model-artifacts/typescript'
           )
           foreach ($package in $packages) {
-            $manifest = Join-Path $package 'package.json'
-            $manifestBefore = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash
-            if ($IsWindows) {
-              # npm 10 on Windows either ignores a project-scoped --prefix
-              # during install or treats its value as a package spec. Run the
-              # install in the package while retaining --prefix for build.
-              Push-Location $package
-              try {
-                npm install --ignore-scripts --no-package-lock
-                if ($LASTEXITCODE -ne 0) { throw "npm install failed for $package with exit $LASTEXITCODE" }
-              }
-              finally {
-                Pop-Location
-              }
-            }
-            else {
-              npm --prefix $package install --ignore-scripts --no-package-lock
-              if ($LASTEXITCODE -ne 0) { throw "npm install failed for $package with exit $LASTEXITCODE" }
-            }
-            $manifestAfter = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash
-            if ($manifestAfter -cne $manifestBefore) {
-              throw "npm install rewrote the generated manifest for $package"
-            }
-            npm --prefix $package run build
+            ./conformance/scripts/Install-TypeScriptDependencies.ps1 -Package $package
+            & $env:COGS_NPM --prefix $package run build
             if ($LASTEXITCODE -ne 0) { throw "npm build failed for $package with exit $LASTEXITCODE" }
-            npm pack $package --dry-run
+            & $env:COGS_NPM pack $package --dry-run
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
 
@@ -364,6 +342,10 @@ jobs:
         shell: pwsh
         run: |
           ./conformance/scripts/Test-GeneratedRuntimes.ps1 `
+            -CogsDll ./Cogs.Console/bin/Release/net10.0/cogs.dll
+          ./conformance/scripts/Test-GeneratedRuntimes.ps1 `
+            -CogsDll ./Cogs.Console/bin/Release/net10.0/cogs.dll -PythonFlavor python-pydantic
+          ./conformance/scripts/Test-NativeScalars.ps1 `
             -CogsDll ./Cogs.Console/bin/Release/net10.0/cogs.dll
 
       - name: Validate secondary publisher artifacts

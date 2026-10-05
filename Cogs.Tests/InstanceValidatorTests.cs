@@ -23,8 +23,8 @@ public sealed class InstanceValidatorTests
             "{\"items\":[{\"$type\":\"Thing\",\"ID\":\"one\",\"ID\":\"two\"}]}"),
             error => error.Code == "INS1003");
         Assert.Contains(CogsInstanceValidator.ValidateJson(model,
-            "{\"items\":[{\"$type\":\"Thing\",\"ID\":\"one\",\"Amount\":1e2}]}"),
-            error => error.Code == "INS1005");
+            "{\"items\":[{\"$type\":\"Thing\",\"ID\":\"one\",\"Amount\":0.10000000000000001}]}"),
+            error => error.Code == "INS1006");
         Assert.Contains(CogsInstanceValidator.ValidateJson(model,
             "{\"items\":[{\"$type\":\"Thing\",\"ID\":\"one\",\"Observed\":\"2019-12-31T23:59:59Z\"}]}"),
             error => error.Code == "INS1007");
@@ -33,7 +33,7 @@ public sealed class InstanceValidatorTests
             error => error.Code == "INS1004");
         Assert.Contains(CogsInstanceValidator.ValidateJson(model,
             "{\"items\":[{\"$type\":\"Thing\",\"ID\":\"one\",\"Observed\":\"2020-01-01T00:00:00\"}]}"),
-            error => error.Code == "INS1007");
+            error => error.Code == "INS1006");
         Assert.Contains(CogsInstanceValidator.ValidateJson(model,
             "{\"items\":[{\"$type\":\"Thing\",\"ID\":\"one\",\"Elapsed\":\"P30D\"}]}"),
             error => error.Code == "INS1007");
@@ -53,7 +53,7 @@ public sealed class InstanceValidatorTests
             error => error.Code == "INS2003");
         Assert.Contains(CogsInstanceValidator.ValidateXml(model,
             $"<ItemContainer xmlns='{Namespace}'><Thing><ID>one</ID><Observed>2020-01-01T00:00:00</Observed></Thing></ItemContainer>"),
-            error => error.Code == "INS2007");
+            error => error.Code == "INS2006");
         Assert.Contains(CogsInstanceValidator.ValidateXml(model,
             $"<ItemContainer xmlns='{Namespace}'><Thing><ID>one</ID><Elapsed>P30D</Elapsed></Thing></ItemContainer>"),
             error => error.Code == "INS2007");
@@ -64,10 +64,10 @@ public sealed class InstanceValidatorTests
     {
         Assert.Equal(CogsPrimitiveOrder.Indeterminate,
             CogsPrimitiveLexical.Compare("dateTime", "2020-01-01T00:00:00", "2020-01-01T00:00:00Z"));
-        Assert.Equal(CogsPrimitiveOrder.Indeterminate,
-            CogsPrimitiveLexical.Compare("duration", "P30D", "P1M"));
+        Assert.Equal(CogsPrimitiveOrder.Less,
+            CogsPrimitiveLexical.Compare("duration", "P30D", "P31D"));
         Assert.Equal(CogsPrimitiveOrder.Greater,
-            CogsPrimitiveLexical.Compare("duration", "P2M", "P1M"));
+            CogsPrimitiveLexical.Compare("duration", "P32D", "P31D"));
     }
 
     [Fact]
@@ -101,15 +101,15 @@ public sealed class InstanceValidatorTests
     {
         CogsModel model = BuildModel();
         string xml = $"<ItemContainer xmlns='{Namespace}'><Thing><ID>one</ID>" +
-            "<Huge>123456789012345678901234567890</Huge><TimeValue>24:00:00Z</TimeValue>" +
+            "<Huge>9007199254740991</Huge><TimeValue>24:00:00</TimeValue>" +
             "</Thing></ItemContainer>";
 
         Assert.Empty(CogsInstanceValidator.ValidateXml(model, xml));
         Assert.Contains(CogsInstanceValidator.ValidateXml(model, xml.Replace(
-            "123456789012345678901234567890", "-1", StringComparison.Ordinal)),
+            "9007199254740991", "-1", StringComparison.Ordinal)),
             error => error.Code == "INS2002" || error.Code == "INS2006");
         Assert.Contains(CogsInstanceValidator.ValidateXml(model, xml.Replace(
-            "24:00:00Z", "25:00:00Z", StringComparison.Ordinal)),
+            "24:00:00", "25:00:00", StringComparison.Ordinal)),
             error => error.Code == "INS2002" || error.Code == "INS2006");
     }
 
@@ -134,7 +134,7 @@ public sealed class InstanceValidatorTests
         observed.MinInclusive = "2020-01-01T00:00:00Z";
         thing.Properties.Add(observed);
         var elapsed = Property("Elapsed", "duration");
-        elapsed.MinInclusive = "P1M";
+        elapsed.MinInclusive = "P31D";
         thing.Properties.Add(elapsed);
         thing.Properties.Add(Property("Huge", "positiveInteger"));
         thing.Properties.Add(Property("TimeValue", "time"));

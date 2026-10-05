@@ -5,6 +5,10 @@ import json
 import math
 import os
 import re
+import struct
+import datetime as _dt
+from datetime import date, datetime, time, timedelta, timezone
+from fractions import Fraction
 from dataclasses import Field as _DataclassField, dataclass, field, fields
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -56,12 +60,10 @@ def _json_dump_value(value: Any, indent: int | None = None, level: int = 0) -> s
         return "false"
     if isinstance(value, str):
         return json.dumps(value, ensure_ascii=False)
-    if isinstance(value, CogsDecimal):
-        return value.lexical
     if isinstance(value, int):
         return str(value)
     if isinstance(value, Decimal):
-        return CogsDecimal(value).lexical
+        return str(_decimal(value))
     if isinstance(value, float):
         if not math.isfinite(value):
             raise ValueError("JSON numbers must be finite.")
@@ -266,133 +268,115 @@ def _is_valid_language(value: str) -> bool:
 
 
 def _is_valid_uri_reference(value: str) -> bool:
-    if _URI_REFERENCE_CHARACTER_PATTERN.fullmatch(value) is None or value.count("#") > 1:
-        return False
-    delimiter_positions = [
-        position for position in (value.find("/"), value.find("?"), value.find("#"))
-        if position >= 0
-    ]
-    first_delimiter = min(delimiter_positions, default=len(value))
-    colon = value.find(":")
-    if colon >= 0 and colon < first_delimiter:
-        if re.fullmatch(r"[A-Za-z][A-Za-z0-9+.-]*", value[:colon]) is None:
-            return False
-    return value.count("[") == value.count("]")
+    return re.fullmatch(__URI_REFERENCE_PATTERN__, value) is not None
 
 
-def _decimal_from_xml(raw: str) -> CogsDecimal:
-    if _XML_DECIMAL_PATTERN.fullmatch(raw) is None:
-        raise ValueError(f"Invalid decimal: {raw!r}")
-    negative = raw.startswith("-")
-    unsigned = raw[1:] if raw[:1] in {"+", "-"} else raw
-    integer, separator, fraction = unsigned.partition(".")
-    integer = (integer.lstrip("0") or "0") if integer else "0"
-    lexical = ("-" if negative else "") + integer
-    if separator and fraction:
-        lexical += "." + fraction
-    return CogsDecimal(lexical)
+def _text(value: str) -> str:
+    if not isinstance(value, str):
+        raise TypeError("Text requires str.")
+    if any(not (ord(c) in (9, 10, 13) or 0x20 <= ord(c) <= 0xD7FF
+                   or 0xE000 <= ord(c) <= 0xFFFD or 0x10000 <= ord(c) <= 0x10FFFF) for c in value):
+        raise ValueError("Text must contain only XML 1.0 Unicode characters.")
+    return value
 
 
-@dataclass(frozen=True)
-class CogsDecimal:
-    lexical: str
+def _decimal(value: Any) -> Decimal:
+    if isinstance(value, bool) or not isinstance(value, (Decimal, int, str)):
+        raise TypeError("decimal requires Decimal, int, or an original numeric token.")
+    result = Decimal(value)
+    if not result.is_finite():
+        raise ValueError("decimal must be finite.")
+    if result.is_zero():
+        return Decimal(0)
+    parts = result.as_tuple()
+    digits = ''.join(str(d) for d in parts.digits).lstrip('0')
+    trailing = len(digits) - len(digits.rstrip('0'))
+    digits = digits.rstrip('0')
+    exponent = int(parts.exponent) + trailing
+    if exponent < -28 or len(digits) + max(exponent, 0) > 29:
+        raise ValueError("decimal exceeds the native coefficient/scale domain.")
+    coefficient = int(digits) * 10 ** max(exponent, 0)
+    if coefficient > 79228162514264337593543950335 or Decimal(repr(float(result))) != result:
+        raise ValueError("decimal cannot survive native JavaScript JSON interchange exactly.")
+    return result
 
-    def __init__(self, value: CogsDecimal | Decimal | int | str) -> None:
-        if isinstance(value, CogsDecimal):
-            lexical = value.lexical
-        elif isinstance(value, bool) or isinstance(value, float):
-            raise TypeError("CogsDecimal requires a decimal lexical value, Decimal, or integer.")
-        else:
-            lexical = str(value)
-        if _DECIMAL_PATTERN.fullmatch(lexical) is None:
-            raise ValueError("decimal must use a JSON-compatible XSD decimal lexical form without exponent.")
+
+def _fraction(match: re.Match[str], precision: int) -> int:
+    fraction = (match.group('fraction') or '').lstrip('.').rstrip('0')
+    if len(fraction) > precision:
+        raise ValueError("Fraction exceeds the native temporal resolution.")
+    return int(fraction.ljust(6, '0') or '0')
+
+
+def _native_parse(type_name: str, raw: str) -> Any:
+    if not isinstance(raw, str):
+        raise TypeError(f"{type_name} requires a wire string.")
+    lower = type_name.lower()
+    if lower == 'date':
+        if re.fullmatch(r'[0-9]{4}-[0-9]{2}-[0-9]{2}', raw) is None:
+            raise ValueError("date requires years 0001 through 9999 without a timezone.")
+        return date.fromisoformat(raw)
+    if lower in ('datetime', 'time'):
+        match = (_DATETIME_PATTERN if lower == 'datetime' else _TIME_PATTERN).fullmatch(raw)
+        if match is None:
+            raise ValueError(f"Invalid {type_name}.")
+        _validate_time_parts(match)
+        micros = _fraction(match, 3 if lower == 'datetime' else 6)
+        hour = int(match.group('hour'))
+        if lower == 'time':
+            if match.group('tz') is not None:
+                raise ValueError("time must not have a timezone.")
+            return time(0 if hour == 24 else hour, int(match.group('minute')), int(match.group('second')), micros)
+        if match.group('tz') is None or len(match.group('year')) != 4:
+            raise ValueError("dateTime requires a timezone and years 0001 through 9999.")
+        zone = match.group('tz')
+        offset = 0 if zone == 'Z' else (int(zone[1:3]) * 60 + int(zone[4:])) * (-1 if zone[0] == '-' else 1)
         try:
-            parsed = Decimal(lexical)
-        except InvalidOperation as exc:
-            raise ValueError(f"Invalid decimal: {lexical!r}") from exc
-        if not parsed.is_finite():
-            raise ValueError("decimal must be finite.")
-        object.__setattr__(self, "lexical", lexical)
-
-    def __str__(self) -> str:
-        return self.lexical
-
-    def to_decimal(self) -> Decimal:
-        return Decimal(self.lexical)
-
-
-@dataclass(frozen=True)
-class CogsDateTime:
-    lexical: str
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.lexical, str):
-            raise TypeError("dateTime must be a string.")
-        match = _DATETIME_PATTERN.fullmatch(self.lexical)
-        if match is None:
-            raise ValueError(f"Invalid dateTime: {self.lexical!r}")
-        _validate_date_parts(match.group("year"), match.group("month"), match.group("day"))
-        _validate_time_parts(match)
-
-    def to_json_value(self) -> str:
-        return self.lexical
-
-    def to_xml_text(self) -> str:
-        return self.lexical
+            result = datetime(int(match.group('year')), int(match.group('month')), int(match.group('day')),
+                23 if hour == 24 else hour, 59 if hour == 24 else int(match.group('minute')),
+                59 if hour == 24 else int(match.group('second')), micros,
+                tzinfo=timezone(timedelta(minutes=offset))).astimezone(timezone.utc)
+            return result + timedelta(seconds=1) if hour == 24 else result
+        except (OverflowError, ValueError) as exc:
+            raise ValueError("UTC dateTime is outside the native calendar domain.") from exc
+    match = re.fullmatch(r'(?P<sign>-)?P(?=[0-9]|T[0-9.])(?:(?P<days>[0-9]+)D)?(?:T(?=[0-9.])(?:(?P<hours>[0-9]+)H)?(?:(?P<minutes>[0-9]+)M)?(?:(?P<seconds>[0-9]+(?:\.[0-9]*)?|\.[0-9]+)S)?)?', raw)
+    if match is None:
+        raise ValueError("duration requires elapsed time without years/months.")
+    milliseconds = sum(int(match.group(name) or 0) * factor for name, factor in (('days',86400000),('hours',3600000),('minutes',60000)))
+    whole, _, fraction = (match.group('seconds') or '0').partition('.')
+    fraction = fraction.rstrip('0')
+    if len(fraction) > 3:
+        raise ValueError("duration requires whole milliseconds.")
+    milliseconds += int(whole or '0') * 1000 + int(fraction.ljust(3,'0') or '0')
+    if milliseconds > 922337203685477:
+        raise ValueError("duration exceeds the native duration range.")
+    return timedelta(milliseconds=-milliseconds if match.group('sign') else milliseconds)
 
 
-@dataclass(frozen=True)
-class CogsDateOnly:
-    lexical: str
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.lexical, str):
-            raise TypeError("date must be a string.")
-        match = _DATE_PATTERN.fullmatch(self.lexical)
-        if match is None:
-            raise ValueError(f"Invalid date: {self.lexical!r}")
-        _validate_date_parts(match.group("year"), match.group("month"), match.group("day"))
-        _validate_timezone(match.group("tz"))
-
-    def to_json_value(self) -> str:
-        return self.lexical
-
-    def to_xml_text(self) -> str:
-        return self.lexical
-
-
-@dataclass(frozen=True)
-class CogsTime:
-    lexical: str
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.lexical, str):
-            raise TypeError("time must be a string.")
-        match = _TIME_PATTERN.fullmatch(self.lexical)
-        if match is None:
-            raise ValueError(f"Invalid time: {self.lexical!r}")
-        _validate_time_parts(match)
-
-    def to_json_value(self) -> str:
-        return self.lexical
-
-    def to_xml_text(self) -> str:
-        return self.lexical
-
-
-@dataclass(frozen=True)
-class CogsDuration:
-    lexical: str
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.lexical, str) or _DURATION_PATTERN.fullmatch(self.lexical) is None:
-            raise ValueError(f"Invalid XML Schema duration: {self.lexical!r}")
-
-    def to_json_value(self) -> str:
-        return self.lexical
-
-    def to_xml_text(self) -> str:
-        return self.lexical
+def _native_text(type_name: str, value: Any) -> str:
+    lower = type_name.lower()
+    if lower == 'datetime':
+        if not isinstance(value, datetime) or value.utcoffset() is None or value.microsecond % 1000:
+            raise ValueError("dateTime requires an aware datetime with millisecond resolution.")
+        value = value.astimezone(timezone.utc)
+        return f'{value.year:04d}-{value.month:02d}-{value.day:02d}T{value.hour:02d}:{value.minute:02d}:{value.second:02d}' + (f'.{value.microsecond:06d}'.rstrip('0') if value.microsecond else '') + 'Z'
+    if lower == 'date':
+        if type(value) is not date:
+            raise TypeError("date requires datetime.date.")
+        return value.isoformat()
+    if lower == 'time':
+        if not isinstance(value, time) or value.tzinfo is not None:
+            raise TypeError("time requires a local datetime.time.")
+        return value.isoformat().rstrip('0').rstrip('.') if value.microsecond else value.isoformat()
+    if not isinstance(value, timedelta):
+        raise TypeError("duration requires datetime.timedelta.")
+    micros = (value.days * 86400 + value.seconds) * 1000000 + value.microseconds
+    if micros % 1000 or abs(micros) > 922337203685477000:
+        raise ValueError("duration requires whole milliseconds in the native duration range.")
+    millis = abs(micros) // 1000
+    days, remainder = divmod(millis, 86400000)
+    seconds, fraction = divmod(remainder, 1000)
+    return ('-' if micros < 0 else '') + 'P' + (f'{days}D' if days else '') + 'T' + str(seconds) + (f'.{fraction:03d}'.rstrip('0') if fraction else '') + 'S'
 
 
 def _format_year(value: int) -> str:
@@ -688,8 +672,7 @@ class LangString:
     def __post_init__(self) -> None:
         if not isinstance(self.language, str) or not _is_valid_language(self.language):
             raise ValueError(f"Invalid language tag: {self.language!r}")
-        if not isinstance(self.value, str):
-            raise TypeError("langString value must be a string.")
+        _text(self.value)
 
     def to_json_value(self) -> dict[str, str]:
         return {"@language": self.language, "@value": self.value}
@@ -705,60 +688,53 @@ class LangString:
 
 @dataclass(frozen=True)
 class CogsDate:
-    value: CogsDateTime | CogsDateOnly | GYearMonth | GYear | CogsDuration
+    value: datetime | date | GYearMonth | GYear | timedelta
 
     def __post_init__(self) -> None:
-        if not isinstance(self.value, (CogsDateTime, CogsDateOnly, GYearMonth, GYear, CogsDuration)):
-            raise TypeError("CogsDate requires one supported lexical value helper.")
+        if not isinstance(self.value, (datetime, date, GYearMonth, GYear, timedelta)):
+            raise TypeError("CogsDate requires one supported native value.")
+        self.to_json_value()
 
     def to_json_value(self) -> dict[str, Any]:
-        if isinstance(self.value, CogsDateTime):
-            return {"DateTime": self.value.lexical}
-        if isinstance(self.value, CogsDateOnly):
-            return {"Date": self.value.lexical}
+        if isinstance(self.value, datetime):
+            return {"DateTime": _native_text('datetime', self.value)}
+        if isinstance(self.value, date):
+            return {"Date": _native_text('date', self.value)}
         if isinstance(self.value, GYearMonth):
             return {"GYearMonth": self.value.to_json_value()}
         if isinstance(self.value, GYear):
             return {"GYear": self.value.to_json_value()}
-        return {"Duration": self.value.lexical}
+        return {"Duration": _native_text('duration', self.value)}
 
     @classmethod
     def from_json_value(cls, raw: Any) -> CogsDate:
         if not isinstance(raw, dict) or len(raw) != 1:
             raise ValueError("cogsDate must contain exactly one active value.")
         name, value = next(iter(raw.items()))
-        if name == "GYearMonth":
+        if name == 'GYearMonth':
             return cls(GYearMonth.from_json_value(value))
-        if name == "GYear":
+        if name == 'GYear':
             return cls(GYear.from_json_value(value))
-        constructors: dict[str, type[Any]] = {
-            "DateTime": CogsDateTime,
-            "Date": CogsDateOnly,
-            "Duration": CogsDuration,
-        }
-        if name not in constructors:
-            raise ValueError(f"Unknown cogsDate member: {name}")
-        if not isinstance(value, str):
-            raise TypeError(f"cogsDate {name} must be a lexical string.")
-        return cls(constructors[name](value))
+        if name not in ('DateTime', 'Date', 'Duration'):
+            raise ValueError("Unknown cogsDate arm.")
+        return cls(_native_parse(name, value))
 
     def to_xml_text(self) -> str:
-        return self.value.lexical
+        if isinstance(self.value, (GYearMonth, GYear)):
+            return self.value.to_xml_text()
+        return next(iter(self.to_json_value().values()))
 
     @classmethod
     def from_xml_text(cls, raw: str) -> CogsDate:
-        constructors: tuple[type[Any], ...]
-        if raw.startswith("P") or raw.startswith("-P"):
-            constructors = (CogsDuration,)
-        elif "T" in raw:
-            constructors = (CogsDateTime,)
-        elif re.fullmatch(rf"{_YEAR_PATTERN}-[0-9]{{2}}(?:Z|[+-][0-9]{{2}}:[0-9]{{2}})?", raw):
-            constructors = (GYearMonth,)
-        elif re.fullmatch(rf"{_YEAR_PATTERN}(?:Z|[+-][0-9]{{2}}:[0-9]{{2}})?", raw):
-            constructors = (GYear,)
-        else:
-            constructors = (CogsDateOnly,)
-        return cls(constructors[0](raw))
+        if raw.startswith(('P', '-P')):
+            return cls(_native_parse('duration', raw))
+        if 'T' in raw:
+            return cls(_native_parse('datetime', raw))
+        if re.fullmatch(rf'{_YEAR_PATTERN}-[0-9]{{2}}(?:Z|[+-][0-9]{{2}}:[0-9]{{2}})?', raw):
+            return cls(GYearMonth(raw))
+        if re.fullmatch(rf'{_YEAR_PATTERN}(?:Z|[+-][0-9]{{2}}:[0-9]{{2}})?', raw):
+            return cls(GYear(raw))
+        return cls(_native_parse('date', raw))
 
 
 _STRING_TYPES = {"string", "language", "anyuri"}
@@ -770,239 +746,149 @@ _FLOAT_TYPES = {"float", "double"}
 
 
 def _validate_integer(type_name: str, value: Any) -> int:
+    if isinstance(value, Decimal) and value.is_finite() and value == value.to_integral_value():
+        if abs(value) > 9007199254740991:
+            raise ValueError("Integer exceeds the JavaScript safe-integer domain.")
+        value = int(value)
     if isinstance(value, bool) or not isinstance(value, int):
         raise TypeError(f"{type_name} must be an integer.")
-    lowered = type_name.lower()
-    valid = {
-        "nonpositiveinteger": value <= 0,
-        "negativeinteger": value < 0,
-        "long": -(2**63) <= value <= 2**63 - 1,
-        "int": -(2**31) <= value <= 2**31 - 1,
-        "nonnegativeinteger": value >= 0,
-        "unsignedlong": 0 <= value <= 2**64 - 1,
-        "positiveinteger": value > 0,
-    }[lowered]
-    if not valid:
-        raise ValueError(f"{value} is outside the {type_name} value space.")
+    lower = type_name.lower()
+    if not -9007199254740991 <= value <= 9007199254740991 or not {
+        'int': -(2**31) <= value <= 2**31-1, 'long': True,
+        'unsignedlong': value >= 0, 'nonnegativeinteger': value >= 0,
+        'positiveinteger': value > 0, 'nonpositiveinteger': value <= 0, 'negativeinteger': value < 0
+    }[lower]:
+        raise ValueError(f"Value is outside the {type_name} domain.")
     return value
 
 
 def _validate_float(type_name: str, value: Any) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
         raise TypeError(f"{type_name} must be a number.")
-    try:
-        result = float(value)
-    except (OverflowError, ValueError) as exc:
-        raise ValueError(f"Invalid {type_name}: {value!r}") from exc
+    result = float(value)
     if not math.isfinite(result):
         raise ValueError(f"{type_name} must be finite.")
-    if type_name.lower() == "float" and abs(result) > 3.4028234663852886e38:
-        raise ValueError("float is outside the IEEE-754 binary32 finite range.")
-    return result
+    if type_name.lower() == 'float' and result != 0:
+        exact = abs(Fraction(value))
+        if exact >= 2**128 - 2**103:
+            raise ValueError("float overflows binary32.")
+        try:
+            bits = struct.unpack('!I', struct.pack('!f', abs(result)))[0]
+        except OverflowError:
+            bits = 0x7f7fffff
+        candidates = range(max(0, bits-1), min(0x7f7fffff, bits+1)+1)
+        bits = min(candidates, key=lambda n: (abs(Fraction(struct.unpack('!f', struct.pack('!I', n))[0])-exact), n % 2))
+        result = math.copysign(struct.unpack('!f', struct.pack('!I', bits))[0], result)
+    return 0.0 if result == 0 else result
+
+
+_GREGORIAN_TYPES = {'gyear': GYear, 'gyearmonth': GYearMonth, 'gmonthday': GMonthDay, 'gmonth': GMonth, 'gday': GDay}
+_NATIVE_TYPES = {'datetime': datetime, 'date': date, 'time': time, 'duration': timedelta}
 
 
 def _serialize_simple_json(type_name: str, value: Any) -> Any:
-    lowered = type_name.lower()
-    if lowered in _STRING_TYPES:
-        if not isinstance(value, str):
-            raise TypeError(f"{type_name} must be a string.")
-        if lowered == "language" and not _is_valid_language(value):
-            raise ValueError(f"Invalid language tag: {value!r}")
-        if lowered == "anyuri" and not _is_valid_uri_reference(value):
-            raise ValueError(f"Invalid URI reference: {value!r}")
+    lower = type_name.lower()
+    if lower in _STRING_TYPES:
+        _text(value)
+        if lower == 'language' and not _is_valid_language(value):
+            raise ValueError("Invalid language tag.")
+        if lower == 'anyuri' and not _is_valid_uri_reference(value):
+            raise ValueError("Invalid RFC 3986 URI reference.")
         return value
-    if lowered in _INTEGER_TYPES:
+    if lower in _INTEGER_TYPES:
         return _validate_integer(type_name, value)
-    if lowered in _FLOAT_TYPES:
+    if lower in _FLOAT_TYPES:
         return _validate_float(type_name, value)
-    if lowered == "boolean":
+    if lower == 'decimal':
+        if not isinstance(value, (Decimal, int)):
+            raise TypeError("decimal requires Decimal or int.")
+        return _decimal(value)
+    if lower in _NATIVE_TYPES:
+        return _native_text(type_name, value)
+    if lower == 'boolean':
         if not isinstance(value, bool):
-            raise TypeError("boolean must be true or false.")
+            raise TypeError("boolean requires bool.")
         return value
-    if lowered == "decimal":
-        if isinstance(value, CogsDecimal):
-            return value
-        if isinstance(value, bool) or not isinstance(value, (Decimal, int)):
-            raise TypeError("decimal requires CogsDecimal, Decimal, or int.")
-        return CogsDecimal(value)
-    lexical_helper_types: dict[str, type[Any]] = {
-        "datetime": CogsDateTime,
-        "date": CogsDateOnly,
-        "time": CogsTime,
-        "duration": CogsDuration,
-    }
-    gregorian_helper_types: dict[str, type[Any]] = {
-        "gyearmonth": GYearMonth,
-        "gyear": GYear,
-        "gmonthday": GMonthDay,
-        "gmonth": GMonth,
-        "gday": GDay,
-    }
-    if lowered in lexical_helper_types:
-        if not isinstance(value, lexical_helper_types[lowered]):
-            raise TypeError(f"{type_name} requires {lexical_helper_types[lowered].__name__}.")
-        return value.lexical
-    if lowered in gregorian_helper_types:
-        if not isinstance(value, gregorian_helper_types[lowered]):
-            raise TypeError(f"{type_name} requires {gregorian_helper_types[lowered].__name__}.")
-        return value.to_json_value()
-    if lowered == "langstring":
-        if not isinstance(value, LangString):
-            raise TypeError("langString requires LangString.")
-        return value.to_json_value()
-    if lowered == "cogsdate":
-        if not isinstance(value, CogsDate):
-            raise TypeError("cogsDate requires CogsDate.")
-        return value.to_json_value()
-    raise ValueError(f"Unsupported COGS primitive type: {type_name}")
+    expected = _GREGORIAN_TYPES.get(lower) or {'langstring': LangString, 'cogsdate': CogsDate}.get(lower)
+    if expected is None or not isinstance(value, expected):
+        raise TypeError(f"Invalid {type_name} value.")
+    return value.to_json_value()
 
 
 def _deserialize_simple_json(type_name: str, raw: Any) -> Any:
-    lowered = type_name.lower()
-    if lowered in _STRING_TYPES:
-        if not isinstance(raw, str):
-            raise TypeError(f"{type_name} must be a string.")
-        if lowered == "language" and not _is_valid_language(raw):
-            raise ValueError(f"Invalid language tag: {raw!r}")
-        if lowered == "anyuri" and not _is_valid_uri_reference(raw):
-            raise ValueError(f"Invalid URI reference: {raw!r}")
-        return raw
-    if lowered in _INTEGER_TYPES:
-        return _validate_integer(type_name, raw)
-    if lowered in _FLOAT_TYPES:
-        return _validate_float(type_name, raw)
-    if lowered == "decimal":
-        if isinstance(raw, CogsDecimal):
+    lower = type_name.lower()
+    if lower == 'float':
+        direct = _validate_float(type_name, raw)
+        if direct != _validate_float(type_name, float(raw)):
+            raise ValueError("JSON float needs a stable binary32 spelling for native JavaScript parsing.")
+        return direct
+    if lower in _NATIVE_TYPES:
+        if isinstance(raw, _NATIVE_TYPES[lower]):
+            _native_text(type_name, raw)
             return raw
-        if isinstance(raw, bool) or not isinstance(raw, (int, Decimal)):
-            raise TypeError("decimal must be an exact JSON number or CogsDecimal.")
-        return CogsDecimal(raw)
-    if lowered == "boolean":
-        if not isinstance(raw, bool):
-            raise TypeError("boolean must be true or false.")
-        return raw
-    lexical_constructors: dict[str, type[Any]] = {
-        "datetime": CogsDateTime,
-        "date": CogsDateOnly,
-        "time": CogsTime,
-        "duration": CogsDuration,
-    }
-    gregorian_constructors: dict[str, type[Any]] = {
-        "gyearmonth": GYearMonth,
-        "gyear": GYear,
-        "gmonthday": GMonthDay,
-        "gmonth": GMonth,
-        "gday": GDay,
-    }
-    if lowered in lexical_constructors:
-        if isinstance(raw, lexical_constructors[lowered]):
-            return raw
-        if not isinstance(raw, str):
-            raise TypeError(f"{type_name} must be a lexical string.")
-        return lexical_constructors[lowered](raw)
-    if lowered in gregorian_constructors:
-        if isinstance(raw, gregorian_constructors[lowered]):
-            return raw
-        return gregorian_constructors[lowered].from_json_value(raw)
-    if lowered == "langstring":
-        return raw if isinstance(raw, LangString) else LangString.from_json_value(raw)
-    if lowered == "cogsdate":
-        return raw if isinstance(raw, CogsDate) else CogsDate.from_json_value(raw)
-    raise ValueError(f"Unsupported COGS primitive type: {type_name}")
+        return _native_parse(type_name, raw)
+    expected = _GREGORIAN_TYPES.get(lower) or {'langstring': LangString, 'cogsdate': CogsDate}.get(lower)
+    if expected is not None:
+        return raw if isinstance(raw, expected) else expected.from_json_value(raw)
+    return _serialize_simple_json(type_name, raw)
 
 
 def _serialize_simple_xml(type_name: str, value: Any, element: ET.Element) -> None:
-    lowered = type_name.lower()
-    if lowered == "langstring":
-        if not isinstance(value, LangString):
-            raise TypeError("langString requires LangString.")
-        element.text = value.value
-        element.set(f"{{{XML_NAMESPACE}}}lang", value.language)
-        return
-    xml_helper_types: dict[str, type[Any]] = {
-        "datetime": CogsDateTime,
-        "date": CogsDateOnly,
-        "time": CogsTime,
-        "duration": CogsDuration,
-        "gyearmonth": GYearMonth,
-        "gyear": GYear,
-        "gmonthday": GMonthDay,
-        "gmonth": GMonth,
-        "gday": GDay,
-    }
-    if lowered in xml_helper_types:
-        if not isinstance(value, xml_helper_types[lowered]):
-            raise TypeError(f"{type_name} requires {xml_helper_types[lowered].__name__}.")
+    lower = type_name.lower()
+    if lower == 'langstring':
+        element.text = _text(value.value)
+        element.set(f'{{{XML_NAMESPACE}}}lang', value.language)
+    elif lower in _GREGORIAN_TYPES or lower == 'cogsdate':
+        _serialize_simple_json(type_name, value)
         element.text = value.to_xml_text()
-        return
-    if lowered == "cogsdate":
-        if not isinstance(value, CogsDate):
-            raise TypeError("cogsDate requires CogsDate.")
-        element.text = value.to_xml_text()
-        return
-    serialized = _serialize_simple_json(type_name, value)
-    if lowered == "boolean":
-        element.text = "true" if serialized else "false"
-    elif lowered == "decimal":
-        element.text = serialized.lexical
     else:
-        element.text = str(serialized)
+        serialized = _serialize_simple_json(type_name, value)
+        if lower == 'boolean':
+            element.text = 'true' if serialized else 'false'
+        elif lower == 'decimal':
+            element.text = format(serialized, 'f')
+        else:
+            element.text = str(serialized)
 
 
 def _deserialize_simple_xml(type_name: str, element: ET.Element) -> Any:
-    lowered = type_name.lower()
+    lower = type_name.lower()
     if len(element):
         raise ValueError(f"{type_name} cannot contain child elements.")
-    raw = element.text or ""
-    if lowered == "langstring":
-        unknown_attributes = set(element.attrib) - {f"{{{XML_NAMESPACE}}}lang"}
-        if unknown_attributes:
-            raise ValueError("langString contains unknown XML attributes.")
-        language = element.get(f"{{{XML_NAMESPACE}}}lang")
-        if language is None:
-            raise ValueError("langString requires xml:lang.")
-        return LangString(language=language.strip(), value=raw)
+    raw = _text(element.text or '')
+    if lower == 'langstring':
+        if set(element.attrib) != {f'{{{XML_NAMESPACE}}}lang'}:
+            raise ValueError("langString requires only xml:lang.")
+        return LangString(element.attrib[f'{{{XML_NAMESPACE}}}lang'], raw)
     if element.attrib:
         raise ValueError(f"{type_name} contains unknown XML attributes.")
-    if lowered == "string":
+    if lower in _STRING_TYPES:
         return _deserialize_simple_json(type_name, raw)
-    raw = raw.strip()
-    if lowered in _STRING_TYPES:
-        return _deserialize_simple_json(type_name, raw)
-    if lowered in _INTEGER_TYPES:
-        if re.fullmatch(r"[+-]?[0-9]+", raw) is None:
-            raise ValueError(f"Invalid {type_name}: {raw!r}")
+    raw = raw.strip(' \t\r\n')
+    if lower in _INTEGER_TYPES:
+        if re.fullmatch(r'[+-]?[0-9]+', raw) is None:
+            raise ValueError("Invalid XML integer.")
         return _validate_integer(type_name, int(raw))
-    if lowered == "decimal":
-        return _decimal_from_xml(raw)
-    if lowered in _FLOAT_TYPES:
-        try:
-            parsed = Decimal(raw)
-        except InvalidOperation as exc:
-            raise ValueError(f"Invalid {type_name}: {raw!r}") from exc
-        return _validate_float(type_name, parsed)
-    if lowered == "boolean":
-        if raw in {"true", "1"}:
-            return True
-        if raw in {"false", "0"}:
-            return False
-        raise ValueError(f"Invalid boolean: {raw!r}")
-    constructors: dict[str, type[Any]] = {
-        "datetime": CogsDateTime,
-        "date": CogsDateOnly,
-        "time": CogsTime,
-        "duration": CogsDuration,
-        "gyearmonth": GYearMonth,
-        "gyear": GYear,
-        "gmonthday": GMonthDay,
-        "gmonth": GMonth,
-        "gday": GDay,
-    }
-    if lowered in constructors:
-        return constructors[lowered](raw)
-    if lowered == "cogsdate":
+    if lower == 'decimal':
+        if _XML_DECIMAL_PATTERN.fullmatch(raw) is None:
+            raise ValueError("Invalid XML decimal.")
+        return _decimal(raw)
+    if lower in _FLOAT_TYPES:
+        if re.fullmatch(r'[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?',raw) is None:
+            raise ValueError("Invalid XML floating-point value.")
+        return _validate_float(type_name, Decimal(raw))
+    if lower == 'boolean':
+        if raw not in ('true','false','1','0'):
+            raise ValueError("Invalid XML boolean.")
+        return raw in ('true','1')
+    if lower in _NATIVE_TYPES:
+        return _native_parse(type_name, raw)
+    if lower in _GREGORIAN_TYPES:
+        return _GREGORIAN_TYPES[lower](raw)
+    if lower == 'cogsdate':
         return CogsDate.from_xml_text(raw)
     raise ValueError(f"Unsupported COGS primitive type: {type_name}")
+
 
 
 __FIELD_INSPECTION__
@@ -1288,7 +1174,7 @@ __MODEL_CONFIG__
             encoding="utf-8",
             xml_declaration=xml_declaration,
             short_empty_elements=True,
-        ).decode("utf-8")
+        ).decode("utf-8").replace("\r", "&#13;")
 
     @classmethod
     def from_element(
@@ -1806,7 +1692,7 @@ __MODEL_CONFIG__
             encoding="utf-8",
             xml_declaration=xml_declaration,
             short_empty_elements=True,
-        ).decode("utf-8")
+        ).decode("utf-8").replace("\r", "&#13;")
 
     @classmethod
     def from_xml(cls, value: str | bytes | bytearray) -> ItemContainer:
@@ -1837,7 +1723,7 @@ __MODEL_CONFIG__
             encoding="utf-8",
             xml_declaration=xml_declaration,
             short_empty_elements=True,
-        )
+        ).replace(b"\r", b"&#13;")
         if hasattr(target, "write"):
             try:
                 cast(IO[bytes], target).write(value)

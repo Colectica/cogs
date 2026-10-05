@@ -19,6 +19,8 @@
     <EmbeddedResource Include="Python\Runtime.py" />
     <EmbeddedResource Include="TypeScript\Runtime.ts" />
     <EmbeddedResource Include="xml.xsd" />
+    <EmbeddedResource Include="..\Cogs.Common\CogsScalarValues.cs" LogicalName="CogsScalarValues.cs" />
+    <EmbeddedResource Include="..\Cogs.Common\CogsUriReference.cs" LogicalName="CogsUriReference.cs" />
   </ItemGroup>
 
   <ItemGroup>

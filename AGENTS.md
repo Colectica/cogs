@@ -269,20 +269,27 @@ compatible.
   and never expose it as a model property. Reusable substitutions use qualified
   `xsi:type`; `langString` uses required `xml:lang`.
 * Primitive JSON representations and XML Schema lexical values must agree with
-  the JSON Schema/XSD publishers. Preserve arbitrary decimal/integer precision
-  and namespace qualification. JSON `duration`, `dateTime`, `time`, and `date`
-  are strings with the standard annotation-only `duration`, `date-time`,
-  `time`, and `date` formats; never enable format assertion as a substitute for
-  COGS/XSD lexical validation. JSON `anyURI` uses the annotation-only `uri`
-  format with no regex pattern, while authoritative COGS validation continues
-  to accept relative and absolute RFC 3986 URI references. Gregorian `g*`
-  values use closed PascalCase component objects in JSON and XSD lexical text
-  in XML/RDF. Calendar years in
-  `dateTime`, `date`, `gYearMonth`, and `gYear` are nonzero signed 32-bit
-  integers. Full XSD durations retain negative, fractional, and year/month
-  forms. Timezones are optional where XSD permits them. `cogsDate` has exactly
-  one existing PascalCase arm and uses component objects for its Gregorian
-  JSON arms.
+  the JSON Schema/XSD publishers and the native profile in
+  docs/source/specification/model-format.rst. Instance integers are JavaScript
+  safe integers intersected with their existing sign/Int32 domains; modeled
+  cardinalities remain arbitrary-size. Decimal is exactly System.Decimal
+  representable and its mathematical decimal value must survive native
+  JavaScript JSON stringify unchanged. JSON exponent forms are allowed.
+  Float/double use binary32/binary64 rounding, preserve subnormals, reject
+  overflow/nonfinite values and canonicalize zero positive. JSON float lexemes
+  must preserve their binary32 value through native JavaScript number parsing;
+  rare double-rounding lexemes are rejected, while XML retains direct XSD
+  conversion and every finite binary32 value has a stable JSON spelling.
+  dateTime requires an offset, UTC years 0001–9999 and whole milliseconds;
+  writers normalize UTC. Date is local years 0001–9999 without timezone.
+  Time is local without timezone at microseconds. Duration is elapsed whole
+  milliseconds, no years/months, bounded by ±922337203685477 milliseconds.
+  Text is XML 1.0 Unicode; lengths/patterns count scalars and XML writers
+  entitize carriage returns. Partial Gregorian objects retain PascalCase
+  components, optional zones and nonzero signed Int32 years. CogsDate retains
+  its five arms. Standard JSON formats remain annotations. URI references
+  retain exact RFC 3986 spelling. Temporal/floating value facets use COGS
+  extension metadata where JSON Schema cannot express them.
 * Inheritance, abstract-type restrictions, discriminators, identification, and
   substitution must remain aligned across schemas and generated runtimes.
 
@@ -373,7 +380,7 @@ Python 3.11+ and write `pyproject.toml` plus
 `<normalized-slug>\model.py`, `__init__.py`, and `py.typed`.
 
 Keep flavor-specific changes in template substitutions and one field-inspection
-adapter, not separate runtimes. Lossless helpers remain dataclasses, validated
+adapter, not separate runtimes. Structured Gregorian, CogsDate and LangString helpers remain dataclasses, validated
 as supplied instances in Pydantic fields. Pydantic models forbid extra fields,
 use strict types and assignment validation, reject nonfinite floats, preserve
 nested instances, retain subtype fields in native dumps, and resolve forward
@@ -391,7 +398,8 @@ processes through the shared `PythonIntegrationTests` fixture/script. CI
 explicitly installs Pydantic pinned by `conformance\tools.json`.
 
 Generated class names remain PascalCase. Public attributes are snake_case, but
-field metadata retains exact COGS JSON/XML names. The package exports
+field metadata retains exact COGS JSON/XML names. Scalar APIs use int, Decimal, datetime, date, time and timedelta under the
+shared native profiles. The package exports
 `ItemContainer`, item/composite classes, `LangString`, `CogsDate`, and Gregorian
 helpers. Gregorian helpers use PascalCase component objects in JSON and XSD
 lexical text in XML; calendar years are nonzero signed 32-bit Python integers.

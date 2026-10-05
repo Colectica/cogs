@@ -24,16 +24,15 @@ Model mapping
 Primitive mappings
 ~~~~~~~~~~~~~~~~~~
 
-Strings and URIs map to ``string``, booleans to ``boolean``, and XSD ``int`` to
-``number``. Long and unbounded integer families use ``bigint``. Float and
-double use finite ``number`` values. Exact ``CogsDecimal`` and lexical
-date/time, Gregorian, and full XSD duration helpers preserve values that
-JavaScript primitives cannot represent losslessly. Duration, dateTime, time,
-and date wire values remain strings. Gregorian helpers use PascalCase
-component objects in JSON and XSD lexical text in XML; year values are
-range-checked nonzero signed 32-bit ``number`` values. ``CogsDate`` permits
-exactly one existing PascalCase arm and nests the component representation for
-its Gregorian arms.
+Strings/URIs use ``string``. All numeric primitives use ``number`` under
+the shared integer, decimal and floating-point domains. DateTime uses
+``Date`` normalized to UTC; date/time use strings to retain local calendar
+meaning and microseconds. Duration is a number of elapsed milliseconds.
+The wire representation of every temporal scalar remains a string.
+
+Partial Gregorian helpers retain component information and nonzero Int32 years.
+CogsDate is an exactly-one-arm tagged union with native scalar payloads.
+See :doc:`native-types` for all mappings and migration examples.
 
 Serialization
 ~~~~~~~~~~~~~
@@ -42,9 +41,11 @@ Generated values provide ``toObject``/``fromObject``, ``toJson``/``fromJson``,
 ``toElement``/``fromElement``, and ``toXml``/``fromXml``. ``ItemContainer`` also
 provides asynchronous path-or-Node-stream ``load*`` and ``dump*`` helpers.
 
-The custom JSON codec rejects duplicate fields and writes decimals and bigints
-as JSON numbers without precision loss. Use the string APIs instead of native
-``JSON.parse`` or ``JSON.stringify`` when exact numeric values matter.
+Generated JSON supports ordinary ``JSON.parse`` and ``JSON.stringify``.
+``JSON.stringify(container)`` calls its wire-oriented ``toJSON`` method.
+The ``fromJson`` reader additionally rejects duplicate names and retains raw
+numeric tokens for exact domain checks and binary32 conversion. Use it for
+untrusted text; native JSON parsing has already discarded such evidence.
 
 XML uses the model namespace, XSD element order, ``TypeOfObject`` references,
 ``xml:lang``, and qualified ``xsi:type`` reusable substitutions. A per-container

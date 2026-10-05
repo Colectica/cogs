@@ -21,22 +21,21 @@ Model mapping
 Primitive mappings
 ~~~~~~~~~~~~~~~~~~
 
-Strings and URIs map to ``str``; integer families to arbitrary-precision
-``int``; float and double to finite ``float``; and decimal to lossless
-``CogsDecimal`` (with an exact ``decimal.Decimal`` conversion). Date, time,
-Gregorian, and full XSD duration values use
-validated helpers so optional timezone information, fractional digits, and
-year/month duration components are not narrowed by ``datetime`` or
-``timedelta``. Gregorian helpers serialize to PascalCase component objects in
-JSON and XSD lexical text in XML. Calendar years are range-checked nonzero
-Python integers in the signed 32-bit range. The package also supplies lossless
-``LangString`` and exactly-one-arm ``CogsDate`` helpers.
+Strings/URIs use ``str``, integer families use range-checked ``int``, and
+decimal uses standard-library ``decimal.Decimal``. Float/double use native
+``float`` with binary32/binary64 conversion respectively. Scalars use
+``datetime.datetime`` (UTC), ``datetime.date``, ``datetime.time`` and
+``datetime.timedelta`` under the shared native profiles. See
+:doc:`native-types` for limits and migration examples.
+
+Partial Gregorian, LangString and CogsDate helpers remain structured values.
+Gregorian years retain the nonzero signed 32-bit range and optional timezone.
 
 Pydantic flavor
 ~~~~~~~~~~~~~~~
 
 ``CogsValue``, ``CogsItem``, ``ItemContainer``, and every generated item/composite
-class inherit from Pydantic ``BaseModel``. Lossless primitive helpers remain
+class inherit from Pydantic ``BaseModel``. Structured primitive helpers remain
 dataclasses in both flavors. Pass already constructed helper instances to
 native Pydantic fields; validation preserves those instances rather than
 reconstructing them. Models use strict types, forbidden extra fields,

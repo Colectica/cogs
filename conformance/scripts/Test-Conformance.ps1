@@ -94,6 +94,16 @@ foreach ($format in @('json', 'xml')) {
     Write-Host "PASS full.${format}: schema and COGS instance validation"
 }
 
+# These old full-domain documents must remain migration failures, never rounded.
+foreach ($format in @('json', 'xml')) {
+    $instance = Join-Path $instanceRoot "migration/full-domain.$format"
+    $output = & dotnet $CogsDll validate-instance $Model $instance --format $format 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 100) {
+        throw "Expected native-domain migration rejection (exit 100) for $($format):$output"
+    }
+    Write-Host "PASS migration/full-domain.$($format): rejected without conversion"
+}
+
 $tempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
 $tempRoot = Join-Path $tempBase ("cogs-conformance-" + [guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($tempRoot) | Out-Null

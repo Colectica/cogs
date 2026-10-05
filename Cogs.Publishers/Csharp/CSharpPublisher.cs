@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2017 Colectica. All rights reservedbstr
+// Copyright (c) 2017 Colectica. All rights reservedbstr
 // See the LICENSE file in the project root for more information.
 using Cogs.Model;
 using System;
@@ -70,13 +70,21 @@ namespace Cogs.Publishers.Csharp
 
         public void Publish()
         {
+            ValidateGeneratedNames();
+            TargetNamespace ??= model.Settings.NamespaceUrl;
+            TargetNamespacePrefix ??= model.Settings.NamespacePrefix;
+            string csNamespace = string.IsNullOrWhiteSpace(model.Settings.CSharpNamespace)
+                ? "Cogs.Model"
+                : model.Settings.CSharpNamespace;
+            ValidateTargetOptions(csNamespace);
+
             string originalTarget = TargetDirectory;
             DirectoryPublication.Publish(originalTarget, Overwrite, stagingDirectory =>
             {
                 TargetDirectory = stagingDirectory;
                 try
                 {
-                    PublishCore();
+                    PublishCore(csNamespace);
                 }
                 finally
                 {
@@ -85,22 +93,8 @@ namespace Cogs.Publishers.Csharp
             }, model.SourceDirectory);
         }
 
-        private void PublishCore()
+        private void PublishCore(string csNamespace)
         {
-            ValidateGeneratedNames();
-
-            TargetNamespace ??= model.Settings.NamespaceUrl;
-            TargetNamespacePrefix ??= model.Settings.NamespacePrefix;
-
-
-            //get the project name
-            string? csNamespace = model.Settings.CSharpNamespace;
-            if (string.IsNullOrWhiteSpace(csNamespace))
-            {
-                csNamespace = "Cogs.Model";
-            }
-            ValidateTargetOptions(csNamespace);
-
             CreatePartialIIdentifiable(model, csNamespace);
             CreatePartialItemContainer(model, csNamespace);
 
@@ -109,7 +103,7 @@ namespace Cogs.Publishers.Csharp
             {
                 XDocument project = new XDocument(
                     new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
-                        new XElement("PropertyGroup", 
+                        new XElement("PropertyGroup",
                             new XElement("TargetFramework", "net10.0"),
                             new XElement("PackageId", model.Settings.Slug),
                             new XElement("Version", model.Settings.Version),
@@ -134,12 +128,12 @@ namespace Cogs.Publishers.Csharp
                 SaveXmlDocument(directoryPackages, Path.Combine(TargetDirectory, "Directory.Packages.props"));
             }
 
-            
+
             // Copy Types.cs file.
-            using Stream? typeStream = (GetType()?.GetTypeInfo().Assembly.GetManifestResourceStream("Cogs.Publishers.Csharp.Types.txt")) 
+            using Stream? typeStream = (GetType()?.GetTypeInfo().Assembly.GetManifestResourceStream("Cogs.Publishers.Csharp.Types.txt"))
                 ?? throw new Exception("Could not find Types.txt resource");
             using StreamReader typeReader = new(typeStream);
-            string typesContent = typeReader.ReadToEnd();
+            string typesContent = typeReader.ReadToEnd().Replace("using Cogs.Common;", string.Empty, StringComparison.Ordinal);
             var typesBuilder = new StringBuilder();
 
             if (!string.IsNullOrWhiteSpace(model.HeaderInclude))
@@ -152,12 +146,20 @@ namespace Cogs.Publishers.Csharp
 
             typesBuilder.AppendLine(typesContent);
             File.WriteAllText(Path.Combine(TargetDirectory, "Types.cs"), typesBuilder.ToString());
-        
+            foreach (string helper in new[] { "CogsScalarValues.cs", "CogsUriReference.cs" })
+            {
+                using Stream helperStream = typeof(CSharpPublisher).Assembly.GetManifestResourceStream(helper)
+                    ?? throw new InvalidOperationException($"Missing {helper} resource.");
+                using StreamReader helperReader = new StreamReader(helperStream);
+                File.WriteAllText(Path.Combine(TargetDirectory, helper), helperReader.ReadToEnd()
+                    .Replace("namespace Cogs.Common", "namespace Cogs.SimpleTypes", StringComparison.Ordinal));
+            }
+
             // Copy the DependantTypes.cs file.
             using Stream? stream = GetType().GetTypeInfo().Assembly.GetManifestResourceStream("Cogs.Publishers.Csharp.DependantTypes.txt")
                 ?? throw new Exception("Could not find DependantTypes.txt resource");
             using StreamReader reader = new(stream);
-            string fileContents = reader.ReadToEnd();
+            string fileContents = reader.ReadToEnd().Replace("using Cogs.Common;", string.Empty, StringComparison.Ordinal);
 
             fileContents = fileContents.Replace("__CogsGeneratedNamespace", csNamespace);
             fileContents = fileContents.Replace("__CogsXmlNamespace__", TargetNamespace ?? model.Settings.NamespaceUrl);
@@ -202,7 +204,7 @@ namespace Cogs.Publishers.Csharp
                 classBuilder.AppendLine("using System.Collections;");
                 classBuilder.AppendLine("using Cogs.DataAnnotations;");
                 classBuilder.AppendLine("using Cogs.Converters;");
-                classBuilder.AppendLine("using System.Collections.Generic;");                
+                classBuilder.AppendLine("using System.Collections.Generic;");
                 classBuilder.AppendLine("using System.Numerics;");
                 classBuilder.AppendLine("using System.ComponentModel.DataAnnotations;");
                 classBuilder.AppendLine("using VDS.RDF;");
@@ -210,13 +212,13 @@ namespace Cogs.Publishers.Csharp
                 classBuilder.AppendLine();
                 classBuilder.AppendLine($"namespace {csNamespace}");
                 classBuilder.AppendLine("{");
-                classBuilder.AppendLine( "    /// <summary>");
-                foreach(var line in item.Description.Split(["\r\n", "\r", "\n"], StringSplitOptions.None))
+                classBuilder.AppendLine("    /// <summary>");
+                foreach (var line in item.Description.Split(["\r\n", "\r", "\n"], StringSplitOptions.None))
                 {
                     classBuilder.AppendLine($"    /// {line}");
                 }
-                
-                classBuilder.AppendLine( "    /// <summary>");
+
+                classBuilder.AppendLine("    /// <summary>");
                 classBuilder.AppendLine($"    [CogsType({QuoteCSharp(item.Name)}, {model.ItemTypes.Contains(item).ToString().ToLowerInvariant()}, {item.IsAbstract.ToString().ToLowerInvariant()})]");
                 classBuilder.Append("    public ");
 
@@ -224,8 +226,11 @@ namespace Cogs.Publishers.Csharp
                 // Start building the ToXml method.
                 StringBuilder toXml = new();
                 string parameterStr = "";
-                if (model.ReusableDataTypes.Contains(item)) { parameterStr = "string name"; }
-                if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName) && !CogsTypes.SimpleTypeNames.Contains(item.ExtendsTypeName) )
+                if (model.ReusableDataTypes.Contains(item))
+                {
+                    parameterStr = "string name";
+                }
+                if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName) && !CogsTypes.SimpleTypeNames.Contains(item.ExtendsTypeName))
                 {
                     toXml.AppendLine($"        public override XElement ToXml({parameterStr})");
                 }
@@ -243,10 +248,10 @@ namespace Cogs.Publishers.Csharp
                 {
                     toXml.AppendLine($"            XElement xEl = new XElement(ns + name);");
                 }
-                
+
                 // Start building the AddTriples method.
                 StringBuilder addTriplesMethodBuilder = new();
-                if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName) && !CogsTypes.SimpleTypeNames.Contains(item.ExtendsTypeName) )
+                if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName) && !CogsTypes.SimpleTypeNames.Contains(item.ExtendsTypeName))
                 {
                     addTriplesMethodBuilder.AppendLine("        public override INode AddTriples(IGraph graph, INode? itemNode = null)");
                 }
@@ -286,7 +291,10 @@ namespace Cogs.Publishers.Csharp
 
 
                 // Add abstract to class title if relevant
-                if (item.IsAbstract) { classBuilder.Append("abstract "); }
+                if (item.IsAbstract)
+                {
+                    classBuilder.Append("abstract ");
+                }
                 classBuilder.Append("partial class " + className);
 
                 // Allow inheritance when relevant
@@ -294,15 +302,15 @@ namespace Cogs.Publishers.Csharp
                     $"\"{item.ExtendsTypeName}\"" : string.Empty;
                 if (!string.IsNullOrWhiteSpace(item.ExtendsTypeName))
                 {
-                    if(CogsTypes.SimpleTypeNames.Contains(item.ExtendsTypeName))
+                    if (CogsTypes.SimpleTypeNames.Contains(item.ExtendsTypeName))
                     {
                         // TODO should we allow subclassing simple types? add others and handle serialization, or eliminate
                         classBuilder.AppendLine($"");
                         classBuilder.AppendLine("    {");
                         classBuilder.AppendLine("        /// <summary>");
                         classBuilder.AppendLine($"        /// The value of the item");
-                        classBuilder.AppendLine("        /// <summary>");                        
-                        if(string.Compare(item.ExtendsTypeName, "string") == 0)
+                        classBuilder.AppendLine("        /// <summary>");
+                        if (string.Compare(item.ExtendsTypeName, "string") == 0)
                         {
                             classBuilder.AppendLine($"        public string Value {{ get; set; }}");
                         }
@@ -338,7 +346,10 @@ namespace Cogs.Publishers.Csharp
                     classBuilder.AppendLine("        public string ReferenceId => CogsIdentity.Format(this);");
 
                 }
-                else { classBuilder.AppendLine($"{Environment.NewLine}    {{"); }
+                else
+                {
+                    classBuilder.AppendLine($"{Environment.NewLine}    {{");
+                }
 
 
                 classBuilder.AppendLine($"        public {className}() {{ Initialize(); }}");
@@ -361,16 +372,16 @@ namespace Cogs.Publishers.Csharp
                     foreach (var line in prop.Description.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None))
                     {
                         classBuilder.AppendLine($"        /// {line}");
-                    }                    
+                    }
                     classBuilder.AppendLine("        /// <summary>");
 
-                    
+
                     // set c# datatype representation while saving original so can tell what type it is
                     string? origDataTypeName = null;
                     if (Translator?.ContainsKey(prop.DataTypeName) == true)
                     {
                         origDataTypeName = prop.DataTypeName;
-                        prop.DataTypeName = Translator[prop.DataTypeName];                        
+                        prop.DataTypeName = Translator[prop.DataTypeName];
                     }
                     else
                     {
@@ -386,15 +397,24 @@ namespace Cogs.Publishers.Csharp
                             : "CogsPropertyKind.Primitive";
                     string metadata = $"        [CogsProperty({QuoteCSharp(prop.Name)}, {QuoteCSharp(origDataTypeName ?? sourceProperty.DataTypeName)}, {kind}, {propertyOrder++}, {CogsTypeSystem.AllowsSubtypes(prop).ToString().ToLowerInvariant()}, {isIdentification.ToString().ToLowerInvariant()}, {QuoteCSharp(prop.MinCardinality)}, {QuoteCSharp(prop.MaxCardinality)}";
                     var metadataOptions = new List<string>();
-                    if (prop.MinLength.HasValue) metadataOptions.Add($"MinLength = {prop.MinLength.Value}");
-                    if (prop.MaxLength.HasValue) metadataOptions.Add($"MaxLength = {prop.MaxLength.Value}");
-                    if (prop.Ordered) metadataOptions.Add("Ordered = true");
-                    if (prop.Enumeration.Count > 0) metadataOptions.Add($"Enumeration = new string[] {{ {string.Join(", ", prop.Enumeration.Select(QuoteCSharp))} }}");
-                    if (!string.IsNullOrEmpty(prop.Pattern)) metadataOptions.Add($"Pattern = {QuoteCSharp(prop.Pattern)}");
-                    if (!string.IsNullOrEmpty(prop.MinInclusive)) metadataOptions.Add($"MinInclusive = {QuoteCSharp(prop.MinInclusive)}");
-                    if (!string.IsNullOrEmpty(prop.MinExclusive)) metadataOptions.Add($"MinExclusive = {QuoteCSharp(prop.MinExclusive)}");
-                    if (!string.IsNullOrEmpty(prop.MaxInclusive)) metadataOptions.Add($"MaxInclusive = {QuoteCSharp(prop.MaxInclusive)}");
-                    if (!string.IsNullOrEmpty(prop.MaxExclusive)) metadataOptions.Add($"MaxExclusive = {QuoteCSharp(prop.MaxExclusive)}");
+                    if (prop.MinLength.HasValue)
+                        metadataOptions.Add($"MinLength = {prop.MinLength.Value}");
+                    if (prop.MaxLength.HasValue)
+                        metadataOptions.Add($"MaxLength = {prop.MaxLength.Value}");
+                    if (prop.Ordered)
+                        metadataOptions.Add("Ordered = true");
+                    if (prop.Enumeration.Count > 0)
+                        metadataOptions.Add($"Enumeration = new string[] {{ {string.Join(", ", prop.Enumeration.Select(QuoteCSharp))} }}");
+                    if (!string.IsNullOrEmpty(prop.Pattern))
+                        metadataOptions.Add($"Pattern = {QuoteCSharp(prop.Pattern)}");
+                    if (!string.IsNullOrEmpty(prop.MinInclusive))
+                        metadataOptions.Add($"MinInclusive = {QuoteCSharp(prop.MinInclusive)}");
+                    if (!string.IsNullOrEmpty(prop.MinExclusive))
+                        metadataOptions.Add($"MinExclusive = {QuoteCSharp(prop.MinExclusive)}");
+                    if (!string.IsNullOrEmpty(prop.MaxInclusive))
+                        metadataOptions.Add($"MaxInclusive = {QuoteCSharp(prop.MaxInclusive)}");
+                    if (!string.IsNullOrEmpty(prop.MaxExclusive))
+                        metadataOptions.Add($"MaxExclusive = {QuoteCSharp(prop.MaxExclusive)}");
                     metadata += metadataOptions.Count == 0 ? ")]" : ", " + string.Join(", ", metadataOptions) + ")]";
                     classBuilder.AppendLine(metadata);
 
@@ -449,7 +469,7 @@ namespace Cogs.Publishers.Csharp
                             toXml.AppendLine($"            if ({prop.Name} != null) {{ xEl.Add({prop.Name}.ToXml(\"{prop.Name}\")); }}");
                         }
                         else if (!model.ItemTypes.Contains(prop.DataType))
-                        {                            
+                        {
                             toXml.AppendLine($"            if ({prop.Name} != null)");
                             toXml.AppendLine("            {");
                             toXml.AppendLine($"                xEl.Add(new XElement(ns + \"{prop.Name}\", {prop.Name}));");
@@ -548,7 +568,7 @@ namespace Cogs.Publishers.Csharp
 
                     }
                 }
-                
+
                 classBuilder.AppendLine("        partial void Initialize();");
                 classBuilder.AppendLine();
                 classBuilder.AppendLine("        /// <summary>");
@@ -724,7 +744,7 @@ namespace Cogs.Publishers.Csharp
             CogsRdfNaming.PropertyIri(TargetNamespace ?? model.Settings.NamespaceUrl, propertyName);
 
         private static bool IsClrValueType(string name) =>
-            name is "bool" or "int" or "double" or "ulong" or "long" or "BigInteger" or "float";
+            name is "bool" or "int" or "double" or "ulong" or "long" or "BigInteger" or "float" or "decimal" or "DateTimeOffset" or "DateOnly" or "TimeOnly" or "TimeSpan";
 
         private bool IsIdentificationProperty(Property property) =>
             model.Identification.Any(candidate => string.Equals(candidate.Name, property.Name, StringComparison.Ordinal));
@@ -747,6 +767,7 @@ namespace Cogs.Publishers.Csharp
                 "ItemContainer", "IIdentifiable", "CogsIdentity", "CogsModelMetadata", "RdfUriFactory",
                 "ItemContainerJsonConverter", "CogsIdentityKey", "CogsIdentityMap", "CogsObjectState",
                 "CogsPropertyMetadata", "CogsReflection", "CogsPrimitiveCodec", "CogsJsonCodec", "CogsXmlCodec",
+                "DateTimeOffset", "DateOnly", "TimeOnly", "TimeSpan", "Decimal", "CogsScalarValues", "CogsUriReference",
                 "LangString", "CogsDecimal", "CogsDate", "CogsDateTime", "CogsDateOnly", "CogsTime",
                 "CogsDuration", "GYear", "GYearMonth", "GMonthDay", "GDay", "GMonth",
             };
@@ -1011,22 +1032,22 @@ namespace {{csNamespace}}
                 { "long", "long" },
                 { "int", "int" },
                 { "language", "string" },
-                { "duration", "CogsDuration" },
-                { "dateTime", "CogsDateTime" },
-                { "time", "CogsTime" },
-                { "date", "CogsDateOnly" },
+                { "duration", "TimeSpan" },
+                { "dateTime", "DateTimeOffset" },
+                { "time", "TimeOnly" },
+                { "date", "DateOnly" },
                 { "gYearMonth", "GYearMonth" },
                 { "gMonthDay", "GMonthDay" },
                 { "gYear", "GYear" },
                 { "gMonth", "GMonth" },
                 { "gDay", "GDay" },
-                { "anyURI", "Uri" },
-                { "nonPositiveInteger", "BigInteger" },
-                { "negativeInteger", "BigInteger" },
-                { "nonNegativeInteger", "BigInteger" },
+                { "anyURI", "string" },
+                { "nonPositiveInteger", "long" },
+                { "negativeInteger", "long" },
+                { "nonNegativeInteger", "long" },
                 { "unsignedLong", "ulong" },
-                { "positiveInteger", "BigInteger" },
-                { "decimal", "CogsDecimal" },
+                { "positiveInteger", "long" },
+                { "decimal", "decimal" },
                 { "cogsDate", "CogsDate" },
                 { "langString", "LangString" }
             };

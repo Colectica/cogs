@@ -47,6 +47,7 @@ public sealed class GraphQLPublisher
 
         var builder = new StringBuilder();
         AppendHeader(builder, model);
+        builder.AppendLine("# Scalar resolvers must enforce COGS native domains: safe integers, exact interoperable decimals, and native temporal precision.");
         AppendHelpers(builder);
 
         foreach (DataType type in model.AllDataTypes.OrderBy(type => type.Name, StringComparer.Ordinal))

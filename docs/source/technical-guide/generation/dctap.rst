@@ -13,6 +13,9 @@ Dublin Core Tabular Application Profile (DCTAP) view of a COGS model.
 The canonical preserved/approximated list and diagnostic ranges are in
 :doc:`/specification/publishers`.
 
+``DCT2010`` discloses that native numeric/temporal restrictions require COGS
+validation; an XSD datatype IRI alone does not express those restrictions.
+
 Mapping
 ~~~~~~~
 

@@ -15,8 +15,8 @@ namespace Cogs.Tests;
 public sealed class GregorianJsonContractTests
 {
     [Theory]
-    [InlineData("dateTime", "-2147483648-01-01T24:00:00", true)]
-    [InlineData("dateTime", "2147483647-12-31T23:59:59.5Z", true)]
+    [InlineData("dateTime", "-2147483648-01-01T24:00:00Z", false)]
+    [InlineData("dateTime", "2147483647-12-31T23:59:59.5Z", false)]
     [InlineData("dateTime", "-2147483649-01-01T00:00:00Z", false)]
     [InlineData("date", "0000-01-01", false)]
     [InlineData("date", "2147483648-01-01", false)]
@@ -71,10 +71,8 @@ public sealed class GregorianJsonContractTests
         Assert.True(yearMonth.GetProperty("properties").TryGetProperty("Timezone", out _));
 
         JsonElement enumeration = definitions.GetProperty("Thing").GetProperty("properties")
-            .GetProperty("YearMonthValue").GetProperty("enum");
-        Assert.Equal(2020, enumeration[0].GetProperty("Year").GetInt32());
-        Assert.Equal(1, enumeration[0].GetProperty("Month").GetInt32());
-        Assert.Equal("Z", enumeration[0].GetProperty("Timezone").GetString());
+            .GetProperty("YearMonthValue").GetProperty("x-cogs-enumeration").GetProperty("values");
+        Assert.Equal("2020-01Z", enumeration[0].GetString());
     }
 
     [Theory]
@@ -115,7 +113,7 @@ public sealed class GregorianJsonContractTests
               "items": [{
                 "$type": "Thing",
                 "ID": "one",
-                "DateTimeValue": "-0001-01-01T24:00:00"
+                "DateTimeValue": "-0001-01-01T24:00:00Z"
               }]
             }
             """);
@@ -151,7 +149,7 @@ public sealed class GregorianJsonContractTests
     }
 
     [Fact]
-    public void AuthoritativeValidatorRetainsFullXsdLexicalsAndGregorianBounds()
+    public void AuthoritativeValidatorUsesNativeTemporalsAndFullGregorianBounds()
     {
         CogsModel model = BuildModel();
         string valid = """
@@ -159,10 +157,10 @@ public sealed class GregorianJsonContractTests
               "items": [{
                 "$type": "Thing",
                 "ID": "one",
-                "DateTimeValue": "-2147483648-01-01T24:00:00",
-                "DateValue": "-2147483648-01-01-06:00",
-                "TimeValue": "24:00:00Z",
-                "DurationValue": "-P1Y2M3DT0.5S",
+                "DateTimeValue": "0001-01-01T24:00:00Z",
+                "DateValue": "0001-01-01",
+                "TimeValue": "24:00:00",
+                "DurationValue": "-P3DT0.5S",
                 "YearMonthValue": {"Year": 2020, "Month": 1, "Timezone": "Z"},
                 "YearValue": {"Year": 2020, "Timezone": "Z"},
                 "MonthDayValue": {"Month": 2, "Day": 29},
@@ -180,7 +178,7 @@ public sealed class GregorianJsonContractTests
             StringComparison.Ordinal)),
             error => error.Code == "INS1007");
         Assert.Contains(CogsInstanceValidator.ValidateJson(model, valid.Replace(
-            "\"-P1Y2M3DT0.5S\"", "\"P1W\"", StringComparison.Ordinal)),
+            "\"-P3DT0.5S\"", "\"P1W\"", StringComparison.Ordinal)),
             error => error.Code == "INS1006");
         Assert.Contains(CogsInstanceValidator.ValidateJson(model, valid.Replace(
             "{\"GYearMonth\": {\"Year\": -1, \"Month\": 2, \"Timezone\": \"+00:00\"}}",
@@ -196,8 +194,8 @@ public sealed class GregorianJsonContractTests
             <ItemContainer xmlns="https://example.org/gregorian">
               <Thing>
                 <ID>one</ID>
-                <DateTimeValue>-2147483648-01-01T00:00:00Z</DateTimeValue>
-                <DateValue>-2147483648-01-01Z</DateValue>
+                <DateTimeValue>0001-01-01T00:00:00Z</DateTimeValue>
+                <DateValue>0001-01-01</DateValue>
                 <YearMonthValue>2020-01Z</YearMonthValue>
                 <YearValue>2020Z</YearValue>
                 <Calendar>-2147483648</Calendar>
@@ -207,7 +205,7 @@ public sealed class GregorianJsonContractTests
 
         Assert.Empty(CogsInstanceValidator.ValidateXml(model, valid));
         Assert.Contains(CogsInstanceValidator.ValidateXml(model, valid.Replace(
-            "-2147483648-01-01T00:00:00Z",
+            "0001-01-01T00:00:00Z",
             "-2147483649-01-01T00:00:00Z",
             StringComparison.Ordinal)),
             error => error.Code is "INS2002" or "INS2006");

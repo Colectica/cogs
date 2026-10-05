@@ -108,6 +108,9 @@ public sealed class OwlPublisher
         }
         _graph.NamespaceMap.AddNamespace(targetPrefix, UriFactory.Create(_termBase));
 
+        _diagnostics.Add(new CogsError(ErrorLevel.Warning, "OWL2007",
+            "OWL datatype ranges do not enforce COGS decimal interchange exactness or native temporal precision; use COGS instance validation.",
+            sourcePath: model.SourceDirectory));
         IUriNode ontology = UriNode(TargetNamespace);
         Assert(ontology, Rdf + "type", UriNode(Owl + "Ontology"));
         AddOptionalLiteral(ontology, Owl + "versionInfo", VersionInfo);
@@ -361,7 +364,9 @@ public sealed class OwlPublisher
             || !string.IsNullOrEmpty(property.MinExclusive)
             || !string.IsNullOrEmpty(property.MaxInclusive)
             || !string.IsNullOrEmpty(property.MaxExclusive);
-        bool hasFacets = property.Enumeration.Count > 0 || hasLexicalFacets;
+        bool safeInteger = property.DataTypeName is "long" or "unsignedLong" or "nonPositiveInteger"
+            or "negativeInteger" or "nonNegativeInteger" or "positiveInteger";
+        bool hasFacets = property.Enumeration.Count > 0 || hasLexicalFacets || safeInteger;
 
         if (!hasFacets)
         {
@@ -402,6 +407,11 @@ public sealed class OwlPublisher
         }
 
         var facets = new List<INode>();
+        if (safeInteger)
+        {
+            AddFacet(facets, "minInclusive", "-9007199254740991", Xsd + "integer");
+            AddFacet(facets, "maxInclusive", "9007199254740991", Xsd + "integer");
+        }
         // OWL 2's RDF mapping requires length facet values to use xsd:integer
         // and pattern facet values to be plain RDF literals.
         AddFacet(facets, "minLength", property.MinLength?.ToString(CultureInfo.InvariantCulture), Xsd + "integer");

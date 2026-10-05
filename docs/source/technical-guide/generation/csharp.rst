@@ -12,16 +12,13 @@ Mapping
 * Root item types implement identifiable behavior using the configured
   identification properties.
 * Composite types become reusable classes used as property types.
-* Primitive COGS types map to built-in .NET types only when the full COGS value
-  space is lossless; otherwise generated lexical or arbitrary-precision helpers
-  are used.
+* Primitive COGS types use native ``decimal``, ``DateTimeOffset``, ``DateOnly``,
+  ``TimeOnly``, ``TimeSpan`` and bounded native integers. URIs use strings
+  to preserve lexical identity.
 
-Date/time and full XSD duration values remain validated lexical strings,
-including optional XSD timezones and year/month duration components. JSON
-uses closed component objects for ``gYearMonth``, ``gYear``, ``gMonthDay``,
-``gDay``, and ``gMonth`` while XML retains the XSD lexical value. Calendar
-years are nonzero ``int`` values; arbitrary integers and decimals remain
-lossless JSON numbers.
+The complete matrix and compatibility changes are in :doc:`native-types`.
+Partial Gregorian helpers, LangString and CogsDate remain structured values.
+All JSON numeric kinds are preserved.
 
 JSON behavior
 ~~~~~~~~~~~~~
@@ -34,8 +31,8 @@ current JSON Schema contract:
 * ``topLevelReferences`` contains item references
 * references are simple objects containing ``$type`` plus identification values
 * reusable substitute datatypes use property-local ``$type`` dispatch
-* raw numeric tokens and ``WriteRawValue`` preserve arbitrary integers and
-  decimal lexemes
+* numeric readers and writers enforce the shared safe-integer and exact
+  decimal interchange domains
 * duplicate/unknown fields, missing or empty identity components, duplicate
   definitions, malformed values, and incompatible discriminators are rejected
 

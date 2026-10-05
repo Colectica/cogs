@@ -181,7 +181,7 @@ public sealed class LinkMlPublisher
             .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitDefaults)
             .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull)
             .Build();
-        File.WriteAllText(Path.Combine(targetDirectory, "linkml.yml"), serializer.Serialize(linkml));
+        File.WriteAllText(Path.Combine(targetDirectory, "linkml.yml"), "# Native decimal exactness and temporal precision/domain checks require COGS validation; these aliases are projections.\n" + serializer.Serialize(linkml));
     }
 
     private LinkMLSlot PropertyToSlot(CogsModel model, DataType owner, Property property)
@@ -258,9 +258,9 @@ public sealed class LinkMlPublisher
 
     private static Dictionary<string, LinkMLType> CreateTypes() => new(StringComparer.Ordinal)
     {
-        ["cogs_duration"] = Alias("string", "xsd:duration", "An exact XSD duration lexical value."),
-        ["cogs_date_time"] = Alias("string", "xsd:dateTime", "An XSD dateTime lexical value whose nonzero calendar year is a signed 32-bit integer."),
-        ["cogs_date_only"] = Alias("string", "xsd:date", "An XSD date lexical value whose nonzero calendar year is a signed 32-bit integer."),
+        ["cogs_duration"] = Alias("string", "xsd:duration", "An elapsed whole-millisecond duration without calendar years/months; COGS validation enforces its native range."),
+        ["cogs_date_time"] = Alias("string", "xsd:dateTime", "A timezone-required instant in UTC years 0001 through 9999 at millisecond precision."),
+        ["cogs_date_only"] = Alias("string", "xsd:date", "A local date in years 0001 through 9999, without timezone."),
         ["cogs_g_year_month"] = Alias("string", "xsd:gYearMonth", "An XSD gYearMonth lexical value whose nonzero year is a signed 32-bit integer."),
         ["cogs_g_year"] = Alias("string", "xsd:gYear", "An XSD gYear lexical value whose nonzero year is a signed 32-bit integer."),
         ["cogs_g_month_day"] = Alias("string", "xsd:gMonthDay", "An XSD gMonthDay lexical value."),
@@ -274,15 +274,15 @@ public sealed class LinkMlPublisher
             description = "A BCP 47 language tag.",
             pattern = "[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*"
         },
-        ["cogs_non_positive_integer"] = Alias("integer", "xsd:nonPositiveInteger", "An integer no greater than zero.", maximum: BigInteger.Zero),
-        ["cogs_negative_integer"] = Alias("integer", "xsd:negativeInteger", "An integer less than zero.", maximum: BigInteger.MinusOne),
-        ["cogs_long"] = Alias("integer", "xsd:long", "A signed 64-bit integer.", long.MinValue, long.MaxValue),
+        ["cogs_non_positive_integer"] = Alias("integer", "xsd:nonPositiveInteger", "An integer no greater than zero.", minimum: -CogsScalarValues.SafeInteger, maximum: BigInteger.Zero),
+        ["cogs_negative_integer"] = Alias("integer", "xsd:negativeInteger", "An integer less than zero.", minimum: -CogsScalarValues.SafeInteger, maximum: BigInteger.MinusOne),
+        ["cogs_long"] = Alias("integer", "xsd:long", "A signed JavaScript-safe integer.", -CogsScalarValues.SafeInteger, CogsScalarValues.SafeInteger),
         // LinkML deliberately rejects xsd:int as a type URI. Preserve the XSD int
         // value space with integer plus exact bounds while using xsd:integer.
         ["cogs_int"] = Alias("integer", "xsd:integer", "A signed 32-bit XSD int.", int.MinValue, int.MaxValue),
-        ["cogs_non_negative_integer"] = Alias("integer", "xsd:nonNegativeInteger", "An integer no less than zero.", BigInteger.Zero),
-        ["cogs_unsigned_long"] = Alias("integer", "xsd:unsignedLong", "An unsigned 64-bit integer.", BigInteger.Zero, BigInteger.Parse("18446744073709551615", CultureInfo.InvariantCulture)),
-        ["cogs_positive_integer"] = Alias("integer", "xsd:positiveInteger", "An integer greater than zero.", BigInteger.One),
+        ["cogs_non_negative_integer"] = Alias("integer", "xsd:nonNegativeInteger", "An integer no less than zero.", BigInteger.Zero, CogsScalarValues.SafeInteger),
+        ["cogs_unsigned_long"] = Alias("integer", "xsd:unsignedLong", "An unsigned JavaScript-safe integer.", BigInteger.Zero, CogsScalarValues.SafeInteger),
+        ["cogs_positive_integer"] = Alias("integer", "xsd:positiveInteger", "An integer greater than zero.", BigInteger.One, CogsScalarValues.SafeInteger),
         ["cogs_date"] = new LinkMLType
         {
             description = "The COGS date union.",

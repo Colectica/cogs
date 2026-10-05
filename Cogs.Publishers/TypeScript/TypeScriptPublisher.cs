@@ -31,7 +31,7 @@ public sealed class TypeScriptPublisher
 
     private static readonly HashSet<string> RuntimeTypeNames = new(StringComparer.Ordinal)
     {
-        "CogsDate", "CogsDateOnly", "CogsDateTime", "CogsDecimal", "CogsDuration", "CogsItem",
+        "Date", "CogsDate", "CogsDateOnly", "CogsDateTime", "CogsDecimal", "CogsDuration", "CogsItem",
         "CogsTime", "CogsValue", "CogsConstructor", "CogsDateKind", "CogsDateValue", "Context",
         "DecimalParts", "Document", "DOMImplementation", "DOMParser", "Element", "FieldSpec", "GDay",
         "GMonth", "GMonthDay", "GYear", "GYearMonth", "IdentificationField", "ItemContainer",
@@ -42,7 +42,7 @@ public sealed class TypeScriptPublisher
     {
         "constructor", "fromElement", "fromJson", "fromObject", "fromXml", "toElement", "toJson",
         "toObject", "toReferenceObject", "toXml", "cogsType", "declaredFields", "emitTypeField",
-        "isAbstract", "isDefined", "isItem",
+        "isAbstract", "isDefined", "isItem", "toJSON",
     };
 
     private static readonly HashSet<string> StringTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -142,11 +142,11 @@ public sealed class TypeScriptPublisher
                 "build": "tsc -p tsconfig.json"
               },
               "dependencies": {
-                "@xmldom/xmldom": "^0.9.10"
+                "@xmldom/xmldom": "^0.9.12"
               },
               "devDependencies": {
                 "@types/node": "^22.0.0",
-                "typescript": "^6.0.0"
+                "typescript": "^6.0.3"
               }
             }
             """;
@@ -193,6 +193,7 @@ public sealed class TypeScriptPublisher
         using var reader = new StreamReader(stream);
         string runtime = reader.ReadToEnd()
             .Replace("__TARGET_NAMESPACE__", Quote(targetNamespace), StringComparison.Ordinal)
+            .Replace("__URI_REFERENCE_PATTERN__", Quote(CogsUriReference.Pattern), StringComparison.Ordinal)
             .Replace("__NAMESPACE_PREFIX__", Quote(namespacePrefix), StringComparison.Ordinal)
             .Replace("__IDENTIFICATION_FIELDS__", GetIdentificationLiteral(), StringComparison.Ordinal);
 
@@ -303,13 +304,13 @@ public sealed class TypeScriptPublisher
             "boolean" => "boolean",
             "int" => "number",
             "nonpositiveinteger" or "negativeinteger" or "long" or "nonnegativeinteger"
-                or "unsignedlong" or "positiveinteger" => "bigint",
+                or "unsignedlong" or "positiveinteger" => "number",
             "float" or "double" => "number",
-            "decimal" => "CogsDecimal",
-            "datetime" => "CogsDateTime",
-            "date" => "CogsDateOnly",
-            "time" => "CogsTime",
-            "duration" => "CogsDuration",
+            "decimal" => "number",
+            "datetime" => "Date",
+            "date" => "string",
+            "time" => "string",
+            "duration" => "number",
             "gyearmonth" => "GYearMonth",
             "gyear" => "GYear",
             "gmonthday" => "GMonthDay",

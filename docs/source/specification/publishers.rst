@@ -68,7 +68,11 @@ class declaration's exact nonblank description. Its two authority exceptions
 are ``OWL2002`` for property-local subtype exclusion and ``OWL2003`` for
 prohibition of direct instances of abstract COGS types. OWL is not an
 instance-validation or ordered-collection authority; unsupported lexical
-constraints remain in JSON Schema and XSD.
+constraints remain in the schema-plus-COGS instance contract. Native scalar
+limits are described in :doc:`model-format`; OWL emits safe-integer ranges
+and ``OWL2007`` for native decimal/temporal checks outside OWL authority.
+DCTAP emits ``DCT2010`` for the native profile that its XSD IRIs cannot enforce.
+LinkML aliases and GraphQL scalar declarations disclose the same boundary.
 
 The shared-term contract requires one exact datatype for every exact property
 name reused across item types, composite types, identification, and
@@ -147,11 +151,11 @@ Schema and XSD remain authoritative for instance validation.
      - ``OWL2002`` and ``OWL2003`` are the authority exceptions for exact
        property-local subtype exclusion and abstract direct-instance
        prohibition. List order (``OWL2001``) and unsupported lexical facets
-       (``OWL2004``/``OWL2006``) are outside the OWL authority boundary;
+       (``OWL2004``/``OWL2006``/``OWL2007``) are outside the OWL authority boundary;
        ``OWL2005`` is a syntax-only prefix alias.
      - ``OWL1001`` (shared-property datatype/kind preflight), ``OWL1002``
        (RDF-term collision); ``OWL2002``, ``OWL2003`` (authority exceptions);
-       ``OWL2001``, ``OWL2004``, ``OWL2006`` (outside authority); ``OWL2005``
+       ``OWL2001``, ``OWL2004``, ``OWL2006``, ``OWL2007`` (outside authority); ``OWL2005``
        (syntax only)
    * - LinkML
      - PascalCase classes/ranges, camelCase global slots with explicit
@@ -172,7 +176,7 @@ Schema and XSD remain authoritative for instance validation.
        exclusive bounds, and competing constraint kinds cannot all fit DCTAP
        cells. Enumeration is preferred over pattern when one constraint must
        be selected.
-     - ``DCT1001`` (RDF-term collision); ``DCT2001``--``DCT2009``
+     - ``DCT1001`` (RDF-term collision); ``DCT2001``--``DCT2010``
    * - GraphQL
      - Scalar/helper declarations, a query root, abstract interfaces,
        assignable-base interfaces, item lookup/list fields, nullability, and

@@ -21,14 +21,16 @@ namespace Cogs.Publishers.FluentJson
             new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["boolean"] = "A Boolean value: true or false.",
-                ["string"] = "A Unicode text string.",
-                ["decimal"] = "An exact XML Schema decimal represented as a JSON number without exponent notation.",
+                ["string"] = "An XML 1.0 Unicode text string; lengths count Unicode scalar values.",
+                ["decimal"] = "A finite decimal value expressible as c / 10^s, where c is an integer with absolute value at most 79228162514264337593543950335 and s is an integer from 0 through 28. " +
+                    "Its exact decimal value must be preserved when rounded to IEEE 754 binary64 (nearest, ties to even) and formatted as the shortest round-trip decimal representation. " +
+                    "Equivalent JSON exponent forms and trailing zeros are accepted; values requiring decimal rounding are rejected.",
                 ["float"] = "A finite IEEE 754 binary32 value represented as a JSON number.",
                 ["double"] = "A finite IEEE 754 binary64 value represented as a JSON number.",
-                ["duration"] = "An XML Schema duration lexical value, including optional sign and year or month components.",
-                ["dateTime"] = "An XML Schema dateTime lexical value with a nonzero signed 32-bit calendar year.",
-                ["time"] = "An XML Schema time lexical value.",
-                ["date"] = "An XML Schema date lexical value with a nonzero signed 32-bit calendar year.",
+                ["duration"] = "An elapsed duration without years/months: whole milliseconds in [-922337203685477, 922337203685477].",
+                ["dateTime"] = "A timezone-required instant in UTC years 0001 through 9999, at whole-millisecond precision.",
+                ["time"] = "A local time without timezone, at microsecond precision; 24:00:00 canonicalizes to 00:00:00.",
+                ["date"] = "A local date in years 0001 through 9999, without timezone.",
                 ["gYearMonth"] = "An XML Schema gYearMonth represented by Year, Month, and optional Timezone components; Year is a nonzero signed 32-bit integer.",
                 ["gYear"] = "An XML Schema gYear represented by Year and optional Timezone components; Year is a nonzero signed 32-bit integer.",
                 ["gMonthDay"] = "An XML Schema gMonthDay represented by Month, Day, and optional Timezone components.",
@@ -36,13 +38,13 @@ namespace Cogs.Publishers.FluentJson
                 ["gMonth"] = "An XML Schema gMonth represented by Month and optional Timezone components.",
                 ["anyURI"] = "An RFC 3986 relative or absolute URI reference.",
                 ["language"] = "A language tag using COGS BCP 47 syntax.",
-                ["nonPositiveInteger"] = "An arbitrary-precision integer less than or equal to zero.",
-                ["negativeInteger"] = "An arbitrary-precision integer less than zero.",
-                ["long"] = "A signed 64-bit integer.",
+                ["nonPositiveInteger"] = "An integer from -9007199254740991 through zero.",
+                ["negativeInteger"] = "An integer from -9007199254740991 through -1.",
+                ["long"] = "An integer from -9007199254740991 through 9007199254740991.",
                 ["int"] = "A signed 32-bit integer.",
-                ["nonNegativeInteger"] = "An arbitrary-precision integer greater than or equal to zero.",
-                ["unsignedLong"] = "An integer from zero through 18446744073709551615.",
-                ["positiveInteger"] = "An arbitrary-precision integer greater than zero.",
+                ["nonNegativeInteger"] = "An integer from zero through 9007199254740991.",
+                ["unsignedLong"] = "An integer from zero through 9007199254740991.",
+                ["positiveInteger"] = "An integer from 1 through 9007199254740991.",
                 ["cogsDate"] = "A date value containing exactly one DateTime, Date, GYearMonth, GYear, or Duration arm.",
                 ["langString"] = "A Unicode text string paired with a required BCP 47 language tag."
             };
@@ -50,6 +52,7 @@ namespace Cogs.Publishers.FluentJson
         public string CogsLocation { get; set; } = string.Empty;
         public string TargetDirectory { get; set; } = string.Empty;
         public bool Overwrite { get; set; }
+        internal bool UseDotNetPatterns { get; set; }
 
         private CogsModel CogsModel { get; set; } = null!;
         private SchemaEmissionPlan EmissionPlan { get; set; } = SchemaEmissionPlan.Empty;
@@ -393,7 +396,7 @@ namespace Cogs.Publishers.FluentJson
                 ["gDay"] = GregorianType("gDay"),
                 ["gMonth"] = GregorianType("gMonth"),
                 ["anyURI"] = LexicalFormatType("anyURI", "uri"),
-                ["language"] = LexicalType("language", CogsPrimitiveLexical.Bcp47Pattern),
+                ["language"] = LexicalType("language", CogsPrimitiveLexical.Bcp47Pattern + @"(?![\s\S])"),
                 ["nonPositiveInteger"] = IntegerType(maximum: "0"),
                 ["negativeInteger"] = IntegerType(maximum: "-1"),
                 ["long"] = IntegerType("-9223372036854775808", "9223372036854775807"),
@@ -474,7 +477,7 @@ namespace Cogs.Publishers.FluentJson
                 .AdditionalProperties(false);
         }
 
-        private static void ApplyFacets(JsonSchemaBuilder builder, Property property)
+        private void ApplyFacets(JsonSchemaBuilder builder, Property property)
         {
             if (property.DataTypeName == "langString" &&
                 (property.MinLength.HasValue || property.MaxLength.HasValue || !string.IsNullOrWhiteSpace(property.Pattern) || property.Enumeration.Count > 0))
@@ -492,18 +495,30 @@ namespace Cogs.Publishers.FluentJson
                 ApplyStringFacets(builder, property);
                 if (property.Enumeration.Count > 0)
                 {
-                    builder.Add("enum", BuildEnumeration(property));
+                    if (IsTemporal(property.DataTypeName) || property.DataTypeName is "float" or "double")
+                    {
+                        JsonArray values = new JsonArray();
+                        foreach (string lexical in property.Enumeration)
+                        {
+                            values.Add(lexical);
+                        }
+                        builder.Add("x-cogs-enumeration", new JsonObject { ["datatype"] = property.DataTypeName, ["values"] = values });
+                    }
+                    else
+                    {
+                        builder.Add("enum", BuildEnumeration(property));
+                    }
                 }
             }
 
-            if (IsNumeric(property.DataTypeName))
+            if (IsNumeric(property.DataTypeName) && property.DataTypeName is not "float" and not "double")
             {
                 AddRawNumber(builder, "minimum", property.MinInclusive);
                 AddRawNumber(builder, "exclusiveMinimum", property.MinExclusive);
                 AddRawNumber(builder, "maximum", property.MaxInclusive);
                 AddRawNumber(builder, "exclusiveMaximum", property.MaxExclusive);
             }
-            else if (IsTemporal(property.DataTypeName))
+            else if (IsTemporal(property.DataTypeName) || property.DataTypeName is "float" or "double")
             {
                 AddCogsBound(builder, "x-cogs-minInclusive", property.DataTypeName, property.MinInclusive);
                 AddCogsBound(builder, "x-cogs-minExclusive", property.DataTypeName, property.MinExclusive);
@@ -512,11 +527,17 @@ namespace Cogs.Publishers.FluentJson
             }
         }
 
-        private static void ApplyStringFacets(JsonSchemaBuilder builder, Property property)
+        private void ApplyStringFacets(JsonSchemaBuilder builder, Property property)
         {
-            if (!string.IsNullOrWhiteSpace(property.Pattern)) builder.Pattern(property.Pattern);
-            if (property.MinLength.HasValue) builder.MinLength((uint)property.MinLength.Value);
-            if (property.MaxLength.HasValue) builder.MaxLength((uint)property.MaxLength.Value);
+            if (!string.IsNullOrWhiteSpace(property.Pattern))
+            {
+                builder.Pattern(UseDotNetPatterns ? CogsPortablePattern.ForDotNet(property.Pattern) : CogsConventions.TranslatePortablePattern(property.Pattern));
+            }
+
+            if (property.MinLength.HasValue)
+                builder.MinLength((uint)property.MinLength.Value);
+            if (property.MaxLength.HasValue)
+                builder.MaxLength((uint)property.MaxLength.Value);
         }
 
         private static JsonArray BuildEnumeration(Property property)
@@ -553,6 +574,8 @@ namespace Cogs.Publishers.FluentJson
         private static JsonSchemaBuilder IntegerType(string? minimum = null, string? maximum = null)
         {
             var builder = new JsonSchemaBuilder().Type(SchemaValueType.Integer);
+            minimum = Math.Max(minimum is null ? -CogsScalarValues.SafeInteger : decimal.Parse(minimum, System.Globalization.CultureInfo.InvariantCulture), -CogsScalarValues.SafeInteger).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            maximum = Math.Min(maximum is null ? CogsScalarValues.SafeInteger : decimal.Parse(maximum, System.Globalization.CultureInfo.InvariantCulture), CogsScalarValues.SafeInteger).ToString(System.Globalization.CultureInfo.InvariantCulture);
             AddRawNumber(builder, "minimum", minimum);
             AddRawNumber(builder, "maximum", maximum);
             return builder;
@@ -651,7 +674,7 @@ namespace Cogs.Publishers.FluentJson
             ["$schema"] = Draft202012,
             ["$id"] = "https://cogsdata.org/schema/meta/2.0",
             ["title"] = "COGS 2.0 JSON Schema extension vocabulary",
-            ["description"] = "Describes the COGS datatype and temporal bound annotations. Standard JSON Schema processors may treat these as annotations; validate-instance enforces them.",
+            ["description"] = "Describes COGS native scalar domains, value-space enumerations and bounds. Standard JSON Schema processors may treat these as annotations; validate-instance enforces them.",
             ["x-cogs-vocabulary"] = CogsVocabulary,
             ["type"] = "object"
         };

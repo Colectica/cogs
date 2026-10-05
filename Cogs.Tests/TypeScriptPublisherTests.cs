@@ -31,9 +31,9 @@ public class TypeScriptPublisherTests
             Assert.Equal("1.2.3-rc.1", package.RootElement.GetProperty("cogs").GetProperty("modelVersion").GetString());
             Assert.Equal("module", package.RootElement.GetProperty("type").GetString());
             Assert.Equal(">=22", package.RootElement.GetProperty("engines").GetProperty("node").GetString());
-            Assert.Equal("^0.9.10", package.RootElement.GetProperty("dependencies").GetProperty("@xmldom/xmldom").GetString());
+            Assert.Equal("^0.9.12", package.RootElement.GetProperty("dependencies").GetProperty("@xmldom/xmldom").GetString());
             Assert.Equal("^22.0.0", package.RootElement.GetProperty("devDependencies").GetProperty("@types/node").GetString());
-            Assert.Equal("^6.0.0", package.RootElement.GetProperty("devDependencies").GetProperty("typescript").GetString());
+            Assert.Equal("^6.0.3", package.RootElement.GetProperty("devDependencies").GetProperty("typescript").GetString());
 
             using JsonDocument tsconfig = JsonDocument.Parse(File.ReadAllText(Path.Combine(target, "tsconfig.json")));
             JsonElement compilerOptions = tsconfig.RootElement.GetProperty("compilerOptions");

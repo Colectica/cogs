@@ -552,7 +552,7 @@ public sealed class SemanticPublisherTests
         Assert.Equal("string", projection.types["cogs_duration"].TypeOf);
         Assert.Equal("string", projection.types["cogs_date_time"].TypeOf);
         Assert.Equal("xsd:dateTime", projection.types["cogs_date_time"].uri);
-        Assert.Contains("signed 32-bit", projection.types["cogs_date_time"].description!);
+        Assert.Contains("millisecond precision", projection.types["cogs_date_time"].description!);
         Assert.Equal("string", projection.types["cogs_date_only"].TypeOf);
         Assert.Equal("xsd:date", projection.types["cogs_date_only"].uri);
         Assert.Equal("xsd:integer", projection.types["cogs_int"].uri);

@@ -258,3 +258,10 @@ Related pages
 
 * :doc:`/technical-guide/command-line/publish-owl`
 * :doc:`/modeler-guide/settings`
+
+Native scalar restrictions
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Local datatype ranges include safe-integer limits. ``OWL2007`` discloses
+that decimal interchange stability and temporal precision require COGS
+validation. These lexical constraints remain outside OWL class authority.

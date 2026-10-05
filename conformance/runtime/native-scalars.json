@@ -1,0 +1,377 @@
+[
+  {
+    "name": "float32-round",
+    "field": "Details.FloatValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"FloatValue\":1.00000006}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><FloatValue>1.00000006</FloatValue></Details></Record></ItemContainer>",
+    "valid": true,
+    "floatBits": 1065353217
+  },
+  {
+    "name": "float32-midpoint",
+    "field": "Details.FloatValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"FloatValue\":1.000000059604644775390625}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><FloatValue>1.000000059604644775390625</FloatValue></Details></Record></ItemContainer>",
+    "valid": true,
+    "floatBits": 1065353216
+  },
+  {
+    "name": "float32-above-midpoint",
+    "field": "Details.FloatValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"FloatValue\":1.0000000596046447753906250000000001}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><FloatValue>1.0000000596046447753906250000000001</FloatValue></Details></Record></ItemContainer>",
+    "valid": true,
+    "floatBits": 1065353217,
+    "jsonValid": false
+  },
+  {
+    "name": "float32-below-midpoint",
+    "field": "Details.FloatValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"FloatValue\":1.0000000596046447753906249999999999}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><FloatValue>1.0000000596046447753906249999999999</FloatValue></Details></Record></ItemContainer>",
+    "valid": true,
+    "floatBits": 1065353216
+  },
+  {
+    "name": "float32-subnormal",
+    "field": "Details.FloatValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"FloatValue\":1e-45}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><FloatValue>1e-45</FloatValue></Details></Record></ItemContainer>",
+    "valid": true,
+    "floatBits": 1
+  },
+  {
+    "name": "float32-underflow",
+    "field": "Details.FloatValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"FloatValue\":1e-50}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><FloatValue>1e-50</FloatValue></Details></Record></ItemContainer>",
+    "valid": true,
+    "floatBits": 0
+  },
+  {
+    "name": "float32-negative-zero",
+    "field": "Details.FloatValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"FloatValue\":-0}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><FloatValue>-0</FloatValue></Details></Record></ItemContainer>",
+    "valid": true,
+    "floatBits": 0
+  },
+  {
+    "name": "float32-max",
+    "field": "Details.FloatValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"FloatValue\":3.4028234663852886e38}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><FloatValue>3.4028234663852886e38</FloatValue></Details></Record></ItemContainer>",
+    "valid": true,
+    "floatBits": 2139095039
+  },
+  {
+    "name": "float32-overflow",
+    "field": "Details.FloatValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"FloatValue\":3.4028235677973367e38}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><FloatValue>3.4028235677973367e38</FloatValue></Details></Record></ItemContainer>",
+    "valid": false
+  },
+  {
+    "name": "double-overflow",
+    "field": "Details.DoubleValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"DoubleValue\":1e400}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><DoubleValue>1e400</DoubleValue></Details></Record></ItemContainer>",
+    "valid": false
+  },
+  {
+    "name": "safe-integer",
+    "field": "Details.LongValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"LongValue\":9007199254740991}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><LongValue>9007199254740991</LongValue></Details></Record></ItemContainer>",
+    "valid": true
+  },
+  {
+    "name": "unsafe-integer",
+    "field": "Details.LongValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"LongValue\":9007199254740992}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><LongValue>9007199254740992</LongValue></Details></Record></ItemContainer>",
+    "valid": false
+  },
+  {
+    "name": "integral-exponent",
+    "field": "Details.IntValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"IntValue\":1.00e2}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><IntValue>+00100</IntValue></Details></Record></ItemContainer>",
+    "valid": true
+  },
+  {
+    "name": "fractional-integer",
+    "field": "Details.IntValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"IntValue\":1.00000000000000000001}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><IntValue>1.00000000000000000001</IntValue></Details></Record></ItemContainer>",
+    "valid": false
+  },
+  {
+    "name": "positive-zero",
+    "field": "Details.PositiveIntegerValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"PositiveIntegerValue\":0}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><PositiveIntegerValue>0</PositiveIntegerValue></Details></Record></ItemContainer>",
+    "valid": false
+  },
+  {
+    "name": "unsigned-negative",
+    "field": "Details.UnsignedLongValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"UnsignedLongValue\":-1}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><UnsignedLongValue>-1</UnsignedLongValue></Details></Record></ItemContainer>",
+    "valid": false
+  },
+  {
+    "name": "decimal-exponent",
+    "field": "Details.DecimalValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"DecimalValue\":1.25e0}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><DecimalValue>+001.2500</DecimalValue></Details></Record></ItemContainer>",
+    "valid": true
+  },
+  {
+    "name": "decimal-leading-dot",
+    "field": "Details.DecimalValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"DecimalValue\":0.5}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><DecimalValue>.5</DecimalValue></Details></Record></ItemContainer>",
+    "valid": true
+  },
+  {
+    "name": "decimal-trailing-dot",
+    "field": "Details.DecimalValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"DecimalValue\":1}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><DecimalValue>1.</DecimalValue></Details></Record></ItemContainer>",
+    "valid": true
+  },
+  {
+    "name": "decimal-min-scale",
+    "field": "Details.DecimalValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"DecimalValue\":1e-28}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><DecimalValue>0.0000000000000000000000000001</DecimalValue></Details></Record></ItemContainer>",
+    "valid": true
+  },
+  {
+    "name": "decimal-too-small",
+    "field": "Details.DecimalValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"DecimalValue\":1e-29}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><DecimalValue>0.00000000000000000000000000001</DecimalValue></Details></Record></ItemContainer>",
+    "valid": false
+  },
+  {
+    "name": "decimal-rounded",
+    "field": "Details.DecimalValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"DecimalValue\":0.10000000000000001}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><DecimalValue>0.10000000000000001</DecimalValue></Details></Record></ItemContainer>",
+    "valid": false
+  },
+  {
+    "name": "decimal-upper-bound",
+    "field": "Details.DecimalValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"DecimalValue\":79228162514264330000000000000}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><DecimalValue>79228162514264330000000000000</DecimalValue></Details></Record></ItemContainer>",
+    "valid": true
+  },
+  {
+    "name": "decimal-above-bound",
+    "field": "Details.DecimalValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"DecimalValue\":79228162514264340000000000000}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><DecimalValue>79228162514264340000000000000</DecimalValue></Details></Record></ItemContainer>",
+    "valid": false
+  },
+  {
+    "name": "instant-offset",
+    "field": "Created",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Created\":\"2020-01-01T00:00:00.123000+14:00\"}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Created>2020-01-01T00:00:00.123000+14:00</Created></Record></ItemContainer>",
+    "valid": true
+  },
+  {
+    "name": "instant-last-day",
+    "field": "Created",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Created\":\"9999-12-31T24:00:00+14:00\"}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Created>9999-12-31T24:00:00+14:00</Created></Record></ItemContainer>",
+    "valid": true
+  },
+  {
+    "name": "instant-first-day",
+    "field": "Created",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Created\":\"0001-01-01T24:00:00+14:00\"}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Created>0001-01-01T24:00:00+14:00</Created></Record></ItemContainer>",
+    "valid": true
+  },
+  {
+    "name": "instant-utc-underflow",
+    "field": "Created",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Created\":\"0001-01-01T00:00:00+14:00\"}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Created>0001-01-01T00:00:00+14:00</Created></Record></ItemContainer>",
+    "valid": false
+  },
+  {
+    "name": "instant-utc-overflow",
+    "field": "Created",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Created\":\"9999-12-31T24:00:00Z\"}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Created>9999-12-31T24:00:00Z</Created></Record></ItemContainer>",
+    "valid": false
+  },
+  {
+    "name": "instant-precision",
+    "field": "Created",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Created\":\"2020-01-01T00:00:00.0001Z\"}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Created>2020-01-01T00:00:00.0001Z</Created></Record></ItemContainer>",
+    "valid": false
+  },
+  {
+    "name": "instant-no-zone",
+    "field": "Created",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Created\":\"2020-01-01T00:00:00\"}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Created>2020-01-01T00:00:00</Created></Record></ItemContainer>",
+    "valid": false
+  },
+  {
+    "name": "elapsed-limit",
+    "field": "Elapsed",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Elapsed\":\"P10675199DT2H48M5.477S\"}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Elapsed>P10675199DT2H48M5.477S</Elapsed></Record></ItemContainer>",
+    "valid": true
+  },
+  {
+    "name": "elapsed-negative",
+    "field": "Elapsed",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Elapsed\":\"-PT0.001S\"}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Elapsed>-PT0.001S</Elapsed></Record></ItemContainer>",
+    "valid": true
+  },
+  {
+    "name": "elapsed-overflow",
+    "field": "Elapsed",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Elapsed\":\"P10675199DT2H48M5.478S\"}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Elapsed>P10675199DT2H48M5.478S</Elapsed></Record></ItemContainer>",
+    "valid": false
+  },
+  {
+    "name": "elapsed-precision",
+    "field": "Elapsed",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Elapsed\":\"PT0.0001S\"}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Elapsed>PT0.0001S</Elapsed></Record></ItemContainer>",
+    "valid": false
+  },
+  {
+    "name": "calendar-duration",
+    "field": "Elapsed",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Elapsed\":\"P0Y\"}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Elapsed>P0Y</Elapsed></Record></ItemContainer>",
+    "valid": false
+  },
+  {
+    "name": "local-date",
+    "field": "Details.DateValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"DateValue\":\"0001-01-01\"}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><DateValue>0001-01-01</DateValue></Details></Record></ItemContainer>",
+    "valid": true
+  },
+  {
+    "name": "date-zone",
+    "field": "Details.DateValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"DateValue\":\"2020-01-01Z\"}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><DateValue>2020-01-01Z</DateValue></Details></Record></ItemContainer>",
+    "valid": false
+  },
+  {
+    "name": "local-time",
+    "field": "Details.TimeValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"TimeValue\":\"12:34:56.123456000\"}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><TimeValue>12:34:56.123456000</TimeValue></Details></Record></ItemContainer>",
+    "valid": true
+  },
+  {
+    "name": "end-of-day",
+    "field": "Details.TimeValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"TimeValue\":\"24:00:00.000\"}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><TimeValue>24:00:00.000</TimeValue></Details></Record></ItemContainer>",
+    "valid": true
+  },
+  {
+    "name": "time-precision",
+    "field": "Details.TimeValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"TimeValue\":\"12:34:56.1234567\"}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><TimeValue>12:34:56.1234567</TimeValue></Details></Record></ItemContainer>",
+    "valid": false
+  },
+  {
+    "name": "time-zone",
+    "field": "Details.TimeValue",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Details\":{\"TimeValue\":\"12:34:56Z\"}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><TimeValue>12:34:56Z</TimeValue></Details></Record></ItemContainer>",
+    "valid": false
+  },
+  {
+    "name": "uri-relative",
+    "field": "Link",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Link\":\"../a?b#c\"}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Link>../a?b#c</Link></Record></ItemContainer>",
+    "valid": true
+  },
+  {
+    "name": "uri-ipv6",
+    "field": "Link",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Link\":\"http://[2001:db8::192.0.2.1]/\"}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Link>http://[2001:db8::192.0.2.1]/</Link></Record></ItemContainer>",
+    "valid": true
+  },
+  {
+    "name": "uri-ipvfuture",
+    "field": "Link",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Link\":\"http://[v1.a:b]/\"}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Link>http://[v1.a:b]/</Link></Record></ItemContainer>",
+    "valid": true
+  },
+  {
+    "name": "uri-invalid-host",
+    "field": "Link",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Link\":\"http://[bad]/\"}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Link>http://[bad]/</Link></Record></ItemContainer>",
+    "valid": false
+  },
+  {
+    "name": "uri-double-fragment",
+    "field": "Link",
+    "json": "{\"items\":[{\"$type\":\"Record\",\"ID\":\"one\",\"Scope\":\"scope\",\"Partition\":\"p\",\"Segment\":\"s\",\"Title\":\"Scalar\",\"Link\":\"a#b#c\"}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Link>a#b#c</Link></Record></ItemContainer>",
+    "valid": false
+  },
+  {
+    "name": "language-final-newline",
+    "field": "LanguageTag",
+    "json": "{\"items\": [{\"$type\": \"Record\", \"ID\": \"one\", \"Scope\": \"scope\", \"Partition\": \"p\", \"Segment\": \"s\", \"Title\": \"Scalar\", \"LanguageTag\": \"en\\n\"}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><LanguageTag>en\n</LanguageTag></Record></ItemContainer>",
+    "valid": false
+  },
+  {
+    "name": "dateTime-final-newline",
+    "field": "Created",
+    "json": "{\"items\": [{\"$type\": \"Record\", \"ID\": \"one\", \"Scope\": \"scope\", \"Partition\": \"p\", \"Segment\": \"s\", \"Title\": \"Scalar\", \"Created\": \"2020-01-01T00:00:00Z\\n\"}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Created>2020-01-01T00:00:00Z\n</Created></Record></ItemContainer>",
+    "valid": false,
+    "xmlValid": true
+  },
+  {
+    "name": "time-final-newline",
+    "field": "Details.TimeValue",
+    "json": "{\"items\": [{\"$type\": \"Record\", \"ID\": \"one\", \"Scope\": \"scope\", \"Partition\": \"p\", \"Segment\": \"s\", \"Title\": \"Scalar\", \"Details\": {\"TimeValue\": \"12:00:00\\n\"}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><TimeValue>12:00:00\n</TimeValue></Details></Record></ItemContainer>",
+    "valid": false,
+    "xmlValid": true
+  },
+  {
+    "name": "gregorian-xml-whitespace",
+    "field": "Details.GYearValue",
+    "json": "{\"items\": [{\"$type\": \"Record\", \"ID\": \"one\", \"Scope\": \"scope\", \"Partition\": \"p\", \"Segment\": \"s\", \"Title\": \"Scalar\", \"Details\": {\"GYearValue\": {\"Year\": 2020, \"Timezone\": \"Z\"}}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><Details><GYearValue> \t2020Z\r\n </GYearValue></Details></Record></ItemContainer>",
+    "valid": true
+  },
+  {
+    "name": "cogsDate-xml-whitespace",
+    "field": "When",
+    "json": "{\"items\": [{\"$type\": \"Record\", \"ID\": \"one\", \"Scope\": \"scope\", \"Partition\": \"p\", \"Segment\": \"s\", \"Title\": \"Scalar\", \"When\": {\"GYear\": {\"Year\": 2020, \"Timezone\": \"Z\"}}}]}",
+    "xml": "<ItemContainer xmlns=\"https://example.org/cogs/conformance\"><Record><ID>one</ID><Scope>scope</Scope><Partition>p</Partition><Segment>s</Segment><Title>Scalar</Title><When> \t2020Z\r\n </When></Record></ItemContainer>",
+    "valid": true
+  }
+]

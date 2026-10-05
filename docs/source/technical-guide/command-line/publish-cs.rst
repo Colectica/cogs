@@ -72,13 +72,11 @@ Command Line Usage
 COGS 2 primitive contract
 -------------------------
 
-Generated C# APIs must cover the full value spaces in
-:doc:`/specification/model-format`. In particular, arbitrary integer and
-decimal values cannot be narrowed to fixed .NET numeric types, and date, time,
-Gregorian, and full XSD duration lexemes cannot be narrowed to
-``DateTimeOffset``, ``DateOnly``, ``TimeOnly``, or ``TimeSpan`` when that would
-lose a permitted value. JSON/XML output remains identical to the Python and
-TypeScript wire contract.
+Generated C# APIs must cover the native profiles in
+:doc:`/specification/model-format`. Scalars use built-in .NET numeric and
+calendar types; URI values use strings. Structured Gregorian, CogsDate and
+LangString helpers remain. See :doc:`/technical-guide/generation/native-types`
+for the current API matrix and migration examples.
 
 Legacy C# API reference
 -----------------------

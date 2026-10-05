@@ -30,7 +30,16 @@ public static class CogsInstanceValidator
     {
         ArgumentNullException.ThrowIfNull(model);
         var errors = new List<CogsError>();
-        byte[] utf8 = Encoding.UTF8.GetBytes(json ?? string.Empty);
+        byte[] utf8;
+        try
+        {
+            utf8 = new UTF8Encoding(false, true).GetBytes(json ?? string.Empty);
+        }
+        catch (EncoderFallbackException exception)
+        {
+            errors.Add(new CogsError(ErrorLevel.Error, "INS1001", "JSON contains an unpaired Unicode surrogate.", sourcePath, exception: exception));
+            return Sort(errors);
+        }
         CheckDuplicateJsonNames(utf8, sourcePath, errors);
         if (errors.Any(error => error.Level == ErrorLevel.Error)) return Sort(errors);
 
@@ -55,7 +64,7 @@ public static class CogsInstanceValidator
 
         using (document)
         {
-            var schema = new FluentJsonSchemaPublisher().BuildSchema(model);
+            var schema = new FluentJsonSchemaPublisher { UseDotNetPatterns = true }.BuildSchema(model);
             var result = schema.Evaluate(document.RootElement, new EvaluationOptions
             {
                 OutputFormat = OutputFormat.List,
@@ -174,6 +183,16 @@ public static class CogsInstanceValidator
             var objects = new Stack<HashSet<string>>();
             while (reader.Read())
             {
+                if (reader.TokenType is JsonTokenType.String or JsonTokenType.PropertyName)
+                {
+                    string text = reader.GetString()!;
+                    if (!CogsScalarValues.IsText(text))
+                    {
+                        (int line, int column) = GetJsonLocation(utf8, reader.TokenStartIndex);
+                        errors.Add(new CogsError(ErrorLevel.Error, "INS1006",
+                            "Text must contain only XML 1.0 Unicode characters.", sourcePath, line, column));
+                    }
+                }
                 if (reader.TokenType == JsonTokenType.StartObject)
                 {
                     objects.Push(new HashSet<string>(StringComparer.Ordinal));
@@ -199,6 +218,11 @@ public static class CogsInstanceValidator
                 exception.LineNumber is long line ? checked((int)line + 1) : null,
                 exception.BytePositionInLine is long column ? checked((int)column + 1) : null,
                 exception: exception));
+        }
+        catch (InvalidOperationException exception)
+        {
+            errors.Add(new CogsError(ErrorLevel.Error, "INS1001", "Invalid JSON Unicode escape: " + exception.Message,
+                sourcePath, exception: exception));
         }
     }
 
@@ -260,6 +284,18 @@ public static class CogsInstanceValidator
 
     private static void WalkJsonModel(CogsModel model, JsonElement root, string? sourcePath, List<CogsError> errors)
     {
+        if (root.TryGetProperty("topLevelReferences", out JsonElement references) && references.ValueKind == JsonValueKind.Array)
+        {
+            int referenceIndex = 0;
+            foreach (JsonElement reference in references.EnumerateArray())
+            {
+                if (reference.ValueKind == JsonValueKind.Object)
+                {
+                    WalkJsonReference(model, reference, $"/topLevelReferences/{referenceIndex}", sourcePath, errors);
+                }
+                referenceIndex++;
+            }
+        }
         if (!root.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array) return;
         var itemTypes = model.ItemTypes.ToDictionary(type => type.Name, StringComparer.Ordinal);
         int index = 0;
@@ -272,6 +308,17 @@ public static class CogsInstanceValidator
                 WalkJsonObject(model, type, item, $"/items/{index}", sourcePath, errors);
             }
             index++;
+        }
+    }
+
+    private static void WalkJsonReference(CogsModel model, JsonElement value, string path, string? sourcePath, List<CogsError> errors)
+    {
+        foreach (Property identity in model.Identification)
+        {
+            if (value.TryGetProperty(identity.Name, out JsonElement field))
+            {
+                WalkJsonValue(model, identity, field, $"{path}/{identity.Name}", sourcePath, errors);
+            }
         }
     }
 
@@ -311,26 +358,62 @@ public static class CogsInstanceValidator
     {
         if (property.DataType?.IsXmlPrimitive == true)
         {
-            if (property.DataTypeName == "decimal" &&
-                (value.ValueKind != JsonValueKind.Number || !DecimalLexical.IsMatch(value.GetRawText())))
-            {
-                errors.Add(new CogsError(ErrorLevel.Error, "INS1005",
-                    "decimal requires a JSON-compatible XSD decimal number without an exponent.",
-                    sourcePath, modelPath: path));
-            }
             if (property.DataTypeName == "cogsDate")
             {
                 ValidateJsonCogsDate(value, path, sourcePath, errors);
             }
-            else if (IsBoundedTemporal(property.DataTypeName) &&
-                TryGetJsonTemporalLexical(property.DataTypeName, value, out string lexical))
+            else
             {
-                ValidatePrimitiveBounds(property, lexical, path, sourcePath, errors, "INS1006", "INS1007");
+                string? lexical = null;
+                if (CogsGregorianLexical.IsGregorianType(property.DataTypeName))
+                {
+                    if (TryGetJsonTemporalLexical(property.DataTypeName, value, out string gregorian))
+                    {
+                        lexical = gregorian;
+                    }
+                }
+                else if (property.DataTypeName == "langString" && value.ValueKind == JsonValueKind.Object &&
+                    value.TryGetProperty("@value", out JsonElement text) && text.ValueKind == JsonValueKind.String)
+                {
+                    lexical = text.GetString();
+                }
+                else if (value.ValueKind == JsonValueKind.String)
+                {
+                    lexical = value.GetString();
+                }
+                else if (value.ValueKind is JsonValueKind.Number or JsonValueKind.True or JsonValueKind.False)
+                {
+                    lexical = value.GetRawText();
+                }
+                if (lexical is not null)
+                {
+                    if (property.DataTypeName == "float")
+                    {
+                        try
+                        {
+                            CogsScalarValues.JsonFloat(lexical);
+                        }
+                        catch (FormatException exception)
+                        {
+                            errors.Add(new CogsError(ErrorLevel.Error, "INS1006", exception.Message, sourcePath, modelPath: path));
+                            return;
+                        }
+                    }
+                    ValidatePrimitiveBounds(property, lexical, path, sourcePath, errors, "INS1006", "INS1007");
+                }
             }
             return;
         }
 
-        if (property.DataType is ItemType || value.ValueKind != JsonValueKind.Object || property.DataType is null) return;
+        if (property.DataType is ItemType && value.ValueKind == JsonValueKind.Object)
+        {
+            WalkJsonReference(model, value, path, sourcePath, errors);
+            return;
+        }
+        if (value.ValueKind != JsonValueKind.Object || property.DataType is null)
+        {
+            return;
+        }
         var actual = property.DataType;
         if (value.TryGetProperty("$type", out var discriminator) && discriminator.ValueKind == JsonValueKind.String)
         {
@@ -369,8 +452,8 @@ public static class CogsInstanceValidator
     {
         return value.TryGetProperty(name, out JsonElement component) &&
             component.ValueKind == JsonValueKind.Number &&
-            component.TryGetInt32(out int result)
-                ? result
+            CogsScalarValues.TryInteger(component.GetRawText(), "int", out long result)
+                ? (int)result
                 : null;
     }
 
@@ -423,6 +506,25 @@ public static class CogsInstanceValidator
                 $"'{lexical}' is not a valid {property.DataTypeName} lexical value.",
                 sourcePath, modelPath: path));
             return;
+        }
+
+        if (property.Enumeration.Count > 0 && !property.Enumeration.Any(member =>
+            CogsPrimitiveLexical.Compare(property.DataTypeName, lexical, member) == CogsPrimitiveOrder.Equal))
+        {
+            errors.Add(new CogsError(ErrorLevel.Error, boundCode, "Value is outside the declared enumeration.", sourcePath, modelPath: path));
+        }
+        if (property.DataTypeName is "string" or "langString" or "anyURI" or "language")
+        {
+            if (!string.IsNullOrWhiteSpace(property.Pattern) && !CogsPortablePattern.IsMatch(lexical, property.Pattern))
+            {
+                errors.Add(new CogsError(ErrorLevel.Error, boundCode, "Value does not satisfy the portable pattern.", sourcePath, modelPath: path));
+            }
+            int length = CogsScalarValues.TextLength(lexical);
+            if (property.MinLength.HasValue && length < property.MinLength.Value ||
+                property.MaxLength.HasValue && length > property.MaxLength.Value)
+            {
+                errors.Add(new CogsError(ErrorLevel.Error, boundCode, "Value does not satisfy Unicode scalar length facets.", sourcePath, modelPath: path));
+            }
         }
 
         CheckBound(property.MinInclusive, "minInclusive", order => order is CogsPrimitiveOrder.Equal or CogsPrimitiveOrder.Greater);
@@ -489,7 +591,36 @@ public static class CogsInstanceValidator
             if (item.Name.Namespace != ns || !itemTypes.TryGetValue(item.Name.LocalName, out ItemType? type)) continue;
             Walk(type, item, $"/items/{itemIndex++}");
         }
+        foreach (XElement reference in root.Elements(ns + "TopLevelReference"))
+        {
+            WalkReference(reference, "/topLevelReferences");
+        }
         return result;
+
+        void ValidateXmlPrimitive(Property property, XElement element, string path)
+        {
+            try
+            {
+                ValidatePrimitiveBounds(property, CogsPrimitiveLexical.XmlLexical(property.DataTypeName, element.Value),
+                    path, sourcePath, errors, "INS2006", "INS2007");
+            }
+            catch (FormatException exception)
+            {
+                errors.Add(new CogsError(ErrorLevel.Error, "INS2006", exception.Message, sourcePath, modelPath: path));
+            }
+        }
+
+        void WalkReference(XElement reference, string path)
+        {
+            foreach (Property identity in model.Identification)
+            {
+                foreach (XElement element in reference.Elements(ns + identity.Name))
+                {
+                    result[element] = identity;
+                    ValidateXmlPrimitive(identity, element, $"{path}/{identity.Name}");
+                }
+            }
+        }
 
         void Walk(DataType type, XElement element, string path)
         {
@@ -506,21 +637,28 @@ public static class CogsInstanceValidator
                     {
                         if (property.DataTypeName == "cogsDate")
                         {
-                            if (!CogsPrimitiveLexical.TryGetCogsDateDataType(child.Value, out _))
+                            if (!CogsPrimitiveLexical.TryGetCogsDateDataType(child.Value.Trim(' ', '\t', '\r', '\n'), out _))
                             {
                                 errors.Add(new CogsError(ErrorLevel.Error, "INS2006",
                                     $"'{child.Value}' is not a valid cogsDate lexical value.",
                                     sourcePath, modelPath: childPath));
                             }
                         }
-                        else if (IsBoundedTemporal(property.DataTypeName) || IsNumeric(property.DataTypeName))
+                        else
                         {
-                            ValidatePrimitiveBounds(property, child.Value, childPath, sourcePath, errors,
-                                "INS2006", "INS2007");
+                            ValidateXmlPrimitive(property, child, childPath);
                         }
                         continue;
                     }
-                    if (property.DataType is ItemType || property.DataType is null) continue;
+                    if (property.DataType is ItemType)
+                    {
+                        WalkReference(child, childPath);
+                        continue;
+                    }
+                    if (property.DataType is null)
+                    {
+                        continue;
+                    }
                     DataType actual = property.DataType;
                     XAttribute? xsiType = child.Attribute(XNamespace.Get(XmlSchema.InstanceNamespace) + "type");
                     if (xsiType is not null)
@@ -538,6 +676,24 @@ public static class CogsInstanceValidator
 
     private static bool IsKnownDotNetXsdLexicalLimitation(Property property, string lexical, string message)
     {
+        if (property.DataTypeName is "string" or "langString" && lexical.Any(char.IsSurrogate) &&
+            !string.IsNullOrWhiteSpace(property.Pattern) && message.Contains("Pattern", StringComparison.Ordinal) &&
+            CogsPortablePattern.IsMatch(lexical, property.Pattern))
+        {
+            return true;
+        }
+        if (CogsScalarValues.IsText(lexical) && lexical.Any(char.IsSurrogate) &&
+            (message.Contains("MaxLength", StringComparison.Ordinal) || message.Contains("MinLength", StringComparison.Ordinal)))
+        {
+            int length = CogsScalarValues.TextLength(lexical);
+            return (!property.MinLength.HasValue || length >= property.MinLength.Value) &&
+                (!property.MaxLength.HasValue || length <= property.MaxLength.Value);
+        }
+        if (property.DataTypeName == "anyURI" && CogsUriReference.IsValid(lexical) &&
+            message.Contains("not a valid", StringComparison.Ordinal) && message.Contains("Uri", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
         if (property.DataTypeName == "cogsDate")
         {
             return CogsPrimitiveLexical.TryGetCogsDateDataType(lexical, out _) &&

@@ -1,6 +1,7 @@
 #nullable enable
 
 using Cogs.SimpleTypes;
+using Cogs.DataAnnotations;
 using CogsBurger.Model;
 using Json.Schema;
 using System;
@@ -103,13 +104,13 @@ public class PythonIntegrationTests
             GMonth = new GMonth(2, "+01:00"),
             GDay = new GDay(29, "-06:00"),
             CDate = new CogsDate(new GYearMonth(2024, 2, "Z")),
-            Times = new List<CogsTime> { new(new TimeOnly(1, 2, 3)), new(new TimeOnly(23, 59, 58)) },
-            Durations = new List<CogsDuration> { new(TimeSpan.FromSeconds(2)), new(TimeSpan.FromMilliseconds(2500)) },
-            Dates = new List<CogsDateOnly> { new(new DateOnly(2023, 1, 2)), new(new DateOnly(2024, 2, 29)) },
-            DateTimes = new List<CogsDateTime>
+            Times = new List<TimeOnly> { new TimeOnly(1, 2, 3), new TimeOnly(23, 59, 58) },
+            Durations = new List<TimeSpan> { TimeSpan.FromSeconds(2), TimeSpan.FromMilliseconds(2500) },
+            Dates = new List<DateOnly> { new DateOnly(2023, 1, 2), new DateOnly(2024, 2, 29) },
+            DateTimes = new List<DateTimeOffset>
             {
-                new(new DateTimeOffset(2023, 1, 2, 3, 4, 5, TimeSpan.Zero)),
-                new(new DateTimeOffset(2024, 2, 29, 23, 59, 58, TimeSpan.FromHours(2))),
+                new DateTimeOffset(2023, 1, 2, 3, 4, 5, TimeSpan.Zero),
+                new DateTimeOffset(2024, 2, 29, 23, 59, 58, TimeSpan.FromHours(2)),
             },
             GMonthDays = new List<GMonthDay> { new(12, 31, "Z") },
             GDays = new List<GDay> { new(15, null) },
@@ -158,8 +159,8 @@ public class PythonIntegrationTests
             ID = "condiment-1",
             Name = "Mustard",
             IsSpecial = false,
-            AnyURI = new Uri("https://example.org/condiments/mustard"),
-            Uris = new List<Uri> { new("https://example.org/condiments") },
+            AnyURI = "https://example.org/condiments/mustard",
+            Uris = new List<string> { "https://example.org/condiments" },
             CDates = new List<CogsDate>
             {
                 new(new DateOnly(2026, 1, 1)),
@@ -174,7 +175,7 @@ public class PythonIntegrationTests
             {
                 Width = 42,
                 Length = 12.5,
-                Height = new List<CogsDecimal> { new("1.2300"), new("9876543210.123456789") },
+                Height = new List<decimal> { 1.2300m, 9876543210.125m },
                 Creature = animal,
                 CogsDate = new CogsDate(new DateOnly(2024, 2, 29)),
             },
@@ -199,8 +200,8 @@ public class PythonIntegrationTests
                 TemperatureDelta = 1.25f,
                 RefundAdjustment = -2,
                 WasteVariance = -3,
-                BatchIdentifier = 9_007_199_254_740_993,
-                ProductionCounter = 18_446_744_073_709_551_615UL,
+                BatchIdentifier = 9_007_199_254_740_991,
+                ProductionCounter = 9_007_199_254_740_991UL,
                 RevisionSequence = 7,
                 QualityRating = 9,
                 PreparationTier = "premium",
@@ -289,9 +290,23 @@ public class PythonIntegrationTests
         }
         if (expected.ValueKind == JsonValueKind.String)
         {
-            return string.Equals(expected.GetString(), actual.GetString(), StringComparison.Ordinal)
-                ? null
-                : $"{path}: expected string {expected.GetRawText()}, got {actual.GetRawText()}.";
+            string expectedValue = expected.GetString()!;
+            string actualValue = actual.GetString()!;
+            string wireName = System.Text.RegularExpressions.Regex.Match(path, @"\.([^\.\[]+)(?:\[[0-9]+\])?$").Groups[1].Value;
+            string? datatype = typeof(ItemContainer).Assembly.GetTypes()
+                .SelectMany(type => type.GetProperties())
+                .Select(property => property.GetCustomAttributes(typeof(CogsPropertyAttribute), true).OfType<CogsPropertyAttribute>().FirstOrDefault())
+                .FirstOrDefault(contract => contract?.Name == wireName)?.DataType;
+            bool equivalent = datatype switch
+            {
+                "dateTime" => DateTimeOffset.Parse(expectedValue, System.Globalization.CultureInfo.InvariantCulture)
+                    == DateTimeOffset.Parse(actualValue, System.Globalization.CultureInfo.InvariantCulture),
+                "duration" => System.Xml.XmlConvert.ToTimeSpan(expectedValue) == System.Xml.XmlConvert.ToTimeSpan(actualValue),
+                "time" => TimeOnly.Parse(expectedValue, System.Globalization.CultureInfo.InvariantCulture)
+                    == TimeOnly.Parse(actualValue, System.Globalization.CultureInfo.InvariantCulture),
+                _ => string.Equals(expectedValue, actualValue, StringComparison.Ordinal)
+            };
+            return equivalent ? null : $"{path}: expected string {expected.GetRawText()}, got {actual.GetRawText()}.";
         }
         return expected.GetRawText() == actual.GetRawText()
             ? null
@@ -307,7 +322,7 @@ public class PythonIntegrationTests
         BigInteger exponent = exponentMarker < 0 ? BigInteger.Zero : BigInteger.Parse(unsigned[(exponentMarker + 1)..]);
         int decimalPoint = mantissa.IndexOf('.');
         int fractionalDigits = decimalPoint < 0 ? 0 : mantissa.Length - decimalPoint - 1;
-        string digits = (decimalPoint < 0 ? mantissa : mantissa.Remove(decimalPoint)).TrimStart('0');
+        string digits = (decimalPoint < 0 ? mantissa : mantissa.Remove(decimalPoint, 1)).TrimStart('0');
         if (digits.Length == 0) return "0";
         exponent -= fractionalDigits;
         int trailing = 0;
@@ -431,6 +446,8 @@ public class PythonIntegrationTests
         sys.path.insert(0, package_root)
 
         import cogsburger as c
+        from datetime import datetime, date, time, timedelta
+        from decimal import Decimal
 
 
         def check(container: c.ItemContainer, expect_subpart: bool) -> None:
@@ -446,24 +463,24 @@ public class PythonIntegrationTests
             assert patty.source_animal[0] is animal
             assert cheese.milk_source is animal
             assert bread.size.creature is animal
-            assert isinstance(animal.date, c.CogsDateOnly)
-            assert isinstance(animal.duration, c.CogsDuration)
-            assert isinstance(animal.time, c.CogsTime)
-            assert isinstance(animal.date_time, c.CogsDateTime)
+            assert isinstance(animal.date, date)
+            assert isinstance(animal.duration, timedelta)
+            assert isinstance(animal.time, time)
+            assert isinstance(animal.date_time, datetime)
             assert isinstance(animal.g_month_day, c.GMonthDay)
             assert isinstance(animal.g_month, c.GMonth)
             assert isinstance(animal.g_day, c.GDay)
             assert isinstance(animal.c_date, c.CogsDate)
             assert isinstance(animal.c_date.value, c.GYearMonth)
-            assert all(isinstance(value, c.CogsDuration) for value in animal.durations)
-            assert all(isinstance(value, c.CogsDateOnly) for value in animal.dates)
-            assert all(isinstance(value, c.CogsDateTime) for value in animal.date_times)
+            assert all(isinstance(value, timedelta) for value in animal.durations)
+            assert all(isinstance(value, date) for value in animal.dates)
+            assert all(isinstance(value, datetime) for value in animal.date_times)
             assert isinstance(bread.gyearmonth, c.GYearMonth)
             assert isinstance(bread.size.cogs_date, c.CogsDate)
-            assert isinstance(bread.size.height[1], c.CogsDecimal)
-            assert bread.size.height[1].lexical == "9876543210.123456789"
-            assert burger.kitchen_profile.batch_identifier == 9_007_199_254_740_993
-            assert burger.kitchen_profile.production_counter == 18_446_744_073_709_551_615
+            assert isinstance(bread.size.height[1], Decimal)
+            assert bread.size.height[1] == Decimal("9876543210.125")
+            assert burger.kitchen_profile.batch_identifier == 9_007_199_254_740_991
+            assert burger.kitchen_profile.production_counter == 9_007_199_254_740_991
             assert cheese.cheese_bio == c.LangString("en", "Aged cave cheddar")
             if expect_subpart:
                 assert isinstance(animal.meat_pieces[1], c.SubPart)
@@ -512,7 +529,7 @@ public class PythonIntegrationTests
 
             assert all(issubclass(cls, BaseModel) for cls in
                        (c.CogsValue, c.CogsItem, c.ItemContainer, c.Animal, c.Part, c.SubPart))
-            assert is_dataclass(c.CogsDecimal) and is_dataclass(c.GYear)
+            assert is_dataclass(c.GYear)
             assert issubclass(c.SubPart, c.Part)
             recursive = c.Part.model_validate({"part_name": "parent", "sub_components": [{"part_name": "child"}]})
             assert recursive.sub_components[0].part_name == "child"
@@ -528,11 +545,11 @@ public class PythonIntegrationTests
                     assert info.alias is None
             assert c.SubPart.model_fields["part_name"].description == "name of a part"
             assert c.SubPart.model_fields["part_name"].description == c.Part.model_fields["part_name"].description
-            helper = c.CogsDateOnly("-0001-01-02Z")
+            helper = date(2024, 1, 2)
             subpart = c.SubPart(part_name="cut", sub_part_name="center")
             animal = c.Animal(id="native", date=helper, meat_pieces=[subpart])
             assert animal.date is helper and animal.meat_pieces[0] is subpart
-            decimal = c.CogsDecimal("12345678901234567890.1234500")
+            decimal = Decimal("12345.12345")
             size = c.Dimensions(height=[decimal], creature=animal)
             assert size.height[0] is decimal and size.creature is animal
             lang = c.LangString("en", "native helper")

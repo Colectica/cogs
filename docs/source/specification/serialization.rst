@@ -36,8 +36,8 @@ assignable subtype permitted at that property.
 Unknown or duplicate object members, missing or empty identity members,
 duplicate full item definitions, abstract/incompatible discriminators,
 malformed primitive values, and non-finite JSON numbers are errors. JSON
-numbers for arbitrary integers and decimals must be read and written without
-precision loss.
+numbers obey the safe-integer and bounded exact-decimal interchange profile.
+Writers must not silently round an exact value into that domain.
 
 The generated schema prunes internal ``$defs`` while preserving this contract.
 All concrete item definitions, their required inheritance ancestors, and all

@@ -31,8 +31,9 @@ Mapping
   and the Gregorian values remain lexical ``string`` aliases with their native
   XSD datatype URIs, while ``anyURI`` derives from LinkML ``uri``
 * the ``dateTime``, ``date``, ``gYearMonth``, and ``gYear`` aliases document
-  COGS's nonzero signed 32-bit calendar-year domain instead of implying that a
-  host-language calendar object can represent every valid value
+  their native profiles; partial Gregorian years retain the nonzero signed
+  32-bit domain. Decimal interchange and temporal precision require COGS
+  validation.
 * COGS ``int`` derives from ``xsd:integer`` with exact signed 32-bit bounds,
   because LinkML rejects ``xsd:int`` as a type URI
 * ``cogsDate`` is a valid string-rooted union of the supported lexical arms

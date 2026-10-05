@@ -24,7 +24,7 @@ namespace Cogs.Common
     public static class CogsGregorianLexical
     {
         private static readonly Regex TimezoneRegex = new(
-            @"^(?:Z|[+-](?:(?:0[0-9]|1[0-3]):[0-5][0-9]|14:00))$",
+            @"^(?:Z|[+-](?:(?:0[0-9]|1[0-3]):[0-5][0-9]|14:00))\z",
             RegexOptions.CultureInvariant);
 
         public static bool IsGregorianType(string? dataType) => dataType is
@@ -46,7 +46,7 @@ namespace Cogs.Common
             switch (dataType)
             {
                 case "gYearMonth":
-                    match = Regex.Match(core, @"^(?<year>-?[0-9]{4,})-(?<month>[0-9]{2})$",
+                    match = Regex.Match(core, @"^(?<year>-?[0-9]{4,})-(?<month>[0-9]{2})\z",
                         RegexOptions.CultureInvariant);
                     if (!match.Success ||
                         !TryYear(match.Groups["year"].Value, out int parsedYear) ||
@@ -62,7 +62,7 @@ namespace Cogs.Common
                     year = parsedYearOnly;
                     break;
                 case "gMonthDay":
-                    match = Regex.Match(core, @"^--(?<month>[0-9]{2})-(?<day>[0-9]{2})$",
+                    match = Regex.Match(core, @"^--(?<month>[0-9]{2})-(?<day>[0-9]{2})\z",
                         RegexOptions.CultureInvariant);
                     if (!match.Success ||
                         !TryComponent(match.Groups["month"].Value, out int parsedMonthDayMonth) ||
@@ -74,7 +74,7 @@ namespace Cogs.Common
                     day = parsedMonthDayDay;
                     break;
                 case "gDay":
-                    match = Regex.Match(core, @"^---(?<day>[0-9]{2})$", RegexOptions.CultureInvariant);
+                    match = Regex.Match(core, @"^---(?<day>[0-9]{2})\z", RegexOptions.CultureInvariant);
                     if (!match.Success || !TryComponent(match.Groups["day"].Value, out int parsedDay))
                     {
                         return false;
@@ -82,7 +82,7 @@ namespace Cogs.Common
                     day = parsedDay;
                     break;
                 case "gMonth":
-                    match = Regex.Match(core, @"^--(?<month>[0-9]{2})--$", RegexOptions.CultureInvariant);
+                    match = Regex.Match(core, @"^--(?<month>[0-9]{2})--\z", RegexOptions.CultureInvariant);
                     if (!match.Success || !TryComponent(match.Groups["month"].Value, out int parsedMonthOnly))
                     {
                         return false;

@@ -35,12 +35,13 @@ JSON validation
 
 JSON validation combines the generated closed Draft 2020-12 schema with COGS
 checks that a standard schema vocabulary cannot perform by itself. It rejects
-duplicate member names and duplicate full item definitions, enforces exact
-decimal number lexemes, validates the full COGS/XSD temporal domains and
-nonzero signed-32-bit year rule, and evaluates temporal/duration bounds carried
-in the ``x-cogs-*`` extension metadata. Standard temporal ``format`` keywords
-are treated as annotations, not assertions. An indeterminate XSD partial-order
-comparison does not satisfy a bound.
+duplicate member names and duplicate full definitions, checks every primitive
+including reference IDs, and evaluates value-based temporal/floating facets.
+It enforces the native profile in :doc:`/specification/model-format`, including
+safe integers, decimal interchange stability, XML-compatible text and native
+temporal limits. Equivalent integral JSON exponent forms are accepted. Standard
+``format`` keywords remain annotations. Indeterminate partial Gregorian
+comparisons do not satisfy bounds.
 
 XML validation
 --------------

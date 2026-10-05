@@ -178,92 +178,12 @@ function parseJson(value: string | Uint8Array): unknown {
 }
 
 function stringifyJson(value: unknown, indent?: number): string {
-  if (indent !== undefined && (!Number.isInteger(indent) || indent < 0)) {
-    throw new RangeError("indent must be a non-negative integer.");
-  }
-  const width = indent ?? 0;
-
-  function write(current: unknown, level: number): string {
-    if (current === null) return "null";
-    if (typeof current === "string") return JSON.stringify(current);
-    if (typeof current === "boolean") return current ? "true" : "false";
-    if (typeof current === "bigint") return current.toString();
-    if (typeof current === "number") {
-      if (!Number.isFinite(current)) throw new TypeError("Non-finite values are not valid COGS JSON numbers.");
-      return Object.is(current, -0) ? "0" : String(current);
-    }
-    if (current instanceof JsonNumber) return current.value;
-    if (current instanceof CogsDecimal) return current.value;
-    if (current instanceof CogsDuration) return JSON.stringify(current.value);
-    if (Array.isArray(current)) {
-      if (current.length === 0) return "[]";
-      if (width === 0) return `[${current.map(item => write(item, level + 1)).join(",")}]`;
-      const padding = " ".repeat(width * (level + 1));
-      const closing = " ".repeat(width * level);
-      return `[\n${padding}${current.map(item => write(item, level + 1)).join(`,\n${padding}`)}\n${closing}]`;
-    }
-    if (isObject(current)) {
-      const entries = Object.entries(current).filter(([, item]) => item !== undefined);
-      if (entries.length === 0) return "{}";
-      const serialized = entries.map(([name, item]) => `${JSON.stringify(name)}${width === 0 ? ":" : ": "}${write(item, level + 1)}`);
-      if (width === 0) return `{${serialized.join(",")}}`;
-      const padding = " ".repeat(width * (level + 1));
-      const closing = " ".repeat(width * level);
-      return `{\n${padding}${serialized.join(`,\n${padding}`)}\n${closing}}`;
-    }
-    throw new TypeError(`Unsupported JSON value: ${String(current)}.`);
-  }
-
-  return write(value, 0);
-}
-
-function normalizeDecimal(value: string): string {
-  if (!/^-?(?:0|[1-9]\d*)(?:\.\d+)?$/.test(value)) {
-    throw new TypeError(`Invalid COGS decimal lexical value: ${JSON.stringify(value)}.`);
-  }
-  return value;
-}
-
-/** An exact, string-backed decimal value. */
-export class CogsDecimal {
-  readonly value: string;
-
-  constructor(value: string | bigint | CogsDecimal) {
-    if (value instanceof CogsDecimal) this.value = value.value;
-    else this.value = normalizeDecimal(String(value));
-  }
-
-  toString(): string {
-    return this.value;
-  }
-}
-
-/** A lossless full XSD duration lexical value, used in both JSON and XML. */
-export class CogsDuration {
-  readonly value: string;
-
-  constructor(value: string | CogsDuration) {
-    const lexical = value instanceof CogsDuration ? value.value : value;
-    if (!/^-?P(?=\d|T(?:\d|\.\d))(?:\d+Y)?(?:\d+M)?(?:\d+D)?(?:T(?=\d|\.\d)(?:\d+H)?(?:\d+M)?(?:(?:\d+(?:\.\d*)?|\.\d+)S)?)?$/.test(lexical)) {
-      throw new TypeError(`Invalid XSD duration: ${JSON.stringify(lexical)}.`);
-    }
-    this.value = lexical;
-  }
-
-  static fromXml(value: string): CogsDuration {
-    return new CogsDuration(value);
-  }
-
-  toXml(): string {
-    return this.value;
-  }
-
-  toString(): string { return this.value; }
+  return JSON.stringify(value, undefined, indent);
 }
 
 function validateTimezone(value: string | undefined): void {
   if (value === undefined || value === "Z") return;
-  const match = /^[+-](\d{2}):(\d{2})$/.exec(value);
+  const match = /^[+-](\d{2}):(\d{2})$(?![\s\S])/.exec(value);
   if (match === null || Number(match[1]) > 14 || Number(match[2]) > 59
       || (Number(match[1]) === 14 && Number(match[2]) !== 0)) {
     throw new TypeError(`Invalid timezone: ${JSON.stringify(value)}.`);
@@ -319,45 +239,6 @@ function validateEndOfDayFraction(hour: number, fraction: string | undefined): v
   }
 }
 
-/** An ISO dateTime lexical value. */
-export class CogsDateTime {
-  constructor(readonly value: string) {
-    const match = /^(-?(?:\d{4}|[1-9]\d{4,}))-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/.exec(value);
-    if (match === null) throw new TypeError(`Invalid dateTime: ${JSON.stringify(value)}.`);
-    validateDateParts(calendarYearFromLexical(match[1]!), Number(match[2]), Number(match[3]));
-    validateTimeParts(Number(match[4]), Number(match[5]), Number(match[6]));
-    validateEndOfDayFraction(Number(match[4]), match[7]);
-    validateTimezone(match[8]);
-  }
-
-  toString(): string { return this.value; }
-}
-
-/** An ISO date lexical value. */
-export class CogsDateOnly {
-  constructor(readonly value: string) {
-    const match = /^(-?(?:\d{4}|[1-9]\d{4,}))-(\d{2})-(\d{2})(Z|[+-]\d{2}:\d{2})?$/.exec(value);
-    if (match === null) throw new TypeError(`Invalid date: ${JSON.stringify(value)}.`);
-    validateDateParts(calendarYearFromLexical(match[1]!), Number(match[2]), Number(match[3]));
-    validateTimezone(match[4]);
-  }
-
-  toString(): string { return this.value; }
-}
-
-/** An ISO time lexical value. */
-export class CogsTime {
-  constructor(readonly value: string) {
-    const match = /^(\d{2}):(\d{2}):(\d{2})(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/.exec(value);
-    if (match === null) throw new TypeError(`Invalid time: ${JSON.stringify(value)}.`);
-    validateTimeParts(Number(match[1]), Number(match[2]), Number(match[3]));
-    validateEndOfDayFraction(Number(match[1]), match[4]);
-    validateTimezone(match[5]);
-  }
-
-  toString(): string { return this.value; }
-}
-
 function yearText(year: number): string {
   validateCalendarYear(year);
   const negative = year < 0;
@@ -405,7 +286,7 @@ export class GYearMonth {
   toXml(): string { return this.lexical ?? `${yearText(this.year)}-${String(this.month).padStart(2, "0")}${this.timezone ?? ""}`; }
 
   static fromXml(value: string): GYearMonth {
-    const match = /^(-?(?:\d{4}|[1-9]\d{4,}))-(\d{2})(Z|[+-]\d{2}:\d{2})?$/.exec(value);
+    const match = /^(-?(?:\d{4}|[1-9]\d{4,}))-(\d{2})(Z|[+-]\d{2}:\d{2})?$(?![\s\S])/.exec(value);
     if (match === null) throw new TypeError(`Invalid gYearMonth: ${JSON.stringify(value)}.`);
     return new GYearMonth(calendarYearFromLexical(match[1]!), Number(match[2]), match[3], value);
   }
@@ -431,7 +312,7 @@ export class GYear {
   toXml(): string { return this.lexical ?? `${yearText(this.year)}${this.timezone ?? ""}`; }
 
   static fromXml(value: string): GYear {
-    const match = /^(-?(?:\d{4}|[1-9]\d{4,}))(Z|[+-]\d{2}:\d{2})?$/.exec(value);
+    const match = /^(-?(?:\d{4}|[1-9]\d{4,}))(Z|[+-]\d{2}:\d{2})?$(?![\s\S])/.exec(value);
     if (match === null) throw new TypeError(`Invalid gYear: ${JSON.stringify(value)}.`);
     return new GYear(calendarYearFromLexical(match[1]!), match[2], value);
   }
@@ -453,7 +334,7 @@ export class GMonthDay {
   toXml(): string { return this.lexical ?? `--${String(this.month).padStart(2, "0")}-${String(this.day).padStart(2, "0")}${this.timezone ?? ""}`; }
 
   static fromXml(value: string): GMonthDay {
-    const match = /^--(\d{2})-(\d{2})(Z|[+-]\d{2}:\d{2})?$/.exec(value);
+    const match = /^--(\d{2})-(\d{2})(Z|[+-]\d{2}:\d{2})?$(?![\s\S])/.exec(value);
     if (match === null) throw new TypeError(`Invalid gMonthDay: ${JSON.stringify(value)}.`);
     return new GMonthDay(Number(match[1]), Number(match[2]), match[3], value);
   }
@@ -475,7 +356,7 @@ export class GMonth {
   toXml(): string { return this.lexical ?? `--${String(this.month).padStart(2, "0")}--${this.timezone ?? ""}`; }
 
   static fromXml(value: string): GMonth {
-    const match = /^--(\d{2})--(Z|[+-]\d{2}:\d{2})?$/.exec(value);
+    const match = /^--(\d{2})--(Z|[+-]\d{2}:\d{2})?$(?![\s\S])/.exec(value);
     if (match === null) throw new TypeError(`Invalid gMonth: ${JSON.stringify(value)}.`);
     return new GMonth(Number(match[1]), match[2], value);
   }
@@ -497,7 +378,7 @@ export class GDay {
   toXml(): string { return this.lexical ?? `---${String(this.day).padStart(2, "0")}${this.timezone ?? ""}`; }
 
   static fromXml(value: string): GDay {
-    const match = /^---(\d{2})(Z|[+-]\d{2}:\d{2})?$/.exec(value);
+    const match = /^---(\d{2})(Z|[+-]\d{2}:\d{2})?$(?![\s\S])/.exec(value);
     if (match === null) throw new TypeError(`Invalid gDay: ${JSON.stringify(value)}.`);
     return new GDay(Number(match[1]), match[2], value);
   }
@@ -507,6 +388,7 @@ export class LangString {
   constructor(readonly language: string, readonly value: string) {
     if (typeof language !== "string" || typeof value !== "string") throw new TypeError("LangString values must be strings.");
     validateLanguage(language);
+    requireString(value, "langString");
   }
 
   toObject(): JsonObject { return { "@language": this.language, "@value": this.value }; }
@@ -520,59 +402,23 @@ export class LangString {
   }
 }
 
-export type CogsDateKind = "DateTime" | "Date" | "GYearMonth" | "GYear" | "Duration";
-export type CogsDateValue = CogsDateTime | CogsDateOnly | GYearMonth | GYear | CogsDuration;
+export type CogsDate = { readonly DateTime: Date } | { readonly Date: string }
+  | { readonly GYearMonth: GYearMonth } | { readonly GYear: GYear } | { readonly Duration: number };
 
-export class CogsDate {
-  constructor(readonly kind: CogsDateKind, readonly value: CogsDateValue) {
-    const valid = (kind === "DateTime" && value instanceof CogsDateTime)
-      || (kind === "Date" && value instanceof CogsDateOnly)
-      || (kind === "GYearMonth" && value instanceof GYearMonth)
-      || (kind === "GYear" && value instanceof GYear)
-      || (kind === "Duration" && value instanceof CogsDuration);
-    if (!valid) throw new TypeError(`${value.constructor.name} is not valid for CogsDate ${kind}.`);
-  }
+function cogsDateObject(value: unknown, reading: boolean): JsonObject {
+  const raw = requireObjectKeys(value, [], ["DateTime", "Date", "GYearMonth", "GYear", "Duration"]);
+  const keys = Object.keys(raw);
+  if (keys.length !== 1) throw new TypeError("cogsDate requires exactly one arm.");
+  const kind = keys[0]!;
+  return {[kind]: reading ? deserializeSimpleObject(kind, raw[kind]) : serializeSimpleObject(kind, raw[kind])};
+}
 
-  static dateTime(value: string | CogsDateTime): CogsDate { return new CogsDate("DateTime", value instanceof CogsDateTime ? value : new CogsDateTime(value)); }
-  static date(value: string | CogsDateOnly): CogsDate { return new CogsDate("Date", value instanceof CogsDateOnly ? value : new CogsDateOnly(value)); }
-  static gYearMonth(value: GYearMonth): CogsDate { return new CogsDate("GYearMonth", value); }
-  static gYear(value: GYear): CogsDate { return new CogsDate("GYear", value); }
-  static duration(value: CogsDuration): CogsDate { return new CogsDate("Duration", value); }
-
-  toObject(): JsonObject {
-    if (this.value instanceof CogsDateTime || this.value instanceof CogsDateOnly) return { [this.kind]: this.value.value };
-    if (this.value instanceof GYearMonth || this.value instanceof GYear) return { [this.kind]: this.value.toObject() };
-    return { [this.kind]: this.value.toXml() };
-  }
-
-  static fromObject(value: unknown): CogsDate {
-    const raw = requireObjectKeys(value, [], ["DateTime", "Date", "GYearMonth", "GYear", "Duration"]);
-    const keys = Object.keys(raw);
-    if (keys.length !== 1) throw new TypeError("cogsDate requires exactly one value.");
-    const kind = keys[0] as CogsDateKind;
-    const item = raw[kind];
-    switch (kind) {
-      case "DateTime": return CogsDate.dateTime(requireString(item, "DateTime"));
-      case "Date": return CogsDate.date(requireString(item, "Date"));
-      case "GYearMonth": return CogsDate.gYearMonth(GYearMonth.fromObject(item));
-      case "GYear": return CogsDate.gYear(GYear.fromObject(item));
-      case "Duration": return CogsDate.duration(parseDuration(item));
-      default: throw new TypeError(`Unknown cogsDate kind ${kind}.`);
-    }
-  }
-
-  toXml(): string {
-    if (this.value instanceof CogsDateTime || this.value instanceof CogsDateOnly) return this.value.value;
-    return this.value.toXml();
-  }
-
-  static fromXml(value: string): CogsDate {
-    if (/^-?P/.test(value)) return CogsDate.duration(CogsDuration.fromXml(value));
-    if (value.includes("T")) return CogsDate.dateTime(value);
-    if (/^-?(?:\d{4}|[1-9]\d{4,})-\d{2}-\d{2}/.test(value)) return CogsDate.date(value);
-    if (/^-?(?:\d{4}|[1-9]\d{4,})-\d{2}/.test(value)) return CogsDate.gYearMonth(GYearMonth.fromXml(value));
-    return CogsDate.gYear(GYear.fromXml(value));
-  }
+function cogsDateFromXml(text: string): JsonObject {
+  if (/^-?P/.test(text)) return {Duration: parseDuration(text)};
+  if (text.includes("T")) return {DateTime: parseInstant(text)};
+  if (/^-?[0-9]{4,}-[0-9]{2}-[0-9]{2}/.test(text)) return {Date: temporalText("date",text)};
+  if (/^-?[0-9]{4,}-[0-9]{2}/.test(text)) return {GYearMonth: GYearMonth.fromXml(text)};
+  return {GYear: GYear.fromXml(text)};
 }
 
 function optionalString(value: unknown): string | undefined {
@@ -583,32 +429,22 @@ function optionalString(value: unknown): string | undefined {
 
 function requireString(value: unknown, name: string): string {
   if (typeof value !== "string") throw new TypeError(`${name} must be a string.`);
+  for (const character of value) {
+    const cp = character.codePointAt(0)!;
+    if (!(cp === 9 || cp === 10 || cp === 13 || cp >= 0x20 && cp <= 0xd7ff || cp >= 0xe000 && cp <= 0xfffd || cp >= 0x10000 && cp <= 0x10ffff)) throw new TypeError("Text must contain only XML 1.0 Unicode characters.");
+  }
   return value;
 }
 
 function validateLanguage(value: string): string {
-  const languageTag = /^(?:(?:[A-Z]{2,3}(?:-[A-Z]{3}){0,3}|[A-Z]{4}|[A-Z]{5,8})(?:-[A-Z]{4})?(?:-(?:[A-Z]{2}|\d{3}))?(?:-(?:[A-Z0-9]{5,8}|\d[A-Z0-9]{3}))*(?:-[0-9A-WY-Z](?:-[A-Z0-9]{2,8})+)*(?:-X(?:-[A-Z0-9]{1,8})+)?|X(?:-[A-Z0-9]{1,8})+|(?:EN-GB-OED|I-(?:AMI|Bnn|DEFAULT|ENochian|HAK|KLINGON|LUX|MINGO|NAVAJO|PWN|TAO|TAY|TSU)|SGN-(?:BE-FR|BE-NL|CH-DE)|ART-LOJBAN|CEL-GAULISH|NO-(?:BOK|NYN)|ZH-(?:GUOYU|HAKKA|MIN|MIN-NAN|XIANG)))$/i;
+  const languageTag = /^(?:(?:[A-Z]{2,3}(?:-[A-Z]{3}){0,3}|[A-Z]{4}|[A-Z]{5,8})(?:-[A-Z]{4})?(?:-(?:[A-Z]{2}|\d{3}))?(?:-(?:[A-Z0-9]{5,8}|\d[A-Z0-9]{3}))*(?:-[0-9A-WY-Z](?:-[A-Z0-9]{2,8})+)*(?:-X(?:-[A-Z0-9]{1,8})+)?|X(?:-[A-Z0-9]{1,8})+|(?:EN-GB-OED|I-(?:AMI|Bnn|DEFAULT|ENochian|HAK|KLINGON|LUX|MINGO|NAVAJO|PWN|TAO|TAY|TSU)|SGN-(?:BE-FR|BE-NL|CH-DE)|ART-LOJBAN|CEL-GAULISH|NO-(?:BOK|NYN)|ZH-(?:GUOYU|HAKKA|MIN|MIN-NAN|XIANG)))$(?![\s\S])/i;
   if (!languageTag.test(value)) throw new TypeError(`Invalid BCP 47 language tag: ${JSON.stringify(value)}.`);
   return value;
 }
 
+const URI_REFERENCE = new RegExp("^(?:" + __URI_REFERENCE_PATTERN__ + ")$(?![\\s\\S])");
 function validateUriReference(value: string): string {
-  if (!/^(?:[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=-]|%[0-9A-Fa-f]{2})*$/.test(value)) {
-    throw new TypeError(`Invalid RFC 3986 URI reference: ${JSON.stringify(value)}.`);
-  }
-  const fragment = value.indexOf("#");
-  if (fragment >= 0 && value.indexOf("#", fragment + 1) >= 0) {
-    throw new TypeError(`Invalid RFC 3986 URI reference: ${JSON.stringify(value)}.`);
-  }
-  const query = value.indexOf("?");
-  const hierarchicalEnd = [value.indexOf("/"), query, fragment].filter(index => index >= 0).sort((a, b) => a - b)[0] ?? value.length;
-  const firstColon = value.indexOf(":");
-  if (firstColon >= 0 && firstColon < hierarchicalEnd && !/^[A-Za-z][A-Za-z0-9+.-]*$/.test(value.slice(0, firstColon))) {
-    throw new TypeError(`Invalid RFC 3986 URI scheme: ${JSON.stringify(value)}.`);
-  }
-  if ((value.match(/\[/g)?.length ?? 0) !== (value.match(/\]/g)?.length ?? 0)) {
-    throw new TypeError(`Invalid RFC 3986 URI reference: ${JSON.stringify(value)}.`);
-  }
+  if (!URI_REFERENCE.test(value)) throw new TypeError(`Invalid RFC 3986 URI reference: ${JSON.stringify(value)}.`);
   return value;
 }
 
@@ -622,40 +458,159 @@ function validateStringType(typeName: string, value: unknown): string {
 
 function numericLexeme(value: unknown, name: string): string {
   if (value instanceof JsonNumber) return value.value;
-  if (value instanceof CogsDecimal) return value.value;
-  if (typeof value === "bigint") return value.toString();
   if (typeof value === "number" && Number.isFinite(value)) return String(value);
   throw new TypeError(`${name} must be a JSON number.`);
 }
 
-function parseInteger(value: unknown, typeName: string): number | bigint {
+const INTEGER_TYPES = new Set(["int", "long", "unsignedlong", "nonpositiveinteger", "negativeinteger", "nonnegativeinteger", "positiveinteger"]);
+
+function numberParts(text: string): { coefficient: bigint; scale: number } {
+  const match = /^(-?)(0|[1-9][0-9]*)(?:\.([0-9]+))?(?:[eE]([+-]?[0-9]+))?$(?![\s\S])/.exec(text);
+  if (match === null) throw new TypeError("Invalid numeric token.");
+  let digits = (match[2]! + (match[3] ?? "")).replace(/^0+/, "");
+  if (digits.length === 0) return {coefficient: 0n, scale: 0};
+  const trailing = digits.length - digits.replace(/0+$/, "").length;
+  digits = digits.replace(/0+$/, "");
+  const scale = (match[3]?.length ?? 0) - trailing - Number(match[4] ?? 0);
+  if (digits.length > 29 || scale > 28 || scale < -29 || digits.length - Math.min(scale, 0) > 29) throw new TypeError("Numeric value exceeds the native decimal domain.");
+  return {coefficient: BigInt(match[1]! + digits) * (scale < 0 ? 10n ** BigInt(-scale) : 1n), scale: Math.max(0, scale)};
+}
+
+function decimalNumber(value: unknown): number {
+  const lexical = numericLexeme(value, "decimal");
+  const input = numberParts(lexical);
+  const magnitude = input.coefficient < 0 ? -input.coefficient : input.coefficient;
+  if (magnitude > 79228162514264337593543950335n) throw new TypeError("decimal exceeds System.Decimal's coefficient.");
+  const result = Number(lexical);
+  const output = numberParts(JSON.stringify(result));
+  if (input.coefficient * 10n ** BigInt(output.scale) !== output.coefficient * 10n ** BigInt(input.scale)) throw new TypeError("decimal would be rounded by JavaScript JSON interchange.");
+  return result === 0 ? 0 : result;
+}
+
+function decimalText(value: unknown): string {
+  const parts = numberParts(String(decimalNumber(value)));
+  const negative = parts.coefficient < 0;
+  const digits = (negative ? -parts.coefficient : parts.coefficient).toString().padStart(parts.scale+1, "0");
+  return (negative ? "-" : "") + (parts.scale ? digits.slice(0,-parts.scale) + "." + digits.slice(-parts.scale) : digits);
+}
+
+function parseInteger(value: unknown, typeName: string): number {
+  const parts = numberParts(numericLexeme(value, typeName));
+  const lower = typeName.toLowerCase();
+  const n = parts.coefficient;
+  if (parts.scale !== 0 || n < -9007199254740991n || n > 9007199254740991n
+    || lower === "int" && (n < -2147483648n || n > 2147483647n)
+    || ["unsignedlong","nonnegativeinteger"].includes(lower) && n < 0n
+    || lower === "positiveinteger" && n <= 0n || lower === "negativeinteger" && n >= 0n
+    || lower === "nonpositiveinteger" && n > 0n) throw new TypeError(`Value is outside ${typeName}.`);
+  return Number(n);
+}
+
+function xmlNumeric(text: string, typeName: string): JsonNumber {
+  const integer = INTEGER_TYPES.has(typeName.toLowerCase());
+  const pattern = integer ? /^[+-]?[0-9]+$/ : typeName.toLowerCase() === "decimal"
+    ? /^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)$/ : /^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$(?![\s\S])/;
+  if (!pattern.test(text)) throw new TypeError(`Invalid XML ${typeName}.`);
+  const match = /^([+-]?)([0-9]*)(?:\.([0-9]*))?([eE][+-]?[0-9]+)?$(?![\s\S])/.exec(text)!;
+  return new JsonNumber((match[1] === "-" ? "-" : "") + (match[2]!.replace(/^0+/, "") || "0") + (match[3] ? "."+match[3] : "") + (match[4] ?? ""));
+}
+
+function floatingNumber(value: unknown, typeName: string, jsonInput = true): number {
   const lexical = numericLexeme(value, typeName);
-  if (!/^-?(?:0|[1-9]\d*)$/.test(lexical)) throw new TypeError(`${typeName} must be an integer.`);
-  const result = BigInt(lexical);
-  switch (typeName.toLowerCase()) {
-    case "int":
-      if (result < -2_147_483_648n || result > 2_147_483_647n) throw new RangeError("int is outside its XSD range.");
-      return Number(result);
-    case "nonpositiveinteger": if (result > 0n) throw new RangeError("nonPositiveInteger must be <= 0."); break;
-    case "negativeinteger": if (result >= 0n) throw new RangeError("negativeInteger must be < 0."); break;
-    case "long": if (result < -9_223_372_036_854_775_808n || result > 9_223_372_036_854_775_807n) throw new RangeError("long is outside its XSD range."); break;
-    case "nonnegativeinteger": if (result < 0n) throw new RangeError("nonNegativeInteger must be >= 0."); break;
-    case "unsignedlong": if (result < 0n || result > 18_446_744_073_709_551_615n) throw new RangeError("unsignedLong is outside its XSD range."); break;
-    case "positiveinteger": if (result <= 0n) throw new RangeError("positiveInteger must be > 0."); break;
-    case "gyear": break;
-    default: throw new TypeError(`Unknown integer type ${typeName}.`);
+  let result = Number(lexical);
+  if (!Number.isFinite(result)) throw new TypeError(typeName + " must be finite.");
+  if (typeName.toLowerCase() === "float") {
+    if (value instanceof JsonNumber && result !== 0) {
+      // Round the exact input to binary32 once, including decimal values on
+      // either side of a midpoint that first round to the same binary64 value.
+      const match = /^(-?)([0-9]+)(?:\.([0-9]+))?(?:[eE]([+-]?[0-9]+))?$(?![\s\S])/.exec(lexical)!;
+      const scale = (match[3]?.length ?? 0) - Number(match[4] ?? 0);
+      const numerator = BigInt(match[2]! + (match[3] ?? "")) * (scale < 0 ? 10n ** BigInt(-scale) : 1n);
+      const denominator = scale > 0 ? 10n ** BigInt(scale) : 1n;
+      if (numerator >= ((1n << 128n) - (1n << 103n)) * denominator) throw new TypeError("float overflows binary32.");
+      const view = new DataView(new ArrayBuffer(4));
+      view.setFloat32(0, Math.abs(result));
+      const nearest = Math.min(view.getUint32(0), 0x7f7fffff);
+      let selected = nearest;
+      let bestDistance: bigint | undefined;
+      // Express every candidate in units of the smallest binary32 subnormal.
+      const target = numerator << 149n;
+      for (let bits = Math.max(0, nearest - 1); bits <= Math.min(0x7f7fffff, nearest + 1); bits++) {
+        const exponent = bits >>> 23;
+        const significand = BigInt((bits & 0x7fffff) + (exponent === 0 ? 0 : 0x800000));
+        const units = exponent === 0 ? significand : significand << BigInt(exponent - 1);
+        const delta = units * denominator - target;
+        const distance = delta < 0n ? -delta : delta;
+        if (bestDistance === undefined || distance < bestDistance || (distance === bestDistance && bits % 2 === 0)) {
+          selected = bits;
+          bestDistance = distance;
+        }
+      }
+      view.setUint32(0, selected);
+      const direct = view.getFloat32(0) * (match[1] === "-" ? -1 : 1);
+      if (jsonInput && direct !== Math.fround(result)) throw new TypeError("JSON float needs a stable binary32 spelling for native JavaScript parsing.");
+      result = direct;
+    } else {
+      result = Math.fround(result);
+    }
   }
+  if (!Number.isFinite(result)) throw new TypeError(typeName + " must be finite.");
+  return result === 0 ? 0 : result;
+}
+
+function temporalText(typeName: string, value: unknown): string {
+  const lower = typeName.toLowerCase();
+  if (lower === "datetime") {
+    if (!(value instanceof Date) || !Number.isFinite(value.getTime()) || value.getUTCFullYear() < 1 || value.getUTCFullYear() > 9999) throw new TypeError("dateTime requires Date in UTC years 0001 through 9999.");
+    return value.toISOString();
+  }
+  const text = requireString(value, typeName);
+  if (lower === "date") {
+    const match = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$(?![\s\S])/.exec(text);
+    if (match === null) throw new TypeError("date requires a local date without timezone.");
+    validateDateParts(Number(match[1]), Number(match[2]), Number(match[3]));
+    return text;
+  }
+  const match = /^([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]+))?$(?![\s\S])/.exec(text);
+  if (match === null) throw new TypeError("time requires a local clock without timezone.");
+  validateTimeParts(Number(match[1]), Number(match[2]), Number(match[3]));
+  const fraction = (match[4] ?? "").replace(/0+$/, "");
+  if (fraction.length > 6 || (match[1] === "24" && fraction.length > 0)) throw new TypeError("Invalid native time precision.");
+  return `${match[1] === "24" ? "00" : match[1]}:${match[2]}:${match[3]}${fraction ? "."+fraction : ""}`;
+}
+
+function parseInstant(text: string): Date {
+  const match = /^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]+))?(Z|[+-][0-9]{2}:[0-9]{2})$(?![\s\S])/.exec(text);
+  if (match === null) throw new TypeError("dateTime requires a timezone and a four-digit positive year.");
+  validateDateParts(Number(match[1]), Number(match[2]), Number(match[3]));
+  validateTimeParts(Number(match[4]), Number(match[5]), Number(match[6]));
+  validateTimezone(match[8]);
+  const fraction = (match[7] ?? "").replace(/0+$/, "");
+  if (fraction.length > 3 || (match[4] === "24" && fraction.length > 0)) throw new TypeError("dateTime requires whole milliseconds.");
+  const result = new Date(`${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}:${match[6]}${fraction ? "."+fraction : ""}${match[8]}`);
+  temporalText("datetime", result);
   return result;
 }
 
-function parseXmlInteger(value: string, typeName: string): number | bigint {
-  if (!/^[+-]?\d+$/.test(value)) throw new TypeError(`${typeName} is not an XSD integer lexical value.`);
-  return parseInteger(new JsonNumber(BigInt(value).toString()), typeName);
+function durationText(value: unknown): string {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || Math.abs(value) > 922337203685477) throw new TypeError("duration requires whole milliseconds in the native duration range.");
+  const magnitude = Math.abs(value);
+  const days = Math.floor(magnitude / 86400000);
+  const fraction = String(magnitude % 1000).padStart(3, "0").replace(/0+$/, "");
+  return (value < 0 ? "-" : "") + "P" + (days ? days + "D" : "") + "T"
+    + Math.floor((magnitude % 86400000) / 1000) + (fraction ? "." + fraction : "") + "S";
 }
 
-function parseDuration(value: unknown): CogsDuration {
-  if (value instanceof CogsDuration) return value;
-  return new CogsDuration(requireString(value, "duration"));
+function parseDuration(value: unknown): number {
+  const match = /^(-)?P(?=[0-9]|T[0-9.])(?:([0-9]+)D)?(?:T(?=[0-9.])(?:([0-9]+)H)?(?:([0-9]+)M)?(?:([0-9]+(?:\.[0-9]*)?|\.[0-9]+)S)?)?$(?![\s\S])/.exec(requireString(value, "duration"));
+  if (match === null) throw new TypeError("duration requires elapsed time without years/months.");
+  const [whole, rawFraction] = (match[5] ?? "0").split(".");
+  const fraction = (rawFraction ?? "").replace(/0+$/, "");
+  if (fraction.length > 3) throw new TypeError("duration requires whole milliseconds.");
+  const millis = BigInt(match[2] ?? "0")*86400000n + BigInt(match[3] ?? "0")*3600000n + BigInt(match[4] ?? "0")*60000n
+    + BigInt(whole || "0")*1000n + BigInt(fraction.padEnd(3,"0") || "0");
+  if (millis > 922337203685477n) throw new TypeError("duration exceeds the native range.");
+  return Number(match[1] ? -millis : millis);
 }
 
 function serializeSimpleObject(typeName: string, value: unknown): unknown {
@@ -669,28 +624,17 @@ function serializeSimpleObject(typeName: string, value: unknown): unknown {
   if (["nonpositiveinteger", "negativeinteger", "long", "nonnegativeinteger", "unsignedlong", "positiveinteger"].includes(lower)) {
     return parseInteger(value, typeName);
   }
-  if (lower === "float" || lower === "double") {
-    if (typeof value !== "number" || !Number.isFinite(value)) throw new TypeError(`${typeName} must be a finite number.`);
-    return value;
-  }
-  if (lower === "decimal") {
-    if (!(value instanceof CogsDecimal)) throw new TypeError("decimal values require CogsDecimal.");
-    return value;
-  }
-  if (lower === "duration") {
-    if (!(value instanceof CogsDuration)) throw new TypeError("duration values require CogsDuration.");
-    return value.value;
-  }
-  if (lower === "datetime") return value instanceof CogsDateTime ? value.value : (() => { throw new TypeError("dateTime values require CogsDateTime."); })();
-  if (lower === "date") return value instanceof CogsDateOnly ? value.value : (() => { throw new TypeError("date values require CogsDateOnly."); })();
-  if (lower === "time") return value instanceof CogsTime ? value.value : (() => { throw new TypeError("time values require CogsTime."); })();
+  if (lower === "float" || lower === "double") return floatingNumber(value, typeName);
+  if (lower === "decimal") return decimalNumber(value);
+  if (lower === "duration") return durationText(value);
+  if (["datetime", "date", "time"].includes(lower)) return temporalText(typeName, value);
   if (lower === "gyearmonth" && value instanceof GYearMonth) return value.toObject();
   if (lower === "gyear" && value instanceof GYear) return value.toObject();
   if (lower === "gmonthday" && value instanceof GMonthDay) return value.toObject();
   if (lower === "gmonth" && value instanceof GMonth) return value.toObject();
   if (lower === "gday" && value instanceof GDay) return value.toObject();
   if (lower === "langstring" && value instanceof LangString) return value.toObject();
-  if (lower === "cogsdate" && value instanceof CogsDate) return value.toObject();
+  if (lower === "cogsdate") return cogsDateObject(value, false);
   throw new TypeError(`Invalid ${typeName} value.`);
 }
 
@@ -704,23 +648,18 @@ function deserializeSimpleObject(typeName: string, value: unknown): unknown {
   if (lower === "int" || ["nonpositiveinteger", "negativeinteger", "long", "nonnegativeinteger", "unsignedlong", "positiveinteger"].includes(lower)) {
     return parseInteger(value, typeName);
   }
-  if (lower === "float" || lower === "double") {
-    const result = Number(numericLexeme(value, typeName));
-    if (!Number.isFinite(result)) throw new TypeError(`${typeName} must be finite.`);
-    return result;
-  }
-  if (lower === "decimal") return value instanceof CogsDecimal ? value : new CogsDecimal(numericLexeme(value, "decimal"));
+  if (lower === "float" || lower === "double") return floatingNumber(value, typeName);
+  if (lower === "decimal") return decimalNumber(value);
   if (lower === "duration") return parseDuration(value);
-  if (lower === "datetime") return value instanceof CogsDateTime ? value : new CogsDateTime(requireString(value, typeName));
-  if (lower === "date") return value instanceof CogsDateOnly ? value : new CogsDateOnly(requireString(value, typeName));
-  if (lower === "time") return value instanceof CogsTime ? value : new CogsTime(requireString(value, typeName));
+  if (lower === "datetime") return value instanceof Date ? (temporalText(typeName, value), value) : parseInstant(requireString(value, typeName));
+  if (lower === "date" || lower === "time") return temporalText(typeName, value);
   if (lower === "gyearmonth") return value instanceof GYearMonth ? value : GYearMonth.fromObject(value);
   if (lower === "gyear") return value instanceof GYear ? value : GYear.fromObject(value);
   if (lower === "gmonthday") return value instanceof GMonthDay ? value : GMonthDay.fromObject(value);
   if (lower === "gmonth") return value instanceof GMonth ? value : GMonth.fromObject(value);
   if (lower === "gday") return value instanceof GDay ? value : GDay.fromObject(value);
   if (lower === "langstring") return value instanceof LangString ? value : LangString.fromObject(value);
-  if (lower === "cogsdate") return value instanceof CogsDate ? value : CogsDate.fromObject(value);
+  if (lower === "cogsdate") return cogsDateObject(value, true);
   throw new TypeError(`Unknown simple type ${typeName}.`);
 }
 
@@ -991,6 +930,7 @@ export class CogsValue {
     return result as T;
   }
 
+  toJSON(): JsonObject { return this.toObject(); }
   toJson(options: { readonly indent?: number } = {}): string { return stringifyJson(this.toObject(), options.indent); }
 
   static fromJson<T extends CogsValue>(this: CogsConstructor<T>, value: string | Uint8Array): T {
@@ -1109,32 +1049,25 @@ function serializeSimpleXml(typeName: string, value: unknown, element: Element):
   if (lower === "boolean") {
     if (typeof value !== "boolean") throw new TypeError("boolean values must be boolean.");
     text = value ? "true" : "false";
-  } else if (lower === "decimal") {
-    if (!(value instanceof CogsDecimal)) throw new TypeError("decimal values require CogsDecimal.");
-    text = value.value;
-  } else if (lower === "duration") {
-    if (!(value instanceof CogsDuration)) throw new TypeError("duration values require CogsDuration.");
-    text = value.toXml();
-  } else if (lower === "datetime") {
-    if (!(value instanceof CogsDateTime)) throw new TypeError("dateTime values require CogsDateTime.");
-    text = value.value;
-  } else if (lower === "date") {
-    if (!(value instanceof CogsDateOnly)) throw new TypeError("date values require CogsDateOnly.");
-    text = value.value;
-  } else if (lower === "time") {
-    if (!(value instanceof CogsTime)) throw new TypeError("time values require CogsTime.");
-    text = value.value;
-  } else if (lower === "gyearmonth" && value instanceof GYearMonth) text = value.toXml();
+  } else if (lower === "decimal") text = decimalText(value);
+  else if (lower === "duration") text = durationText(value);
+  else if (["datetime", "date", "time"].includes(lower)) text = temporalText(typeName, value);
+  else if (lower === "gyearmonth" && value instanceof GYearMonth) text = value.toXml();
   else if (lower === "gyear" && value instanceof GYear) text = value.toXml();
   else if (lower === "gmonthday" && value instanceof GMonthDay) text = value.toXml();
   else if (lower === "gmonth" && value instanceof GMonth) text = value.toXml();
   else if (lower === "gday" && value instanceof GDay) text = value.toXml();
-  else if (lower === "cogsdate" && value instanceof CogsDate) text = value.toXml();
+  else if (lower === "cogsdate") {
+    cogsDateObject(value, false);
+    const [kind, arm] = Object.entries(value as JsonObject)[0]!;
+    const child = element.ownerDocument!.createElement("arm");
+    serializeSimpleXml(kind, arm, child);
+    text = child.textContent ?? "";
+  }
   else if (lower === "int" || ["nonpositiveinteger", "negativeinteger", "long", "nonnegativeinteger", "unsignedlong", "positiveinteger"].includes(lower)) {
     text = String(parseInteger(value, typeName));
   } else if (lower === "float" || lower === "double") {
-    if (typeof value !== "number" || !Number.isFinite(value)) throw new TypeError(`${typeName} must be finite.`);
-    text = String(value);
+    text = String(floatingNumber(value, typeName));
   } else text = validateStringType(typeName, value);
   element.appendChild(element.ownerDocument!.createTextNode(text));
 }
@@ -1150,31 +1083,28 @@ function deserializeSimpleXml(typeName: string, element: Element): unknown {
   allowedAttributes(element);
   const rawText = elementText(element);
   const text = rawText.trim();
-  if (lower === "string") return rawText;
+  if (lower === "string") return requireString(rawText, typeName);
   if (lower === "language" || lower === "anyuri") return validateStringType(typeName, rawText);
   if (lower === "boolean") {
     if (text === "true" || text === "1") return true;
     if (text === "false" || text === "0") return false;
     throw new TypeError(`Invalid boolean lexical value ${JSON.stringify(text)}.`);
   }
-  if (lower === "decimal") return new CogsDecimal(text);
-  if (lower === "duration") return CogsDuration.fromXml(text);
-  if (lower === "datetime") return new CogsDateTime(text);
-  if (lower === "date") return new CogsDateOnly(text);
-  if (lower === "time") return new CogsTime(text);
+  if (lower === "decimal") return decimalNumber(xmlNumeric(text, typeName));
+  if (lower === "duration") return parseDuration(text);
+  if (lower === "datetime") return parseInstant(text);
+  if (lower === "date" || lower === "time") return temporalText(typeName, text);
   if (lower === "gyearmonth") return GYearMonth.fromXml(text);
   if (lower === "gyear") return GYear.fromXml(text);
   if (lower === "gmonthday") return GMonthDay.fromXml(text);
   if (lower === "gmonth") return GMonth.fromXml(text);
   if (lower === "gday") return GDay.fromXml(text);
-  if (lower === "cogsdate") return CogsDate.fromXml(text);
+  if (lower === "cogsdate") return cogsDateFromXml(text);
   if (lower === "int" || ["nonpositiveinteger", "negativeinteger", "long", "nonnegativeinteger", "unsignedlong", "positiveinteger"].includes(lower)) {
-    return parseXmlInteger(text, typeName);
+    return parseInteger(xmlNumeric(text, typeName), typeName);
   }
   if (lower === "float" || lower === "double") {
-    const result = Number(text);
-    if (!Number.isFinite(result)) throw new TypeError(`${typeName} must be finite.`);
-    return result;
+    return floatingNumber(xmlNumeric(text, typeName), typeName, false);
   }
   return validateStringType(typeName, rawText);
 }
@@ -1337,7 +1267,7 @@ function parseXml(value: string | Uint8Array): Document {
 }
 
 function serializeDocument(document: Document, declaration: boolean): string {
-  const xml = new XMLSerializer().serializeToString(document, { requireWellFormed: true });
+  const xml = new XMLSerializer().serializeToString(document, { requireWellFormed: true }).replace(/\r/g, "&#13;");
   return declaration ? `<?xml version="1.0" encoding="utf-8"?>${xml}` : xml;
 }
 
@@ -1406,6 +1336,7 @@ export class ItemContainer {
     return new ItemContainer({ items, topLevelReferences: references.map(item => context.resolveReference(item)) });
   }
 
+  toJSON(): JsonObject { return this.toObject(); }
   toJson(options: { readonly indent?: number } = {}): string { return stringifyJson(this.toObject(), options.indent); }
   static fromJson(value: string | Uint8Array): ItemContainer { return ItemContainer.fromObject(parseJson(value)); }
   static async loadJson(source: PathLike | Readable): Promise<ItemContainer> { return ItemContainer.fromJson(await readSource(source)); }

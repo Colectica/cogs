@@ -120,7 +120,7 @@ namespace Cogs.Tests
             Assert.False(definitions.GetProperty("anyURI").TryGetProperty("pattern", out _));
             Assert.Equal("object", definitions.GetProperty("gYearMonth").GetProperty("type").GetString());
             Assert.Equal("number", definitions.GetProperty("decimal").GetProperty("type").GetString());
-            Assert.Equal("18446744073709551615", definitions.GetProperty("unsignedLong").GetProperty("maximum").GetRawText());
+            Assert.Equal("9007199254740991", definitions.GetProperty("unsignedLong").GetProperty("maximum").GetRawText());
             Assert.Equal(5, definitions.GetProperty("cogsDate").GetProperty("oneOf").GetArrayLength());
 
             var temporal = definitions.GetProperty("DerivedItem").GetProperty("allOf")[1]
@@ -211,9 +211,8 @@ namespace Cogs.Tests
             var manager = new XmlNamespaceManager(xml.NameTable);
             manager.AddNamespace("xs", XmlSchema.Namespace);
 
-            Assert.NotNull(xml.SelectSingleNode(
-                "/xs:schema/xs:annotation/xs:documentation[contains(., 'nonzero signed 32-bit integer')]",
-                manager));
+            Assert.Equal("This schema describes Schema Test.", xml.SelectSingleNode(
+                "/xs:schema/xs:annotation/xs:documentation", manager)!.InnerText);
             Assert.Null(xml.SelectSingleNode("/xs:schema/xs:element[@name='BaseValue']", manager));
             Assert.NotNull(xml.SelectSingleNode("/xs:schema/xs:complexType[@name='BaseItem']/xs:sequence/xs:element[@name='BaseValue']", manager));
             var extension = xml.SelectSingleNode("/xs:schema/xs:complexType[@name='DerivedItem']/xs:complexContent/xs:extension", manager) as XmlElement;

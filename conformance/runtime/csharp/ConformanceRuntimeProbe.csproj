@@ -6,8 +6,9 @@
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <RepositoryRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\..\'))</RepositoryRoot>
+    <GeneratedSourceDirectory Condition="'$(GeneratedSourceDirectory)' == ''">$(RepositoryRoot)generated\conformance\src</GeneratedSourceDirectory>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="$(RepositoryRoot)generated\conformance\src\*.csproj" />
+    <ProjectReference Include="$(GeneratedSourceDirectory)\*.csproj" />
   </ItemGroup>
 </Project>

@@ -7,6 +7,9 @@ param(
 
     [string] $Instances = (Join-Path $PSScriptRoot '..\instances'),
 
+    [ValidateSet('python', 'python-pydantic')]
+    [string] $PythonFlavor = 'python',
+
     [string] $GeneratedRoot = (Join-Path $PSScriptRoot '..\..\generated\conformance')
 )
 
@@ -21,7 +24,7 @@ if (-not [IO.File]::Exists($CogsDll)) { throw "COGS CLI assembly not found: $Cog
 if (-not [IO.Directory]::Exists($Model)) { throw "Conformance model not found: $Model" }
 if (-not [IO.Directory]::Exists($Instances)) { throw "Conformance instances not found: $Instances" }
 
-$PythonPackage = Join-Path $GeneratedRoot 'python'
+$PythonPackage = Join-Path $GeneratedRoot $PythonFlavor
 $TypeScriptPackage = Join-Path $GeneratedRoot 'typescript'
 $CSharpSources = Join-Path $GeneratedRoot 'src'
 if (-not [IO.File]::Exists((Join-Path $PythonPackage 'cogs_conformance\model.py'))) {
@@ -96,7 +99,7 @@ $pythonProbe = Join-Path $ProbeRoot 'python_probe.py'
 $typeScriptProbe = Join-Path $ProbeRoot 'typescript_probe.mjs'
 
 Invoke-Checked 'Generated C# runtime probe build' 'dotnet' @(
-    'build', $csharpProject, '--configuration', 'Release', '--verbosity', 'minimal'
+    'build', $csharpProject, '--configuration', 'Release', '--verbosity', 'minimal', "-p:GeneratedSourceDirectory=$CSharpSources"
 )
 if (-not [IO.File]::Exists($csharpDll)) { throw "C# runtime probe output not found: $csharpDll" }
 

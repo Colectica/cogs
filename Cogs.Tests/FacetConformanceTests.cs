@@ -38,9 +38,9 @@ public sealed class FacetConformanceTests
         yield return Case("\"Observed\":\"2020-01-01T00:00:00\"",
             "<Observed>2020-01-01T00:00:00</Observed>", false);
 
-        yield return Case("\"Elapsed\":\"P2M\"", "<Elapsed>P2M</Elapsed>", true);
-        yield return Case("\"Elapsed\":\"P1M\"", "<Elapsed>P1M</Elapsed>", false);
-        yield return Case("\"Elapsed\":\"P30D\"", "<Elapsed>P30D</Elapsed>", false);
+        yield return Case("\"Elapsed\":\"P2D\"", "<Elapsed>P2D</Elapsed>", true);
+        yield return Case("\"Elapsed\":\"P1D\"", "<Elapsed>P1D</Elapsed>", false);
+        yield return Case("\"Elapsed\":\"PT12H\"", "<Elapsed>PT12H</Elapsed>", false);
 
         yield return Case("\"Caption\":{\"@language\":\"en\",\"@value\":\"Ab\"}",
             "<Caption xml:lang='en'>Ab</Caption>", true);
@@ -140,8 +140,8 @@ public sealed class FacetConformanceTests
             DataType = "duration",
             MinCardinality = "0",
             MaxCardinality = "1",
-            MinExclusive = "P1M",
-            MaxInclusive = "P2M"
+            MinExclusive = "P1D",
+            MaxInclusive = "P2D"
         });
         item.Properties.Add(new Cogs.Dto.Property
         {
