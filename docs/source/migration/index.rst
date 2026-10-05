@@ -55,21 +55,57 @@ Model-directory changes
 Wire-value review
 -----------------
 
-COGS 2 excludes non-finite float/double values and uses the full XML Schema
-lexical spaces for date, time, dateTime, Gregorian values, and duration.
-Calendar years in ``dateTime``, ``date``, ``gYearMonth``, and ``gYear`` are
-limited to the nonzero signed 32-bit range. JSON represents the five Gregorian
-partial-date types as closed PascalCase component objects; XML and RDF retain
-their XSD lexical values. Existing JSON Gregorian strings must therefore be
-migrated to ``Year``/``Month``/``Day``/optional ``Timezone`` objects.
+COGS 2 uses the native interchange profile in
+:doc:`/specification/model-format`. Regenerate clients and validate stored
+instances before replacing them; values outside this profile require an
+explicit migration. See :doc:`/technical-guide/generation/native-types` for
+the generated API mappings and migration examples.
 
-JSON Schema labels ``duration``, ``dateTime``, ``time``, and ``date`` with
-standard annotation-only formats rather than regex patterns. Do not enable
-format assertion when validating the full COGS domain: RFC format spaces differ
-from XSD. Full XSD durations, including negative, fractional, year, and month
-forms, remain valid. ``cogsDate`` still requires exactly one PascalCase arm,
-with component objects in its Gregorian arms. Large integers and decimals
-remain JSON numbers and must be handled losslessly.
+Instance integers must fit within -9007199254740991 through 9007199254740991,
+intersected with each datatype's existing sign and Int32 restrictions. Modeled
+cardinalities remain arbitrary-size. Integers and decimals remain JSON numbers.
+A decimal must be exactly representable by System.Decimal and retain its exact
+mathematical decimal value through ordinary JavaScript parsing and
+``JSON.stringify``. JSON exponent forms and equivalent trailing zeros are
+accepted, but values requiring rounding are rejected. Range and scale alone
+do not establish decimal eligibility.
+
+``float`` and ``double`` use finite binary32 and binary64 values respectively,
+with their corresponding rounding rules and support for subnormals. Overflow
+and non-finite values are rejected; underflow to zero is allowed, and all
+floating zeros canonicalize to positive zero.
+
+Temporal values use these restricted domains:
+
+* ``dateTime`` requires a timezone offset within plus or minus 14:00. Both the
+  local lexical year and the resulting UTC year must be in 0001–9999, and the
+  value must have whole-millisecond precision. Writers normalize to UTC with
+  a ``Z`` suffix. ``24:00:00`` denotes the following midnight if the resulting
+  UTC instant remains in range.
+* ``date`` is a local date in years 0001–9999 without a timezone.
+* ``time`` is local, without a timezone, at whole-microsecond precision.
+  ``24:00:00`` canonicalizes to ``00:00:00``.
+* ``duration`` represents elapsed whole milliseconds from -922337203685477
+  through 922337203685477. Negative values and fractional seconds such as
+  ``PT1.5S`` remain valid. Year and month components are rejected even when
+  zero; submillisecond values are rejected instead of truncated. A calendar
+  duration such as ``P1M`` needs an explicit model or application decision to
+  determine an elapsed value.
+
+Additional fractional trailing zeros are allowed when the temporal value
+still meets its precision limit. Partial Gregorian values retain their XSD
+domains and optional timezones, with nonzero signed 32-bit years only in
+``gYearMonth`` and ``gYear``. JSON represents the five Gregorian partial-date
+types as closed PascalCase component objects; XML and RDF retain their XSD
+lexical values. Existing JSON Gregorian strings must therefore be migrated to
+``Year``/``Month``/``Day``/optional ``Timezone`` objects. ``cogsDate`` still
+requires exactly one PascalCase arm, with component objects in its Gregorian
+arms and the corresponding native profile applied to every arm.
+
+Standard JSON Schema formats remain annotations. Format assertion can reject
+valid COGS values, including local times, negative durations and end-of-day
+spellings. Use ``cogs validate-instance`` to apply the schema plus the numeric,
+temporal and other COGS checks; schema acceptance alone is insufficient.
 
 The JSON Schema ``anyURI`` definition now uses the standard annotation-only
 ``uri`` format and no regex pattern. COGS still accepts relative as well as
@@ -141,7 +177,8 @@ Verification
    repair or ignore a model problem.
 #. Regenerate JSON Schema, XSD, C#, Python, and TypeScript into separate empty
    target directories. Compile/import every generated library.
-#. Validate representative old instances against the COGS 2 schemas. Record
+#. Validate representative old instances with ``cogs validate-instance`` to
+   apply the COGS 2 schemas and supplementary native-profile checks. Record
    deliberate migration transforms for rejected values.
 #. Round-trip JSON to XML and back through at least two generated languages,
    validating every intermediate and checking compound reference identity.
