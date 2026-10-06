@@ -8,7 +8,7 @@ Mapping
 ~~~~~~~
 
 * item types and composite types become generated documentation pages
-* topics become grouped navigation sections and topic-focused diagrams
+* topics become grouped navigation sections
 * reStructuredText remains reStructuredText and authored Markdown is parsed by
   MyST rather than inserted into reStructuredText
 * type and topic descriptions are emitted as collision-safe Markdown documents
@@ -21,6 +21,12 @@ Mapping
 * property facets and derived relationships are included
   in generated pages
 * generated diagrams use Graphviz when it is available
+
+Each type's diagram uses the local DOT scope: declared direct incoming and
+outgoing links, with compact name-only neighbors. Diagrams do not recursively
+expand neighboring items, inherited properties, or hidden composite paths.
+The documentation's property and relationship tables remain independent of
+this intentionally local diagram view.
 
 What the publisher emits
 ~~~~~~~~~~~~~~~~~~~~~~~~

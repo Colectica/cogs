@@ -91,10 +91,7 @@ public sealed class DotSchemaPublisher
                 .OrderBy(topic => topic.Name, StringComparer.Ordinal)
                 .Select(topic => (SafeFileName(topic.Name), BuildGraph(model, Closure(model, topic.ItemTypes))))
                 .ToArray(),
-            _ => model.AllDataTypes
-                .OrderBy(type => type.Name, StringComparer.Ordinal)
-                .Select(type => (SafeFileName(type.Name), BuildGraph(model, Closure(model, new[] { type }))))
-                .ToArray()
+            _ => BuildLocalGraphs(model)
         };
 
         foreach ((string name, string graph) in artifacts)
@@ -102,6 +99,116 @@ public sealed class DotSchemaPublisher
             if (!WriteArtifact(name, graph, format)) return -1;
         }
         return 0;
+    }
+
+    private readonly record struct DeclaredReference(DataType Owner, Property Property);
+
+    private (string Name, string Graph)[] BuildLocalGraphs(CogsModel model)
+    {
+        DataType[] types = model.AllDataTypes.OrderBy(type => type.Name, StringComparer.Ordinal).ToArray();
+        var byName = types.ToDictionary(type => type.Name, StringComparer.Ordinal);
+        var composites = model.ReusableDataTypes.Select(type => type.Name).ToHashSet(StringComparer.Ordinal);
+        var incoming = new Dictionary<string, List<DeclaredReference>>(StringComparer.Ordinal);
+        var children = new Dictionary<string, List<DataType>>(StringComparer.Ordinal);
+        foreach (DataType owner in types)
+        {
+            foreach (Property property in owner.Properties)
+            {
+                if (property.DataType is null || !byName.ContainsKey(property.DataType.Name)) continue;
+                if (!incoming.TryGetValue(property.DataType.Name, out var references))
+                    incoming.Add(property.DataType.Name, references = new List<DeclaredReference>());
+                references.Add(new DeclaredReference(owner, property));
+            }
+            if (!string.IsNullOrWhiteSpace(owner.ExtendsTypeName))
+            {
+                if (!children.TryGetValue(owner.ExtendsTypeName, out var descendants))
+                    children.Add(owner.ExtendsTypeName, descendants = new List<DataType>());
+                descendants.Add(owner);
+            }
+        }
+        return types.Select(type => (SafeFileName(type.Name), BuildLocalGraph(type, byName, composites, incoming, children))).ToArray();
+    }
+
+    private string BuildLocalGraph(
+        DataType focus,
+        IReadOnlyDictionary<string, DataType> byName,
+        ISet<string> composites,
+        IReadOnlyDictionary<string, List<DeclaredReference>> incoming,
+        IReadOnlyDictionary<string, List<DataType>> children)
+    {
+        var nodes = new Dictionary<string, DataType>(StringComparer.Ordinal) { [focus.Name] = focus };
+        var detailed = new HashSet<string>(StringComparer.Ordinal) { focus.Name };
+        var edges = new HashSet<string>(StringComparer.Ordinal);
+        AddOutgoing(focus);
+        if (incoming.TryGetValue(focus.Name, out var references))
+        {
+            foreach (DeclaredReference reference in references) AddReference(reference.Owner, reference.Property, focus);
+        }
+        if (Inheritance)
+        {
+            if (!string.IsNullOrWhiteSpace(focus.ExtendsTypeName) && byName.TryGetValue(focus.ExtendsTypeName, out DataType? parent))
+                AddInheritance(focus, parent);
+            if (children.TryGetValue(focus.Name, out var descendants))
+                foreach (DataType child in descendants) AddInheritance(child, focus);
+        }
+
+        var builder = new StringBuilder();
+        builder.AppendLine("digraph COGS {");
+        builder.AppendLine("  graph [rankdir=LR, compound=true, fontsize=9];");
+        builder.AppendLine("  node [style=filled, fontsize=9];");
+        builder.AppendLine("  edge [fontsize=8];");
+        foreach (DataType type in nodes.Values.OrderBy(type => type.Name, StringComparer.Ordinal))
+        {
+            string fill = type is ItemType ? "#f7b733" : "#fc4a1a";
+            string name = type.Name + (type.IsAbstract ? " «abstract»" : string.Empty);
+            bool showProperties = detailed.Contains(type.Name);
+            string label = Escape(name);
+            if (showProperties)
+            {
+                var properties = type.Properties.Select(property =>
+                    $"{property.Name} : {property.DataTypeName} [{property.MinCardinality}..{property.MaxCardinality}]" +
+                    (property.Ordered ? " {ordered}" : string.Empty)).ToArray();
+                label = "{" + EscapeRecord(name) + "|" + string.Join("\\l", properties.Select(EscapeRecord)) +
+                    (properties.Length > 0 ? "\\l" : string.Empty) + "}";
+            }
+            builder.Append("  ").Append(QuoteId(type.Name)).Append(" [shape=")
+                .Append(showProperties ? "record" : "ellipse").Append(", fillcolor=\"").Append(fill)
+                .Append("\", label=\"").Append(label).AppendLine("\"];");
+        }
+        foreach (string edge in edges.OrderBy(edge => edge, StringComparer.Ordinal)) builder.AppendLine(edge);
+        builder.AppendLine("}");
+        return builder.ToString();
+
+        void AddOutgoing(DataType owner)
+        {
+            foreach (Property property in owner.Properties)
+            {
+                if (property.DataType is null || !byName.TryGetValue(property.DataType.Name, out DataType? target)) continue;
+                if (target is ItemType) AddReference(owner, property, target);
+                else if (ShowReusables && composites.Contains(target.Name))
+                {
+                    AddReference(owner, property, target);
+                    // A type is expanded only once, including in recursive composite structures.
+                    if (detailed.Add(target.Name)) AddOutgoing(target);
+                }
+            }
+        }
+
+        void AddReference(DataType owner, Property property, DataType target)
+        {
+            nodes.TryAdd(owner.Name, owner);
+            nodes.TryAdd(target.Name, target);
+            string label = $"{property.Name} [{property.MinCardinality}..{property.MaxCardinality}]" +
+                (property.Ordered ? " {ordered}" : string.Empty);
+            edges.Add($"  {QuoteId(owner.Name)} -> {QuoteId(target.Name)} [arrowhead=none, label=\"{Escape(label)}\"];");
+        }
+
+        void AddInheritance(DataType child, DataType parent)
+        {
+            nodes.TryAdd(child.Name, child);
+            nodes.TryAdd(parent.Name, parent);
+            edges.Add($"  {QuoteId(child.Name)} -> {QuoteId(parent.Name)} [arrowhead=empty, label=\"extends\"];");
+        }
     }
 
     private IEnumerable<DataType> Closure(CogsModel model, IEnumerable<DataType> roots)

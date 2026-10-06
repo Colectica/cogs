@@ -370,6 +370,15 @@ warns and omits every diagram and diagram reference. If a discovered or
 explicit Graphviz executable runs and fails, publication fails. Rendered DOT
 formats require Graphviz; raw DOT does not.
 
+DOT per-type (`Output="single"`) and Sphinx diagrams use local declared direct
+incoming/outgoing links, not transitive reference closure. Keep neighbors
+compact and unexpanded; do not add inherited property links or flatten hidden
+composite paths. The inheritance option adds only the focal type's immediate
+parent/children. Composite detail exposes its locally contained structure with
+cycle guards. Full-model and topic graph modes retain their broader inherited
+and nested relationship coverage. Build incoming indexes per publication and
+never mutate the model to create the diagram view.
+
 ## Python publisher rules
 
 `Cogs.Publishers\Python\PythonPublisher.cs` combines generated declarations

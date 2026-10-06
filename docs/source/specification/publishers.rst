@@ -198,12 +198,15 @@ Schema and XSD remain authoritative for instance validation.
        publication error, not a semantic approximation.
      - ``PROJ2601``; ``PROJ2602`` (publication error)
    * - Graphviz/DOT
-     - Isolated item nodes, inherited and nested/recursive relationships,
-       actual cardinalities, optional inheritance edges, and optional
-       composite detail.
+     - Isolated nodes and actual cardinalities. Per-type diagrams preserve
+       declared direct incoming/outgoing links, optional immediate inheritance
+       edges, and optional contained composite detail. Full-model/topic graphs
+       also include inherited and nested/recursive relationships.
      - DOT is a relationship visualization and carries no authoritative
        identity, facet, primitive, namespace, or instance-shape constraints.
-       Raw DOT needs no renderer; SVG/PNG/JPEG/PDF require Graphviz.
+       Local diagrams do not expand item neighbors, inherited properties, or
+       hidden composite paths. Raw DOT needs no renderer; SVG/PNG/JPEG/PDF
+       require Graphviz.
      - ``PROJ2701``--``PROJ2705``
    * - Sphinx
      - Type/topic/article inventories, authored MyST Markdown and

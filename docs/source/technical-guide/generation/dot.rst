@@ -18,8 +18,9 @@ Mapping
 * relationships between item types become graph edges
 * topic membership controls the default graph grouping
 * optional flags can expose inheritance and composite datatypes
-* inherited, nested, and recursive relationship paths retain their actual
-  cardinalities; isolated item types remain visible
+* full-model and topic graphs retain inherited, nested, and recursive
+  relationship paths with their actual cardinalities; isolated types remain
+  visible
 
 Graph scope
 ~~~~~~~~~~~
@@ -27,7 +28,18 @@ Graph scope
 By default, graphs are grouped by topic. The CLI can also generate:
 
 * one graph for the full model
-* one graph per item
+* one local graph per item or composite type
+
+Per-type graphs show the focal type's declared direct incoming and outgoing
+links. Item neighbors are compact name-only nodes: their properties and further
+relationships are not expanded. Inherited property links and hidden composite
+paths are not added. With inheritance enabled, only the immediate parent and
+children of the focal type are linked. With composite detail enabled, the
+focal type's contained composite structure is shown explicitly with recursion
+guards, rather than flattened into long relationship paths.
+
+Full-model and topic graphs retain their broader scope. Sphinx uses the local
+per-type graphs, without inheritance arrows or contained composite detail.
 
 The supported formats are raw ``dot`` plus rendered ``svg``, ``png``,
 ``jpeg``/``jpg``, and ``pdf``. Only SVG is parsed for XML post-processing.

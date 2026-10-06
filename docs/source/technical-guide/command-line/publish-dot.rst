@@ -49,15 +49,22 @@ Optional inputs for the publish-dot command.
 
 * ``-s|--single``
 
-    Generates a separate graph for every single item type (default is one graph for each topic). Cannot be used with ``-a``.
+    Generates a local graph for every item and composite type, showing declared
+    direct incoming and outgoing links. Neighboring items are not expanded, and
+    inherited properties and hidden composite paths are not added. The default
+    is one graph for each topic. Cannot be used with ``-a``.
 
 * ``-i|--inheritance``
 
-    Shows inheritance in the generated graph(s).
+    Shows inheritance in the generated graph(s). Per-type graphs include only
+    the focal type's immediate parent and children, without inherited property
+    expansion.
 
 * ``-c|--composite``
 
-    Displays composite types and their properties inside item types in the generated graph(s).
+    Displays composite types and their properties in the generated graph(s).
+    Per-type graphs expose only the focal type's contained composite structure;
+    item neighbors remain unexpanded.
 
 Command Line Usage
 -------------------
