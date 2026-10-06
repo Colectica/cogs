@@ -17,6 +17,12 @@ Root and topic article TOCs must name normalized, exact-case, existing
 documents, path traversal, links/reparse points, Sphinx directive syntax, and
 source/target overlap are errors detected before the target is changed.
 
+Generated HTML defaults to ``pydata_sphinx_theme``. The generated project's
+root ``requirements.txt`` includes Sphinx, MyST, and ``pydata-sphinx-theme``
+for that default. Install these build dependencies with
+``python -m pip install -r MyOutputDirectory/requirements.txt``. See
+:doc:`/technical-guide/generation/sphinx` for library configuration and themes.
+
 Command Line Arguments
 ----------------------
 Required inputs for the publish-sphinx command (must be specified in order).
@@ -47,13 +53,19 @@ Optional inputs for the publish-sphinx command.
     ``COGS_DOT`` and then ``PATH``. If supplied, it must be valid and
     executable.
 
+* ``--theme NAME``
+
+    Sphinx HTML theme name, defaulting to ``pydata_sphinx_theme``. Any theme
+    name is accepted unchanged; install non-default themes separately.
+    Generation does not check installed themes. A blank name is a usage error.
+
 Command Line Usage
 -------------------
 **Format**
 
     .. code-block:: bash
 
-        $ cogs publish-sphinx (-h) (-o) [--dot PATH] [CogsLocation] [TargetLocation]
+        $ cogs publish-sphinx (-h) (-o) [--dot PATH] [--theme NAME] [CogsLocation] [TargetLocation]
 
 **Examples**
 
@@ -65,3 +77,4 @@ Command Line Usage
         $ cogs publish-sphinx MyCogsModelDirectory MyOutputDirectory
         $ cogs publish-sphinx -o MyCogsModelDirectory MyOutputDirectory
         $ cogs publish-sphinx -o --dot /opt/graphviz/bin/dot MyCogsModelDirectory MyOutputDirectory
+        $ cogs publish-sphinx --theme alabaster MyCogsModelDirectory MyOutputDirectory

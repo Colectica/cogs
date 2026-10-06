@@ -565,6 +565,9 @@ namespace Cogs.Console
                 var dotOption = command.Option("--dot",
                                             "Path to the Graphviz dot executable. Uses COGS_DOT, then PATH when omitted.",
                                             CommandOptionType.SingleValue);
+                var themeOption = command.Option("--theme <name>",
+                    $"Sphinx HTML theme name. Defaults to {SphinxPublisher.DefaultTheme}; install other themes separately.",
+                    CommandOptionType.SingleValue);
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
                                            CommandOptionType.NoValue);
@@ -573,6 +576,11 @@ namespace Cogs.Console
 
                 command.OnExecute(() =>
                 {
+                    var theme = themeOption.HasValue() ? themeOption.Value() : SphinxPublisher.DefaultTheme;
+                    if (string.IsNullOrWhiteSpace(theme))
+                    {
+                        throw new CommandParsingException(command, "--theme requires a nonempty Sphinx theme name.");
+                    }
                     var location = locationArgument.Value ?? Environment.CurrentDirectory;
                     var target = targetArgument.Value ?? Path.Combine(Directory.GetCurrentDirectory(), "out");
                     var dot = dotOption.Value() ?? Environment.GetEnvironmentVariable("COGS_DOT");
@@ -584,7 +592,8 @@ namespace Cogs.Console
                     {
                         TargetDirectory = target,
                         Overwrite = overwrite,
-                        DotLocation = dot
+                        DotLocation = dot,
+                        Theme = theme
                     };
 
                     publisher.Publish(cogsModel);

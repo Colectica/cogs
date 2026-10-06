@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.IO;
 using Cogs.Common;
 using Cogs.Model;
@@ -13,6 +14,8 @@ namespace Cogs.Publishers
 {
     public class BuildSphinxDocumentation
     {
+        public string Theme { get; set; } = SphinxPublisher.DefaultTheme;
+
         private string outputDirectory = null!;
         private CogsModel cogsModel = null!;
         private string sphinxSourcePath = null!;
@@ -20,6 +23,7 @@ namespace Cogs.Publishers
 
         public void Build(CogsModel cogsModel, string outputDirectory, bool includeDiagrams = true)
         {
+            ArgumentException.ThrowIfNullOrWhiteSpace(Theme);
             this.cogsModel = cogsModel;
             this.outputDirectory = outputDirectory;
             this.includeDiagrams = includeDiagrams;
@@ -36,6 +40,13 @@ namespace Cogs.Publishers
 
         private void CreateSphinxSkeleton()
         {
+            var requirements = new List<string> { "sphinx", "myst-parser" };
+            if (Theme == SphinxPublisher.DefaultTheme)
+            {
+                requirements.Add("pydata-sphinx-theme");
+            }
+            File.WriteAllLines(Path.Combine(outputDirectory, "requirements.txt"), requirements, new UTF8Encoding(false));
+
             // Make.bat
             string makeDotBatFileName = Path.Combine(outputDirectory, "make.bat");
             string makeDotBatContents = GetMakeDotBatTemplate();
@@ -820,7 +831,7 @@ todo_include_todos = True
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = ""alabaster""
+html_theme = @ThemeLiteral
 def setup(app):
   app.add_css_file( ""css/custom.css"" )
 
@@ -972,14 +983,21 @@ help:
         {
             string template = GetConfDotPyTemplate();
 
-            return template
-                .Replace("@TitleLiteral", PythonLiteral(cogsModel.Settings.Title), StringComparison.Ordinal)
-                .Replace("@AuthorLiteral", PythonLiteral(cogsModel.Settings.Author), StringComparison.Ordinal)
-                .Replace("@VersionLiteral", PythonLiteral(cogsModel.Settings.Version), StringComparison.Ordinal)
-                .Replace("@CopyrightLiteral", PythonLiteral(cogsModel.Settings.Copyright), StringComparison.Ordinal)
-                .Replace("@HtmlBaseLiteral", PythonLiteral(SafeDocumentName(cogsModel.Settings.Slug)), StringComparison.Ordinal)
-                .Replace("@LatexFileLiteral", PythonLiteral(SafeDocumentName(cogsModel.Settings.Slug) + ".tex"), StringComparison.Ordinal)
-                .Replace("@DocumentationTitleLiteral", PythonLiteral(cogsModel.Settings.Title + " Documentation"), StringComparison.Ordinal);
+            // Substitute once so literal model/theme text cannot introduce another template token.
+            return Regex.Replace(template,
+                "@(Title|Author|Version|Copyright|HtmlBase|LatexFile|DocumentationTitle|Theme)Literal",
+                match => PythonLiteral(match.Value switch
+                {
+                    "@TitleLiteral" => cogsModel.Settings.Title,
+                    "@AuthorLiteral" => cogsModel.Settings.Author,
+                    "@VersionLiteral" => cogsModel.Settings.Version,
+                    "@CopyrightLiteral" => cogsModel.Settings.Copyright,
+                    "@HtmlBaseLiteral" => SafeDocumentName(cogsModel.Settings.Slug),
+                    "@LatexFileLiteral" => SafeDocumentName(cogsModel.Settings.Slug) + ".tex",
+                    "@DocumentationTitleLiteral" => cogsModel.Settings.Title + " Documentation",
+                    "@ThemeLiteral" => Theme,
+                    _ => throw new InvalidOperationException("Unknown Sphinx configuration template token.")
+                }));
         }
 
         private static string PythonLiteral(string? value) =>

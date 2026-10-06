@@ -320,6 +320,8 @@ Options
    Show help information
 ``--dot <value>``
    Path to the Graphviz dot executable. Uses COGS_DOT, then PATH when omitted.
+``--theme <name>``
+   Sphinx HTML theme name. Defaults to pydata_sphinx_theme; install other themes separately.
 ``-o|--overwrite``
    If the target directory exists, delete and overwrite the location
 

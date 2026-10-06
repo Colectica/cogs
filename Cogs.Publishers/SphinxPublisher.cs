@@ -10,9 +10,12 @@ namespace Cogs.Publishers;
 
 public sealed class SphinxPublisher
 {
+    public const string DefaultTheme = "pydata_sphinx_theme";
+
     public string? TargetDirectory { get; set; }
     public bool Overwrite { get; set; }
     public string? DotLocation { get; set; }
+    public string Theme { get; set; } = DefaultTheme;
     public List<CogsError> Errors { get; } = new();
 
     public void Publish(CogsModel model)
@@ -20,6 +23,7 @@ public sealed class SphinxPublisher
         ArgumentNullException.ThrowIfNull(model);
         string target = TargetDirectory ?? throw new InvalidOperationException("Target directory must be specified.");
         Errors.Clear();
+        ArgumentException.ThrowIfNullOrWhiteSpace(Theme);
         BuildSphinxDocumentation.ValidateDocumentationInputs(model);
         DirectoryPublication.Publish(target, Overwrite, stagingDirectory => PublishCore(model, stagingDirectory), model.SourceDirectory);
     }
@@ -57,7 +61,7 @@ public sealed class SphinxPublisher
                 "Graphviz dot was not found; Sphinx documentation was generated without diagrams or diagram links."));
         }
 
-        var documentation = new BuildSphinxDocumentation();
+        var documentation = new BuildSphinxDocumentation { Theme = Theme };
         documentation.Build(model, stagingDirectory, diagramsAvailable);
     }
 

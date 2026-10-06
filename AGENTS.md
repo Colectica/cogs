@@ -370,6 +370,16 @@ warns and omits every diagram and diagram reference. If a discovered or
 explicit Graphviz executable runs and fails, publication fails. Rendered DOT
 formats require Graphviz; raw DOT does not.
 
+Generated Sphinx HTML defaults to `pydata_sphinx_theme`. The CLI's `--theme NAME`
+and `Theme` properties on `SphinxPublisher` and `BuildSphinxDocumentation` accept
+any nonblank Sphinx theme name without case normalization. Generate Python
+configuration using safe literals and single-pass template replacement; theme
+or model text must never be interpreted as code or another template token.
+The generated root `requirements.txt` includes Sphinx and MyST, plus
+`pydata-sphinx-theme` only for the default theme. Other theme packages are the
+consumer's responsibility. Publication must not require Python, probe themes,
+or install dependencies; Sphinx resolves the theme during the later build.
+
 DOT per-type (`Output="single"`) and Sphinx diagrams use local declared direct
 incoming/outgoing links, not transitive reference closure. Keep neighbors
 compact and unexpanded; do not add inherited property links or flatten hidden

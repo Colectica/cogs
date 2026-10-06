@@ -36,6 +36,28 @@ separate Sphinx build step then turns those files into HTML or another
 Sphinx-supported output format. Generated ``conf.py`` selects English with
 ``language = 'en'`` and includes MyST in the generated requirements.
 
+Theme configuration
+~~~~~~~~~~~~~~~~~~~
+
+Generated HTML uses the PyData Sphinx theme by default. The Sphinx configuration
+name is ``pydata_sphinx_theme``; its Python package is ``pydata-sphinx-theme``.
+Select another installed theme with ``--theme NAME``, for example::
+
+    cogs publish-sphinx MyModel MyDocs --theme alabaster
+
+Library callers can set ``SphinxPublisher.Theme`` or
+``BuildSphinxDocumentation.Theme``. Both default to ``pydata_sphinx_theme``;
+existing ``Build`` and ``Publish`` calls need no changes. Theme names retain
+their exact spelling, and blank names are rejected before output changes.
+
+The generated project's root ``requirements.txt`` lists Sphinx, MyST, and,
+when PyData is selected, ``pydata-sphinx-theme``. Install it with
+``python -m pip install -r MyDocs/requirements.txt`` before building.
+For other themes, install their package separately; COGS does not infer Python
+package names from Sphinx theme names. Generation requires neither Python nor
+an installed theme, and does not install dependencies. Sphinx reports an
+unavailable theme when the generated project is built.
+
 Sphinx is a documentation projection, not an instance schema. If Graphviz is
 not configured or discoverable, generation warns and emits a consistent
 text-only project with no diagram directives. If a discovered or explicitly

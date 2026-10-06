@@ -10,11 +10,11 @@ templates_path = ['_templates']
 source_suffix = '.rst'
 master_doc = 'index'
 project = u'COGS'
-copyright = u'Copyright (c) 2017 Colectica. Licensed under the MIT license.'
+copyright = u'Copyright (c) 2026 Colectica. Licensed under the MIT license.'
 author = u'COGS Team'
 
-version = u'1.0'
-release = u'1.0'
+version = u'2.0'
+release = u'2.0'
 
 language = 'en'
 exclude_patterns = []

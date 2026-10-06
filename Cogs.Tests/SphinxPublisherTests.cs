@@ -4,6 +4,8 @@ using Cogs.Publishers;
 using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Text.Json;
 using Xunit;
 
 namespace Cogs.Tests;
@@ -27,6 +29,10 @@ public sealed class SphinxPublisherTests
         Assert.Contains("'myst_parser'", configuration, StringComparison.Ordinal);
         Assert.Contains("'.md': 'markdown'", configuration, StringComparison.Ordinal);
         Assert.Contains("language = 'en'", configuration, StringComparison.Ordinal);
+        Assert.Contains("html_theme = \"pydata_sphinx_theme\"", configuration, StringComparison.Ordinal);
+        Assert.DoesNotContain("@ThemeLiteral", configuration, StringComparison.Ordinal);
+        Assert.Equal(new[] { "sphinx", "myst-parser", "pydata-sphinx-theme" },
+            File.ReadAllLines(Path.Combine(output, "requirements.txt")));
         Assert.True(configuration.Contains("project = \"A \\u0022quoted\\u0022 title\\nwith newline\"", StringComparison.Ordinal), configuration);
         Assert.Equal("# Authored guide\n\nMarkdown stays Markdown.\n",
             File.ReadAllText(Path.Combine(output, "source", "guide.md")));
@@ -157,12 +163,136 @@ public sealed class SphinxPublisherTests
         Assert.Equal(new[] { "keep.txt" }, Directory.EnumerateFiles(output).Select(Path.GetFileName));
     }
 
+    [Theory]
+    [InlineData("alabaster")]
+    [InlineData("MyCustomTheme")]
+    [InlineData("Custom\"theme\\with\nUnicode α @TitleLiteral")]
+    public void BuilderPreservesArbitraryThemeNamesAsSafeLiterals(string theme)
+    {
+        using var temporary = new TemporaryDirectory();
+        string articles = temporary.Child("articles");
+        Directory.CreateDirectory(articles);
+        File.WriteAllText(Path.Combine(articles, "guide.md"), "# Guide\n");
+        const string title = "Model @ThemeLiteral title";
+        CogsModel model = BuildModel(articles, title: title);
+        string output = temporary.Child("documentation");
+
+        new BuildSphinxDocumentation { Theme = theme }.Build(model, output, includeDiagrams: false);
+
+        string configuration = File.ReadAllText(Path.Combine(output, "source", "conf.py"));
+        string themeLiteral = configuration.Split('\n').Single(line => line.StartsWith("html_theme = ", StringComparison.Ordinal))
+            .Substring("html_theme = ".Length).TrimEnd('\r');
+        Assert.Equal(theme, JsonSerializer.Deserialize<string>(themeLiteral));
+        Assert.Contains("project = " + JsonSerializer.Serialize(title), configuration, StringComparison.Ordinal);
+        Assert.Equal(new[] { "sphinx", "myst-parser" }, File.ReadAllLines(Path.Combine(output, "requirements.txt")));
+    }
+
+    [Fact]
+    public void PublisherDefaultsToPyDataAndUsesCurrentThemeOnEveryPublication()
+    {
+        using var temporary = new TemporaryDirectory();
+        string articles = temporary.Child("articles");
+        Directory.CreateDirectory(articles);
+        File.WriteAllText(Path.Combine(articles, "guide.md"), "# Guide\n");
+        CogsModel model = BuildModel(articles);
+        string output = temporary.Child("documentation");
+        var publisher = new SphinxPublisher { TargetDirectory = output, Overwrite = true };
+        Assert.Equal(SphinxPublisher.DefaultTheme, publisher.Theme);
+        Assert.Equal(SphinxPublisher.DefaultTheme, new BuildSphinxDocumentation().Theme);
+
+        publisher.Publish(model);
+        Assert.Contains("html_theme = \"pydata_sphinx_theme\"",
+            File.ReadAllText(Path.Combine(output, "source", "conf.py")), StringComparison.Ordinal);
+        Assert.Contains("pydata-sphinx-theme", File.ReadAllLines(Path.Combine(output, "requirements.txt")));
+
+        publisher.Theme = "UninstalledCustomTheme";
+        publisher.Publish(model);
+        Assert.Contains("html_theme = \"UninstalledCustomTheme\"",
+            File.ReadAllText(Path.Combine(output, "source", "conf.py")), StringComparison.Ordinal);
+        Assert.Equal(new[] { "sphinx", "myst-parser" }, File.ReadAllLines(Path.Combine(output, "requirements.txt")));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t\r\n")]
+    public void BlankLibraryThemeIsRejectedBeforeAnyOutputChanges(string theme)
+    {
+        using var temporary = new TemporaryDirectory();
+        string articles = temporary.Child("articles");
+        Directory.CreateDirectory(articles);
+        File.WriteAllText(Path.Combine(articles, "guide.md"), "# Guide\n");
+        CogsModel model = BuildModel(articles);
+        string output = temporary.Child("documentation");
+        Directory.CreateDirectory(output);
+        File.WriteAllText(Path.Combine(output, "keep.txt"), "unchanged");
+
+        Assert.ThrowsAny<ArgumentException>(() =>
+            new BuildSphinxDocumentation { Theme = theme }.Build(model, output, includeDiagrams: false));
+        Assert.ThrowsAny<ArgumentException>(() =>
+            new SphinxPublisher { Theme = theme, TargetDirectory = output, Overwrite = true,
+                DotLocation = temporary.Child("missing-graphviz") }.Publish(model));
+
+        Assert.Equal(new[] { "keep.txt" }, Directory.EnumerateFiles(output).Select(Path.GetFileName));
+        Assert.Equal("unchanged", File.ReadAllText(Path.Combine(output, "keep.txt")));
+        string absent = temporary.Child("absent");
+        Assert.ThrowsAny<ArgumentException>(() =>
+            new BuildSphinxDocumentation { Theme = theme }.Build(model, absent));
+        Assert.False(Directory.Exists(absent));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("alabaster")]
+    [InlineData("UninstalledCustomTheme")]
+    public void CliGeneratesDefaultOrRequestedTheme(string theme)
+    {
+        using var temporary = new TemporaryDirectory();
+        string model = temporary.Child("model");
+        new ModelInitializer { Dir = model }.Create();
+        string output = temporary.Child("documentation");
+        string[] arguments = new[] { "publish-sphinx", model, output };
+        if (theme is not null) arguments = arguments.Concat(new[] { "--theme", theme }).ToArray();
+
+        Assert.Equal(0, RunCli(arguments));
+
+        string selected = theme ?? SphinxPublisher.DefaultTheme;
+        Assert.Contains("html_theme = " + JsonSerializer.Serialize(selected),
+            File.ReadAllText(Path.Combine(output, "source", "conf.py")), StringComparison.Ordinal);
+        Assert.Equal(selected == SphinxPublisher.DefaultTheme
+                ? new[] { "sphinx", "myst-parser", "pydata-sphinx-theme" }
+                : new[] { "sphinx", "myst-parser" },
+            File.ReadAllLines(Path.Combine(output, "requirements.txt")));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" \t")]
+    public void CliRejectsBlankThemeAsUsageBeforeLoadingOrWriting(string theme)
+    {
+        using var temporary = new TemporaryDirectory();
+        string output = temporary.Child("documentation");
+        Directory.CreateDirectory(output);
+        File.WriteAllText(Path.Combine(output, "keep.txt"), "unchanged");
+
+        Assert.Equal(2, RunCli("publish-sphinx", temporary.Child("missing-model"), output,
+            "--overwrite", "--theme", theme));
+
+        Assert.Equal(new[] { "keep.txt" }, Directory.EnumerateFiles(output).Select(Path.GetFileName));
+        Assert.Equal("unchanged", File.ReadAllText(Path.Combine(output, "keep.txt")));
+    }
+
+    private static int RunCli(params string[] arguments) =>
+        (int)typeof(Cogs.Console.Program).GetMethod("Main", BindingFlags.NonPublic | BindingFlags.Static)!
+            .Invoke(null, new object[] { arguments })!;
+
     private static CogsModel BuildModel(
         string articles,
         string articleTocEntry = "guide",
         string itemDescription = null,
         string topicDescription = null,
-        bool addDescriptionAdditionalText = false)
+        bool addDescriptionAdditionalText = false,
+        string title = null)
     {
         var dto = new CogsDtoModel
         {
@@ -170,7 +300,7 @@ public sealed class SphinxPublisherTests
             SourceDirectory = Path.Combine(Path.GetDirectoryName(articles)!, "model-source")
         };
         dto.ArticleTocEntries.Add(articleTocEntry);
-        dto.Settings.Add(new Setting { Key = "Title", Value = "A \"quoted\" title\nwith newline" });
+        dto.Settings.Add(new Setting { Key = "Title", Value = title ?? "A \"quoted\" title\nwith newline" });
         dto.Settings.Add(new Setting { Key = "ShortTitle", Value = "Docs" });
         dto.Settings.Add(new Setting { Key = "Slug", Value = "docs_test" });
         dto.Settings.Add(new Setting { Key = "Version", Value = "2.0.0" });
