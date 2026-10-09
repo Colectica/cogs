@@ -77,7 +77,7 @@ Command Line Usage
         $ cogs publish-json MyCogsModelDirectory MyOutputDirectory
         $ cogs publish-json -o MyCogsModelDirectory MyOutputDirectory
 
-The generated JSON schema file is written in pretty-printed form to make it
+The generated JSON Schema file is written in pretty-printed form to make it
 easier to inspect and review.
 Format assertion is not enabled: COGS preserves the broader XSD temporal
 lexical spaces and applies those rules through ``validate-instance``.

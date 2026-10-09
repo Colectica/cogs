@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "cogs": {
+      "version": "2.0.781",
+      "commands": [
+        "cogs"
+      ],
+      "rollForward": false
+    }
+  }
+}

@@ -1,5 +1,5 @@
-JSON Generation
----------------
+JSON Schema Generation
+----------------------
 
 The :doc:`/technical-guide/command-line/publish-json` command generates a JSON
 Schema that describes the JSON serialization contract shared by the generated
@@ -86,7 +86,7 @@ PascalCase arm and uses the component objects for its Gregorian arms.
 Formatting
 ~~~~~~~~~~
 
-The generated JSON schema file is written in pretty-printed form.
+The generated JSON Schema file is written in pretty-printed form.
 
 Custom instance validation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
