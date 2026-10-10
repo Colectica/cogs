@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Cogs.Tests" />
     <PackageReference Include="AngleSharp" />
     <PackageReference Include="dotNetRdf.Core" />
   </ItemGroup>

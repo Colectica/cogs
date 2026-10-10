@@ -11,7 +11,10 @@ using System.Numerics;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Newtonsoft.Json.Linq;
 using VDS.RDF;
+using VDS.RDF.JsonLd;
+using VDS.RDF.JsonLd.Syntax;
 using VDS.RDF.Parsing;
 using VDS.RDF.Writing;
 
@@ -19,8 +22,8 @@ namespace Cogs.Publishers;
 
 /// <summary>
 /// Publishes the authoritative OWL ontology and class-semantics representation
-/// of a COGS model as W3C Turtle, with OWL2002 and OWL2003 as documented
-/// authority exceptions, together with the RDF/JSON-LD serialization context.
+/// of a COGS model as W3C Turtle and JSON-LD, with OWL2002 and OWL2003 as documented
+/// authority exceptions, together with the separate RDF instance context.
 /// RDF collections preserve ordered occurrences; OWL axioms do not validate lists.
 /// </summary>
 public sealed class OwlPublisher
@@ -189,12 +192,140 @@ public sealed class OwlPublisher
         {
             NewLine = "\n"
         };
-        writer.Save(_graph, buffer);
-        string turtle = buffer.ToString()
-            .Replace("\r\n", "\n", StringComparison.Ordinal)
-            .Replace('\r', '\n');
+        Graph serializationGraph = CreateTurtleSerializationGraph(out var literalDatatypes);
+        writer.Save(serializationGraph, buffer);
+        string turtle = NormalizeTurtleOutput(buffer.ToString(), literalDatatypes);
         File.WriteAllText(output, turtle, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
         WriteJsonLdContext(propertyUses.Select(use => use.Property), targetDirectory);
+        WriteJsonLdOntology(targetDirectory);
+    }
+
+    private Graph CreateTurtleSerializationGraph(out Dictionary<string, string> literalDatatypes)
+    {
+        // dotNetRDF's Turtle formatter abbreviates numeric/boolean literals based
+        // on their lexical spelling. For example, "180"^^xsd:decimal becomes
+        // bare 180 (xsd:integer). Temporarily shield compressible datatypes so
+        // the standard writer emits explicit typed literals, then restore only
+        // those IRI tokens. The authoritative graph itself is never changed.
+        string markerBase = "urn:cogs:turtle-serialization:" + Guid.NewGuid().ToString("N") + ":";
+        literalDatatypes = new Dictionary<string, string>(StringComparer.Ordinal);
+        var graph = new Graph { BaseUri = _graph.BaseUri };
+        graph.NamespaceMap.Import(_graph.NamespaceMap);
+        foreach (Triple triple in _graph.Triples)
+        {
+            INode value = triple.Object;
+            if (value is ILiteralNode literal && literal.DataType?.AbsoluteUri is string datatype
+                && datatype is Xsd + "integer" or Xsd + "decimal" or Xsd + "double" or Xsd + "boolean")
+            {
+                string marker = markerBase + datatype[(Xsd.Length)..];
+                literalDatatypes[marker] = datatype;
+                value = graph.CreateLiteralNode(literal.Value, UriFactory.Create(marker));
+            }
+            graph.Assert(new Triple(triple.Subject, triple.Predicate, value));
+        }
+        return graph;
+    }
+
+    private static string NormalizeTurtleOutput(string text, IReadOnlyDictionary<string, string> literalDatatypes)
+    {
+        // Compression uses platform newlines inside formatted blank nodes.
+        // Normalize those only; CR in a quoted literal is RDF data and must be escaped.
+        var result = new StringBuilder(text.Length);
+        char quote = '\0';
+        int delimiterLength = 0;
+        bool iri = false, comment = false;
+        for (int index = 0; index < text.Length; index++)
+        {
+            char current = text[index];
+            if (quote != '\0')
+            {
+                if (current == '\r') { result.Append("\\r"); continue; }
+                result.Append(current);
+                if (current == '\\' && index + 1 < text.Length)
+                {
+                    result.Append(text[++index]);
+                    continue;
+                }
+                if (current == quote && (delimiterLength == 1
+                    || index + 2 < text.Length && text[index + 1] == quote && text[index + 2] == quote))
+                {
+                    if (delimiterLength == 3) { result.Append(quote, 2); index += 2; }
+                    quote = '\0';
+                }
+                continue;
+            }
+            if (current == '\r')
+            {
+                result.Append('\n');
+                if (index + 1 < text.Length && text[index + 1] == '\n') index++;
+                comment = false;
+                continue;
+            }
+            result.Append(current);
+            if (current == '\n') comment = false;
+            if (comment) continue;
+            if (iri) { if (current == '>') iri = false; continue; }
+            if (current == '<')
+            {
+                int end = text.IndexOf('>', index + 1);
+                if (end >= 0 && literalDatatypes.TryGetValue(text[(index + 1)..end], out string? datatype))
+                {
+                    result.Length--; // Replace the opening '<' with the existing XSD prefix.
+                    result.Append("xsd:").Append(datatype[Xsd.Length..]);
+                    index = end;
+                }
+                else iri = true;
+                continue;
+            }
+            if (current == '#') { comment = true; continue; }
+            if (current is '"' or '\'')
+            {
+                quote = current;
+                delimiterLength = index + 2 < text.Length && text[index + 1] == quote && text[index + 2] == quote ? 3 : 1;
+                if (delimiterLength == 3) { result.Append(quote, 2); index += 2; }
+            }
+        }
+        return result.ToString();
+    }
+
+    private void WriteJsonLdOntology(string targetDirectory)
+    {
+        // Serialize the same default graph as Turtle. Native numeric conversion
+        // would change RDF lexical forms and can lose large cardinality values.
+        var store = new TripleStore();
+        store.Add(_graph);
+        var writer = new JsonLdWriter(new JsonLdWriterOptions
+        {
+            Ordered = true,
+            ProcessingMode = JsonLdProcessingMode.JsonLd11,
+            UseNativeTypes = false
+        });
+        var context = new JObject { ["@version"] = 1.1, ["@vocab"] = _termBase };
+        foreach (var (prefix, iri) in new[]
+        {
+            ("model", _termBase), ("rdf", Rdf), ("rdfs", Rdfs), ("owl", Owl),
+            ("xsd", Xsd), ("schema", Schema), ("cogsmeta", CogsMetadata)
+        })
+            context.Add(prefix, new JObject { ["@id"] = iri, ["@prefix"] = true });
+
+        JObject document = JsonLdProcessor.Compact(writer.SerializeStore(store), context, new JsonLdProcessorOptions
+        {
+            Ordered = true,
+            CompactToRelative = false,
+            ProcessingMode = JsonLdProcessingMode.JsonLd11,
+            UseNativeTypes = false,
+            DocumentLoader = (_, _) => throw new InvalidOperationException("Ontology serialization must not load remote documents.")
+        });
+        // Keep a consistent envelope even for a single-node graph.
+        if (document["@graph"] is null)
+        {
+            document.Remove("@context");
+            document = new JObject { ["@context"] = context.DeepClone(), ["@graph"] = new JArray(document) };
+        }
+        string json = document.ToString(Newtonsoft.Json.Formatting.Indented)
+            .Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n') + "\n";
+        File.WriteAllText(Path.Combine(targetDirectory, _model.Settings.Slug + ".ontology.jsonld"),
+            json, new UTF8Encoding(false));
     }
 
     private void WriteJsonLdContext(IEnumerable<Property> propertyUses, string targetDirectory)

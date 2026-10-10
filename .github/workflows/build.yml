@@ -256,8 +256,8 @@ jobs:
             $resolvedRoot = [IO.Path]::GetFullPath($root)
             @(Get-ChildItem -LiteralPath $resolvedRoot -Recurse -File | ForEach-Object {
               $relative = [IO.Path]::GetRelativePath($resolvedRoot, $_.FullName).Replace('\', '/')
-              if ($_.Extension -ieq '.ttl') {
-                # Turtle syntax may differ while representing the same RDF graph.
+              if ($_.Extension -ieq '.ttl' -or $_.Name.EndsWith('.ontology.jsonld', [StringComparison]::OrdinalIgnoreCase)) {
+                # RDF syntax may differ while representing the same graph.
                 "$relative`t<RDF-GRAPH>"
               }
               else {
@@ -266,11 +266,11 @@ jobs:
             } | Sort-Object)
           }
 
-          function Copy-TurtleTree([string] $source, [string] $target) {
+          function Copy-RdfTree([string] $source, [string] $target) {
             $resolvedSource = [IO.Path]::GetFullPath($source)
             [IO.Directory]::CreateDirectory($target) | Out-Null
             Get-ChildItem -LiteralPath $resolvedSource -Recurse -File |
-              Where-Object { $_.Extension -ieq '.ttl' } |
+              Where-Object { $_.Extension -ieq '.ttl' -or $_.Name.EndsWith('.ontology.jsonld', [StringComparison]::OrdinalIgnoreCase) } |
               ForEach-Object {
                 $relative = [IO.Path]::GetRelativePath($resolvedSource, $_.FullName)
                 $destination = Join-Path $target $relative
@@ -285,9 +285,13 @@ jobs:
           Invoke-Cogs cogs-new --overwrite ./generated/new-model
           Publish-All ./generated/new-model ./generated/new-model-artifacts
 
+          $rdfComparer = [IO.Path]::GetFullPath(
+            './conformance/dotnet/Cogs.Conformance.RdfGraphComparer/bin/Release/net10.0/Cogs.Conformance.RdfGraphComparer.dll')
+          & dotnet $rdfComparer --verify-ontologies ./generated
+          if ($LASTEXITCODE -ne 0) { throw 'First-generation Turtle/JSON-LD ontologies differ.' }
           $firstManifest = Get-TreeManifest ./generated
-          $firstTurtleRoot = Join-Path $env:RUNNER_TEMP "cogs-first-turtle-$([guid]::NewGuid().ToString('N'))"
-          Copy-TurtleTree ./generated $firstTurtleRoot
+          $firstRdfRoot = Join-Path $env:RUNNER_TEMP "cogs-first-rdf-$([guid]::NewGuid().ToString('N'))"
+          Copy-RdfTree ./generated $firstRdfRoot
           Publish-All ./cogsburger ./generated -IntegrationLayout
           Publish-All ./conformance/model ./generated/conformance
           Publish-All ./generated/new-model ./generated/new-model-artifacts
@@ -295,15 +299,15 @@ jobs:
           $drift = @(Compare-Object -ReferenceObject $firstManifest -DifferenceObject $secondManifest)
           if ($drift.Count -ne 0) {
             $details = $drift | Select-Object -First 20 | Out-String
-            throw "A second publisher regeneration changed a non-Turtle artifact or file inventory:`n$details"
+            throw "A second publisher regeneration changed a non-RDF artifact or file inventory:`n$details"
           }
 
-          $rdfComparer = [IO.Path]::GetFullPath(
-            './conformance/dotnet/Cogs.Conformance.RdfGraphComparer/bin/Release/net10.0/Cogs.Conformance.RdfGraphComparer.dll')
-          & dotnet $rdfComparer $firstTurtleRoot ./generated
+          & dotnet $rdfComparer $firstRdfRoot ./generated
           if ($LASTEXITCODE -ne 0) {
-            throw "A second publisher regeneration changed a Turtle RDF graph (exit $LASTEXITCODE)."
+            throw "A second publisher regeneration changed a Turtle/JSON-LD RDF graph (exit $LASTEXITCODE)."
           }
+          & dotnet $rdfComparer --verify-ontologies ./generated
+          if ($LASTEXITCODE -ne 0) { throw 'Second-generation Turtle/JSON-LD ontologies differ.' }
 
       - name: Compile and pack generated TypeScript packages
         shell: pwsh

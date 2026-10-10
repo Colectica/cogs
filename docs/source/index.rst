@@ -28,7 +28,8 @@ UML/XMI is the authoritative structural model output, with the explicitly
 diagnosed ``PROJ2601`` exception for property-local subtype exclusion. It is
 not an instance-validation schema.
 
-The OWL publisher emits ``<Settings.Slug>.ttl`` and
+The OWL publisher emits ``<Settings.Slug>.ttl``, the equivalent complete ontology
+``<Settings.Slug>.ontology.jsonld``, and the separate instance context
 ``<Settings.Slug>.context.jsonld``. OWL defines the authoritative ontology,
 with ``OWL2002`` and ``OWL2003`` as its explicit authority exceptions. Turtle
 and JSON-LD encode the same RDF graph; ordered collections preserve sequence

@@ -13,7 +13,8 @@ Authoritative targets
 JSON, XML, and RDF/JSON-LD are first-class authoritative serialization
 families. RDF/OWL and JSON-LD are not projections. OWL defines ontology
 semantics; Turtle and JSON-LD encode RDF graphs. The OWL publisher emits the
-ontology and context, and generated C# serializes objects into RDF graphs.
+ontology in both encodings and a separate instance context, and generated C#
+serializes objects into RDF graphs.
 
 JSON Schema, XML Schema, and the generated C#, Python, and TypeScript libraries
 implement the COGS 2 instance contract. They must agree on names, inheritance,
@@ -58,8 +59,9 @@ excluding all subclasses. This exception is explicit and does not make UML an
 instance-validation schema; JSON Schema and XSD remain authoritative for JSON
 and XML documents.
 
-OWL/RDF is emitted as W3C Turtle in ``<Settings.Slug>.ttl`` with the JSON-LD
-context ``<Settings.Slug>.context.jsonld`` and is the
+OWL/RDF is emitted as W3C Turtle in ``<Settings.Slug>.ttl`` and the graph-equivalent
+complete ontology ``<Settings.Slug>.ontology.jsonld``, with the separate JSON-LD
+instance context ``<Settings.Slug>.context.jsonld``, and is the
 authoritative ontology and class-semantics output. It preserves classes,
 inheritance, shared camelCase property IRIs, class-local ``owl:allValuesFrom``
 ranges, object/datatype distinctions, qualified cardinality restrictions,
@@ -105,6 +107,11 @@ direct-model guards ``OWL1003``/``CSH1002``. Only the OWL publisher emits the
 JSON-LD context, using the effective namespace and ``@container: "@list"``
 terms. It does not reinterpret ordinary COGS JSON or synthesize membership
 triples, and does not add an RDF importer or JSON-LD instance-writer API.
+The ontology JSON-LD MUST retain every Turtle triple in one default graph,
+including literal lexical forms, datatypes, language tags, and blank-node
+structure. It MUST embed its own context and require no remote documents.
+Both ontology encodings are compared semantically; the instance context and
+all other non-RDF artifacts remain byte-compared.
 
 RDF term naming is common across OWL, generated C# RDF graphs, DCTAP, and
 LinkML. Class, shape, range, and ``rdf:type`` terms retain the exact PascalCase
@@ -172,7 +179,8 @@ Schema and XSD remain authoritative for instance validation.
        the ``cogsDate`` XSD datatype union, compound ``owl:hasKey``,
        namespaces, model IRIs, and ordered RDF collections with duplicate
        occurrences. An OWL-generated JSON-LD context supplies typed membership
-       terms and companion list containers.
+       terms and companion list containers. A separate self-contained JSON-LD
+       ontology preserves the complete Turtle graph, not just predicate mappings.
      - ``OWL2002`` and ``OWL2003`` are the authority exceptions for exact
        property-local subtype exclusion and abstract direct-instance
        prohibition. List validation and occurrence-count enforcement

@@ -25,7 +25,8 @@ including through canonical paths or links.
    families. JSON Schema, XSD, C#, Python, and TypeScript implement the
    JSON/XML instance contract; C# also emits RDF graphs. UML/XMI is the authoritative structural model output,
    with ``PROJ2601`` as its sole semantic exception; it is not an instance
-   schema. OWL/RDF is emitted as W3C Turtle with a JSON-LD context and is the authoritative ontology
+   schema. OWL/RDF is emitted as W3C Turtle and an equivalent complete JSON-LD
+   ontology, with a separate instance context, and is the authoritative ontology
    and class-semantics output, with ``OWL2002`` and ``OWL2003`` as its
    authority exceptions. RDF lists preserve ordered occurrences, but OWL
    axioms do not validate list structure or unsupported lexical facets. LinkML, DCTAP,

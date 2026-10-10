@@ -69,9 +69,11 @@ The C# probe also serializes the full instance into RDF and checks ordered
 collection sequence, multiplicity, empty lists, membership consistency,
 primitive lexemes, and nested/inherited properties. RDF/JSON-LD is a first-class
 serialization family, not a projection. The OWL publisher alone emits the
-`<slug>.context.jsonld` context; publisher tests parse matching JSON-LD and
-Turtle graphs with dotNetRDF and require graph equality. Contexts remain
-byte-repeatable, while Turtle is compared as the semantic RDF graph. OWLAPI
+`<slug>.context.jsonld` instance context and the self-contained complete
+`<slug>.ontology.jsonld` ontology. Publisher tests and the conformance utility
+parse matching JSON-LD and Turtle graphs offline with dotNetRDF and require
+strict graph equality. Contexts remain byte-repeatable, while both ontology
+encodings are compared as the semantic RDF graph. OWLAPI
 checks ontology parsing/profile membership, not RDF list instance validation.
 
 Generated XML writers mark every top-level and property item reference with
@@ -120,8 +122,9 @@ to the generated COGS XML instance contract: the instance runtimes and
 validator continue to reject every DTD.
 
 The regeneration gate requires the same relative artifact inventory on both
-runs. It compares every non-Turtle artifact byte-for-byte. Generated ``.ttl``
-files are parsed with dotNetRDF and compared by strict RDF graph isomorphism.
+runs. It compares every artifact other than ``.ttl`` and ``.ontology.jsonld``
+byte-for-byte, including ``.context.jsonld``. Both ontology encodings are parsed
+with dotNetRDF and compared by strict RDF graph isomorphism.
 The comparer checks ground triples exactly, partitions anonymous-node triples
 into blank-node-connected components, and matches those components with
 ``Graph.Equals``. This avoids pathological whole-graph searches on large
@@ -136,7 +139,12 @@ The comparer is part of the solution and can also be exercised directly:
 ```powershell
 dotnet run --project conformance/dotnet/Cogs.Conformance.RdfGraphComparer -- --self-test
 dotnet run --project conformance/dotnet/Cogs.Conformance.RdfGraphComparer -- .\expected-tree .\actual-tree
+dotnet run --project conformance/dotnet/Cogs.Conformance.RdfGraphComparer -- --verify-ontologies .\generated
 ```
+
+The cross-encoding check requires a matching Turtle file for every ontology
+JSON-LD file and rejects changed triples, malformed input, remote contexts,
+and named graphs. Its self-test also covers missing/extra file inventories.
 
 Byte repeatability for the remaining secondary artifacts also depends on two
 cross-platform rules: Sphinx-safe document names are lowercased invariantly,

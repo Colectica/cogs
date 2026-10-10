@@ -13,6 +13,7 @@ using System.Numerics;
 using System.Text.RegularExpressions;
 using System.Text.Json.Nodes;
 using VDS.RDF;
+using VDS.RDF.JsonLd;
 using VDS.RDF.Parsing;
 using Xunit;
 using YamlDotNet.Serialization;
@@ -64,6 +65,7 @@ public sealed class SemanticPublisherTests
         Assert.DoesNotContain("\r", File.ReadAllText(contextPath));
         var graph = new Graph();
         new TurtleParser(TurtleSyntax.W3C, validateIris: true).Load(graph, Path.Combine(publisher.TargetDirectory, "semantic.ttl"));
+        AssertOntologyMatchesTurtle(publisher.TargetDirectory);
         const string ns = "https://example.test/rdf/";
         INode companion = Uri(graph, ns + "partsList");
         INode member = Uri(graph, ns + "parts");
@@ -149,6 +151,7 @@ public sealed class SemanticPublisherTests
         publisher.TargetDirectory = Path.Combine(temporary.Path, "owl-second");
         Assert.True(publisher.PublishResult(model).Success);
         Assert.Equal(contextBytes, File.ReadAllBytes(Path.Combine(publisher.TargetDirectory, "semantic.context.jsonld")));
+        AssertOntologyMatchesTurtle(publisher.TargetDirectory);
 
         static IGraph ParseJsonLd(JsonNode document)
         {
@@ -234,6 +237,9 @@ public sealed class SemanticPublisherTests
             .ToArray();
         Assert.DoesNotContain(minimum, cardinalities);
         Assert.Contains(maximum, cardinalities);
+        IGraph jsonLdGraph = AssertOntologyMatchesTurtle(owlTarget);
+        Assert.Contains(jsonLdGraph.Triples, triple => triple.Object is ILiteralNode literal
+            && literal.Value == maximum && literal.DataType?.AbsoluteUri == NamespaceMapper.XMLSCHEMA + "nonNegativeInteger");
         Assert.Contains(graph.Triples, triple => triple.Predicate.Equals(Uri(graph, "https://cogsdata.org/ns#minOccurs"))
             && triple.Object is ILiteralNode literal && literal.Value == minimum);
 
@@ -321,7 +327,7 @@ public sealed class SemanticPublisherTests
         PublicationResult result = publisher.PublishResult(model);
 
         Assert.True(result.Success);
-        Assert.Equal(["semantic.context.jsonld", "semantic.ttl"], result.Artifacts);
+        Assert.Equal(["semantic.context.jsonld", "semantic.ontology.jsonld", "semantic.ttl"], result.Artifacts);
         string turtlePath = Path.Combine(target, "semantic.ttl");
         Assert.True(File.Exists(turtlePath));
         Assert.False(File.Exists(Path.Combine(target, "semantic.owl")));
@@ -523,6 +529,65 @@ public sealed class SemanticPublisherTests
             .Load(secondGraph, Path.Combine(secondTarget, "semantic.ttl"));
         Assert.True(graph.Equals(secondGraph),
             "Repeated OWL generation must produce the same RDF graph regardless of blank-node labels or Turtle ordering.");
+        Assert.True(Cogs.Conformance.RdfGraphComparer.Program.CompareGraphs(
+            AssertOntologyMatchesTurtle(target), AssertOntologyMatchesTurtle(secondTarget)).AreEqual);
+    }
+
+    [Theory]
+    [InlineData("decimal", "-180", "180")]
+    [InlineData("double", "-180", "180")]
+    [InlineData("boolean", "1", "0")]
+    public void OwlEncodingsPreserveCompressibleLiteralDatatypesAndLexemes(string datatype, string first, string second)
+    {
+        CogsModel model = BuildModel();
+        model.ReusableDataTypes.Single(type => type.Name == "Recipe").Properties.Add(new Property
+        {
+            Name = "ExactLiteral", DataTypeName = datatype,
+            DataType = new DataType { Name = datatype, IsXmlPrimitive = true },
+            MinCardinality = "0", MaxCardinality = "1", Enumeration = [first, second]
+        });
+        using var temporary = new TemporaryDirectory();
+        var publisher = CreateOwlPublisher(model, Path.Combine(temporary.Path, "owl"));
+        Assert.True(publisher.PublishResult(model).Success);
+        IGraph graph = AssertOntologyMatchesTurtle(publisher.TargetDirectory);
+        foreach (string lexical in new[] { first, second })
+            Assert.Contains(graph.Triples, triple => triple.Object is ILiteralNode literal
+                && literal.Value == lexical && literal.DataType?.AbsoluteUri == NamespaceMapper.XMLSCHEMA + datatype);
+        Assert.DoesNotContain("urn:cogs:turtle-serialization:", File.ReadAllText(Path.Combine(publisher.TargetDirectory, "semantic.ttl")));
+    }
+
+    [Theory]
+    [InlineData("https://example.test/override", "owl")]
+    [InlineData("https://example.test/override/", "model")]
+    [InlineData("https://example.test/override#", "rdf")]
+    public void OwlOntologyIsSelfContainedWithNamespaceOverrides(string ns, string prefix)
+    {
+        CogsModel model = BuildModel();
+        using var temporary = new TemporaryDirectory();
+        var publisher = CreateOwlPublisher(model, Path.Combine(temporary.Path, "owl"));
+        publisher.TargetNamespace = ns;
+        publisher.TargetNamespacePrefix = prefix;
+        publisher.Description = "Quoted \"Unicode — café\"\nsecond line\rretained\r\nlast line";
+        Assert.True(publisher.PublishResult(model).Success);
+        IGraph graph = AssertOntologyMatchesTurtle(publisher.TargetDirectory);
+        string termBase = CogsRdfNaming.GetTermBase(ns);
+        Assert.Contains(graph.Triples, triple => triple.Subject is IUriNode node && node.Uri.AbsoluteUri == termBase + "Recipe");
+        Assert.Contains(graph.Triples, triple => triple.Object is ILiteralNode literal && literal.Value == publisher.Description);
+        JsonNode context = JsonNode.Parse(File.ReadAllText(Path.Combine(publisher.TargetDirectory, "semantic.ontology.jsonld")))["@context"];
+        Assert.Equal(termBase, context["@vocab"].GetValue<string>());
+        Assert.Equal(termBase, context["model"]["@id"].GetValue<string>());
+        Assert.Equal(NamespaceMapper.OWL, context["owl"]["@id"].GetValue<string>());
+
+        // A failed replacement must preserve all three existing artifacts.
+        Dictionary<string, byte[]> before = Directory.GetFiles(publisher.TargetDirectory)
+            .ToDictionary(Path.GetFileName, File.ReadAllBytes);
+        publisher.Overwrite = true;
+        publisher.TargetNamespace = "not-an-absolute-uri";
+        PublicationResult failure = publisher.PublishResult(model);
+        Assert.False(failure.Success);
+        Assert.Empty(failure.Artifacts);
+        Assert.Equal(before.Count, Directory.GetFiles(publisher.TargetDirectory).Length);
+        foreach (var file in before) Assert.Equal(file.Value, File.ReadAllBytes(Path.Combine(publisher.TargetDirectory, file.Key)));
     }
 
     [Fact]
@@ -1004,6 +1069,36 @@ public sealed class SemanticPublisherTests
         .Single(node => graph.GetTriplesWithSubjectPredicate(node, onProperty)
                 .Any(triple => triple.Object.Equals(property))
             && graph.GetTriplesWithSubjectPredicate(node, allValuesFrom).Any());
+
+    private static IGraph AssertOntologyMatchesTurtle(string target)
+    {
+        string path = Path.Combine(target, "semantic.ontology.jsonld");
+        byte[] bytes = File.ReadAllBytes(path);
+        Assert.False(bytes.AsSpan().StartsWith(new byte[] { 0xef, 0xbb, 0xbf }));
+        string text = File.ReadAllText(path);
+        Assert.DoesNotContain("\r", text);
+        Assert.EndsWith("\n", text);
+        JsonNode document = JsonNode.Parse(text);
+        Assert.IsType<JsonObject>(document["@context"]);
+        Assert.IsType<JsonArray>(document["@graph"]);
+        Assert.Equal(1.1, document["@context"]["@version"].GetValue<double>());
+        var store = new TripleStore();
+        new JsonLdParser(new JsonLdProcessorOptions
+        {
+            DocumentLoader = (_, _) => throw new InvalidOperationException("Generated ontologies must parse offline.")
+        }).Load(store, new StringReader(text));
+        IGraph ontology = Assert.Single(store.Graphs);
+        Assert.Null(ontology.Name);
+        var turtle = new Graph();
+        new TurtleParser(TurtleSyntax.W3C, validateIris: true).Load(turtle, Path.Combine(target, "semantic.ttl"));
+        Assert.True(Cogs.Conformance.RdfGraphComparer.Program.CompareGraphs(turtle, ontology).AreEqual,
+            "Ontology JSON-LD must preserve every Turtle triple, including literal lexical forms.\n"
+            + string.Join("\n", turtle.Triples.Where(t => t.Subject is not IBlankNode && t.Object is not IBlankNode)
+                .Except(ontology.Triples).Select(t => "Turtle only: " + t))
+            + "\n" + string.Join("\n", ontology.Triples.Where(t => t.Subject is not IBlankNode && t.Object is not IBlankNode)
+                .Except(turtle.Triples).Select(t => "JSON-LD only: " + t)));
+        return ontology;
+    }
 
     private static OwlPublisher CreateOwlPublisher(CogsModel model, string target) => new()
     {

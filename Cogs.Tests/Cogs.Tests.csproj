@@ -26,6 +26,7 @@
     <ProjectReference Include="..\Cogs.Model\Cogs.Model.csproj" />
     <ProjectReference Include="..\Cogs.Publishers\Cogs.Publishers.csproj" />
     <ProjectReference Include="..\Cogs.Validation\Cogs.Validation.csproj" />
+    <ProjectReference Include="..\conformance\dotnet\Cogs.Conformance.RdfGraphComparer\Cogs.Conformance.RdfGraphComparer.csproj" />
   </ItemGroup>
 
   <ItemGroup>

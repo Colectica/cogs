@@ -4,8 +4,9 @@ publish-owl
 Introduction
 ----------------------
 Generate the authoritative COGS ontology and class-semantics output as W3C
-Turtle (media type ``text/turtle``), together with the JSON-LD context
-``<Settings.Slug>.context.jsonld`` (``application/ld+json``). Both files are UTF-8.
+Turtle (media type ``text/turtle``) and the equivalent complete JSON-LD ontology
+``<Settings.Slug>.ontology.jsonld``, together with the separate instance context
+``<Settings.Slug>.context.jsonld`` (both ``application/ld+json``). All files are UTF-8.
 Item and composite types become classes,
 with exact PascalCase class terms and shared word-aware camelCase object or
 datatype property terms. ``OWL2002`` and ``OWL2003`` identify the two explicit
@@ -17,8 +18,9 @@ RDF/OWL and JSON-LD are first-class COGS serialization outputs alongside JSON
 and XML, not projections. Ordered properties gain native RDF collection
 companions automatically. OWL axioms are not an instance-validation schema;
 the guide explains the collection and lexical-validation boundaries. Only
-this publisher emits the context; the C# publisher emits RDF graphs but no
-context file.
+this publisher emits the ontology JSON-LD and context; the C# publisher emits
+RDF graphs but neither JSON-LD artifact. The ontology document is self-contained;
+the context interprets instance JSON and does not import or validate the ontology.
 
 ``OWL2001`` and ``OWL2002`` are informational. The CLI prints one summary per
 code, including the affected-property count, on standard output. Detailed

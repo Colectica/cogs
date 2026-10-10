@@ -30,6 +30,14 @@ foreach ($rootValue in $Roots) {
                 [Text.Json.JsonDocumentOptions]@{ AllowTrailingCommas = $false; CommentHandling = [Text.Json.JsonCommentHandling]::Disallow })
             $document.Dispose()
         }
+        if ($file.Name.EndsWith('.context.jsonld', [StringComparison]::OrdinalIgnoreCase)) {
+            $stem = $file.FullName.Substring(0, $file.FullName.Length - '.context.jsonld'.Length)
+            foreach ($suffix in @('.ttl', '.ontology.jsonld')) {
+                if (-not [IO.File]::Exists($stem + $suffix)) {
+                    throw "Missing OWL artifact '$($stem + $suffix)' beside the RDF instance context."
+                }
+            }
+        }
 
         if ($xmlExtensions -contains $file.Extension.ToLowerInvariant()) {
             $settings = [Xml.XmlReaderSettings]::new()

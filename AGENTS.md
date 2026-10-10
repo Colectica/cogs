@@ -309,7 +309,8 @@ objects into RDF graphs. UML/XMI is the authoritative structural model output, w
 enforce a property-local exclusion of every descendant of its declared base
 type. UML is not an instance-validation schema. OWL/RDF is emitted as UTF-8
 W3C Turtle in ``<Settings.Slug>.ttl`` and is the authoritative ontology and
-class-semantics output, accompanied only in OWL output by
+class-semantics output. Only OWL output also includes the graph-equivalent
+complete ``<Settings.Slug>.ontology.jsonld`` and separate instance context
 ``<Settings.Slug>.context.jsonld``, with ``OWL2002`` and ``OWL2003`` as its authority
 exceptions for property-local subtype exclusion and abstract direct instances.
 
@@ -342,14 +343,26 @@ the owning class definition so the generated ontology remains practical for a
 person to read. COGS generates the same standards-compliant semantic RDF graph
 on every run. Blank-node labels, prefix aliases, statement order, and Turtle
 formatting do not change that graph and are not repeatability requirements.
-Regeneration checks must compare ``.ttl`` files with strict dotNetRDF RDF graph
-isomorphism, while continuing to compare all non-Turtle artifacts byte-for-byte.
+Regeneration checks must compare ``.ttl`` and ``.ontology.jsonld`` files with
+strict dotNetRDF RDF graph isomorphism, while continuing to compare all other
+artifacts byte-for-byte, including ``.context.jsonld``.
 ``Cogs.Conformance.RdfGraphComparer`` checks ground triples exactly, partitions
 anonymous-node triples into blank-node-connected components, and matches those
 components with ``Graph.Equals``. This is the same strict graph equality without
 the pathological whole-graph search caused by large ontologies containing many
 independent restrictions. Its ``--self-test`` proves that equivalent blank-node
 labels and ordering pass while a changed literal fails.
+Its ``--verify-ontologies <directory>`` mode checks every ontology JSON-LD
+against its matching Turtle file. Require one default graph, no named graphs,
+and offline parsing. Reuse the component matcher in semantic publisher tests.
+Generate ontology JSON-LD from the same completed graph as Turtle through the
+existing dotNetRDF writer and compactor, with native numeric conversion disabled.
+Use an embedded ontology context (``model``, ``rdf``, ``rdfs``, ``owl``, ``xsd``,
+``schema``, ``cogsmeta``); do not mix ontology descriptions or constraints into
+the instance context. Preserve literal CR as escaped Turtle data while
+normalizing only formatting newlines to LF. Protect compressible numeric and
+boolean literals during Turtle serialization so their datatype and lexical
+spelling survive; decimal bounds such as ``180`` must not become bare integers.
 Exact property-name reuse across item types, composite types, identification,
 and identification mixins therefore requires one exact datatype
 (``COGS-VAL-PROP-007``). Distinct exact names that collapse to one camelCase
@@ -387,7 +400,10 @@ Do not summarize other codes; `OWL2004`, `OWL2005`, and `OWL2006` remain warning
 Only OWL emits the JSON-LD 1.1 context with typed member terms and
 ``@container: "@list"`` companions. It describes RDF data, not flat COGS JSON,
 and does not derive membership triples or add an instance-writer/importer API.
-Compare contexts byte-for-byte and RDF graphs semantically. Unsupported lexical
+The complete ontology JSON-LD exposes classes, descriptions, restrictions,
+facets, cardinalities, keys, and ordered annotations; it adds no new semantics.
+Contexts neither import ontology triples nor validate instances. Compare
+instance contexts byte-for-byte and both ontology encodings semantically. Unsupported lexical
 facets remain in the JSON Schema/XSD instance contract. LinkML, DCTAP, GraphQL,
 DOT, and Sphinx are projections; they must disclose preserved, approximated,
 unsupported, and documentation-only features and never silently imply wire

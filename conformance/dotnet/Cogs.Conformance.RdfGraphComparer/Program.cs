@@ -1,7 +1,9 @@
 // Copyright (c) 2026 Colectica. All rights reserved
 // See the LICENSE file in the project root for more information.
 using VDS.RDF;
+using VDS.RDF.JsonLd;
 using VDS.RDF.Parsing;
+using VDS.RDF.Writing;
 
 namespace Cogs.Conformance.RdfGraphComparer;
 
@@ -16,15 +18,17 @@ internal static class Program
             return RunSelfTest();
         }
 
+        bool verifyOntologies = args.Length == 2 && args[0] == "--verify-ontologies";
         if (args.Length != 2)
         {
             Console.Error.WriteLine(
                 "Usage: Cogs.Conformance.RdfGraphComparer <expected-directory> <actual-directory>");
             Console.Error.WriteLine("       Cogs.Conformance.RdfGraphComparer --self-test");
+            Console.Error.WriteLine("       Cogs.Conformance.RdfGraphComparer --verify-ontologies <directory>");
             return 2;
         }
 
-        ComparisonResult result = CompareDirectories(args[0], args[1]);
+        ComparisonResult result = verifyOntologies ? VerifyOntologies(args[1]) : CompareDirectories(args[0], args[1]);
         foreach (string diagnostic in result.Diagnostics)
         {
             Console.Error.WriteLine(diagnostic);
@@ -35,7 +39,9 @@ internal static class Program
             return 1;
         }
 
-        Console.WriteLine($"RDF graph comparison passed for {result.ComparedGraphCount} Turtle file(s).");
+        Console.WriteLine(verifyOntologies
+            ? $"Turtle/JSON-LD ontology equality passed for {result.ComparedGraphCount} pair(s)."
+            : $"RDF graph comparison passed for {result.ComparedGraphCount} Turtle/ontology JSON-LD file(s).");
         return 0;
     }
 
@@ -74,8 +80,8 @@ internal static class Program
             return new ComparisonResult(false, 0, diagnostics);
         }
 
-        Dictionary<string, string> expectedFiles = FindTurtleFiles(expectedRoot);
-        Dictionary<string, string> actualFiles = FindTurtleFiles(actualRoot);
+        Dictionary<string, string> expectedFiles = FindRdfFiles(expectedRoot);
+        Dictionary<string, string> actualFiles = FindRdfFiles(actualRoot);
 
         string[] missing = expectedFiles.Keys.Except(actualFiles.Keys, StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
@@ -86,12 +92,12 @@ internal static class Program
 
         foreach (string path in missing)
         {
-            diagnostics.Add($"Missing Turtle file in actual tree: {path}");
+            diagnostics.Add($"Missing RDF file in actual tree: {path}");
         }
 
         foreach (string path in unexpected)
         {
-            diagnostics.Add($"Unexpected Turtle file in actual tree: {path}");
+            diagnostics.Add($"Unexpected RDF file in actual tree: {path}");
         }
 
         int comparedGraphCount = 0;
@@ -118,14 +124,50 @@ internal static class Program
         return new ComparisonResult(diagnostics.Count == 0, comparedGraphCount, diagnostics);
     }
 
-    private static Dictionary<string, string> FindTurtleFiles(string root)
+    private static bool IsOntologyJsonLd(string path) => path.EndsWith(".ontology.jsonld", StringComparison.OrdinalIgnoreCase);
+
+    private static Dictionary<string, string> FindRdfFiles(string root)
     {
         return Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
-            .Where(path => string.Equals(Path.GetExtension(path), ".ttl", StringComparison.OrdinalIgnoreCase))
+            .Where(path => string.Equals(Path.GetExtension(path), ".ttl", StringComparison.OrdinalIgnoreCase)
+                || IsOntologyJsonLd(path))
             .ToDictionary(
                 path => Path.GetRelativePath(root, path).Replace(Path.DirectorySeparatorChar, '/'),
                 path => path,
                 StringComparer.Ordinal);
+    }
+
+    private static ComparisonResult VerifyOntologies(string directory)
+    {
+        var diagnostics = new List<string>();
+        string root;
+        try { root = Path.GetFullPath(directory); }
+        catch (Exception exception) when (exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return new ComparisonResult(false, 0, [$"Invalid ontology directory: {exception.Message}"]);
+        }
+        if (!Directory.Exists(root))
+            return new ComparisonResult(false, 0, [$"Ontology directory does not exist: {root}"]);
+
+        var files = FindRdfFiles(root).Where(file => IsOntologyJsonLd(file.Key)).OrderBy(file => file.Key, StringComparer.Ordinal).ToArray();
+        if (files.Length == 0) diagnostics.Add($"No ontology JSON-LD files found in '{root}'.");
+        int compared = 0;
+        foreach (var file in files)
+        {
+            string turtlePath = file.Value[..^".ontology.jsonld".Length] + ".ttl";
+            if (!File.Exists(turtlePath))
+            {
+                diagnostics.Add($"Missing matching Turtle file for '{file.Key}'.");
+                continue;
+            }
+            IGraph? turtle = ParseGraph(turtlePath, "Turtle", file.Key, diagnostics);
+            IGraph? jsonLd = ParseGraph(file.Value, "JSON-LD", file.Key, diagnostics);
+            if (turtle is null || jsonLd is null) continue;
+            compared++;
+            GraphComparison comparison = CompareGraphs(turtle, jsonLd);
+            if (!comparison.AreEqual) AddGraphDifference(file.Key, turtle, jsonLd, comparison, diagnostics);
+        }
+        return new ComparisonResult(diagnostics.Count == 0, compared, diagnostics);
     }
 
     private static IGraph? ParseGraph(
@@ -136,13 +178,29 @@ internal static class Program
     {
         try
         {
+            if (IsOntologyJsonLd(path))
+            {
+                var store = new TripleStore();
+                new JsonLdParser(new JsonLdProcessorOptions
+                {
+                    DocumentLoader = (_, _) => throw new RdfParseException("Remote JSON-LD contexts are not permitted.")
+                }).Load(store, path);
+                IGraph[] graphs = store.Graphs.ToArray();
+                if (graphs.Length != 1 || graphs[0].Name is not null)
+                {
+                    diagnostics.Add($"Ontology JSON-LD '{relativePath}' must contain exactly one default graph and no named graphs.");
+                    return null;
+                }
+                return graphs[0];
+            }
             var graph = new Graph();
             new TurtleParser(TurtleSyntax.W3C, validateIris: true).Load(graph, path);
             return graph;
         }
-        catch (Exception exception) when (exception is RdfParseException or IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is RdfParseException or JsonLdProcessorException
+            or Newtonsoft.Json.JsonException or IOException or UnauthorizedAccessException)
         {
-            diagnostics.Add($"Could not parse {treeName} Turtle file '{relativePath}': {exception.Message}");
+            diagnostics.Add($"Could not parse {treeName} RDF file '{relativePath}': {exception.Message}");
             return null;
         }
     }
@@ -152,7 +210,7 @@ internal static class Program
     // equality of the ground set plus the multiset of component isomorphism
     // classes. Matching each component with Graph.Equals avoids the global
     // combinatorial search while preserving strict RDF graph equality.
-    private static GraphComparison CompareGraphs(IGraph expected, IGraph actual)
+    internal static GraphComparison CompareGraphs(IGraph expected, IGraph actual)
     {
         GraphPartition expectedPartition = PartitionGraph(expected);
         GraphPartition actualPartition = PartitionGraph(actual);
@@ -422,13 +480,24 @@ internal static class Program
                 _:actualOne different:first "same" ; different:second different:Value .
                 """);
 
+            string originalTurtle = File.ReadAllText(actualFile);
+            string expectedOntology = Path.ChangeExtension(expectedFile, "ontology.jsonld");
+            string actualOntology = Path.ChangeExtension(actualFile, "ontology.jsonld");
+            WriteOntology(expectedFile, expectedOntology);
+            WriteOntology(actualFile, actualOntology);
+            string originalOntology = File.ReadAllText(actualOntology);
+            // Contexts are byte-checked by the workflow, not treated as graphs.
+            File.WriteAllText(Path.ChangeExtension(actualFile, "context.jsonld"), "not parsed by graph comparer");
             ComparisonResult equivalent = CompareDirectories(expected, actual);
-            if (!equivalent.AreEqual || equivalent.ComparedGraphCount != 1)
+            if (!equivalent.AreEqual || equivalent.ComparedGraphCount != 2)
             {
                 return SelfTestFailure(
                     "multiple permuted anonymous components with different identifiers and triple order were not equivalent",
                     equivalent);
             }
+            ComparisonResult matchingEncodings = VerifyOntologies(actual);
+            if (!matchingEncodings.AreEqual || matchingEncodings.ComparedGraphCount != 1)
+                return SelfTestFailure("Turtle and JSON-LD did not represent the same graph", matchingEncodings);
 
             File.WriteAllText(actualFile, """
                 @prefix ex: <https://example.test/> .
@@ -449,6 +518,33 @@ internal static class Program
                 return SelfTestFailure("a changed literal was not reported as a graph difference", changedLiteral);
             }
 
+            File.WriteAllText(actualFile, originalTurtle);
+            File.WriteAllText(actualOntology, originalOntology.Replace("deep", "deep changed", StringComparison.Ordinal));
+            if (CompareDirectories(expected, actual).AreEqual || VerifyOntologies(actual).AreEqual)
+                return SelfTestFailure("changed ontology literals passed", VerifyOntologies(actual));
+            File.WriteAllText(actualOntology, originalOntology);
+            File.Delete(actualOntology);
+            ComparisonResult missing = CompareDirectories(expected, actual);
+            if (missing.AreEqual || !missing.Diagnostics.Any(message => message.Contains("Missing RDF file", StringComparison.Ordinal)))
+                return SelfTestFailure("a missing ontology was not reported", missing);
+            File.WriteAllText(actualOntology, originalOntology);
+            string extra = Path.Combine(actual, "extra.ontology.jsonld");
+            File.WriteAllText(extra, originalOntology);
+            if (CompareDirectories(expected, actual).AreEqual || VerifyOntologies(actual).AreEqual)
+                return SelfTestFailure("an unexpected/unpaired ontology passed", VerifyOntologies(actual));
+            File.Delete(extra);
+            foreach (string invalid in new[]
+            {
+                "{ malformed JSON",
+                """{"@id":"urn:named","@graph":[{"@id":"urn:subject","urn:predicate":{"@value":"value"}}]}""",
+                """{"@context":"https://example.test/remote-context","@id":"urn:subject","urn:predicate":"value"}"""
+            })
+            {
+                File.WriteAllText(actualOntology, invalid);
+                ComparisonResult rejected = VerifyOntologies(actual);
+                if (rejected.AreEqual) return SelfTestFailure("invalid/named/remote-context ontology passed", rejected);
+            }
+            File.WriteAllText(actualOntology, originalOntology);
             Console.WriteLine("RDF graph comparer self-test passed.");
             return 0;
         }
@@ -470,6 +566,15 @@ internal static class Program
             {
                 // The self-test result is authoritative; temporary cleanup is best effort.
             }
+        }
+
+        static void WriteOntology(string turtlePath, string jsonLdPath)
+        {
+            var graph = new Graph();
+            new TurtleParser(TurtleSyntax.W3C, validateIris: true).Load(graph, turtlePath);
+            var store = new TripleStore();
+            store.Add(graph);
+            new JsonLdWriter(new JsonLdWriterOptions { UseNativeTypes = false }).Save(store, jsonLdPath);
         }
     }
 
@@ -493,7 +598,7 @@ internal static class Program
         IReadOnlySet<Triple> GroundTriples,
         IReadOnlyList<IGraph> Components);
 
-    private sealed record GraphComparison(
+    internal sealed record GraphComparison(
         bool AreEqual,
         IReadOnlyList<Triple> ExpectedOnlyGroundTriples,
         IReadOnlyList<Triple> ActualOnlyGroundTriples,

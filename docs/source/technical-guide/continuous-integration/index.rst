@@ -39,8 +39,10 @@ COGS itself checks the same conformance corpus on Windows and Linux with .NET
 three generated language packages, runs both cross-language runtime orders,
 validates every JSON/XML boundary, exercises projection tools, compares a
 second generation, and checks pinned downstream migration diagnostics. The
-regeneration gate compares non-Turtle artifacts byte-for-byte and parses each
-Turtle pair with dotNetRDF to require strict RDF graph isomorphism. The comparer
+regeneration gate compares instance contexts and other non-RDF artifacts
+byte-for-byte. It parses each Turtle and ontology JSON-LD pair with dotNetRDF
+to require strict RDF graph isomorphism, and checks that the two encodings
+within each publication agree. The comparer
 checks ground triples exactly and matches blank-node-connected components with
 ``Graph.Equals`` so large collections of independent restrictions remain
 practical to compare. Blank-node labels, prefix aliases, statement order, and

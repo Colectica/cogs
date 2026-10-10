@@ -3,8 +3,9 @@ OWL Generation
 
 The :doc:`/technical-guide/command-line/publish-owl` command generates OWL/RDF
 from a COGS model. It writes standards-compliant W3C Turtle to
-``<Settings.Slug>.ttl`` (``text/turtle``) and a JSON-LD context to
-``<Settings.Slug>.context.jsonld`` (``application/ld+json``), both UTF-8 without
+``<Settings.Slug>.ttl`` (``text/turtle``), the same complete ontology to
+``<Settings.Slug>.ontology.jsonld``, and a separate RDF instance context to
+``<Settings.Slug>.context.jsonld`` (both ``application/ld+json``), all UTF-8 without
 a BOM. RDF/XML and a compatibility ``.owl`` copy are not generated.
 
 .. important::
@@ -41,6 +42,40 @@ Mapping
 * supported lexical facets map to OWL datatype restrictions; an enumeration
   combined with other supported facets becomes a data-range intersection
 * namespace and version metadata come from model settings unless overridden
+
+JSON-LD ontology and instance context
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The two JSON-LD artifacts serve different purposes:
+
+* ``<slug>.ontology.jsonld`` describes the complete ontology, including every
+  class, shared property, description, inheritance relation, local restriction,
+  supported facet, cardinality, identification key, datatype union, and ordered
+  collection annotation already present in Turtle.
+* ``<slug>.context.jsonld`` maps RDF instance JSON keys to IRIs, datatypes, and
+  list containers. It is intentionally lightweight; ``@vocab`` already resolves
+  PascalCase class names without an explicit entry for each class.
+
+The ontology document is a self-contained JSON-LD 1.1 ``@context``/``@graph``
+document. Its embedded context uses ``model``, ``rdf``, ``rdfs``, ``owl``,
+``xsd``, ``schema``, and ``cogsmeta`` prefixes. Compact names and native
+``@list`` objects make it usable by JSON-oriented model browsers and RDF tools.
+Literal lexical values, datatype IRIs, and language tags are retained; even
+arbitrary-size cardinalities remain explicitly typed strings, not imprecise
+JSON numbers. No remote context or network access is required.
+
+Both ontology encodings come from the same RDF graph, not separate model
+mappings. Regeneration compares Turtle and ontology JSON-LD by strict RDF graph
+equality, including descriptions; blank-node labels and statement order are
+serialization details. The instance context remains byte-repeatable.
+
+A context interprets JSON; it does not import ontology statements, supply
+inheritance or cardinality validation, or synthesize missing triples. Loading
+the ontology separately makes those statements available to RDF applications,
+but does not extend OWL's documented expressiveness or replace COGS instance
+validation. This is an ontology encoding, not a new JSON-LD instance writer or
+RDF importer. See `JSON-LD's relationship to RDF
+<https://www.w3.org/TR/json-ld11/#relationship-to-rdf>`_.
 
 Ordered RDF collections and JSON-LD
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -139,7 +174,8 @@ A SPARQL property path selects list members:
 Query result order is not list order. Walk the ``rdf:first``/``rdf:rest`` chain
 when consuming the sequence. Turtle formatting and blank-node labels do not
 alter the standards-compliant semantic graph; regeneration uses strict RDF
-graph equality, while context text remains byte-repeatable.
+graph equality for both ontology encodings, while instance context text remains
+byte-repeatable.
 
 Calendar datatype domains
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -244,14 +280,15 @@ COGS generates the same standards-compliant semantic RDF graph on every run.
 An RDF blank-node label is local serialization notation rather than the
 identity of a restriction. Prefix aliases, triple order, and Turtle formatting
 likewise do not change the graph. The regeneration gate therefore parses both
-Turtle artifacts and requires strict RDF graph isomorphism. It checks ground
+ontology encodings and requires strict RDF graph isomorphism. It checks ground
 triples exactly, partitions anonymous-node triples into blank-node-connected
 components, and matches those components with dotNetRDF ``Graph.Equals``. This
 avoids a pathological whole-graph search for large ontologies with many
 independent restrictions without weakening equality. A changed IRI, literal,
 datatype, language tag, restriction comment, cardinality, or blank-node
-subgraph fails that comparison even when the Turtle text remains syntactically
-valid. Non-Turtle generated artifacts continue to be compared byte-for-byte.
+subgraph fails that comparison even when the serialized text remains syntactically
+valid. Instance contexts and all other non-RDF artifacts continue to be compared
+byte-for-byte.
 
 ``OWL2002``: property-local subtype exclusion
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

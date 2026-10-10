@@ -9,7 +9,8 @@ not required.
 JSON, XML, and RDF/JSON-LD are first-class authoritative COGS serialization
 families. RDF/OWL and JSON-LD are not projection targets. OWL defines class
 and property semantics; Turtle and JSON-LD are encodings of the RDF graph.
-The OWL publisher produces the ontology and JSON-LD context, while generated
+The OWL publisher produces the ontology in Turtle and JSON-LD, plus a separate
+JSON-LD instance context, while generated
 C# exposes RDF graph serialization. This does not add RDF deserialization or
 reinterpret ordinary COGS JSON as JSON-LD.
 

@@ -232,7 +232,7 @@ Options
 publish-owl
 -----------
 
-Publish an authoritative OWL ontology in Turtle and a JSON-LD context from a COGS data model
+Publish an authoritative OWL ontology in Turtle and JSON-LD, with an RDF instance context, from a COGS data model
 
 Usage
 ~~~~~

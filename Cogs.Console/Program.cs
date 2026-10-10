@@ -659,7 +659,7 @@ namespace Cogs.Console
             app.Command("publish-owl", (command) =>
             {
 
-                command.Description = "Publish an authoritative OWL ontology in Turtle and a JSON-LD context from a COGS data model";
+                command.Description = "Publish an authoritative OWL ontology in Turtle and JSON-LD, with an RDF instance context, from a COGS data model";
                 command.HelpOption("-?|-h|--help");
 
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
