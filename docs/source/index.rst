@@ -18,18 +18,22 @@ COGS is a production framework for domain experts and groups who value
 Output Formats
 --------------
 
-XML Schema, JSON Schema, and the generated C#, Python, and TypeScript libraries
-are the authoritative instance targets. They share the strict JSON/XML contract
-defined in the :doc:`COGS 2 specification <specification/index>`.
+JSON, XML, and RDF/JSON-LD are first-class authoritative COGS serialization
+families, not projections. XML Schema, JSON Schema, and the generated C#,
+Python, and TypeScript libraries implement the strict JSON/XML contract
+defined in the :doc:`COGS 2 specification <specification/index>`. Generated C#
+also serializes objects into RDF graphs.
 
 UML/XMI is the authoritative structural model output, with the explicitly
 diagnosed ``PROJ2601`` exception for property-local subtype exclusion. It is
 not an instance-validation schema.
 
-OWL/RDF is emitted as W3C Turtle in ``<Settings.Slug>.ttl`` and is the
-authoritative ontology and class-semantics output, with ``OWL2002`` and
-``OWL2003`` as its explicit authority exceptions. It is not an
-instance-validation, lexical-facet, or ordered-collection authority.
+The OWL publisher emits ``<Settings.Slug>.ttl`` and
+``<Settings.Slug>.context.jsonld``. OWL defines the authoritative ontology,
+with ``OWL2002`` and ``OWL2003`` as its explicit authority exceptions. Turtle
+and JSON-LD encode the same RDF graph; ordered collections preserve sequence
+and duplicate occurrences. OWL axioms do not replace instance validation or
+enforce RDF list structure. See :doc:`technical-guide/generation/owl`.
 
 LinkML, DCTAP, GraphQL, Graphviz/DOT, and Sphinx are projections. They may
 preserve, approximate, or explicitly reject individual modeling features and

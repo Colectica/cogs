@@ -10,5 +10,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="$(GeneratedSourceDirectory)\*.csproj" />
+    <ProjectReference Include="$(RepositoryRoot)Cogs.Common\Cogs.Common.csproj" />
   </ItemGroup>
 </Project>

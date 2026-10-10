@@ -51,7 +51,7 @@ RDF graph behavior
 
 Generated C# objects also expose ``AddTriples`` methods, and
 ``ItemContainer.MakeRdfGraph()`` builds a dotNetRDF graph for an instance. That
-instance projection follows the same RDF term contract as OWL, DCTAP, and
+first-class RDF serialization follows the same RDF term contract as OWL, DCTAP, and
 LinkML:
 
 * the object of each ``rdf:type`` triple uses the exact PascalCase COGS class
@@ -84,8 +84,25 @@ DTO validation rejects distinct property names that collapse to one predicate
 with ``COGS-VAL-PROP-008``. A directly constructed connected model receives the
 equivalent generated-C# preflight error ``CSH1001`` before its existing target
 can be replaced. No legacy PascalCase predicate aliases are emitted. OWL
-remains the authoritative class-semantics output; this API is the RDF instance
-projection of generated C# objects.
+remains the authoritative class-semantics output; this API serializes generated
+C# objects into the RDF instance graph.
+
+For ``Ordered=true`` repeated properties, the writer emits the normal
+membership predicate and its camelCase ``List`` companion. For example,
+``Steps`` emits ``steps`` and ``stepsList``; the latter points to an RDF
+collection preserving sequence and duplicates, including ``rdf:nil`` for an
+empty list. Each occurrence's primitive, reference, or composite node is
+shared between the collection and membership projection. Unordered properties
+remain direct triples.
+
+The writer rejects malformed, cyclic, multiple, or conflicting existing list
+heads and reuses an identical existing collection. Export changed objects to
+a fresh graph rather than using ``AddTriples`` as an in-place update API.
+``COGS-VAL-PROP-009`` and direct-library ``CSH1002`` reject companion-term
+collisions before publication. The C# publisher does not emit a JSON-LD
+context; use the matching-namespace context from
+:doc:`owl` with a JSON-LD processor. No RDF reader or new JSON-LD instance
+writer API is added.
 
 Generated project files
 ~~~~~~~~~~~~~~~~~~~~~~~

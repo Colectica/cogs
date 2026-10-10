@@ -170,6 +170,22 @@ unchanged. Validation reports ``COGS-VAL-PROP-008`` when two distinct source
 names would collapse to one RDF term; rename one source property deliberately
 before publishing rather than treating the terms as aliases.
 
+Ordered RDF serialization now adds ``<camelCaseProperty>List`` companions
+automatically for ``Ordered=true``. Existing membership predicates remain,
+while the RDF collection preserves order and duplicate occurrences. An empty
+ordered collection points to ``rdf:nil``. Update ordered consumers to follow
+the companion rather than infer sequence from triple or query-result order.
+``COGS-VAL-PROP-009`` rejects a model predicate occupying a required companion
+IRI; resolve that naming conflict explicitly.
+
+The OWL publisher emits both ``<slug>.ttl`` and ``<slug>.context.jsonld``.
+RDF/OWL and JSON-LD are first-class serialization outputs, not projections.
+Only OWL generates the context, and it describes RDF data rather than ordinary
+COGS JSON. Contexts do not derive membership triples from lists; full RDF
+instances retain both. See :doc:`/technical-guide/generation/owl` for datatype
+tags, list syntax, occurrence metadata, and the existing authority exceptions.
+No CSV rewrite is needed for this addition.
+
 Verification
 ------------
 

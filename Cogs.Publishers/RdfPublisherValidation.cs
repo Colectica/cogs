@@ -8,7 +8,7 @@ using System.Linq;
 
 namespace Cogs.Publishers;
 
-/// <summary>Publisher-level guards for directly constructed RDF projections.</summary>
+/// <summary>Publisher-level guards for directly constructed RDF-capable models.</summary>
 internal static class RdfPublisherValidation
 {
     internal static IReadOnlyList<CogsError> ValidatePropertyTermCollisions(
@@ -17,28 +17,7 @@ internal static class RdfPublisherValidation
         string publisherName)
     {
         ArgumentNullException.ThrowIfNull(model);
-
-        var uses = new List<PropertyUse>();
-        foreach (Property property in model.Identification)
-        {
-            uses.Add(new PropertyUse(
-                "Identification",
-                property,
-                model.SourceDirectory,
-                $"Identification.{property.Name}"));
-        }
-
-        foreach (DataType owner in model.AllDataTypes.OrderBy(type => type.Name, StringComparer.Ordinal))
-        {
-            foreach (Property property in owner.Properties)
-            {
-                uses.Add(new PropertyUse(
-                    owner.Name,
-                    property,
-                    owner.Path,
-                    $"/{(owner is ItemType ? "ItemTypes" : "CompositeTypes")}/{owner.Name}/Properties/{property.Name}"));
-            }
-        }
+        List<PropertyUse> uses = GetPropertyUses(model);
 
         var diagnostics = new List<CogsError>();
         foreach (PropertyUse use in uses)
@@ -87,6 +66,39 @@ internal static class RdfPublisherValidation
         }
 
         return diagnostics;
+    }
+
+    internal static IReadOnlyList<CogsError> ValidateOrderedCompanionCollisions(
+        CogsModel model, string diagnosticCode, string publisherName)
+    {
+        List<PropertyUse> uses = GetPropertyUses(model)
+            .Where(use => CogsRdfNaming.TryToPropertyLocalName(use.Property.Name, out _)).ToList();
+        var diagnostics = new List<CogsError>();
+        foreach (PropertyUse ordered in uses.Where(use => use.Property.Ordered)
+                     .GroupBy(use => use.Property.Name, StringComparer.Ordinal)
+                     .Select(group => group.First()))
+        {
+            string companion = CogsRdfNaming.OrderedCompanionLocalName(ordered.Property.Name);
+            PropertyUse? conflict = uses.FirstOrDefault(use =>
+                CogsRdfNaming.ToPropertyLocalName(use.Property.Name) == companion);
+            if (conflict is null) continue;
+            diagnostics.Add(new CogsError(ErrorLevel.Error, diagnosticCode,
+                $"{publisherName} ordered property '{ordered.OwnerName}.{ordered.Property.Name}' requires RDF " +
+                $"companion term '{companion}', which conflicts with '{conflict.OwnerName}.{conflict.Property.Name}'.",
+                sourcePath: ordered.SourcePath, modelPath: ordered.ModelPath));
+        }
+        return diagnostics;
+    }
+
+    private static List<PropertyUse> GetPropertyUses(CogsModel model)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        var uses = model.Identification.Select(property => new PropertyUse(
+            "Identification", property, model.SourceDirectory, $"Identification.{property.Name}")).ToList();
+        foreach (DataType owner in model.AllDataTypes.OrderBy(type => type.Name, StringComparer.Ordinal))
+            uses.AddRange(owner.Properties.Select(property => new PropertyUse(owner.Name, property, owner.Path,
+                $"/{(owner is ItemType ? "ItemTypes" : "CompositeTypes")}/{owner.Name}/Properties/{property.Name}")));
+        return uses;
     }
 
     private sealed record PropertyUse(

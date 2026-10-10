@@ -9,6 +9,8 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using VDS.RDF;
 using VDS.RDF.Parsing;
 using VDS.RDF.Writing;
@@ -18,8 +20,8 @@ namespace Cogs.Publishers;
 /// <summary>
 /// Publishes the authoritative OWL ontology and class-semantics representation
 /// of a COGS model as W3C Turtle, with OWL2002 and OWL2003 as documented
-/// authority exceptions. Instance ordering and unsupported lexical constraints
-/// remain authoritative in JSON Schema and XSD.
+/// authority exceptions, together with the RDF/JSON-LD serialization context.
+/// RDF collections preserve ordered occurrences; OWL axioms do not validate lists.
 /// </summary>
 public sealed class OwlPublisher
 {
@@ -27,6 +29,8 @@ public sealed class OwlPublisher
     private const string Rdfs = NamespaceMapper.RDFS;
     private const string Owl = NamespaceMapper.OWL;
     private const string Xsd = NamespaceMapper.XMLSCHEMA;
+    private const string Schema = "https://schema.org/";
+    private const string CogsMetadata = "https://cogsdata.org/ns#";
     private static readonly string[] DeclaredXsdDatatypes =
     [
         "date", "duration", "gDay", "gMonth", "gMonthDay", "gYear", "gYearMonth", "time"
@@ -66,6 +70,7 @@ public sealed class OwlPublisher
             model,
             "OWL1002",
             "OWL"));
+        _diagnostics.AddRange(RdfPublisherValidation.ValidateOrderedCompanionCollisions(model, "OWL1003", "OWL"));
         if (_diagnostics.Any(diagnostic => diagnostic.Level >= ErrorLevel.Error))
         {
             LastResult = new PublicationResult(Array.Empty<string>(), _diagnostics);
@@ -93,8 +98,10 @@ public sealed class OwlPublisher
         _graph.NamespaceMap.AddNamespace("owl", UriFactory.Create(Owl));
         _graph.NamespaceMap.AddNamespace("xsd", UriFactory.Create(Xsd));
         _graph.NamespaceMap.AddNamespace("xml", UriFactory.Create("http://www.w3.org/XML/1998/namespace"));
+        _graph.NamespaceMap.AddNamespace("schema", UriFactory.Create(Schema));
+        _graph.NamespaceMap.AddNamespace("cogsmeta", UriFactory.Create(CogsMetadata));
         string targetPrefix = TargetNamespacePrefix;
-        if (targetPrefix is "rdf" or "rdfs" or "owl" or "xsd" or "xml")
+        if (_graph.NamespaceMap.HasNamespace(targetPrefix))
         {
             targetPrefix = "cogs";
             int suffix = 2;
@@ -108,7 +115,7 @@ public sealed class OwlPublisher
         }
         _graph.NamespaceMap.AddNamespace(targetPrefix, UriFactory.Create(_termBase));
 
-        _diagnostics.Add(new CogsError(ErrorLevel.Warning, "OWL2007",
+        _diagnostics.Add(new CogsError(ErrorLevel.Message, "OWL2007",
             "OWL datatype ranges do not enforce COGS decimal interchange exactness or native temporal precision; use COGS instance validation.",
             sourcePath: model.SourceDirectory));
         IUriNode ontology = UriNode(TargetNamespace);
@@ -116,6 +123,13 @@ public sealed class OwlPublisher
         AddOptionalLiteral(ontology, Owl + "versionInfo", VersionInfo);
         AddOptionalLiteral(ontology, Rdfs + "comment", Description);
         AddOptionalLiteral(ontology, Rdfs + "label", Title);
+
+        foreach (string annotation in new[]
+        {
+            Schema + "domainIncludes", Schema + "rangeIncludes", CogsMetadata + "orderedCompanionOf",
+            CogsMetadata + "minOccurs", CogsMetadata + "maxOccurs"
+        })
+            Assert(UriNode(annotation), Rdf + "type", UriNode(Owl + "AnnotationProperty"));
 
         DeclareNonBuiltInDatatypes();
         DeclareCogsDate();
@@ -129,11 +143,24 @@ public sealed class OwlPublisher
             .SelectMany(owner => owner.Properties.Select(property => (Owner: owner, Property: property)))
             .ToList();
 
-        foreach ((DataType Owner, Property Property) first in propertyUses
-                     .GroupBy(use => use.Property.Name, StringComparer.Ordinal)
-                     .Select(group => group.First()))
+        foreach (var uses in propertyUses.GroupBy(use => use.Property.Name, StringComparer.Ordinal))
         {
+            var first = uses.First();
             DeclareSharedProperty(first.Property);
+            IUriNode member = PropertyNode(first.Property);
+            Assert(member, Schema + "rangeIncludes", BaseRange(first.Property, IsObjectProperty(first.Property)));
+            foreach (var use in uses)
+                Assert(member, Schema + "domainIncludes", Term(use.Owner.Name));
+            if (uses.Any(use => use.Property.Ordered))
+            {
+                IUriNode companion = CompanionNode(first.Property);
+                Assert(companion, Rdf + "type", UriNode(Owl + "ObjectProperty"));
+                Assert(companion, Rdfs + "label", _graph.CreateLiteralNode(first.Property.Name + " (ordered list)", "en"));
+                Assert(companion, CogsMetadata + "orderedCompanionOf", member);
+                Assert(companion, Schema + "rangeIncludes", BaseRange(first.Property, IsObjectProperty(first.Property)));
+                foreach (var use in uses.Where(use => use.Property.Ordered))
+                    Assert(companion, Schema + "domainIncludes", Term(use.Owner.Name));
+            }
         }
 
         foreach (DataType owner in model.AllDataTypes.OrderBy(type => type.Name, StringComparer.Ordinal))
@@ -167,6 +194,38 @@ public sealed class OwlPublisher
             .Replace("\r\n", "\n", StringComparison.Ordinal)
             .Replace('\r', '\n');
         File.WriteAllText(output, turtle, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        WriteJsonLdContext(propertyUses.Select(use => use.Property), targetDirectory);
+    }
+
+    private void WriteJsonLdContext(IEnumerable<Property> propertyUses, string targetDirectory)
+    {
+        var context = new JsonObject { ["@version"] = 1.1, ["@vocab"] = _termBase };
+        foreach (var uses in propertyUses.GroupBy(property => property.Name, StringComparer.Ordinal)
+                     .OrderBy(group => CogsRdfNaming.ToPropertyLocalName(group.Key), StringComparer.Ordinal))
+        {
+            Property property = uses.First();
+            JsonObject member = ContextTerm(property, ordered: false);
+            context.Add(CogsRdfNaming.ToPropertyLocalName(property.Name), member);
+            if (uses.Any(use => use.Ordered))
+                context.Add(CogsRdfNaming.OrderedCompanionLocalName(property.Name), ContextTerm(property, ordered: true));
+        }
+        string json = new JsonObject { ["@context"] = context }.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(Path.Combine(targetDirectory, _model.Settings.Slug + ".context.jsonld"),
+            json.Replace("\r\n", "\n", StringComparison.Ordinal) + "\n", new UTF8Encoding(false));
+    }
+
+    private JsonObject ContextTerm(Property property, bool ordered)
+    {
+        var term = new JsonObject
+        {
+            ["@id"] = ordered ? CogsRdfNaming.OrderedCompanionIri(TargetNamespace, property.Name)
+                : CogsRdfNaming.PropertyIri(TargetNamespace, property.Name)
+        };
+        if (ordered) term.Add("@container", "@list");
+        if (IsObjectProperty(property)) term.Add("@type", "@id");
+        else if (property.DataTypeName is not ("langString" or "cogsDate"))
+            term.Add("@type", GetDatatypeUri(property.DataTypeName));
+        return term;
     }
 
     private void DeclareNonBuiltInDatatypes()
@@ -220,10 +279,10 @@ public sealed class OwlPublisher
 
         if (type.IsAbstract)
         {
-            Warn("OWL2003",
+            Report("OWL2003",
                 $"OWL cannot enforce that abstract COGS type '{type.Name}' has no direct instances.",
                 type,
-                $"/{Kind(type)}/{type.Name}");
+                $"/{Kind(type)}/{type.Name}", ErrorLevel.Message);
         }
     }
 
@@ -246,20 +305,16 @@ public sealed class OwlPublisher
             ? ObjectRange(property)
             : DatatypeRange(owner, property);
         AddRangeRestriction(owner, property, propertyNode, range);
-        // Anonymous OWL data ranges are syntax-tree nodes in the RDF mapping;
-        // they cannot be shared between the range axiom and a qualified
-        // cardinality expression. Build a second structurally equivalent tree.
-        INode cardinalityRange = !objectProperty && range is IBlankNode
-            ? DatatypeRange(owner, property)
-            : range;
-        AddCardinalityRestriction(owner, property, propertyNode, cardinalityRange, objectProperty);
+        AddCardinalityRestriction(owner, property, propertyNode, range, objectProperty);
 
         if (property.Ordered)
         {
-            Warn("OWL2001",
-                $"OWL cannot preserve the ordering of '{owner.Name}.{property.Name}'.",
+            AddOrderedCompanionRestriction(owner, property);
+            Report("OWL2001",
+                $"RDF preserves the ordered occurrences of '{owner.Name}.{property.Name}' through its list companion; " +
+                "OWL axioms cannot enforce list structure, occurrence counts, or agreement with membership triples.",
                 owner,
-                $"/{Kind(owner)}/{owner.Name}/Properties/{property.Name}");
+                $"/{Kind(owner)}/{owner.Name}/Properties/{property.Name}", ErrorLevel.Message);
         }
 
         if (property.DataType is not null
@@ -267,10 +322,10 @@ public sealed class OwlPublisher
             && !CogsTypeSystem.AllowsSubtypes(property)
             && property.DataType.ChildTypes.Any())
         {
-            Warn("OWL2002",
+            Report("OWL2002",
                 $"OWL class ranges cannot enforce the property-local subtype exclusion on '{owner.Name}.{property.Name}'.",
                 owner,
-                $"/{Kind(owner)}/{owner.Name}/Properties/{property.Name}");
+                $"/{Kind(owner)}/{owner.Name}/Properties/{property.Name}", ErrorLevel.Message);
         }
     }
 
@@ -296,6 +351,8 @@ public sealed class OwlPublisher
         bool objectProperty)
     {
         BigInteger minimum = BigInteger.Parse(property.MinCardinality, CultureInfo.InvariantCulture);
+        // Membership triples and OWL property values are sets, not occurrence lists.
+        if (property.Ordered && minimum > 1) minimum = BigInteger.One;
         BigInteger? maximum = property.MaxCardinality == "n"
             ? null
             : BigInteger.Parse(property.MaxCardinality, CultureInfo.InvariantCulture);
@@ -304,6 +361,11 @@ public sealed class OwlPublisher
         {
             return;
         }
+
+        // Only construct a cardinality data-range tree when a restriction will
+        // actually use it. Orphan facet nodes are not valid OWL syntax trees.
+        // Anonymous data ranges cannot be shared between separate OWL axioms.
+        if (!objectProperty && range is IBlankNode) range = DatatypeRange(owner, property);
 
         IBlankNode restriction = BlankNode();
         Assert(Term(owner.Name), Rdfs + "subClassOf", restriction);
@@ -326,6 +388,17 @@ public sealed class OwlPublisher
         {
             Assert(restriction, Owl + "maxQualifiedCardinality", CardinalityLiteral(maximum.Value));
         }
+    }
+
+    private void AddOrderedCompanionRestriction(DataType owner, Property property)
+    {
+        IBlankNode restriction = BlankNode();
+        Assert(Term(owner.Name), Rdfs + "subClassOf", restriction);
+        Assert(restriction, Rdf + "type", UriNode(Owl + "Restriction"));
+        Assert(restriction, Owl + "onProperty", CompanionNode(property));
+        Assert(restriction, Owl + "cardinality", CardinalityLiteral(BigInteger.One));
+        Assert(restriction, CogsMetadata + "minOccurs", _graph.CreateLiteralNode(property.MinCardinality));
+        Assert(restriction, CogsMetadata + "maxOccurs", _graph.CreateLiteralNode(property.MaxCardinality));
     }
 
     private void DeclareIdentityKey(DataType itemRoot)
@@ -375,7 +448,7 @@ public sealed class OwlPublisher
 
         if (property.DataTypeName == "langString")
         {
-            Warn("OWL2004",
+            Report("OWL2004",
                 $"OWL cannot portably express COGS lexical facets on rdf:langString property '{owner.Name}.{property.Name}'.",
                 owner,
                 $"/{Kind(owner)}/{owner.Name}/Properties/{property.Name}");
@@ -400,7 +473,7 @@ public sealed class OwlPublisher
             && DeclaredXsdDatatypes.Contains(property.DataTypeName, StringComparer.Ordinal);
         if (omitUnsupportedBounds)
         {
-            Warn("OWL2006",
+            Report("OWL2006",
                 $"OWL 2's datatype map cannot express bounds on COGS {property.DataTypeName} property '{owner.Name}.{property.Name}'; the bounds were omitted.",
                 owner,
                 $"/{Kind(owner)}/{owner.Name}/Properties/{property.Name}");
@@ -483,6 +556,8 @@ public sealed class OwlPublisher
 
     private IUriNode PropertyNode(Property property) =>
         UriNode(CogsRdfNaming.PropertyIri(TargetNamespace, property.Name));
+    private IUriNode CompanionNode(Property property) =>
+        UriNode(CogsRdfNaming.OrderedCompanionIri(TargetNamespace, property.Name));
     private IUriNode Term(string localName) => UriNode(_termBase + localName);
     private IUriNode UriNode(string uri) => _graph.CreateUriNode(UriFactory.Create(uri));
     private IBlankNode BlankNode() => _graph.CreateBlankNode();
@@ -502,11 +577,12 @@ public sealed class OwlPublisher
         }
     }
 
-    private void Warn(string code, string message, DataType type, string modelPath)
+    private void Report(string code, string message, DataType type, string modelPath,
+        ErrorLevel level = ErrorLevel.Warning)
     {
         if (_diagnostics.Any(diagnostic => diagnostic.Code == code && diagnostic.ModelPath == modelPath)) return;
         _diagnostics.Add(new CogsError(
-            ErrorLevel.Warning,
+            level,
             code,
             message,
             sourcePath: type.Path,

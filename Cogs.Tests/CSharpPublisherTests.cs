@@ -19,6 +19,84 @@ namespace Cogs.Tests;
 
 public sealed class CSharpPublisherTests
 {
+    [Fact]
+    public void OrderedRdfHelperPreservesDuplicatesEmptyListsAndRejectsConflictingGraphs()
+    {
+        const string member = "urn:member", companion = "urn:memberList";
+        var graph = new Graph();
+        INode subject = graph.CreateUriNode(UriFactory.Create("urn:subject"));
+        INode a = graph.CreateLiteralNode("a"), b = graph.CreateLiteralNode("b");
+        CogsRdfCodec.WriteOrderedProperty(graph, subject, member, companion, [a, b, a]);
+        INode head = Assert.Single(graph.GetTriplesWithSubjectPredicate(subject,
+            graph.CreateUriNode(UriFactory.Create(companion)))).Object;
+        Assert.Equal(new[] { a, b, a }, graph.GetListItems(head));
+        Assert.Equal(2, graph.GetTriplesWithSubjectPredicate(subject, graph.CreateUriNode(UriFactory.Create(member))).Count());
+        int triples = graph.Triples.Count;
+        CogsRdfCodec.WriteOrderedProperty(graph, subject, member, companion, [a, b, a]);
+        Assert.Equal(triples, graph.Triples.Count);
+        Assert.Throws<InvalidOperationException>(() => CogsRdfCodec.WriteOrderedProperty(graph, subject, member, companion, [b, a]));
+        Assert.Equal(triples, graph.Triples.Count);
+
+        CogsRdfCodec.WriteOrderedProperty(graph, subject, "urn:empty", "urn:emptyList", []);
+        Assert.Equal(graph.CreateUriNode(UriFactory.Create(NamespaceMapper.RDF + "nil")), Assert.Single(
+            graph.GetTriplesWithSubjectPredicate(subject, graph.CreateUriNode(UriFactory.Create("urn:emptyList")))).Object);
+    }
+
+    [Theory]
+    [InlineData("multiple")]
+    [InlineData("cycle")]
+    [InlineData("missing-rest")]
+    [InlineData("multiple-first")]
+    [InlineData("literal-rest")]
+    [InlineData("bad-nil")]
+    [InlineData("extra-membership")]
+    public void OrderedRdfHelperRejectsMalformedExistingCollections(string mutation)
+    {
+        var graph = new Graph();
+        INode subject = graph.CreateUriNode(UriFactory.Create("urn:subject"));
+        IUriNode companion = graph.CreateUriNode(UriFactory.Create("urn:valuesList"));
+        IUriNode first = graph.CreateUriNode(UriFactory.Create(NamespaceMapper.RDF + "first"));
+        IUriNode rest = graph.CreateUriNode(UriFactory.Create(NamespaceMapper.RDF + "rest"));
+        INode value = graph.CreateLiteralNode("value");
+        INode head = graph.AssertList([value]);
+        graph.Assert(new Triple(subject, companion, head));
+        if (mutation == "multiple") graph.Assert(new Triple(subject, companion, graph.CreateBlankNode()));
+        if (mutation is "cycle" or "missing-rest" or "literal-rest")
+        {
+            graph.Retract(graph.GetTriplesWithSubjectPredicate(head, rest).ToArray());
+            if (mutation != "missing-rest") graph.Assert(new Triple(head, rest, mutation == "cycle" ? head : value));
+        }
+        if (mutation == "multiple-first") graph.Assert(new Triple(head, first, graph.CreateLiteralNode("extra")));
+        if (mutation == "bad-nil") graph.Assert(new Triple(graph.CreateUriNode(UriFactory.Create(NamespaceMapper.RDF + "nil")), first, value));
+        if (mutation == "extra-membership") graph.Assert(new Triple(subject,
+            graph.CreateUriNode(UriFactory.Create("urn:values")), graph.CreateLiteralNode("extra")));
+        int triples = graph.Triples.Count;
+        Assert.Throws<InvalidOperationException>(() => CogsRdfCodec.WriteOrderedProperty(
+            graph, subject, "urn:values", "urn:valuesList", [value]));
+        Assert.Equal(triples, graph.Triples.Count);
+    }
+
+    [Fact]
+    public void GeneratedOrderedRdfPackageCompilesAndPreservesAllValueKindsAndInheritance()
+    {
+        WithTemporaryDirectory(parent =>
+        {
+            CogsModel model = BuildRdfNullCheckModel(ordered: true);
+            string target = Path.Combine(parent, "output");
+            new CSharpPublisher(model, target) { IsNullableEnabled = true, WriteCsproj = true }.Publish();
+            Assert.Empty(Directory.EnumerateFiles(target, "*.context.jsonld"));
+            string projectPath = Path.Combine(target, "Test.Generated.csproj");
+            XDocument project = XDocument.Load(projectPath);
+            project.Root.Element("PropertyGroup").Add(new XElement("OutputType", "Exe"));
+            project.Save(projectPath);
+            string cases = string.Join("," + Environment.NewLine, RdfValueTypes.Select(x => (x.CogsType, x.Suffix))
+                .Concat(RdfReferencePrimitives).Select(x => $"({JsonSerializer.Serialize(x.Suffix)}, {JsonSerializer.Serialize(x.CogsType)})"));
+            File.WriteAllText(Path.Combine(target, "Program.cs"), OrderedRdfProbe.Replace("__CASES__", cases, StringComparison.Ordinal));
+            RunDotNet(target, "build", projectPath, "--configuration", "Release", "--verbosity", "minimal", "-p:WarningsAsErrors=CS0472");
+            RunDotNet(target, Path.Combine(target, "bin", "Release", "net10.0", "Test.Generated.dll"));
+        });
+    }
+
     private static readonly (string CogsType, string ClrType, string Suffix)[] RdfValueTypes =
     {
         ("boolean", "bool", "Boolean"),
@@ -40,7 +118,7 @@ public sealed class CSharpPublisherTests
 
     private static readonly (string CogsType, string Suffix)[] RdfReferencePrimitives =
     {
-        ("string", "String"), ("anyURI", "Uri"), ("gYear", "Year"), ("gYearMonth", "YearMonth"),
+        ("string", "String"), ("anyURI", "Uri"), ("language", "Language"), ("gYear", "Year"), ("gYearMonth", "YearMonth"),
         ("gMonthDay", "MonthDay"), ("gDay", "Day"), ("gMonth", "Month"),
         ("langString", "LangString"), ("cogsDate", "CogsDate"),
     };
@@ -494,7 +572,7 @@ public sealed class CSharpPublisherTests
         Assert.Equal("value", language.Value);
     }
 
-    private static CogsModel BuildRdfNullCheckModel() => BuildModel(dto =>
+    private static CogsModel BuildRdfNullCheckModel(bool ordered = false) => BuildModel(dto =>
     {
         var value = dto.ReusableDataTypes.Single(x => x.Name == "ValueObject");
         value.Properties.Clear();
@@ -506,6 +584,14 @@ public sealed class CSharpPublisherTests
         value.Properties.Add(DtoProperty("NestedValues", "ValueObject", maximum: "n"));
         value.Properties.Add(DtoProperty("RelatedItem", "DerivedItem"));
         value.Properties.Add(DtoProperty("RelatedItems", "DerivedItem", maximum: "n"));
+        if (ordered)
+        {
+            foreach (var property in value.Properties)
+                if (property.MaxCardinality != "1") property.Ordered = "true";
+            var names = DtoProperty("Names", "string", maximum: "n");
+            names.Ordered = "true";
+            dto.ItemTypes.Single(type => type.Name == "BaseItem").Properties.Add(names);
+        }
 
         void AddProperties(string type, string suffix)
         {
@@ -627,6 +713,73 @@ public sealed class CSharpPublisherTests
             "date" => new DateOnly(alternate ? 2024 : 1, 1, 1),
             "time" => new TimeOnly(alternate ? 123450 : 0),
             _ => (alternate ? 9007199254740991L : 1L) * (type is "negativeInteger" or "nonPositiveInteger" ? -1 : 1),
+        };
+        """;
+
+    private const string OrderedRdfProbe = """
+        using System;
+        using System.Collections;
+        using System.Linq;
+        using Cogs.SimpleTypes;
+        using Test.Generated;
+        using VDS.RDF;
+        const string ns = "https://example.org/test#";
+        var cases = new (string Suffix, string Type)[] { __CASES__ };
+        var value = NewValue();
+        foreach (var (suffix, type) in cases)
+        {
+            var list = (IList)typeof(ValueObject).GetProperty(suffix + "Values")!.GetValue(value)!;
+            list.Add(Sample(type)); list.Add(Sample(type));
+        }
+        var related = new DerivedItem { ID = "related", AgencyURI = "urn:agency" };
+        value.RelatedItems.AddRange([related, related]);
+        value.NestedValues.Add(NewValue());
+        var graph = new Graph();
+        INode subject = value.AddTriples(graph);
+        foreach (var (suffix, type) in cases)
+        {
+            string local = char.ToLowerInvariant(suffix[0]) + suffix[1..] + "Values";
+            Check(subject, local, [CogsPrimitiveCodec.CreateRdfLiteral(graph, Sample(type), type),
+                CogsPrimitiveCodec.CreateRdfLiteral(graph, Sample(type), type)]);
+        }
+        INode relatedNode = graph.CreateUriNode(UriFactory.Create(RdfUriFactory.GetUri(related)));
+        Check(subject, "relatedItems", [relatedNode, relatedNode]);
+        INode nested = graph.GetTriplesWithSubjectPredicate(subject, Node("nestedValues")).Single().Object;
+        Check(subject, "nestedValues", [nested]);
+        Check(nested, "nestedValues", []);
+        related.Names.AddRange(["alpha", "beta", "alpha"]);
+        var container = new ItemContainer(); container.Items.Add(related);
+        graph = (Graph)container.MakeRdfGraph();
+        Check(relatedNode, "names", [graph.CreateLiteralNode("alpha"), graph.CreateLiteralNode("beta"), graph.CreateLiteralNode("alpha")]);
+        Console.WriteLine("PASS ordered RDF: all primitives, duplicates, empty lists, items, nested composites, inherited fields");
+
+        IUriNode Node(string local) => graph.CreateUriNode(UriFactory.Create(ns + local));
+        ValueObject NewValue()
+        {
+            var result = new ValueObject();
+            foreach (var (suffix, type) in cases)
+                typeof(ValueObject).GetProperty("Required" + suffix)!.SetValue(result, Sample(type));
+            return result;
+        }
+        void Check(INode owner, string local, INode[] expected)
+        {
+            INode head = graph.GetTriplesWithSubjectPredicate(owner, Node(local + "List")).Single().Object;
+            if (!graph.GetListItems(head).SequenceEqual(expected)) throw new Exception("Wrong ordered values: " + local);
+            var projected = graph.GetTriplesWithSubjectPredicate(owner, Node(local)).Select(t => t.Object).ToHashSet();
+            if (!projected.SetEquals(expected)) throw new Exception("Wrong membership projection: " + local);
+        }
+        object Sample(string type) => type switch
+        {
+            "string" => "quoted \"Unicode é\"\ntext", "anyURI" => "relative/path", "language" => "en-GB", "boolean" => false,
+            "int" => 0, "long" => 9007199254740991L, "unsignedLong" => 9007199254740991UL,
+            "nonPositiveInteger" => -1L, "negativeInteger" => -1L, "nonNegativeInteger" => 0L, "positiveInteger" => 1L,
+            "float" => 0.5f, "double" => 0.25d, "decimal" => 123.125m,
+            "dateTime" => DateTimeOffset.UnixEpoch, "date" => new DateOnly(2024, 2, 29),
+            "time" => new TimeOnly(12, 30), "duration" => TimeSpan.FromMilliseconds(-123),
+            "gYear" => new GYear(-2147483648, "Z"), "gYearMonth" => new GYearMonth(2147483647, 2, "+14:00"),
+            "gMonthDay" => new GMonthDay(2, 29), "gDay" => new GDay(31), "gMonth" => new GMonth(12),
+            "langString" => new LangString("en", "hello"), "cogsDate" => new CogsDate(new GYear(2024, "Z")),
+            _ => throw new Exception(type)
         };
         """;
 

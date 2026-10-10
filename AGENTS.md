@@ -119,8 +119,8 @@ use the same validated model-builder pipeline. Publishers must not parse CSV,
 fabricate unknown types, or mutate the shared model. Projection-specific
 ordered-slot synthesis must not change the canonical model.
 
-CLI exit codes are `0` for success/warnings, `2` for usage errors, `100` for
-modeled input/instance/publication errors, and `101` for unexpected internal
+CLI exit codes are `0` for success/information/warnings, `2` for usage errors,
+`100` for modeled input/instance/publication errors, and `101` for unexpected internal
 failures. Tests should assert both diagnostics and the appropriate exit code.
 
 The checked-in
@@ -302,12 +302,15 @@ COGS checks for primitive lexical domains, calendar-year bounds, duplicate
 definitions, and JSON extension metadata.
 
 JSON Schema, XSD, C#, Python, and TypeScript are authoritative instance
-targets. UML/XMI is the authoritative structural model output, with
+targets. JSON, XML, and RDF/JSON-LD are first-class authoritative serialization
+families; RDF/OWL and JSON-LD are not projections. Generated C# also serializes
+objects into RDF graphs. UML/XMI is the authoritative structural model output, with
 ``PROJ2601`` as its sole semantic exception: an ordinary UML association cannot
 enforce a property-local exclusion of every descendant of its declared base
 type. UML is not an instance-validation schema. OWL/RDF is emitted as UTF-8
 W3C Turtle in ``<Settings.Slug>.ttl`` and is the authoritative ontology and
-class-semantics output, with ``OWL2002`` and ``OWL2003`` as its authority
+class-semantics output, accompanied only in OWL output by
+``<Settings.Slug>.context.jsonld``, with ``OWL2002`` and ``OWL2003`` as its authority
 exceptions for property-local subtype exclusion and abstract direct instances.
 
 Every RDF-capable publisher uses ``CogsRdfNaming``. Class, shape, range, and
@@ -358,8 +361,34 @@ collisions; generated C#, DCTAP, and LinkML use ``CSH1001``, ``DCT1001``, and
 ``cogsDate`` is an OWL datatype union and generated RDF instances emit a typed
 literal using its active XSD arm. Other primitive RDF values likewise use full
 XSD datatype IRIs; ``langString`` remains language tagged.
-Ordering and unsupported lexical facets remain outside OWL's
-authority and in the JSON Schema/XSD instance contract. LinkML, DCTAP, GraphQL,
+Ordered RDF properties preserve the direct member predicate and a camelCase
+``List`` companion whose native RDF collection retains sequence and duplicates.
+Empty ordered collections point to ``rdf:nil``. Ordering is declaration-local.
+Use shared ``CogsRdfNaming`` companion construction, and reject generated-term
+collisions with ``COGS-VAL-PROP-009`` and direct ``OWL1003``/``CSH1002`` guards.
+Generated C# creates each occurrence node once for membership and list output;
+reuse identical existing collections but reject malformed/conflicting heads.
+Export changed objects to fresh graphs, not through an in-place update contract.
+The companion is an object property, never a subproperty of the membership
+predicate and never logically ranged to ``rdf:List``. ``schema:domainIncludes``
+and ``schema:rangeIncludes`` are locally declared annotation properties;
+``https://cogsdata.org/ns#orderedCompanionOf`` links the pair. Class-local
+one-head restrictions carry ``minOccurs``/``maxOccurs`` lexical annotations.
+Membership bounds count distinct values: use minimum zero or one and the finite
+maximum for ordered declarations. ``OWL2001`` describes the lack of logical
+list/occurrence/consistency enforcement, not discarded order.
+`OWL2001` and `OWL2002` use informational `ErrorLevel.Message`, not warnings.
+Keep all property-level source locations in `PublicationResult.Diagnostics`;
+the CLI prints one `Message:` summary per code, in code order, with the
+affected-property count on stdout. Write complete informational lines to
+stdout and complete warning/error lines to stderr. `OWL2003` and `OWL2007`
+are also informational, but remain individual messages rather than summaries.
+Do not summarize other codes; `OWL2004`, `OWL2005`, and `OWL2006` remain warnings.
+Only OWL emits the JSON-LD 1.1 context with typed member terms and
+``@container: "@list"`` companions. It describes RDF data, not flat COGS JSON,
+and does not derive membership triples or add an instance-writer/importer API.
+Compare contexts byte-for-byte and RDF graphs semantically. Unsupported lexical
+facets remain in the JSON Schema/XSD instance contract. LinkML, DCTAP, GraphQL,
 DOT, and Sphinx are projections; they must disclose preserved, approximated,
 unsupported, and documentation-only features and never silently imply wire
 equivalence. ShEx and SHACL are not current targets.

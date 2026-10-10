@@ -88,6 +88,96 @@ public sealed class DiagnosticContractTests
         Assert.Contains("Internal error: unexpected failure", diagnostics, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(3)]
+    public void CliSummarizesOwlInformationWithoutChangingDetailedResults(int count)
+    {
+        CogsError[] detailed = Enumerable.Range(0, count).SelectMany(index => new[]
+        {
+            new CogsError(ErrorLevel.Message, "OWL2002", "Exact-type detail", $"owner-{index}.csv",
+                line: index + 1, modelPath: $"Owner{index}.Exact"),
+            new CogsError(ErrorLevel.Message, "OWL2001", "Ordered detail", $"owner-{index}.csv",
+                line: index + 2, modelPath: $"Owner{index}.Ordered")
+        }).ToArray();
+        var result = new PublicationResult(["model.ttl"], detailed);
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+        WriteDiagnostics(result.Diagnostics, output, error);
+
+        Assert.True(result.Success);
+        Assert.Equal(count * 2, result.Diagnostics.Count);
+        foreach (CogsError diagnostic in detailed)
+        {
+            Assert.Contains(result.Diagnostics, current => ReferenceEquals(current, diagnostic));
+            Assert.NotNull(diagnostic.SourcePath);
+            Assert.NotNull(diagnostic.Line);
+            Assert.NotNull(diagnostic.ModelPath);
+        }
+        string[] lines = output.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal(count == 0 ? 0 : 2, lines.Length);
+        if (count > 0)
+        {
+            string declarations = count == 1 ? "declaration" : "declarations";
+            Assert.StartsWith($"Message: OWL2001: {count} affected property {declarations}.", lines[0]);
+            Assert.Contains("RDF preserves order and duplicate occurrences", lines[0]);
+            Assert.Contains("list structure, occurrence counts, or membership consistency", lines[0]);
+            Assert.StartsWith($"Message: OWL2002: {count} affected property {declarations}.", lines[1]);
+            Assert.Contains("OWL ranges admit subclasses", lines[1]);
+            Assert.Contains("JSON Schema, XSD, and generated runtimes retain exact-type enforcement", lines[1]);
+        }
+        Assert.DoesNotContain("owner-", output.ToString());
+        Assert.Equal(string.Empty, error.ToString());
+        using var reversedOutput = new StringWriter();
+        using var reversedError = new StringWriter();
+        WriteDiagnostics(detailed.Reverse(), reversedOutput, reversedError);
+        Assert.Equal(output.ToString(), reversedOutput.ToString());
+        Assert.Equal(error.ToString(), reversedError.ToString());
+    }
+
+    [Fact]
+    public void CliKeepsOtherDiagnosticsIndividualAndRoutesCompleteLines()
+    {
+        CogsError[] diagnostics =
+        [
+            new(ErrorLevel.Message, "OTHER-INFO", "Last information", "z.csv"),
+            new(ErrorLevel.Warning, "OWL2001", "First warning", "b.csv"),
+            new(ErrorLevel.Error, "OWL2002", "Modeled error", "d.csv"),
+            new(ErrorLevel.Message, "OTHER-INFO", "First information", "a.csv"),
+            new(ErrorLevel.Warning, "OWL2004", "Unchanged warning", "e.csv"),
+            new(ErrorLevel.Message, "OWL2003", "Second abstract type", "g.csv"),
+            new(ErrorLevel.Message, "OWL2007", "Native scalar boundary", "h.csv"),
+            new(ErrorLevel.Message, "OWL2003", "First abstract type", "f.csv"),
+            new(ErrorLevel.Warning, "OWL2001", "Second warning", "c.csv")
+        ];
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+        var exception = Assert.Throws<TargetInvocationException>(() => WriteDiagnostics(diagnostics, output, error));
+        Assert.IsType<CogsCommandException>(exception.InnerException);
+        Assert.Equal(
+            "Message: a.csv: OTHER-INFO: First information" + Environment.NewLine +
+            "Message: f.csv: OWL2003: First abstract type" + Environment.NewLine +
+            "Message: g.csv: OWL2003: Second abstract type" + Environment.NewLine +
+            "Message: h.csv: OWL2007: Native scalar boundary" + Environment.NewLine +
+            "Message: z.csv: OTHER-INFO: Last information" + Environment.NewLine,
+            output.ToString());
+        Assert.Equal(
+            "Warning: b.csv: OWL2001: First warning" + Environment.NewLine +
+            "Warning: c.csv: OWL2001: Second warning" + Environment.NewLine +
+            "Error: d.csv: OWL2002: Modeled error" + Environment.NewLine +
+            "Warning: e.csv: OWL2004: Unchanged warning" + Environment.NewLine,
+            error.ToString());
+    }
+
+    private static void WriteDiagnostics(IEnumerable<CogsError> diagnostics, TextWriter output, TextWriter error)
+    {
+        Type program = typeof(CliExecutionPolicy).Assembly.GetType("Cogs.Console.Program", throwOnError: true);
+        MethodInfo formatter = program.GetMethod("WriteDiagnostics", BindingFlags.Static | BindingFlags.NonPublic);
+        Assert.NotNull(formatter);
+        formatter.Invoke(null, [diagnostics, output, error]);
+    }
+
     private static CogsError Error(string path, int line, int column, string code) =>
         new(ErrorLevel.Warning, code, code, path, line, column);
 

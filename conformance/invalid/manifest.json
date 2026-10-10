@@ -1,6 +1,12 @@
 {
   "cases": [
     {
+      "id": "ordered-rdf-companion-collision",
+      "description": "An ordered property's generated List predicate conflicts with a model predicate.",
+      "mutation": { "kind": "replaceText", "path": "ItemTypes/Record/Record.csv", "old": "LanguageTag,language", "new": "ElapsedHistoryList,language" },
+      "expectedCode": "COGS-VAL-PROP-009"
+    },
+    {
       "id": "missing-cogs-version",
       "description": "The required CogsVersion setting is absent.",
       "mutation": { "kind": "removeLine", "path": "Settings/Settings.csv", "value": "CogsVersion,2.0" },

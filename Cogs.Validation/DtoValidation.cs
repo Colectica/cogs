@@ -379,6 +379,20 @@ namespace Cogs.Validation
                         currentPath);
                 }
             }
+
+            foreach (var ordered in namedUses
+                         .Where(candidate => CogsConventions.TryParseFlag(candidate.Use.Property.Ordered, out bool value) && value)
+                         .GroupBy(candidate => candidate.Use.Property.Name, StringComparer.Ordinal)
+                         .Select(group => group.First()))
+            {
+                string companion = CogsRdfNaming.OrderedCompanionLocalName(ordered.Use.Property.Name);
+                var conflict = namedUses.FirstOrDefault(candidate => candidate.RdfName == companion);
+                if (conflict.RdfName == null) continue;
+                string path = $"{ordered.Use.Owner}.{ordered.Use.Property.Name}";
+                Add(errors, ordered.Use.Property, "COGS-VAL-PROP-009",
+                    $"Ordered property '{path}' requires RDF companion term '{companion}', which conflicts with " +
+                    $"model property '{conflict.Use.Owner}.{conflict.Use.Property.Name}'.", path);
+            }
         }
 
         private static List<(string Owner, Property Property)> GetPropertyUses(

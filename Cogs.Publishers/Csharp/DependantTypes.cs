@@ -942,6 +942,53 @@ namespace __CogsGeneratedNamespace
             Prefix + Uri.EscapeDataString(identifiable.ReferenceId);
     }
 
+    /// <summary>RDF collection emission shared by generated ordered-property writers.</summary>
+    internal static class CogsRdfCodec
+    {
+        internal static void WriteOrderedProperty(IGraph graph, INode subject,
+            string memberIri, string companionIri, IReadOnlyList<INode> members)
+        {
+            IUriNode memberPredicate = graph.CreateUriNode(UriFactory.Create(memberIri));
+            IUriNode companionPredicate = graph.CreateUriNode(UriFactory.Create(companionIri));
+            INode[] heads = graph.GetTriplesWithSubjectPredicate(subject, companionPredicate)
+                .Select(triple => triple.Object).ToArray();
+            if (heads.Length > 1) throw new InvalidOperationException($"Multiple RDF collection heads for '{companionIri}'.");
+            if (heads.Length == 1 && !ReadList(graph, heads[0]).SequenceEqual(members))
+                throw new InvalidOperationException($"Conflicting RDF collection for '{companionIri}'; export changed objects into a fresh graph.");
+            var memberSet = new HashSet<INode>(members);
+            if (graph.GetTriplesWithSubjectPredicate(subject, memberPredicate).Any(triple => !memberSet.Contains(triple.Object)))
+                throw new InvalidOperationException($"Conflicting RDF membership values for '{memberIri}'.");
+
+            foreach (INode member in members) graph.Assert(new Triple(subject, memberPredicate, member));
+            if (heads.Length == 0)
+                graph.Assert(new Triple(subject, companionPredicate, graph.AssertList(members)));
+        }
+
+        private static IReadOnlyList<INode> ReadList(IGraph graph, INode head)
+        {
+            IUriNode first = graph.CreateUriNode(UriFactory.Create(NamespaceMapper.RDF + "first"));
+            IUriNode rest = graph.CreateUriNode(UriFactory.Create(NamespaceMapper.RDF + "rest"));
+            IUriNode nil = graph.CreateUriNode(UriFactory.Create(NamespaceMapper.RDF + "nil"));
+            var visited = new HashSet<INode>();
+            var members = new List<INode>();
+            INode current = head;
+            while (!current.Equals(nil))
+            {
+                if (current.NodeType is not (NodeType.Blank or NodeType.Uri) || !visited.Add(current))
+                    throw new InvalidOperationException("Malformed or cyclic RDF collection.");
+                Triple[] firsts = graph.GetTriplesWithSubjectPredicate(current, first).ToArray();
+                Triple[] rests = graph.GetTriplesWithSubjectPredicate(current, rest).ToArray();
+                if (firsts.Length != 1 || rests.Length != 1)
+                    throw new InvalidOperationException("RDF collection cells require exactly one rdf:first and rdf:rest.");
+                members.Add(firsts[0].Object);
+                current = rests[0].Object;
+            }
+            if (graph.GetTriplesWithSubjectPredicate(nil, first).Any() || graph.GetTriplesWithSubjectPredicate(nil, rest).Any())
+                throw new InvalidOperationException("Malformed RDF collection terminator.");
+            return members;
+        }
+    }
+
     [JsonConverter(typeof(ItemContainerJsonConverter))]
     public partial class ItemContainer
     {

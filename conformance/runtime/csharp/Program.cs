@@ -22,6 +22,7 @@ ItemContainer source = args[0] == "json"
     : ItemContainer.LoadXml(args[1]);
 Check(source);
 CheckNegatives(source);
+RdfProbe.Run(source);
 
 Check(ItemContainer.FromJson(source.ToJson()));
 Check(ItemContainer.FromXml(source.ToXml()));

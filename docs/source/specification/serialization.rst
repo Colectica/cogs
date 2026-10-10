@@ -1,10 +1,50 @@
-JSON and XML Serialization
-==========================
+JSON, XML, and RDF/JSON-LD Serialization
+===========================================
 
 The JSON and XML representations are two serializations of one semantic item
 container. A conforming round trip preserves values, concrete runtime types,
 list order, and logical reference identity. Textual byte-for-byte equality is
 not required.
+
+JSON, XML, and RDF/JSON-LD are first-class authoritative COGS serialization
+families. RDF/OWL and JSON-LD are not projection targets. OWL defines class
+and property semantics; Turtle and JSON-LD are encodings of the RDF graph.
+The OWL publisher produces the ontology and JSON-LD context, while generated
+C# exposes RDF graph serialization. This does not add RDF deserialization or
+reinterpret ordinary COGS JSON as JSON-LD.
+
+RDF ordered collections
+-----------------------
+
+An ``Ordered=true`` property MUST retain its direct camelCase membership
+predicate and a companion whose local name appends ``List``. The companion
+MUST have one head, including ``rdf:nil`` for an empty collection. Each cell
+has exactly one ``rdf:first`` and ``rdf:rest``; the chain is finite and ends
+at ``rdf:nil``. The sequence preserves duplicate occurrences. The direct
+membership objects are exactly the set of collection members.
+
+Ordering is declaration-local. A shared property may be ordered in one class
+and unordered in another. ``COGS-VAL-PROP-009`` rejects a companion term that
+collides with a model predicate. Companion predicates are object properties
+even when their members are literals; they are not subproperties of the
+membership predicate and have no logical ``rdf:List`` range.
+
+``schema:domainIncludes`` and ``schema:rangeIncludes`` describe expected owners
+and member types. They are annotations, not instance constraints. The COGS
+annotation ``https://cogsdata.org/ns#orderedCompanionOf`` links each companion
+to its membership predicate. Class-local companion restrictions require one
+head and carry ``minOccurs``/``maxOccurs`` annotations in that namespace with
+canonical lexical occurrence bounds. Membership cardinality axioms retain
+only sound distinct-value bounds: minimum zero or one and the finite maximum.
+OWL does not count duplicate occurrences or validate list consistency.
+
+The OWL publisher alone emits ``<slug>.context.jsonld``. Companion terms use
+``@container: "@list"``; item/composite terms use ``@type: "@id"``, and
+primitive terms retain their XSD datatypes. ``langString`` and ``cogsDate`` use
+explicit language or active-arm datatype tags. A context does not generate
+the direct membership triples from a list; a complete RDF instance includes
+both representations. See :doc:`/technical-guide/generation/owl` for examples
+and the existing ontology exceptions and lexical-validation boundaries.
 
 JSON contract
 -------------

@@ -1,3 +1,4 @@
+using Cogs.Common;
 using Cogs.Model;
 using Cogs.Publishers;
 using Cogs.Publishers.Csharp;
@@ -10,6 +11,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+using System.Text.Json.Nodes;
 using VDS.RDF;
 using VDS.RDF.Parsing;
 using Xunit;
@@ -19,6 +21,170 @@ namespace Cogs.Tests;
 
 public sealed class SemanticPublisherTests
 {
+    [Fact]
+    public void OwlOrderedCompanionsPreserveLocalSemanticsAndGenerateJsonLdContext()
+    {
+        CogsModel model = BuildModel();
+        DataType recipe = model.ReusableDataTypes.Single(type => type.Name == "Recipe");
+        Property parts = recipe.Properties.Single(property => property.Name == "Parts");
+        parts.MinCardinality = parts.MaxCardinality = "3";
+        recipe.Properties.Add(new Property
+        {
+            Name = "OrderedLabels", DataTypeName = "langString", DataType = recipe.Properties.Single(p => p.Name == "LocalizedName").DataType,
+            Ordered = true, MinCardinality = "0", MaxCardinality = "n"
+        });
+        recipe.Properties.Add(new Property
+        {
+            Name = "OrderedText", DataTypeName = "string", DataType = recipe.Properties.Single(p => p.Name == "Shade").DataType,
+            Ordered = true, MinCardinality = "0", MaxCardinality = "n"
+        });
+        recipe.Properties.Add(new Property
+        {
+            Name = "OrderedNumbers", DataTypeName = "long", DataType = new DataType { Name = "long", IsXmlPrimitive = true },
+            Ordered = true, MinCardinality = "0", MaxCardinality = "n"
+        });
+        model.ReusableDataTypes.Add(new DataType
+        {
+            Name = "Serving", Path = "CompositeTypes/Serving",
+            Properties = [new Property
+            {
+                Name = "Parts", DataTypeName = parts.DataTypeName, DataType = parts.DataType,
+                Ordered = false, MinCardinality = "0", MaxCardinality = "n"
+            }]
+        });
+        using var temporary = new TemporaryDirectory();
+        var publisher = CreateOwlPublisher(model, Path.Combine(temporary.Path, "owl"));
+        publisher.TargetNamespace = "https://example.test/rdf/";
+        PublicationResult result = publisher.PublishResult(model);
+        Assert.True(result.Success);
+        string contextPath = Path.Combine(publisher.TargetDirectory, "semantic.context.jsonld");
+        Assert.Contains("semantic.context.jsonld", result.Artifacts);
+        byte[] contextBytes = File.ReadAllBytes(contextPath);
+        Assert.False(contextBytes.AsSpan().StartsWith(new byte[] { 0xef, 0xbb, 0xbf }));
+        Assert.DoesNotContain("\r", File.ReadAllText(contextPath));
+        var graph = new Graph();
+        new TurtleParser(TurtleSyntax.W3C, validateIris: true).Load(graph, Path.Combine(publisher.TargetDirectory, "semantic.ttl"));
+        const string ns = "https://example.test/rdf/";
+        INode companion = Uri(graph, ns + "partsList");
+        INode member = Uri(graph, ns + "parts");
+        Assert.Contains(graph.Triples, triple => triple.Subject.Equals(companion)
+            && triple.Predicate.Equals(Uri(graph, NamespaceMapper.RDF + "type"))
+            && triple.Object.Equals(Uri(graph, NamespaceMapper.OWL + "ObjectProperty")));
+        Assert.Equal(member, Assert.Single(graph.GetTriplesWithSubjectPredicate(companion,
+            Uri(graph, "https://cogsdata.org/ns#orderedCompanionOf"))).Object);
+        Assert.Empty(graph.GetTriplesWithSubjectPredicate(companion, Uri(graph, NamespaceMapper.RDFS + "range")));
+        Assert.Empty(graph.GetTriplesWithSubjectPredicate(companion, Uri(graph, NamespaceMapper.RDFS + "subPropertyOf")));
+        // Unbounded membership needs no cardinality range: every generated facet
+        // must belong to a referenced OWL data-range tree, never an orphan copy.
+        foreach (INode dataRange in graph.Triples.Where(triple => triple.Subject.NodeType == NodeType.Blank
+                     && triple.Predicate.Equals(Uri(graph, NamespaceMapper.RDF + "type"))
+                     && triple.Object.Equals(Uri(graph, NamespaceMapper.RDFS + "Datatype"))).Select(triple => triple.Subject))
+            Assert.NotEmpty(graph.GetTriplesWithObject(dataRange));
+        Assert.Equal(Uri(graph, ns + "Flavor"), Assert.Single(graph.GetTriplesWithSubjectPredicate(companion,
+            Uri(graph, "https://schema.org/rangeIncludes"))).Object);
+        Assert.Equal(Uri(graph, ns + "Recipe"), Assert.Single(graph.GetTriplesWithSubjectPredicate(companion,
+            Uri(graph, "https://schema.org/domainIncludes"))).Object);
+        Assert.Equal(2, graph.GetTriplesWithSubjectPredicate(member, Uri(graph, "https://schema.org/domainIncludes")).Count());
+        INode[] restrictions = graph.GetTriplesWithSubjectPredicate(Uri(graph, ns + "Recipe"),
+                Uri(graph, NamespaceMapper.RDFS + "subClassOf"))
+            .Select(triple => triple.Object).ToArray();
+        INode listRestriction = Assert.Single(restrictions, node => graph.GetTriplesWithSubjectPredicate(node,
+            Uri(graph, NamespaceMapper.OWL + "onProperty")).Any(triple => triple.Object.Equals(companion)));
+        Assert.Equal("1", Assert.IsAssignableFrom<ILiteralNode>(Assert.Single(graph.GetTriplesWithSubjectPredicate(
+            listRestriction, Uri(graph, NamespaceMapper.OWL + "cardinality"))).Object).Value);
+        foreach (string bound in new[] { "minOccurs", "maxOccurs" })
+            Assert.Equal("3", Assert.IsAssignableFrom<ILiteralNode>(Assert.Single(graph.GetTriplesWithSubjectPredicate(
+                listRestriction, Uri(graph, "https://cogsdata.org/ns#" + bound))).Object).Value);
+        INode countRestriction = Assert.Single(restrictions, node => graph.GetTriplesWithSubjectPredicate(node,
+            Uri(graph, NamespaceMapper.OWL + "minQualifiedCardinality")).Any());
+        Assert.Equal("1", Assert.IsAssignableFrom<ILiteralNode>(Assert.Single(graph.GetTriplesWithSubjectPredicate(
+            countRestriction, Uri(graph, NamespaceMapper.OWL + "minQualifiedCardinality"))).Object).Value);
+        Assert.Equal("3", Assert.IsAssignableFrom<ILiteralNode>(Assert.Single(graph.GetTriplesWithSubjectPredicate(
+            countRestriction, Uri(graph, NamespaceMapper.OWL + "maxQualifiedCardinality"))).Object).Value);
+        Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Code == "OWL2001"
+            && diagnostic.ModelPath.Contains("Serving", StringComparison.Ordinal));
+
+        JsonNode context = JsonNode.Parse(File.ReadAllText(contextPath))["@context"];
+        Assert.Equal(ns, context["@vocab"].GetValue<string>());
+        Assert.Equal("@list", context["partsList"]["@container"].GetValue<string>());
+        Assert.Equal("@id", context["partsList"]["@type"].GetValue<string>());
+        Assert.Equal(NamespaceMapper.XMLSCHEMA + "string", context["orderedTextList"]["@type"].GetValue<string>());
+        Assert.Null(context["orderedLabelsList"]["@type"]);
+        Assert.Null(context["when"]["@type"]);
+
+        var document = new JsonObject
+        {
+            ["@context"] = context.DeepClone(), ["@id"] = "urn:recipe", ["@type"] = "Recipe",
+            ["parts"] = new JsonArray("urn:a", "urn:b"),
+            ["partsList"] = new JsonArray("urn:a", "urn:b", "urn:a"),
+            ["orderedText"] = new JsonArray("first", "second"),
+            ["orderedTextList"] = new JsonArray("first", "second", "first"),
+            ["orderedNumbersList"] = new JsonArray(),
+            ["orderedLabels"] = new JsonArray(new JsonObject { ["@value"] = "Hello", ["@language"] = "en" }),
+            ["orderedLabelsList"] = new JsonArray(new JsonObject { ["@value"] = "Hello", ["@language"] = "en" }),
+            ["when"] = new JsonObject { ["@value"] = "-2147483648Z", ["@type"] = NamespaceMapper.XMLSCHEMA + "gYear" }
+        };
+        const string expectedTurtle = """
+            @prefix m: <https://example.test/rdf/> .
+            @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+            <urn:recipe> a m:Recipe; m:parts <urn:a>, <urn:b>; m:partsList (<urn:a> <urn:b> <urn:a>);
+                m:orderedText "first", "second"; m:orderedTextList ("first" "second" "first");
+                m:orderedLabels "Hello"@en; m:orderedLabelsList ("Hello"@en); m:when "-2147483648Z"^^xsd:gYear;
+                m:orderedNumbersList rdf:nil .
+            """;
+        var expected = new Graph();
+        new TurtleParser(TurtleSyntax.W3C, validateIris: true).Load(expected, new StringReader(expectedTurtle));
+        Assert.True(expected.Equals(ParseJsonLd(document)));
+        document["partsList"] = new JsonObject { ["@list"] = new JsonArray("urn:a", "urn:b", "urn:a") };
+        Assert.True(expected.Equals(ParseJsonLd(document)));
+        document["partsList"] = new JsonArray("urn:a", "urn:a", "urn:b");
+        Assert.False(expected.Equals(ParseJsonLd(document)));
+        document["partsList"] = new JsonArray("urn:a", "urn:b");
+        Assert.False(expected.Equals(ParseJsonLd(document)));
+        document["partsList"] = new JsonArray("urn:a", "urn:b", "urn:a");
+        document["orderedTextList"] = new JsonArray("changed");
+        Assert.False(expected.Equals(ParseJsonLd(document)));
+
+        publisher.TargetDirectory = Path.Combine(temporary.Path, "owl-second");
+        Assert.True(publisher.PublishResult(model).Success);
+        Assert.Equal(contextBytes, File.ReadAllBytes(Path.Combine(publisher.TargetDirectory, "semantic.context.jsonld")));
+
+        static IGraph ParseJsonLd(JsonNode document)
+        {
+            var store = new TripleStore();
+            new JsonLdParser().Load(store, new StringReader(document.ToJsonString()));
+            return Assert.Single(store.Graphs);
+        }
+    }
+
+    [Fact]
+    public void RdfCompanionPreflightProtectsExistingOwlAndCsharpOutput()
+    {
+        CogsModel model = BuildModel();
+        model.ReusableDataTypes.Single(type => type.Name == "Recipe").Properties.Add(new Property
+        {
+            Name = "PartsList", DataTypeName = "string", DataType = new DataType { Name = "string", IsXmlPrimitive = true },
+            MinCardinality = "0", MaxCardinality = "1"
+        });
+        using var temporary = new TemporaryDirectory();
+        string target = Path.Combine(temporary.Path, "existing");
+        Directory.CreateDirectory(target);
+        string sentinel = Path.Combine(target, "sentinel.txt");
+        File.WriteAllText(sentinel, "unchanged");
+        var publisher = CreateOwlPublisher(model, target);
+        publisher.Overwrite = true;
+        PublicationResult result = publisher.PublishResult(model);
+        Assert.False(result.Success);
+        Assert.Empty(result.Artifacts);
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "OWL1003"
+            && diagnostic.SourcePath == "CompositeTypes/Recipe");
+        Assert.Contains("CSH1002", Assert.Throws<CogsPublicationException>(() =>
+            new CSharpPublisher(model, target) { Overwrite = true }.Publish()).Message);
+        Assert.Equal("unchanged", File.ReadAllText(sentinel));
+        Assert.Single(Directory.EnumerateFiles(target));
+    }
+
     [Fact]
     public void PublishersPreserveArbitrarySizeFiniteCardinalities()
     {
@@ -53,7 +219,7 @@ public sealed class SemanticPublisherTests
         Assert.True(owl.PublishResult(model).Success);
         string owlPath = Path.Combine(owlTarget, "semantic.ttl");
         string owlText = File.ReadAllText(owlPath);
-        Assert.Contains($"owl:minQualifiedCardinality \"{minimum}\"^^xsd:nonNegativeInteger", owlText,
+        Assert.Contains("owl:minQualifiedCardinality \"1\"^^xsd:nonNegativeInteger", owlText,
             StringComparison.Ordinal);
         Assert.Contains($"owl:maxQualifiedCardinality \"{maximum}\"^^xsd:nonNegativeInteger", owlText,
             StringComparison.Ordinal);
@@ -66,8 +232,10 @@ public sealed class SemanticPublisherTests
             .Where(literal => literal.DataType?.AbsoluteUri == NamespaceMapper.XMLSCHEMA + "nonNegativeInteger")
             .Select(literal => literal.Value)
             .ToArray();
-        Assert.Contains(minimum, cardinalities);
+        Assert.DoesNotContain(minimum, cardinalities);
         Assert.Contains(maximum, cardinalities);
+        Assert.Contains(graph.Triples, triple => triple.Predicate.Equals(Uri(graph, "https://cogsdata.org/ns#minOccurs"))
+            && triple.Object is ILiteralNode literal && literal.Value == minimum);
 
         string linkMlTarget = Path.Combine(temporary.Path, "linkml-huge");
         var linkMl = new LinkMlPublisher
@@ -153,7 +321,7 @@ public sealed class SemanticPublisherTests
         PublicationResult result = publisher.PublishResult(model);
 
         Assert.True(result.Success);
-        Assert.Equal(["semantic.ttl"], result.Artifacts);
+        Assert.Equal(["semantic.context.jsonld", "semantic.ttl"], result.Artifacts);
         string turtlePath = Path.Combine(target, "semantic.ttl");
         Assert.True(File.Exists(turtlePath));
         Assert.False(File.Exists(Path.Combine(target, "semantic.owl")));
@@ -328,8 +496,21 @@ public sealed class SemanticPublisherTests
             || triple.Subject.Equals(Uri(graph, "https://example.test/cogs#Serving.Shade"))
             || triple.Subject.Equals(Uri(graph, "https://example.test/cogs#Base.Id")));
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "OWL2001"
-            && diagnostic.SourcePath == "CompositeTypes/Recipe");
-        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "OWL2002");
+            && diagnostic.Level == ErrorLevel.Message
+            && diagnostic.SourcePath == "CompositeTypes/Recipe"
+            && diagnostic.ModelPath == "/CompositeTypes/Recipe/Properties/Parts");
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "OWL2002"
+            && diagnostic.Level == ErrorLevel.Message && !string.IsNullOrEmpty(diagnostic.SourcePath)
+            && !string.IsNullOrEmpty(diagnostic.ModelPath));
+        Assert.All(result.Diagnostics.Where(diagnostic => diagnostic.Code is "OWL2001" or "OWL2002" or "OWL2003" or "OWL2007"),
+            diagnostic => Assert.Equal(ErrorLevel.Message, diagnostic.Level));
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "OWL2003"
+            && diagnostic.Level == ErrorLevel.Message && !string.IsNullOrEmpty(diagnostic.SourcePath)
+            && !string.IsNullOrEmpty(diagnostic.ModelPath));
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "OWL2007"
+            && diagnostic.Level == ErrorLevel.Message);
+        Assert.All(result.Diagnostics.Where(diagnostic => diagnostic.Code is not ("OWL2001" or "OWL2002" or "OWL2003" or "OWL2007")),
+            diagnostic => Assert.Equal(ErrorLevel.Warning, diagnostic.Level));
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "OWL2006"
             && diagnostic.ModelPath == "/CompositeTypes/Recipe/Properties/BoundedDate");
 

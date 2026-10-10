@@ -65,6 +65,15 @@ file emitted at each language boundary is passed back through
 `validate-instance` before the next runtime consumes it. Interpreter discovery
 honors `COGS_PYTHON` and `COGS_NODE` before portable command names.
 
+The C# probe also serializes the full instance into RDF and checks ordered
+collection sequence, multiplicity, empty lists, membership consistency,
+primitive lexemes, and nested/inherited properties. RDF/JSON-LD is a first-class
+serialization family, not a projection. The OWL publisher alone emits the
+`<slug>.context.jsonld` context; publisher tests parse matching JSON-LD and
+Turtle graphs with dotNetRDF and require graph equality. Contexts remain
+byte-repeatable, while Turtle is compared as the semantic RDF graph. OWLAPI
+checks ontology parsing/profile membership, not RDF list instance validation.
+
 Generated XML writers mark every top-level and property item reference with
 the unqualified `isReference="true"` attribute. The runtime probe verifies the
 marker inventory, legacy unmarked input, the equivalent `isReference="1"`

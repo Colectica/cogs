@@ -66,6 +66,43 @@ namespace Cogs.Tests
                 CogsRdfNaming.ClassIri(rdfNamespace, "XMLType"));
             Assert.Equal("https://example.org/model#xmlValue",
                 CogsRdfNaming.PropertyIri(rdfNamespace, "XMLValue"));
+            Assert.Equal("https://example.org/model#xmlValueList",
+                CogsRdfNaming.OrderedCompanionIri(rdfNamespace, "XMLValue"));
+        }
+
+        [Theory]
+        [InlineData("ID", "idList")]
+        [InlineData("XMLPrefix", "xmlPrefixList")]
+        [InlineData("DDIMaintenanceAgencyID", "ddiMaintenanceAgencyIdList")]
+        [InlineData("Display-Name", "displayNameList")]
+        [InlineData("E\u0301clairName", "éclairNameList")]
+        public void OrderedCompanionsAppendListAfterCamelization(string source, string expected) =>
+            Assert.Equal(expected, CogsRdfNaming.OrderedCompanionLocalName(source));
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void OrderedCompanionCollisionsIncludeTypesAndIdentification(bool identification)
+        {
+            CogsDtoModel dto = ValidDto();
+            Property ordered = Property("Steps", "string", maximum: "n");
+            ordered.Ordered = "TRUE";
+            ordered.SourcePath = "ItemTypes/Thing/Thing.csv";
+            ordered.SourceLine = 3;
+            dto.ItemTypes[0].Properties.Add(ordered);
+            if (identification) dto.IdentificationMixin.Add(Property("StepsList", "string", "1", "1"));
+            else dto.ReusableDataTypes.Add(new DataType
+            {
+                Name = "Details", Properties = { Property("StepsList", "string") }
+            });
+            CogsError diagnostic = Assert.Single(DtoValidation.Validate(dto), error => error.Code == "COGS-VAL-PROP-009");
+            Assert.Equal(ErrorLevel.Error, diagnostic.Level);
+            Assert.Equal(ordered.SourcePath, diagnostic.SourcePath);
+            Assert.Equal(3, diagnostic.Line);
+            Assert.Equal("Thing.Steps", diagnostic.ModelPath);
+            Assert.Contains("stepsList", diagnostic.Message);
+            ordered.Ordered = "false";
+            Assert.DoesNotContain(DtoValidation.Validate(dto), error => error.Code == "COGS-VAL-PROP-009");
         }
 
         [Fact]

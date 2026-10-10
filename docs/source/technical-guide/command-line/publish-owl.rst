@@ -4,17 +4,28 @@ publish-owl
 Introduction
 ----------------------
 Generate the authoritative COGS ontology and class-semantics output as W3C
-Turtle (media type ``text/turtle``). The publisher writes exactly one UTF-8
-file named ``<Settings.Slug>.ttl``. Item and composite types become classes,
+Turtle (media type ``text/turtle``), together with the JSON-LD context
+``<Settings.Slug>.context.jsonld`` (``application/ld+json``). Both files are UTF-8.
+Item and composite types become classes,
 with exact PascalCase class terms and shared word-aware camelCase object or
 datatype property terms. ``OWL2002`` and ``OWL2003`` identify the two explicit
 authority exceptions caused by OWL's open-world class semantics. See the
 :doc:`/technical-guide/generation/owl` guide for complete naming rules,
 explanations, and DDI Lifecycle examples.
 
-OWL/RDF is not a JSON/XML serialization or instance-validation schema.
-Collection ordering and unsupported lexical facets remain authoritative in the
-generated JSON Schema and XSD.
+RDF/OWL and JSON-LD are first-class COGS serialization outputs alongside JSON
+and XML, not projections. Ordered properties gain native RDF collection
+companions automatically. OWL axioms are not an instance-validation schema;
+the guide explains the collection and lexical-validation boundaries. Only
+this publisher emits the context; the C# publisher emits RDF graphs but no
+context file.
+
+``OWL2001`` and ``OWL2002`` are informational. The CLI prints one summary per
+code, including the affected-property count, on standard output. Detailed
+source-located property diagnostics remain available to library callers;
+``OWL2003`` and ``OWL2007`` also use informational ``Message`` severity and
+appear individually on standard output. Remaining warnings and errors use
+standard error.
 
 Requires that `dotnet <../../installation/dotnet/index.html>`_ is installed.
 

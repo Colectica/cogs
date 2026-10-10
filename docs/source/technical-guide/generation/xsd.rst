@@ -25,6 +25,59 @@ Int32 years. Some .NET XSD checks use UTF-16 lengths/patterns or reject valid
 RFC URI references; authoritative validation corrects those processor
 limitations with independent scalar/value checks.
 
+Item container
+~~~~~~~~~~~~~~
+
+The global ``ItemContainer`` element is the root of an XML instance document.
+Its schema type, ``ItemContainerType``, contains the serialized item graph.
+The root and all model elements use the effective target namespace
+(``NamespaceUrl`` unless overridden); a default namespace or an equivalent
+namespace prefix may be used.
+
+The container has an ordered sequence of:
+
+#. Zero or more ``TopLevelReference`` elements identifying the items selected
+   as top-level entries. Each contains every configured identification field,
+   followed by ``TypeOfObject`` naming any concrete item type in the model.
+#. Zero or more full item definitions, each named for its exact concrete COGS
+   type. Different item types may be interleaved. Each definition contains its
+   identification fields and modeled properties in effective XSD order.
+
+All top-level references must precede the first full definition. There is no
+``items`` wrapper element: full items are direct children of ``ItemContainer``.
+Abstract item types cannot appear as full definitions, and composite values
+are embedded in modeled properties rather than listed as container entries.
+Both parts are optional, so an empty ``ItemContainer`` is valid.
+
+For example, the ``cogsburger`` model can serialize a selected cheese and an
+additional condiment as follows:
+
+.. code-block:: xml
+
+   <ItemContainer xmlns="http://example.org/cogsburger">
+     <TopLevelReference isReference="true">
+       <ID>cheddar</ID>
+       <TypeOfObject>Cheese</TypeOfObject>
+     </TopLevelReference>
+     <Cheese>
+       <ID>cheddar</ID>
+       <Name>Cheddar</Name>
+     </Cheese>
+     <Condiment>
+       <ID>mustard</ID>
+       <Name>Mustard</Name>
+     </Condiment>
+   </ItemContainer>
+
+The top-level reference identifies the same cheese as the full ``Cheese``
+definition; it does not embed or duplicate that definition. Item-valued
+properties likewise contain references, while composite-valued properties
+contain embedded values. References are keyed by concrete type plus all
+identification values, and generated runtimes resolve repeated and forward
+references to the same object. A referenced item may be defined outside the
+document fragment. Full definitions carry neither ``TypeOfObject`` nor
+``isReference``; their element names identify their concrete types.
+
 Reference components
 ~~~~~~~~~~~~~~~~~~~~
 

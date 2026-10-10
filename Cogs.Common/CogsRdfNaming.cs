@@ -96,6 +96,14 @@ namespace Cogs.Common
         public static string PropertyIri(string namespaceUrl, string propertyName) =>
             GetTermBase(namespaceUrl) + ToPropertyLocalName(propertyName);
 
+        /// <summary>Builds the local name of an ordered property's RDF collection companion.</summary>
+        public static string OrderedCompanionLocalName(string propertyName) =>
+            ToPropertyLocalName(propertyName) + "List";
+
+        /// <summary>Builds the RDF collection companion IRI without changing the member predicate.</summary>
+        public static string OrderedCompanionIri(string namespaceUrl, string propertyName) =>
+            GetTermBase(namespaceUrl) + OrderedCompanionLocalName(propertyName);
+
         private static List<List<Rune>> SplitWords(string value)
         {
             Rune[] runes = value.EnumerateRunes().ToArray();

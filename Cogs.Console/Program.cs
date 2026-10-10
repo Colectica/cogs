@@ -13,6 +13,7 @@ using Cogs.Validation;
 using Microsoft.Extensions.CommandLineUtils;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Xml;
@@ -658,7 +659,7 @@ namespace Cogs.Console
             app.Command("publish-owl", (command) =>
             {
 
-                command.Description = "Publish an authoritative OWL ontology in Turtle from a COGS data model";
+                command.Description = "Publish an authoritative OWL ontology in Turtle and a JSON-LD context from a COGS data model";
                 command.HelpOption("-?|-h|--help");
 
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
@@ -878,6 +879,11 @@ namespace Cogs.Console
 
         private static void HandleErrors(IEnumerable<CogsError> errors)
         {
+            WriteDiagnostics(errors, System.Console.Out, System.Console.Error);
+        }
+
+        private static void WriteDiagnostics(IEnumerable<CogsError> errors, TextWriter output, TextWriter errorOutput)
+        {
             var ordered = errors
                 .OrderBy(error => error.SourcePath ?? string.Empty, StringComparer.Ordinal)
                 .ThenBy(error => error.Line ?? 0)
@@ -885,24 +891,31 @@ namespace Cogs.Console
                 .ThenBy(error => error.Code ?? string.Empty, StringComparer.Ordinal)
                 .ToArray();
 
-            foreach(var error in ordered)
+            foreach (var summary in ordered.Where(IsOwlSummaryDiagnostic)
+                         .GroupBy(error => error.Code, StringComparer.Ordinal)
+                         .OrderBy(group => group.Key, StringComparer.Ordinal))
             {
-                System.Console.Error.Write(Enum.GetName(typeof(ErrorLevel), error.Level) + ": ");
-                if(error.Level == ErrorLevel.Message)
-                {
-                    System.Console.WriteLine(error.ToString());
-                }
-                else
-                {
-                    System.Console.Error.WriteLine(error.ToString());
-                }
-                             
+                int count = summary.Count();
+                string explanation = summary.Key == "OWL2001"
+                    ? "RDF preserves order and duplicate occurrences; OWL axioms cannot enforce list structure, occurrence counts, or membership consistency."
+                    : "OWL ranges admit subclasses; JSON Schema, XSD, and generated runtimes retain exact-type enforcement.";
+                output.WriteLine($"Message: {summary.Key}: {count.ToString(CultureInfo.InvariantCulture)} affected property " +
+                    $"{(count == 1 ? "declaration" : "declarations")}. {explanation}");
+            }
+
+            foreach (var error in ordered.Where(error => !IsOwlSummaryDiagnostic(error)))
+            {
+                TextWriter writer = error.Level == ErrorLevel.Message ? output : errorOutput;
+                writer.WriteLine($"{Enum.GetName(typeof(ErrorLevel), error.Level)}: {error}");
             }
             if(ordered.Any(x => x.Level == ErrorLevel.Error))
             {
                 throw new CogsCommandException();
             }
         }
+
+        private static bool IsOwlSummaryDiagnostic(CogsError error) =>
+            error.Level == ErrorLevel.Message && error.Code is "OWL2001" or "OWL2002";
 
         private static string cogsLogo =
 @"  ______   ______     _______      _______.

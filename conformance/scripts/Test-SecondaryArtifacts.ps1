@@ -6,7 +6,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $xmlExtensions = @('.xml', '.xsd', '.xmi', '.svg')
-$textExtensions = @('.cs', '.csv', '.dot', '.graphqls', '.json', '.md', '.py', '.rst', '.ts', '.ttl', '.txt', '.xmi', '.xml', '.xsd', '.yaml', '.yml')
+$textExtensions = @('.cs', '.csv', '.dot', '.graphqls', '.json', '.jsonld', '.md', '.py', '.rst', '.ts', '.ttl', '.txt', '.xmi', '.xml', '.xsd', '.yaml', '.yml')
 $historicalSourceSentinels = @('http://example.org/legacy', 'LegacyNote')
 $dctapPaths = [Collections.Generic.List[string]]::new()
 $xmiPaths = [Collections.Generic.List[string]]::new()
@@ -25,7 +25,7 @@ foreach ($rootValue in $Roots) {
                 }
             }
         }
-        if ($file.Extension -eq '.json') {
+        if ($file.Extension -in @('.json', '.jsonld')) {
             $document = [Text.Json.JsonDocument]::Parse([IO.File]::ReadAllText($file.FullName),
                 [Text.Json.JsonDocumentOptions]@{ AllowTrailingCommas = $false; CommentHandling = [Text.Json.JsonCommentHandling]::Disallow })
             $document.Dispose()
@@ -101,4 +101,4 @@ if ($null -eq $dctapSelfTestSource) {
     -DctapPath $dctapSelfTestSource `
     -XmiPath $uniqueXmiPaths[0]
 
-Write-Host "Generated JSON, XML/XSD, Turtle, SVG, DCTAP, and UML/XMI checks passed."
+Write-Host "Generated JSON/JSON-LD, XML/XSD, Turtle, SVG, DCTAP, and UML/XMI checks passed."

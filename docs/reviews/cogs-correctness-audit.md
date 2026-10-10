@@ -784,6 +784,81 @@ with exactly one `COGS-READ-090` for `validate` and every publisher command.
 That is the intended first COGS 2 migration diagnostic, not a reason to weaken
 the versioned contract.
 
+### Ordered RDF/JSON-LD follow-up (current contract)
+
+RDF/OWL and JSON-LD are first-class authoritative serialization outputs alongside
+JSON and XML, not projections. This follow-up extends AUD-022 without changing
+the historical evidence above. `Ordered=true` now emits native RDF collection
+companions and preserves direct membership predicates. The OWL publisher alone
+emits `<slug>.context.jsonld`. Schema.org owner/member annotations, the COGS
+`orderedCompanionOf` link, and class-local exact occurrence metadata preserve
+the collection contract while OWL cardinalities retain only sound distinct-value
+bounds. `OWL2001` records the logical list-validation boundary, not loss of order;
+`OWL2002`/`OWL2003` and lexical-validation boundaries remain explicit.
+
+Focused regression coverage is in
+`SemanticPublisherTests.OwlOrderedCompanionsPreserveLocalSemanticsAndGenerateJsonLdContext`,
+`RdfCompanionPreflightProtectsExistingOwlAndCsharpOutput`,
+`CSharpPublisherTests.GeneratedOrderedRdfPackageCompilesAndPreservesAllValueKindsAndInheritance`,
+the malformed-collection helper tests, and `CogsRdfNamingTests`.
+`COGS-VAL-PROP-009`, `OWL1003`, and `CSH1002` protect companion naming; the
+conformance negative corpus contains a collision case, and the generated C#
+probe checks full-instance RDF order, multiplicity, membership, and lexical
+values. JSON-LD/Turtle graph equality and byte-repeatable contexts supplement
+the existing RDF isomorphism and OWLAPI ontology-profile gates.
+
+Executed local verification: Release build (zero warnings/errors), 479 unit
+tests, 113 integration tests, the convention/instance negative corpus, and both
+language orders with each Python flavor passed. The generated C# probe checked
+ordered primitive/composite/reference fields against the XML sequence;
+integration coverage also compared a generated C# RDF graph with JSON-LD using
+the OWL context. All publishers generated the sample, conformance, and starter
+models twice with equal RDF graphs and byte-identical non-Turtle artifacts.
+Both downstream models validated and published OWL/C# successfully, and their
+generated C# packages compiled without warnings. OWLAPI 5.5.1 parsed all five
+ontologies and accepted their OWL 2 DL profiles. That check exposed an orphan
+facet-range tree for unbounded DDI properties; lazy cardinality-range creation
+fixed it and the regression asserts that anonymous datatype ranges are used.
+Generated Python packages compiled/imported, TypeScript packages built and
+dry-packed, LinkML lint/code generation, GraphQL, the semantic DCTAP/UML checks,
+and strict repository/generated Sphinx builds passed. LinkML's advisory naming
+and missing-description warnings remain nonfatal.
+
+These are Windows-local results using .NET 10, Python 3.12.14 with Pydantic
+2.13.5, Node 24.18, Graphviz 2.38, and Java 11 with the pinned OWLAPI 5.5.1
+libraries. They do not claim execution on hosted Windows/Ubuntu or the CI
+Python 3.11/Node 22/Java 21 matrix. OWLAPI profile membership is not RDF instance
+validation, and its existing arbitrary-cardinality object-model limitation
+remains separately documented. Historical audit evidence is unchanged.
+
+### OWL diagnostic presentation follow-up (current contract)
+
+`OWL2001` and `OWL2002` are informational `ErrorLevel.Message` diagnostics.
+The CLI emits one summary per code, in code order, with the affected-property
+count on stdout. `PublicationResult.Diagnostics` retains every property-level
+message and source/model location. `OWL2003` and `OWL2007` also use
+informational `Message` severity, but remain individual source-located stdout
+messages. `OWL2004`/`OWL2005`/`OWL2006` remain warnings. The ontology/context
+contract is unchanged. Complete informational lines now stay on stdout
+rather than splitting the severity
+prefix onto stderr. Focused regression coverage is in
+`DiagnosticContractTests.CliSummarizesOwlInformationWithoutChangingDetailedResults`,
+`CliKeepsOtherDiagnosticsIndividualAndRoutesCompleteLines`, and the semantic
+OWL publisher tests. Historical audit evidence is unchanged.
+
+Executed verification: Release build (zero warnings/errors), 483 unit tests,
+113 integration tests, the conformance corpus, and strict Sphinx passed.
+DDI publication now reports two informational summaries for 93 ordered and
+380 exact-type property declarations; the conformance model reports five and
+one respectively. Counts match the pre-change individual diagnostics, both
+commands return exit 0. The later severity-only correction makes `OWL2003`
+and `OWL2007` individual informational stdout messages instead of stderr warnings.
+That correction passed the same verification gates: DDI retains 14 `OWL2003`
+and one `OWL2007` messages, and conformance retains two and one respectively,
+all on stdout with unchanged message counts.
+Their Turtle graphs equal the pre-change graphs and their JSON-LD contexts
+remain byte-identical. These are local Windows results, not hosted CI evidence.
+
 ### Finding-by-finding remediation status
 
 | Finding | Corrective implementation | Concrete regression evidence | Status and remaining gap |

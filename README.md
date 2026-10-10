@@ -17,16 +17,24 @@ COGS is for domain experts and groups who value **ease of collaboration** and **
 
 ## Output formats
 
+JSON, XML, and RDF/JSON-LD are first-class authoritative COGS serialization
+families. OWL describes the RDF ontology; Turtle and JSON-LD encode RDF graphs.
 The authoritative COGS outputs are:
 
 * XML Schema 1.0 and JSON Schema 2020-12
-* OWL/RDF in W3C Turtle
+* OWL/RDF in W3C Turtle, with a generated JSON-LD context
 * UML/XMI in normative and EA flavors
-* C# class library with JSON and XML serialization
+* C# class library with JSON, XML, and RDF graph serialization
 * Python class package with JSON and XML serialization
 * TypeScript class package with JSON and XML serialization
 
-COGS also publishes LinkML, DCTAP, GraphQL schema language,
+The OWL publisher writes `<slug>.ttl` and `<slug>.context.jsonld`. Ordered RDF
+properties retain direct membership triples and a companion `<camelCaseName>List`
+collection preserving order and duplicates. The context is not a mapping of the
+ordinary COGS JSON container and does not add a JSON-LD instance writer or RDF
+importer. OWL's documented exceptions and validation boundaries remain explicit.
+
+COGS also publishes the projections LinkML, DCTAP, GraphQL schema language,
 Graphviz/DOT, and Sphinx documentation.
 ShEx and SHACL can be generated via LinkML.
 

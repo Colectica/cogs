@@ -10,6 +10,11 @@ relaxes that safety rule.
 Authoritative targets
 ---------------------
 
+JSON, XML, and RDF/JSON-LD are first-class authoritative serialization
+families. RDF/OWL and JSON-LD are not projections. OWL defines ontology
+semantics; Turtle and JSON-LD encode RDF graphs. The OWL publisher emits the
+ontology and context, and generated C# serializes objects into RDF graphs.
+
 JSON Schema, XML Schema, and the generated C#, Python, and TypeScript libraries
 implement the COGS 2 instance contract. They must agree on names, inheritance,
 abstract types, property-local substitutions, cardinality/facets, compound
@@ -53,7 +58,8 @@ excluding all subclasses. This exception is explicit and does not make UML an
 instance-validation schema; JSON Schema and XSD remain authoritative for JSON
 and XML documents.
 
-OWL/RDF is emitted as W3C Turtle in ``<Settings.Slug>.ttl`` and is the
+OWL/RDF is emitted as W3C Turtle in ``<Settings.Slug>.ttl`` with the JSON-LD
+context ``<Settings.Slug>.context.jsonld`` and is the
 authoritative ontology and class-semantics output. It preserves classes,
 inheritance, shared camelCase property IRIs, class-local ``owl:allValuesFrom``
 ranges, object/datatype distinctions, qualified cardinality restrictions,
@@ -66,8 +72,11 @@ occurrence supplies the shared property's exact-name label and exact optional
 global description, while every ``owl:allValuesFrom`` restriction carries that
 class declaration's exact nonblank description. Its two authority exceptions
 are ``OWL2002`` for property-local subtype exclusion and ``OWL2003`` for
-prohibition of direct instances of abstract COGS types. OWL is not an
-instance-validation or ordered-collection authority; unsupported lexical
+prohibition of direct instances of abstract COGS types. Ordered occurrences
+are preserved through camelCase ``List`` companion predicates and native RDF
+collections, with schema.org owner/member annotations and exact COGS
+occurrence-bound metadata. OWL axioms are not an instance-validation schema
+and cannot enforce list structure or membership consistency; unsupported lexical
 constraints remain in the schema-plus-COGS instance contract. Native scalar
 limits are described in :doc:`model-format`; OWL emits safe-integer ranges
 and ``OWL2007`` for native decimal/temporal checks outside OWL authority.
@@ -82,6 +91,20 @@ to the same camelCase RDF term with ``COGS-VAL-PROP-008``. OWL publication
 reports ``OWL1001`` before writing when a manually connected model violates the
 datatype or object/datatype-kind invariant and ``OWL1002`` for a normalized
 RDF-term collision.
+
+``OWL2001`` and ``OWL2002`` are informational ``Message`` diagnostics. CLI
+output summarizes each code once with an affected-property count, while
+``PublicationResult.Diagnostics`` retains every source-located property
+diagnostic. ``OWL2003`` and ``OWL2007`` are also informational, with individual
+messages rather than summaries. Informational output uses standard output;
+``OWL2004``, ``OWL2005``, and ``OWL2006`` remain warnings, and warnings/errors use
+standard error.
+
+Ordered companions add collision diagnostic ``COGS-VAL-PROP-009`` and
+direct-model guards ``OWL1003``/``CSH1002``. Only the OWL publisher emits the
+JSON-LD context, using the effective namespace and ``@container: "@list"``
+terms. It does not reinterpret ordinary COGS JSON or synthesize membership
+triples, and does not add an RDF importer or JSON-LD instance-writer API.
 
 RDF term naming is common across OWL, generated C# RDF graphs, DCTAP, and
 LinkML. Class, shape, range, and ``rdf:type`` terms retain the exact PascalCase
@@ -141,22 +164,27 @@ Schema and XSD remain authoritative for instance validation.
      - Preserved
      - Approximated or unsupported
      - Diagnostics
-   * - OWL 2/RDF
+   * - OWL 2/RDF and JSON-LD
      - Authoritative PascalCase classes, inheritance, shared camelCase property
        IRIs without global domains, class-local ``owl:allValuesFrom`` ranges
        and descriptions, object/datatype distinctions, qualified cardinality
        restrictions, supported datatype restrictions, ``rdf:langString``,
        the ``cogsDate`` XSD datatype union, compound ``owl:hasKey``,
-       namespaces, and model IRIs.
+       namespaces, model IRIs, and ordered RDF collections with duplicate
+       occurrences. An OWL-generated JSON-LD context supplies typed membership
+       terms and companion list containers.
      - ``OWL2002`` and ``OWL2003`` are the authority exceptions for exact
        property-local subtype exclusion and abstract direct-instance
-       prohibition. List order (``OWL2001``) and unsupported lexical facets
+       prohibition. List validation and occurrence-count enforcement
+       (``OWL2001``), rather than order preservation, and unsupported lexical facets
        (``OWL2004``/``OWL2006``/``OWL2007``) are outside the OWL authority boundary;
        ``OWL2005`` is a syntax-only prefix alias.
      - ``OWL1001`` (shared-property datatype/kind preflight), ``OWL1002``
-       (RDF-term collision); ``OWL2002``, ``OWL2003`` (authority exceptions);
+       (RDF-term collision), ``OWL1003`` (companion collision); ``OWL2002``, ``OWL2003`` (authority exceptions);
        ``OWL2001``, ``OWL2004``, ``OWL2006``, ``OWL2007`` (outside authority); ``OWL2005``
-       (syntax only)
+       (syntax only). ``OWL2001`` and ``OWL2002`` are informational CLI summaries;
+       ``OWL2003`` and ``OWL2007`` are individual informational messages;
+       ``OWL2004``, ``OWL2005``, and ``OWL2006`` remain warnings.
    * - LinkML
      - PascalCase classes/ranges, camelCase global slots with explicit
        ``slot_uri`` terms, inheritance, abstractness, compound unique keys,

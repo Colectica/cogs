@@ -15,6 +15,7 @@ using Json.Schema;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using VDS.RDF;
+using VDS.RDF.Parsing;
 
 namespace Cogs.Tests.Integration
 {
@@ -58,6 +59,31 @@ namespace Cogs.Tests.Integration
                 .ToArray();
             Assert.Contains(termBase + "Hamburger", types);
             Assert.Contains(termBase + "Roll", types);
+
+            // The ontology's context describes these RDF instances, not the
+            // flat COGS JSON container. C# output never generates a context.
+            string generated = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "generated"));
+            JsonNode context = JsonNode.Parse(File.ReadAllText(Path.Combine(generated, "owl", "cogsburger.context.jsonld")))!["@context"]!;
+            var document = new JsonObject
+            {
+                ["@context"] = context.DeepClone(),
+                ["@graph"] = new JsonArray(
+                    new JsonObject
+                    {
+                        ["@id"] = RdfUriFactory.GetUri(hamburger), ["@type"] = "Hamburger",
+                        ["id"] = hamburger.ID, ["hamburgerName"] = hamburger.HamburgerName,
+                        ["enclosure"] = RdfUriFactory.GetUri(enclosure)
+                    },
+                    new JsonObject
+                    {
+                        ["@id"] = RdfUriFactory.GetUri(enclosure), ["@type"] = new JsonArray("Roll", "Breading"),
+                        ["id"] = enclosure.ID, ["name"] = enclosure.Name
+                    })
+            };
+            var store = new TripleStore();
+            new JsonLdParser().Load(store, new StringReader(document.ToJsonString()));
+            Assert.True(graph.Equals(Assert.Single(store.Graphs)));
+            Assert.Empty(Directory.GetFiles(Path.Combine(generated, "src"), "*.context.jsonld"));
         }
 
         [Fact]

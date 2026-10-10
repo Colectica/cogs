@@ -613,6 +613,11 @@ namespace Cogs.Publishers.Csharp
             string memberName = ToCSharpIdentifier(prop.Name);
 
             bool isSingular = prop.MaxCardinality == "1";
+            if (!isSingular && prop.Ordered)
+            {
+                AddOrderedPropertyTriples(prop, memberName, addTriplesMethodBuilder);
+                return;
+            }
             if (isSingular)
             {
                 // We have itemNode accessible here already.
@@ -719,6 +724,38 @@ namespace Cogs.Publishers.Csharp
             }
         }
 
+        private void AddOrderedPropertyTriples(Property property, string memberName, StringBuilder builder)
+        {
+            string valueExpression;
+            bool nullableElement;
+            if (model.ItemTypes.Contains(property.DataType))
+            {
+                valueExpression = "graph.CreateUriNode(UriFactory.Create(RdfUriFactory.GetUri(obj)))";
+                nullableElement = true;
+            }
+            else if (model.ReusableDataTypes.Contains(property.DataType))
+            {
+                valueExpression = "obj.AddTriples(graph)";
+                nullableElement = true;
+            }
+            else
+            {
+                valueExpression = $"CogsPrimitiveCodec.CreateRdfLiteral(graph, obj, {QuoteCSharp(property.DataTypeName)})";
+                nullableElement = !IsClrValueType(GetCSharpTypeName(property.DataTypeName));
+            }
+            builder.AppendLine("            {");
+            builder.AppendLine("                var members = new List<INode>();");
+            builder.AppendLine($"                foreach (var obj in {memberName})");
+            builder.AppendLine("                {");
+            if (nullableElement) builder.AppendLine("                    if (obj == null) continue;");
+            builder.AppendLine($"                    members.Add({valueExpression});");
+            builder.AppendLine("                }");
+            builder.AppendLine($"                CogsRdfCodec.WriteOrderedProperty(graph, itemNode, " +
+                $"{QuoteCSharp(GetRdfPropertyIri(property.Name))}, " +
+                $"{QuoteCSharp(CogsRdfNaming.OrderedCompanionIri(TargetNamespace ?? model.Settings.NamespaceUrl, property.Name))}, members);");
+            builder.AppendLine("            }");
+        }
+
         private string GetStringToAddTripleForReferencedItem(string predicateName, string variableName)
         {
             string predicateIri = GetRdfPropertyIri(predicateName);
@@ -755,6 +792,7 @@ namespace Cogs.Publishers.Csharp
                     model,
                     "CSH1001",
                     "Generated C# RDF")
+                .Concat(RdfPublisherValidation.ValidateOrderedCompanionCollisions(model, "CSH1002", "Generated C# RDF"))
                 .FirstOrDefault();
             if (rdfError is not null)
             {
@@ -766,7 +804,7 @@ namespace Cogs.Publishers.Csharp
             {
                 "ItemContainer", "IIdentifiable", "CogsIdentity", "CogsModelMetadata", "RdfUriFactory",
                 "ItemContainerJsonConverter", "CogsIdentityKey", "CogsIdentityMap", "CogsObjectState",
-                "CogsPropertyMetadata", "CogsReflection", "CogsPrimitiveCodec", "CogsJsonCodec", "CogsXmlCodec",
+                "CogsPropertyMetadata", "CogsReflection", "CogsPrimitiveCodec", "CogsJsonCodec", "CogsXmlCodec", "CogsRdfCodec",
                 "DateTimeOffset", "DateOnly", "TimeOnly", "TimeSpan", "Decimal", "CogsScalarValues", "CogsUriReference",
                 "LangString", "CogsDecimal", "CogsDate", "CogsDateTime", "CogsDateOnly", "CogsTime",
                 "CogsDuration", "GYear", "GYearMonth", "GMonthDay", "GDay", "GMonth",
