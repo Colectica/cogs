@@ -9,10 +9,20 @@ not required.
 JSON, XML, and RDF/JSON-LD are first-class authoritative COGS serialization
 families. RDF/OWL and JSON-LD are not projection targets. OWL defines class
 and property semantics; Turtle and JSON-LD are encodings of the RDF graph.
-The OWL publisher produces the ontology in Turtle and JSON-LD, plus a separate
-JSON-LD instance context, while generated
+The RDF publisher produces the ontology in Turtle and JSON-LD, a separate
+JSON-LD instance context, and primary closed SHACL instance shapes, while generated
 C# exposes RDF graph serialization. This does not add RDF deserialization or
 reinterpret ordinary COGS JSON as JSON-LD.
+
+SHACL is a primary output alongside JSON Schema, XML Schema, the OWL ontology,
+and JSON-LD context. It validates RDF instances against the closed portable
+COGS profile documented in :doc:`/technical-guide/generation/shacl`. Validate
+the data graph alone without merging the ontology or applying inference.
+The RDF publisher emits both the production 2017 profile ``<slug>.shacl.ttl``
+and experimental native SHACL 1.2 ``<slug>.shacl12.ttl``. Engine validation of
+the native draft remains advisory; generation and structural checks still gate.
+Choose one shape file rather than combining profiles. The model's instance
+predicates and serialization representations do not change between profiles.
 
 RDF ordered collections
 -----------------------
@@ -39,7 +49,7 @@ canonical lexical occurrence bounds. Membership cardinality axioms retain
 only sound distinct-value bounds: minimum zero or one and the finite maximum.
 OWL does not count duplicate occurrences or validate list consistency.
 
-The OWL publisher alone emits ``<slug>.context.jsonld``. Companion terms use
+The RDF publisher alone emits ``<slug>.context.jsonld``. Companion terms use
 ``@container: "@list"``; item/composite terms use ``@type: "@id"``, and
 primitive terms retain their XSD datatypes. ``langString`` and ``cogsDate`` use
 explicit language or active-arm datatype tags. A context does not generate

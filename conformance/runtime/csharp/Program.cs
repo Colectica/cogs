@@ -11,6 +11,12 @@ if (args.Length == 3 && args[0] == "scalars")
     return 0;
 }
 
+if (args.Length == 3 && args[0] == "rdf")
+{
+    RdfProbe.Run(ItemContainer.LoadJson(args[1]), args[2]);
+    return 0;
+}
+
 if (args.Length != 4 || args[0] is not ("json" or "xml"))
 {
     Console.Error.WriteLine("Usage: ConformanceRuntimeProbe <json|xml> <input> <output-json> <output-xml>");

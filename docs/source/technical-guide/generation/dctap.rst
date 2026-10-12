@@ -4,6 +4,8 @@ DCTAP Generation
 The :doc:`/technical-guide/command-line/publish-dctap` command generates a
 Dublin Core Tabular Application Profile (DCTAP) view of a COGS model.
 
+The output filename is ``<Settings.Slug>.dctap.csv``.
+
 .. warning::
 
    DCTAP is a flattened projection. Features that DCTAP cannot express must be

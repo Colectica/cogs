@@ -5,6 +5,10 @@ The :doc:`/technical-guide/command-line/publish-json` command generates a JSON
 Schema that describes the JSON serialization contract shared by the generated
 C#, Python, and TypeScript models.
 
+The publisher writes ``<Settings.Slug>.schema.json`` and the companion
+``<Settings.Slug>.meta-schema.json``. The filenames do not change the schema
+identifiers or JSON wire contract.
+
 Container shape
 ~~~~~~~~~~~~~~~
 

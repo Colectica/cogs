@@ -1,0 +1,20 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.cogs</groupId><artifactId>shacl-validator</artifactId><version>2.0.0</version>
+  <properties><project.build.sourceEncoding>UTF-8</project.build.sourceEncoding><maven.compiler.release>21</maven.compiler.release><jena.version>6.2.0</jena.version></properties>
+  <dependencies>
+    <dependency><groupId>org.apache.jena</groupId><artifactId>jena-shacl</artifactId><version>${jena.version}</version></dependency>
+    <dependency><groupId>org.slf4j</groupId><artifactId>slf4j-nop</artifactId><version>2.0.17</version></dependency>
+  </dependencies>
+  <build><finalName>shacl-validator</finalName><plugins>
+    <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><version>3.14.1</version></plugin>
+    <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-shade-plugin</artifactId><version>3.6.1</version>
+      <configuration><createDependencyReducedPom>false</createDependencyReducedPom><transformers>
+        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"><mainClass>org.cogs.conformance.ShaclValidator</mainClass></transformer>
+      </transformers></configuration>
+      <executions><execution><phase>package</phase><goals><goal>shade</goal></goals></execution></executions>
+    </plugin>
+  </plugins></build>
+</project>

@@ -6,7 +6,7 @@
     { "name": "publish-py", "arguments": [] },
     { "name": "publish-ts", "arguments": [] },
     { "name": "publish-json", "arguments": [] },
-    { "name": "publish-owl", "arguments": [] },
+    { "name": "publish-rdf", "arguments": [] },
     { "name": "publish-linkml", "arguments": [] },
     { "name": "publish-dctap", "arguments": [] },
     { "name": "publish-graphql", "arguments": [] },

@@ -8,9 +8,11 @@ using VDS.RDF;
 
 internal static class RdfProbe
 {
-    internal static void Run(ItemContainer container)
+    internal static void Run(ItemContainer container, string? output = null)
     {
         IGraph graph = container.MakeRdfGraph();
+        if (output is not null)
+            new VDS.RDF.Writing.NTriplesWriter(VDS.RDF.Parsing.NTriplesSyntax.Rdf11).Save(graph, output);
         XElement[] definitions = XDocument.Parse(container.ToXml()).Root!.Elements()
             .Where(element => element.Name.LocalName != "TopLevelReference").ToArray();
         for (int index = 0; index < container.Items.Count; index++)

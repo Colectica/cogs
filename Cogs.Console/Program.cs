@@ -656,29 +656,29 @@ namespace Cogs.Console
             RegisterGraphQlCommand(app);
             RegisterCommandReferenceCommand(app);
 
-            app.Command("publish-owl", (command) =>
+            Action<CommandLineApplication> configureRdfCommand = (command) =>
             {
 
-                command.Description = "Publish an authoritative OWL ontology in Turtle and JSON-LD, with an RDF instance context, from a COGS data model";
+                command.Description = "Publish primary RDF outputs: OWL ontology in Turtle and JSON-LD, an instance context, and SHACL shapes";
                 command.HelpOption("-?|-h|--help");
 
                 var locationArgument = command.Argument("[cogsLocation]", "Directory where the COGS datamodel is located.");
-                var targetArgument = command.Argument("[targetLocation]", "Directory where the owl schema is generated.");
+                var targetArgument = command.Argument("[targetLocation]", "Directory where the RDF output bundle is generated.");
 
                 var overwriteOption = command.Option("-o|--overwrite",
                                            "If the target directory exists, delete and overwrite the location",
                                            CommandOptionType.NoValue);
 
                 var namespaceUri = command.Option("-n|--namespace",
-                                           "URI of the target Owl namespace",
+                                           "URI of the target RDF namespace",
                                            CommandOptionType.SingleValue);
 
                 var namespaceUriPrefix = command.Option("-p|--namespacePrefix",
-                                           "Namespace prefix to use for the target Owl namespace",
+                                           "Namespace prefix to use for the target RDF namespace",
                                            CommandOptionType.SingleValue);
 
                 var versionnumber = command.Option("-v|--version",
-                                           "Version number for the target Owl namespace",
+                                           "Version number for the target RDF ontology",
                                            CommandOptionType.SingleValue);
 
                 command.OnExecute(() =>
@@ -706,7 +706,7 @@ namespace Cogs.Console
                         HandleErrors(new List<CogsError>() { xmlPrefixError });
                     }
 
-                    OwlPublisher publisher = new OwlPublisher
+                    RdfPublisher publisher = new RdfPublisher
                     {
                         CogsLocation = location,
                         TargetDirectory = target,
@@ -724,6 +724,12 @@ namespace Cogs.Console
                     return 0;
                 });
 
+            };
+            app.Command("publish-rdf", configureRdfCommand);
+            app.Command("publish-owl", command =>
+            {
+                configureRdfCommand(command);
+                command.ShowInHelpText = false;
             });
 
             app.Command("cogs-new", (command) =>

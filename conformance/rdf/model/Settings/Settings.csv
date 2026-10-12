@@ -1,0 +1,11 @@
+Key,Value
+CogsVersion,2.0
+Title,RDF Conformance
+ShortTitle,RDF Conformance
+Slug,rdf_conformance
+Description,Closed RDF instance contract regression model.
+Version,2.0.0
+Author,COGS
+Copyright,
+NamespaceUrl,https://example.org/rdf
+NamespacePrefix,m

@@ -2008,12 +2008,12 @@ And as the sun sets over Nantucket, Gouda George stands tall, a cheesy symbol of
                 Assert.Equal(roll.GYearMonth[i], roll2.GYearMonth[i]);
             }
         }
-        internal static readonly JsonSchema Schema = JsonSchema.FromFile(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "generated", "json", "jsonSchema.json"));
+        internal static readonly JsonSchema Schema = JsonSchema.FromFile(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "generated", "json", "cogsburger.schema.json"));
         private async Task<JsonSchema> GetJsonSchema()
         {
             return await Task.FromResult(Schema);
             //string schemaPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..");
-            //string jsonSchemaFileName = Path.Combine(schemaPath, "generated", "json", "jsonSchema.json");
+            //string jsonSchemaFileName = Path.Combine(schemaPath, "generated", "json", "cogsburger.schema.json");
             //string jsonSchema = File.ReadAllText(jsonSchemaFileName);
 
             //var options = new BuildOptions() { };

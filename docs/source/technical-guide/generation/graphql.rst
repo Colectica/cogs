@@ -4,6 +4,8 @@ GraphQL Generation
 The :doc:`/technical-guide/command-line/publish-graphql` command generates a
 GraphQL schema representation of a COGS model.
 
+The output filename is ``<Settings.Slug>.graphqls``.
+
 .. warning::
 
    GraphQL is an API projection, not an instance serialization target. It may

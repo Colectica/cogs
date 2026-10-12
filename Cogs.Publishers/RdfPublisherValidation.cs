@@ -5,12 +5,87 @@ using Cogs.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Xml;
+using VDS.RDF.Parsing;
 
 namespace Cogs.Publishers;
 
 /// <summary>Publisher-level guards for directly constructed RDF-capable models.</summary>
 internal static class RdfPublisherValidation
 {
+    internal static readonly IReadOnlyList<string> ShapeCategories = Array.AsReadOnly(
+        new[] { "type", "target", "signature", "property", "value", "primitive", "constraint", "declaration", "identity" });
+    private static readonly IReadOnlyList<string> ReservedPrefixes = Array.AsReadOnly(
+        new[] { "rdf", "rdfs", "owl", "xsd", "xml", "schema", "cogsmeta", "sh", "shapes", "constraintParameters" }
+            .Concat(ShapeCategories.Select(category => category + "Shapes")).ToArray());
+
+    internal static string? ResolveModelPrefix(CogsModel model, string? requested, IList<CogsError> diagnostics)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(requested)) throw new XmlException("The prefix must not be blank.");
+            XmlConvert.VerifyNCName(requested);
+        }
+        catch (XmlException exception)
+        {
+            diagnostics.Add(new CogsError(ErrorLevel.Error, "OWL1005",
+                "The RDF namespace prefix must be a nonblank XML NCName: " + exception.Message,
+                sourcePath: model.SourceDirectory, modelPath: "/Settings/NamespacePrefix"));
+            return null;
+        }
+
+        var terms = model.AllDataTypes.Select(type => type.Name).ToHashSet(StringComparer.Ordinal);
+        terms.Add("CogsDate");
+        foreach (PropertyUse use in GetPropertyUses(model))
+        {
+            if (!CogsRdfNaming.TryToPropertyLocalName(use.Property.Name, out string term)) continue;
+            terms.Add(term);
+            if (use.Property.Ordered) terms.Add(CogsRdfNaming.OrderedCompanionLocalName(use.Property.Name));
+        }
+        var reserved = ReservedPrefixes.ToHashSet(StringComparer.Ordinal);
+        string? reason = reserved.Contains(requested) ? "it is reserved by the RDF output bundle"
+            : terms.Contains(requested) ? "it would shadow a model term in JSON-LD"
+            : !TurtleSpecsHelper.IsPNPrefix(requested, TurtleSyntax.W3C) ? "it is not a valid W3C Turtle prefix"
+            : null;
+        if (reason is null) return requested;
+        string replacement = "model";
+        int suffix = 2;
+        while (reserved.Contains(replacement) || terms.Contains(replacement)) replacement = "model" + suffix++;
+        diagnostics.Add(new CogsError(ErrorLevel.Warning, "OWL2005",
+            $"RDF prefix '{requested}' cannot be used because {reason}; '{replacement}' was used for the model namespace throughout the RDF bundle.",
+            sourcePath: model.SourceDirectory, modelPath: "/Settings/NamespacePrefix"));
+        return replacement;
+    }
+
+    internal static IReadOnlyList<CogsError> ValidateShapeNamespace(CogsModel model, string namespaceUrl)
+    {
+        var diagnostics = new List<CogsError>();
+        // Invalid namespace configuration retains the existing publication
+        // diagnostic path; this guard is only about canonical term collisions.
+        if (!Uri.TryCreate(namespaceUrl, UriKind.Absolute, out _)) return diagnostics;
+        string termBase = CogsRdfNaming.GetTermBase(namespaceUrl);
+        string shapes = new Uri(termBase + "shapes/", UriKind.Absolute).AbsoluteUri;
+        void Check(string iri, string? sourcePath, string modelPath)
+        {
+            if (Uri.TryCreate(iri, UriKind.Absolute, out Uri? term) && term.AbsoluteUri.StartsWith(shapes, StringComparison.Ordinal))
+                diagnostics.Add(new CogsError(ErrorLevel.Error, "OWL1004",
+                    $"Model term '{term.AbsoluteUri}' conflicts with the generator-owned shape namespace '{shapes}'.",
+                    sourcePath: sourcePath, modelPath: modelPath));
+        }
+        foreach (DataType type in model.AllDataTypes.OrderBy(type => type.Name, StringComparer.Ordinal))
+            if (!string.IsNullOrWhiteSpace(type.Name))
+                Check(CogsRdfNaming.ClassIri(termBase, type.Name), type.Path ?? model.SourceDirectory,
+                    $"/{(type is ItemType ? "ItemTypes" : "CompositeTypes")}/{type.Name}");
+        foreach (PropertyUse use in GetPropertyUses(model))
+        {
+            if (!CogsRdfNaming.TryToPropertyLocalName(use.Property.Name, out _)) continue;
+            Check(CogsRdfNaming.PropertyIri(termBase, use.Property.Name), use.SourcePath, use.ModelPath);
+            if (use.Property.Ordered)
+                Check(CogsRdfNaming.OrderedCompanionIri(termBase, use.Property.Name), use.SourcePath, use.ModelPath);
+        }
+        return diagnostics;
+    }
+
     internal static IReadOnlyList<CogsError> ValidatePropertyTermCollisions(
         CogsModel model,
         string diagnosticCode,

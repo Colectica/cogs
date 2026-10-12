@@ -45,6 +45,7 @@ Exit codes
     publish-graphql
     publish-json
     publish-linkml
+    publish-rdf
     publish-owl
     publish-py
     publish-ts

@@ -1062,8 +1062,8 @@ namespace Cogs.Tests.Integration
         private XmlSchemaSet GetXmlSchema()
         {
             // TODO build the json schema into the generated assembly as a resource
-            string schemaPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "generated","xsd", "schema.xsd");
-            string xmlSchemaPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "generated","xsd", "xml.xsd");
+            string schemaPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "generated","xsd", "cogsburger.xsd");
+            string xmlSchemaPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "generated","xsd", "cogsburger.xml.xsd");
              
 
             XmlSchemaSet xmlSchemaSet = new XmlSchemaSet();

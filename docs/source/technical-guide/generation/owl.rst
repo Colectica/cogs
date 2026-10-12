@@ -1,12 +1,17 @@
 OWL Generation
 --------------
 
-The :doc:`/technical-guide/command-line/publish-owl` command generates OWL/RDF
+The :doc:`/technical-guide/command-line/publish-rdf` command generates OWL/RDF
 from a COGS model. It writes standards-compliant W3C Turtle to
 ``<Settings.Slug>.ttl`` (``text/turtle``), the same complete ontology to
 ``<Settings.Slug>.ontology.jsonld``, and a separate RDF instance context to
 ``<Settings.Slug>.context.jsonld`` (both ``application/ld+json``), all UTF-8 without
 a BOM. RDF/XML and a compatibility ``.owl`` copy are not generated.
+
+This page retains its existing URL and describes the ontology portion of the
+primary :doc:`rdf` bundle. The same command also generates primary closed
+:doc:`shacl` shapes in ``<Settings.Slug>.shacl.ttl``. ``publish-owl`` remains a
+compatible CLI alias.
 
 .. important::
 
@@ -57,8 +62,10 @@ The two JSON-LD artifacts serve different purposes:
   PascalCase class names without an explicit entry for each class.
 
 The ontology document is a self-contained JSON-LD 1.1 ``@context``/``@graph``
-document. Its embedded context uses ``model``, ``rdf``, ``rdfs``, ``owl``,
-``xsd``, ``schema``, and ``cogsmeta`` prefixes. Compact names and native
+document. Its embedded context uses the configured effective model prefix plus
+``rdf``, ``rdfs``, ``owl``, ``xsd``, ``schema``, and ``cogsmeta``. The same model
+prefix is available in the instance context and both Turtle artifacts; see
+:doc:`rdf` for prefix precedence and collision handling. Compact names and native
 ``@list`` objects make it usable by JSON-oriented model browsers and RDF tools.
 Literal lexical values, datatype IRIs, and language tags are retained; even
 arbitrary-size cardinalities remain explicitly typed strings, not imprecise
@@ -126,7 +133,7 @@ property such as ``StepsList`` cannot occupy the generated ``stepsList`` IRI:
 validation reports ``COGS-VAL-PROP-009``. Direct-library OWL and C# publication
 repeat the check as ``OWL1003`` and ``CSH1002`` before replacing output.
 
-The OWL publisher alone emits the JSON-LD context. Its effective namespace
+The RDF publisher alone emits the JSON-LD context. Its effective namespace
 also supplies ``@vocab``, so class terms remain PascalCase. Object/reference
 terms use identifier coercion, primitive terms use their XSD datatype IRIs,
 and companion terms use ``@container: "@list"``. The preceding graph can be
@@ -380,7 +387,8 @@ outside that authority boundary or a syntax-only adjustment:
 * ``OWL2004`` reports COGS lexical facets that cannot be expressed portably on
   ``rdf:langString``. JSON Schema and XSD remain authoritative for those
   instance values.
-* ``OWL2005`` reports an RDF prefix collision and the replacement syntax alias.
+* ``OWL2005`` reports a reserved/model-term prefix collision or a Turtle-unsuitable
+  XML prefix, and the replacement syntax alias used across the RDF bundle.
   Prefixes do not affect the expanded model IRIs or ontology semantics.
 * ``OWL2006`` reports a bound on a COGS temporal, duration, or Gregorian type
   outside OWL 2's built-in datatype map. The publisher retains the declared

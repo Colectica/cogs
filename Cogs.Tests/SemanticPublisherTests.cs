@@ -22,6 +22,610 @@ namespace Cogs.Tests;
 
 public sealed class SemanticPublisherTests
 {
+    [Theory]
+    [InlineData("ddi")]
+    [InlineData("DDI")]
+    [InlineData("école")]
+    [InlineData("model")]
+    public void RdfUsesConfiguredPrefixThroughoutTheBundle(string prefix)
+    {
+        CogsModel model = BuildModel();
+        model.Settings.NamespacePrefix = prefix;
+        using var temporary = new TemporaryDirectory();
+        var publisher = CreateRdfPublisher(model, Path.Combine(temporary.Path, "rdf"));
+        PublicationResult result = publisher.PublishResult(model);
+        Assert.True(result.Success);
+        Assert.DoesNotContain(result.Diagnostics, d => d.Code == "OWL2005");
+        AssertRdfBundlePrefix(publisher.TargetDirectory, "semantic", "https://example.test/cogs#", prefix);
+        AssertOntologyMatchesTurtle(publisher.TargetDirectory);
+
+        JsonNode context = JsonNode.Parse(File.ReadAllText(Path.Combine(publisher.TargetDirectory, "semantic.context.jsonld")))["@context"];
+        JsonNode oldContext = context.DeepClone();
+        oldContext.AsObject().Remove(prefix);
+        Graph Parse(JsonNode ctx, bool compact)
+        {
+            var document = new JsonObject
+            {
+                ["@context"] = ctx.DeepClone(), ["@id"] = "urn:product",
+                ["@type"] = compact ? prefix + ":Product" : "Product",
+                [compact ? prefix + ":id" : "id"] = "p"
+            };
+            var store = new TripleStore();
+            new JsonLdParser().Load(store, new StringReader(document.ToJsonString()));
+            return (Graph)Assert.Single(store.Graphs);
+        }
+        using Graph old = Parse(oldContext, false), current = Parse(context, false), prefixed = Parse(context, true);
+        Assert.True(old.Equals(current));
+        Assert.True(current.Equals(prefixed));
+        Assert.Contains(current.Triples, t => t.Object.Equals(Uri(current, "https://example.test/cogs#Product")));
+    }
+
+    [Theory]
+    [InlineData("rdf")]
+    [InlineData("rdfs")]
+    [InlineData("owl")]
+    [InlineData("xsd")]
+    [InlineData("xml")]
+    [InlineData("schema")]
+    [InlineData("cogsmeta")]
+    [InlineData("sh")]
+    [InlineData("shapes")]
+    [InlineData("typeShapes")]
+    [InlineData("targetShapes")]
+    [InlineData("signatureShapes")]
+    [InlineData("propertyShapes")]
+    [InlineData("valueShapes")]
+    [InlineData("primitiveShapes")]
+    [InlineData("id")]
+    [InlineData("partsList")]
+    [InlineData("Recipe")]
+    [InlineData("CogsDate")]
+    [InlineData("_ddi")]
+    [InlineData("ddi.")]
+    public void RdfNormalizesConflictingOrTurtleInvalidPrefixesOnce(string prefix)
+    {
+        CogsModel model = BuildModel();
+        using var temporary = new TemporaryDirectory();
+        var publisher = CreateRdfPublisher(model, Path.Combine(temporary.Path, "rdf"));
+        publisher.TargetNamespacePrefix = prefix;
+        PublicationResult result = publisher.PublishResult(model);
+        Assert.True(result.Success);
+        CogsError warning = Assert.Single(result.Diagnostics, d => d.Code == "OWL2005");
+        Assert.Equal(ErrorLevel.Warning, warning.Level);
+        Assert.Equal("/Settings/NamespacePrefix", warning.ModelPath);
+        Assert.Contains("'" + prefix + "'", warning.Message);
+        Assert.Contains("'model'", warning.Message);
+        AssertRdfBundlePrefix(publisher.TargetDirectory, "semantic", "https://example.test/cogs#", "model");
+        AssertOntologyMatchesTurtle(publisher.TargetDirectory);
+    }
+
+    [Fact]
+    public void RdfFallbackAvoidsModelTermsAndPrefixChangesPreserveGraphsAndQueries()
+    {
+        CogsModel model = BuildModel();
+        DataType recipe = model.ReusableDataTypes.Single(t => t.Name == "Recipe");
+        foreach (string name in new[] { "Model", "Model2" })
+            recipe.Properties.Add(new Property { Name = name, DataTypeName = "string", DataType = model.Identification[0].DataType,
+                MinCardinality = "0", MaxCardinality = "1" });
+        using var temporary = new TemporaryDirectory();
+        var publisher = CreateRdfPublisher(model, Path.Combine(temporary.Path, "first"));
+        publisher.TargetNamespacePrefix = "shapes";
+        Assert.True(publisher.PublishResult(model).Success);
+        AssertRdfBundlePrefix(publisher.TargetDirectory, "semantic", "https://example.test/cogs#", "model3");
+        string first = publisher.TargetDirectory;
+        byte[] context = File.ReadAllBytes(Path.Combine(first, "semantic.context.jsonld"));
+        publisher.TargetDirectory = Path.Combine(temporary.Path, "second");
+        Assert.True(publisher.PublishResult(model).Success);
+        Assert.Equal(context, File.ReadAllBytes(Path.Combine(publisher.TargetDirectory, "semantic.context.jsonld")));
+        publisher.TargetDirectory = Path.Combine(temporary.Path, "long-prefix");
+        publisher.TargetNamespacePrefix = "ExtremelyLongModelNamespacePrefix";
+        Assert.True(publisher.PublishResult(model).Success);
+        Assert.DoesNotContain(publisher.LastResult.Diagnostics, d => d.Code == "OWL2005");
+        foreach (string filename in new[] { "semantic.ttl", "semantic.shacl.ttl", "semantic.shacl12.ttl" })
+        {
+            using var before = new Graph(); using var after = new Graph();
+            new TurtleParser(TurtleSyntax.W3C, true).Load(before, Path.Combine(first, filename));
+            new TurtleParser(TurtleSyntax.W3C, true).Load(after, Path.Combine(publisher.TargetDirectory, filename));
+            Assert.True(Cogs.Conformance.RdfGraphComparer.Program.CompareGraphs(before, after).AreEqual,
+                "Aliases must not change triples, including SPARQL literal whitespace.");
+        }
+        Assert.True(Cogs.Conformance.RdfGraphComparer.Program.CompareGraphs(
+            AssertOntologyMatchesTurtle(first), AssertOntologyMatchesTurtle(publisher.TargetDirectory)).AreEqual);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("bad prefix")]
+    [InlineData("bad/alias")]
+    [InlineData("1prefix")]
+    public void RdfInvalidPrefixPreservesExistingOutput(string prefix)
+    {
+        CogsModel model = BuildModel();
+        using var temporary = new TemporaryDirectory();
+        string target = Path.Combine(temporary.Path, "rdf");
+        var publisher = CreateRdfPublisher(model, target);
+        Assert.True(publisher.PublishResult(model).Success);
+        var before = Directory.GetFiles(target).ToDictionary(Path.GetFileName, File.ReadAllBytes);
+        publisher.Overwrite = true;
+        publisher.TargetNamespacePrefix = prefix;
+        PublicationResult result = publisher.PublishResult(model);
+        Assert.False(result.Success);
+        Assert.Empty(result.Artifacts);
+        Assert.Equal(ErrorLevel.Error, Assert.Single(result.Diagnostics, d => d.Code == "OWL1005").Level);
+        foreach (var file in before) Assert.Equal(file.Value, File.ReadAllBytes(Path.Combine(target, file.Key)));
+    }
+
+    [Theory]
+    [InlineData("https://example.test/cogs", "shapes/graph")]
+    [InlineData("https://example.test/cogs#", "shapes/type/Thing")]
+    [InlineData("https://example.test/a/../cogs/", "shapes/property/Thing.Name")]
+    public void RdfReservedShapeNamespaceRejectsMalformedDirectModels(string ns, string name)
+    {
+        CogsModel model = BuildModel();
+        using var temporary = new TemporaryDirectory();
+        string target = Path.Combine(temporary.Path, "rdf");
+        var publisher = CreateRdfPublisher(model, target);
+        Assert.True(publisher.PublishResult(model).Success);
+        var before = Directory.GetFiles(target).ToDictionary(Path.GetFileName, File.ReadAllBytes);
+        publisher.Overwrite = true;
+        publisher.TargetNamespace = ns;
+        model.ItemTypes.Single(t => t.Name == "Product").Name = name;
+        PublicationResult result = publisher.PublishResult(model);
+        Assert.False(result.Success);
+        Assert.Empty(result.Artifacts);
+        CogsError error = Assert.Single(result.Diagnostics, d => d.Code == "OWL1004");
+        Assert.Equal(ErrorLevel.Error, error.Level);
+        Assert.Equal("ItemTypes/Product", error.SourcePath);
+        Assert.Equal("/ItemTypes/" + name, error.ModelPath);
+        foreach (var file in before) Assert.Equal(file.Value, File.ReadAllBytes(Path.Combine(target, file.Key)));
+    }
+
+    [Fact]
+    public void RdfAllowsSafeShapeLikeClassAndPropertyNames()
+    {
+        CogsModel model = BuildModel();
+        ItemType item = model.ItemTypes.Single(t => t.Name == "Product");
+        item.Name = "Shapes";
+        item.Properties.Add(new Property { Name = "Shapes", DataTypeName = "string", DataType = model.Identification[0].DataType,
+            MinCardinality = "0", MaxCardinality = "1" });
+        var composite = new DataType { Name = "Shapes.Graph" };
+        model.ReusableDataTypes.Add(composite);
+        item.Properties.Add(new Property { Name = "ShapeValue", DataTypeName = composite.Name, DataType = composite,
+            MinCardinality = "0", MaxCardinality = "1" });
+        using var temporary = new TemporaryDirectory();
+        var publisher = CreateRdfPublisher(model, Path.Combine(temporary.Path, "rdf"));
+        Assert.True(publisher.PublishResult(model).Success);
+        IGraph graph = AssertOntologyMatchesTurtle(publisher.TargetDirectory);
+        Assert.NotEmpty(graph.GetTriplesWithSubject(Uri(graph, "https://example.test/cogs#Shapes")));
+        Assert.NotEmpty(graph.GetTriplesWithSubject(Uri(graph, "https://example.test/cogs#shapes")));
+        Assert.NotEmpty(graph.GetTriplesWithSubject(Uri(graph, "https://example.test/cogs#Shapes.Graph")));
+        Assert.DoesNotContain(publisher.LastResult.Diagnostics, d => d.Code == "OWL1004");
+    }
+
+    private static void AssertRdfBundlePrefix(string target, string slug, string termBase, string prefix)
+    {
+        foreach (string suffix in new[] { ".ttl", ".shacl.ttl", ".shacl12.ttl" })
+        {
+            using var graph = new Graph();
+            new TurtleParser(TurtleSyntax.W3C, true).Load(graph, Path.Combine(target, slug + suffix));
+            Assert.Equal(termBase, graph.NamespaceMap.GetNamespaceUri(prefix).AbsoluteUri);
+            if (prefix != "model") Assert.False(graph.NamespaceMap.HasNamespace("model"));
+        }
+        foreach (string suffix in new[] { ".ontology.jsonld", ".context.jsonld" })
+        {
+            JsonNode context = JsonNode.Parse(File.ReadAllText(Path.Combine(target, slug + suffix)))["@context"];
+            Assert.Equal(termBase, context["@vocab"].GetValue<string>());
+            Assert.Equal(termBase, context[prefix]["@id"].GetValue<string>());
+            Assert.True(context[prefix]["@prefix"].GetValue<bool>());
+            if (prefix != "model" && context["model"] is JsonObject old)
+                Assert.NotEqual(termBase, old["@id"].GetValue<string>());
+        }
+    }
+
+    [Fact]
+    public void ShaclContainmentUsesEffectivePropertiesAndPermittedConcreteTypes()
+    {
+        var model = new CogsModel();
+        DataType Composite(string name, DataType parent = null, bool abstractType = false)
+        {
+            var type = new DataType { Name = name, IsAbstract = abstractType };
+            if (parent is not null) type.ParentTypes.Add(parent);
+            model.ReusableDataTypes.Add(type);
+            return type;
+        }
+        ItemType Item(string name, DataType parent = null, bool abstractType = false)
+        {
+            var type = new ItemType { Name = name, IsAbstract = abstractType };
+            if (parent is not null) type.ParentTypes.Add(parent);
+            model.ItemTypes.Add(type);
+            return type;
+        }
+        static void Contains(DataType owner, string name, DataType target, bool subtypes = false,
+            string maximum = "1", bool ordered = false) => owner.Properties.Add(new Property
+            { Name = name, DataType = target, DataTypeName = target.Name, MinCardinality = "0",
+                MaxCardinality = maximum, AllowSubtypes = subtypes, Ordered = ordered });
+
+        DataType leaf = Composite("Leaf"), child = Composite("LeafChild", leaf);
+        DataType branch = Composite("Branch"), inheritedBranch = Composite("InheritedBranch", branch);
+        Contains(branch, "ContainedLeaf", leaf);
+        DataType abstractBranch = Composite("AbstractBranch", abstractType: true);
+        DataType concreteBranch = Composite("ConcreteBranch", abstractBranch);
+        Contains(abstractBranch, "ContainedLeaf", leaf);
+        DataType other = Composite("Other"), otherLeaf = Composite("OtherLeaf");
+        Contains(other, "UnrelatedLeaf", otherLeaf);
+        ItemType abstractRoot = Item("AbstractRoot", abstractType: true);
+        Contains(abstractRoot, "Branch", branch);
+        ItemType root = Item("Root", abstractRoot);
+        Contains(root, "ContainedLeaf", leaf, maximum: "n", ordered: true);
+        Contains(Item("SubtypeRoot"), "Branch", branch, subtypes: true);
+        Contains(Item("AbstractContainer"), "AbstractBranch", abstractBranch);
+        Contains(Item("LeafSubtypeRoot"), "Leaf", leaf, subtypes: true);
+        Contains(Item("OtherRoot"), "Other", other);
+        Contains(Item("ZeroRoot"), "DisabledLeaf", leaf, maximum: "0");
+        Contains(Item("ReferenceRoot"), "RootReference", root);
+        var index = new ShaclContainmentIndex(model);
+
+        var profile = index.For(leaf);
+        Assert.Equal(["AbstractContainer", "LeafSubtypeRoot", "Root", "SubtypeRoot"], profile.ItemTypes);
+        Assert.Equal(["AbstractBranch", "Branch", "ContainedLeaf", "Leaf"], profile.RootProperties);
+        Assert.Equal(["ContainedLeaf"], profile.NestedProperties);
+        Assert.Empty(profile.CycleProperties);
+        Assert.Equal(["LeafSubtypeRoot"], index.For(child).ItemTypes);
+        Assert.Equal(["SubtypeRoot"], index.For(inheritedBranch).ItemTypes);
+        Assert.Equal(["AbstractContainer"], index.For(concreteBranch).ItemTypes);
+
+        using Graph graph = new ShaclGraphBuilder(model, "https://example.test/containment#", "m").Build();
+        string Query(string type, string message)
+        {
+            INode constraint = Assert.Single(graph.GetTriplesWithSubjectPredicate(
+                Uri(graph, "https://example.test/containment#shapes/type/" + type), Uri(graph, "http://www.w3.org/ns/shacl#sparql"))
+                .Select(t => t.Object), node => graph.GetTriplesWithSubjectPredicate(node, Uri(graph, "http://www.w3.org/ns/shacl#message"))
+                    .Any(t => ((ILiteralNode)t.Object).Value == message));
+            return ((ILiteralNode)Assert.Single(graph.GetTriplesWithSubjectPredicate(constraint,
+                Uri(graph, "http://www.w3.org/ns/shacl#select"))).Object).Value;
+        }
+        string reachable = Query("Leaf", "A composite must be reachable from a concrete item.");
+        Assert.Contains("/(<https://example.test/containment#containedLeaf>)*", reachable);
+        foreach (string irrelevant in new[] { "OtherRoot", "ReferenceRoot", "ZeroRoot", "unrelatedLeaf", "disabledLeaf", "rootReference", "containedLeafList" })
+            Assert.DoesNotContain("https://example.test/containment#" + irrelevant + ">", reachable);
+        string direct = Query("LeafChild", "A composite must be reachable from a concrete item.");
+        Assert.Contains("?item (<https://example.test/containment#leaf>) $this", direct);
+        Assert.DoesNotContain("*", direct);
+        Assert.DoesNotContain(graph.GetTriplesWithPredicate(Uri(graph, "http://www.w3.org/ns/shacl#message")),
+            t => ((ILiteralNode)t.Object).Value == "Composite containment must be acyclic.");
+    }
+
+    [Fact]
+    public void ShaclContainmentCyclesAreComponentLocalAndUnrootedTypesReject()
+    {
+        var model = new CogsModel();
+        var types = new[] { "Self", "A", "B", "OtherSelf", "Outer", "IslandA", "IslandB", "Unused" }
+            .ToDictionary(name => name, name => new DataType { Name = name });
+        foreach (DataType type in types.Values) model.ReusableDataTypes.Add(type);
+        static void Link(DataType owner, string name, DataType target) => owner.Properties.Add(new Property
+        { Name = name, DataTypeName = target.Name, DataType = target, MinCardinality = "0", MaxCardinality = "1" });
+        Link(types["Self"], "SelfLink", types["Self"]);
+        Link(types["A"], "ToB", types["B"]); Link(types["B"], "ToA", types["A"]);
+        Link(types["OtherSelf"], "OtherLink", types["OtherSelf"]);
+        Link(types["Outer"], "NestedSelf", types["Self"]);
+        Link(types["IslandA"], "IslandB", types["IslandB"]); Link(types["IslandB"], "IslandA", types["IslandA"]);
+        var root = new ItemType { Name = "Root" }; model.ItemTypes.Add(root);
+        Link(root, "Outer", types["Outer"]); Link(root, "Mutual", types["A"]);
+        var index = new ShaclContainmentIndex(model);
+        Assert.Equal(["SelfLink"], index.For(types["Self"]).CycleProperties);
+        Assert.Equal(["ToA", "ToB"], index.For(types["A"]).CycleProperties);
+        Assert.Same(index.For(types["A"]), index.For(types["B"]));
+        Assert.Empty(index.For(types["Outer"]).CycleProperties);
+        Assert.Empty(index.For(types["OtherSelf"]).ItemTypes);
+        Assert.Equal(["OtherLink"], index.For(types["OtherSelf"]).CycleProperties);
+        Assert.Empty(index.For(types["Unused"]).ItemTypes);
+        Assert.Empty(index.For(types["IslandA"]).ItemTypes);
+        Assert.Equal(["IslandA", "IslandB"], index.For(types["IslandA"]).CycleProperties);
+        using Graph graph = new ShaclGraphBuilder(model, "https://example.test/containment#", "m").Build();
+        INode shape = Uri(graph, "https://example.test/containment#shapes/type/Unused");
+        INode constraint = Assert.Single(graph.GetTriplesWithSubjectPredicate(shape, Uri(graph, "http://www.w3.org/ns/shacl#sparql"))).Object;
+        string query = ((ILiteralNode)Assert.Single(graph.GetTriplesWithSubjectPredicate(constraint,
+            Uri(graph, "http://www.w3.org/ns/shacl#select"))).Object).Value;
+        Assert.Contains("BIND($this AS ?value)", query);
+        Assert.DoesNotContain("FILTER", query);
+    }
+
+    [Fact]
+    public void ShaclContainmentHandlesDeepModelsWithoutRecursiveTraversal()
+    {
+        var model = new CogsModel();
+        var root = new ItemType { Name = "Root" }; model.ItemTypes.Add(root);
+        DataType owner = root;
+        for (int i = 0; i < 2000; i++)
+        {
+            var child = new DataType { Name = "Value" + i };
+            model.ReusableDataTypes.Add(child);
+            owner.Properties.Add(new Property { Name = "Nested" + i, DataTypeName = child.Name,
+                DataType = child, MinCardinality = "0", MaxCardinality = "1" });
+            owner = child;
+        }
+        var profile = new ShaclContainmentIndex(model).For(owner);
+        Assert.Equal(["Root"], profile.ItemTypes);
+        Assert.Equal(["Nested0"], profile.RootProperties);
+        Assert.Equal(1999, profile.NestedProperties.Count);
+        Assert.Empty(profile.CycleProperties);
+    }
+
+    [Fact]
+    public void RdfPublishesClosedNonrecursiveShaclWithEffectivePropertiesAndStableGraph()
+    {
+        CogsModel model = BuildModel();
+        using var temporary = new TemporaryDirectory();
+        var publisher = CreateRdfPublisher(model, Path.Combine(temporary.Path, "first"));
+        PublicationResult result = publisher.PublishResult(model);
+        Assert.True(result.Success);
+        Assert.Equal(ErrorLevel.Message, Assert.Single(result.Diagnostics, d => d.Code == "SHC2001").Level);
+        Assert.Contains("semantic.shacl.ttl", result.Artifacts);
+        var first = new Graph();
+        new TurtleParser(TurtleSyntax.W3C, validateIris: true).Load(first, Path.Combine(publisher.TargetDirectory, "semantic.shacl.ttl"));
+        const string sh = "http://www.w3.org/ns/shacl#", b = "https://example.test/cogs#";
+        INode full = Uri(first, b + "shapes/type/Product");
+        Assert.Contains(first.GetTriplesWithSubjectPredicate(full, Uri(first, sh + "closed")), t => ((ILiteralNode)t.Object).Value == "true");
+        Assert.Contains(first.GetTriplesWithSubjectPredicate(full, Uri(first, sh + "property")), t => t.Object.Equals(Uri(first, b + "shapes/property/Product.Id")));
+        Assert.Equal("Identifier", Assert.IsAssignableFrom<ILiteralNode>(Assert.Single(first.GetTriplesWithSubjectPredicate(
+            Uri(first, b + "shapes/property/Product.Id"), Uri(first, sh + "description"))).Object).Value);
+        Assert.DoesNotContain(first.GetTriplesWithPredicate(Uri(first, sh + "node")),
+            t => t.Object is IUriNode uri && uri.Uri.AbsoluteUri.Contains("shapes/type/", StringComparison.Ordinal));
+        Assert.All(first.GetTriplesWithPredicate(Uri(first, sh + "path")).Where(t =>
+            !first.GetTriplesWithSubjectPredicate(t.Subject, Uri(first, NamespaceMapper.RDF + "type")).Any(d => d.Object.Equals(Uri(first, sh + "Parameter")))), t =>
+            Assert.Contains(first.GetTriplesWithSubjectPredicate(t.Subject, Uri(first, NamespaceMapper.RDF + "type")),
+                declaration => declaration.Object.Equals(Uri(first, sh + "PropertyShape"))));
+        Assert.Contains(first.GetTriplesWithPredicate(Uri(first, sh + "select")), t => ((ILiteralNode)t.Object).Value.Contains("sameTerm(?id0, ?other0)", StringComparison.Ordinal));
+        Assert.Contains(first.GetTriplesWithPredicate(Uri(first, sh + "select")), t => ((ILiteralNode)t.Object).Value.Contains("COUNT(?cell)", StringComparison.Ordinal));
+        string turtle = File.ReadAllText(Path.Combine(publisher.TargetDirectory, "semantic.shacl.ttl"));
+        foreach (string category in new[] { "type", "target", "signature", "property", "value", "primitive" })
+            Assert.Contains($"@prefix {category}Shapes: <{b}shapes/{category}/>.", turtle);
+        Assert.Contains("typeShapes:Product", turtle);
+        Assert.Contains("propertyShapes:Product.Id", turtle);
+        Assert.Contains("propertyShapes:Recipe.Parts.list", turtle);
+        Assert.Contains("valueShapes:Product.Id", turtle);
+        Assert.Contains("primitiveShapes:cogsDate", turtle);
+        Assert.DoesNotContain(b + "shapes/property/Product/Id", turtle);
+        Assert.DoesNotContain("urn:cogs:turtle-serialization:", turtle);
+        AssertShaclConstraintGraphEqual(new ShaclGraphBuilder(model, b, model.Settings.NamespacePrefix).Build(), first);
+        foreach (Match match in Regex.Matches(turtle, "sh:select \"\"\"\\n(?<body>.*?)\\n(?<close> *)\"\"\"", RegexOptions.Singleline))
+        {
+            int opening = match.Index + "sh:select ".Length;
+            int column = opening - (turtle.LastIndexOf('\n', opening) + 1);
+            Assert.Equal(column, match.Groups["close"].Length);
+            foreach (string line in match.Groups["body"].Value.Split('\n').Where(line => line.Length != 0))
+                Assert.StartsWith(new string(' ', column + 4), line);
+        }
+        Assert.Equal(first.GetTriplesWithPredicate(Uri(first, sh + "select")).Count(),
+            Regex.Matches(turtle, "sh:select \"\"\"\\n").Count);
+        publisher.TargetDirectory = Path.Combine(temporary.Path, "second");
+        Assert.True(publisher.PublishResult(model).Success);
+        var second = new Graph();
+        new TurtleParser(TurtleSyntax.W3C, validateIris: true).Load(second, Path.Combine(publisher.TargetDirectory, "semantic.shacl.ttl"));
+        Assert.True(Cogs.Conformance.RdfGraphComparer.Program.CompareGraphs(first, second).AreEqual);
+        publisher.TargetDirectory = Path.Combine(temporary.Path, "override");
+        publisher.TargetNamespace = "https://example.test/overridden/";
+        Assert.True(publisher.PublishResult(model).Success);
+        var overridden = new Graph();
+        new TurtleParser(TurtleSyntax.W3C, validateIris: true).Load(overridden, Path.Combine(publisher.TargetDirectory, "semantic.shacl.ttl"));
+        Assert.NotEmpty(overridden.GetTriplesWithSubject(Uri(overridden, "https://example.test/overridden/shapes/type/Product")));
+        Assert.Empty(overridden.GetTriplesWithSubject(Uri(overridden, b + "shapes/type/Product")));
+        Assert.Equal("https://example.test/overridden/shapes/property/", overridden.NamespaceMap.GetNamespaceUri("propertyShapes").AbsoluteUri);
+    }
+
+    [Fact]
+    public void RdfNativeShaclUsesScopedKeysLocalInheritanceAndNativeLists()
+    {
+        CogsModel model = BuildModel();
+        using var temporary = new TemporaryDirectory();
+        var publisher = CreateRdfPublisher(model, Path.Combine(temporary.Path, "rdf"));
+        PublicationResult result = publisher.PublishResult(model);
+        Assert.True(result.Success);
+        Assert.Equal(ErrorLevel.Message, Assert.Single(result.Diagnostics, d => d.Code == "SHC2002").Level);
+        Assert.Contains("semantic.shacl12.ttl", result.Artifacts);
+        using var graph = new Graph();
+        new TurtleParser(TurtleSyntax.W3C, validateIris: true).Load(graph, Path.Combine(publisher.TargetDirectory, "semantic.shacl12.ttl"));
+        const string sh = "http://www.w3.org/ns/shacl#", b = "https://example.test/cogs#", s = b + "shapes/1.2/";
+        bool Has(string subject, string predicate, string value) => graph.GetTriplesWithSubjectPredicate(Uri(graph, s + subject), Uri(graph, sh + predicate)).Any(t => t.Object.Equals(Uri(graph, s + value)));
+        Assert.True(Has("declaration/Product", "node", "declaration/Base"));
+        Assert.True(Has("type/Product", "node", "declaration/Product"));
+        Assert.True(Has("declaration/Base", "property", "property/Base.Id"));
+        Assert.Empty(graph.GetTriplesWithSubjectPredicate(Uri(graph, s + "declaration/Product"), Uri(graph, sh + "property")));
+        Assert.Empty(graph.GetTriplesWithSubjectPredicate(Uri(graph, s + "type/Product"), Uri(graph, sh + "property")));
+        Assert.Contains(graph.GetTriplesWithSubjectPredicate(Uri(graph, s + "type/Product"), Uri(graph, sh + "closed")), t => t.Object.Equals(Uri(graph, sh + "ByTypes")));
+        Assert.Contains(graph.GetTriplesWithSubjectPredicate(Uri(graph, b + "Product"), Uri(graph, NamespaceMapper.RDFS + "subClassOf")), t => t.Object.Equals(Uri(graph, b + "Base")));
+        Assert.True(Has("identity/Product", "targetWhere", "signature/Product"));
+        INode key = Assert.Single(graph.GetTriplesWithSubjectPredicate(Uri(graph, s + "identity/Product"), Uri(graph, sh + "uniqueValuesFor"))).Object;
+        Assert.Contains(graph.GetTriplesWithSubjectPredicate(key, Uri(graph, NamespaceMapper.RDF + "first")), t => t.Object.Equals(Uri(graph, b + "id")));
+        Assert.True(Has("property/Recipe.Parts.list", "memberShape", "value/Recipe.Parts"));
+        Assert.Contains(graph.GetTriplesWithSubjectPredicate(Uri(graph, s + "property/Recipe.Parts.list"), Uri(graph, sh + "minListLength")), t => ((ILiteralNode)t.Object).Value == "2");
+        Assert.Empty(graph.GetTriplesWithPredicate(Uri(graph, sh + "uniqueMembers")));
+        Assert.Contains(graph.GetTriplesWithSubjectPredicate(Uri(graph, s + "property/Recipe.Parts"), Uri(graph, sh + "equals")), t => t.Object is IBlankNode);
+        Assert.DoesNotContain(graph.GetTriplesWithPredicate(Uri(graph, sh + "select")), t => ((ILiteralNode)t.Object).Value.Contains("sameTerm(?id", StringComparison.Ordinal) || ((ILiteralNode)t.Object).Value.Contains("COUNT(?cell)", StringComparison.Ordinal));
+        Assert.DoesNotContain(graph.Triples, t => t.Subject is IUriNode n && n.Uri.AbsoluteUri.StartsWith(b + "shapes/", StringComparison.Ordinal) && !n.Uri.AbsoluteUri.StartsWith(s, StringComparison.Ordinal));
+        foreach (string category in new[] { "constraint", "declaration", "identity" })
+            Assert.Equal(s + category + "/", graph.NamespaceMap.GetNamespaceUri(category + "Shapes").AbsoluteUri);
+        Assert.Equal(2, graph.GetTriplesWithPredicate(Uri(graph, "http://purl.org/dc/terms/conformsTo")).Count());
+        AssertShaclConstraintGraphEqual(new ShaclGraphBuilder(model, b, "sem", ShaclProfile.Native12).Build(), graph);
+        publisher.TargetDirectory = Path.Combine(temporary.Path, "second");
+        Assert.True(publisher.PublishResult(model).Success);
+        using var second = new Graph();
+        new TurtleParser(TurtleSyntax.W3C, validateIris: true).Load(second, Path.Combine(publisher.TargetDirectory, "semantic.shacl12.ttl"));
+        Assert.True(Cogs.Conformance.RdfGraphComparer.Program.CompareGraphs(graph, second).AreEqual);
+    }
+
+    [Fact]
+    public void ShaclComponentsAreSharedTypedAndCountsRunOnNodes()
+    {
+        CogsModel model = BuildModel();
+        DataType primitive = new() { Name = "string", IsXmlPrimitive = true };
+        ItemType product = model.ItemTypes.Single(t => t.Name == "Product");
+        foreach (string name in new[] { "FirstText", "SecondText" })
+            product.Properties.Add(new Property { Name = name, DataTypeName = "string", DataType = primitive, MinCardinality = "0", MaxCardinality = "1", MinLength = 2, MaxLength = 8 });
+        product.Properties.Add(new Property { Name = "Huge", DataTypeName = "string", DataType = primitive, MinCardinality = "100000000000000000000000000", MaxCardinality = "n" });
+        const string b = "https://example.test/cogs#", sh = "http://www.w3.org/ns/shacl#";
+        using Graph stable = new ShaclGraphBuilder(model, b, "sem").Build();
+        INode length = Uri(stable, b + "shapes/constraint/UnicodeLengthConstraintComponent");
+        Assert.Single(stable.GetTriplesWithSubjectPredicate(length, Uri(stable, sh + "nodeValidator")));
+        Assert.Equal(2, stable.GetTriplesWithPredicate(Uri(stable, ShaclConstraintCatalog.ParameterNamespace + "lengthMinimum")).Count());
+        INode count = Uri(stable, b + "shapes/constraint/Product.Huge.count");
+        Assert.Contains(stable.GetTriplesWithSubjectPredicate(Uri(stable, b + "shapes/type/Product"), Uri(stable, sh + "node")), t => t.Object.Equals(count));
+        Assert.Single(stable.GetTriplesWithSubjectPredicate(count, Uri(stable, ShaclConstraintCatalog.ParameterNamespace + "countMinimum")));
+        Assert.Empty(stable.GetTriplesWithSubjectPredicate(count, Uri(stable, ShaclConstraintCatalog.ParameterNamespace + "countMaximum")));
+        Assert.DoesNotContain(stable.GetTriplesWithPredicate(Uri(stable, sh + "select")), t => ((ILiteralNode)t.Object).Value.Contains("$shapesGraph", StringComparison.Ordinal));
+        Assert.All(stable.GetTriplesWithPredicate(Uri(stable, sh + "parameter")), t =>
+            Assert.Single(stable.GetTriplesWithSubjectPredicate(t.Object, Uri(stable, sh + "path"))));
+        using Graph native = new ShaclGraphBuilder(model, b, "sem", ShaclProfile.Native12).Build();
+        Assert.DoesNotContain(native.GetTriplesWithPredicate(Uri(native, NamespaceMapper.RDF + "type")), t => t.Subject is IUriNode n && n.Uri.AbsoluteUri.EndsWith("ListCountConstraintComponent", StringComparison.Ordinal));
+        Assert.Contains(native.GetTriplesWithSubjectPredicate(Uri(native, b + "shapes/1.2/property/Product.Huge"), Uri(native, sh + "minCount")), t => ((ILiteralNode)t.Object).Value == "100000000000000000000000000");
+    }
+
+    [Fact]
+    public void ShaclNamesAreCollisionSafeAndGeneratedTextIsModelFacing()
+    {
+        CogsModel model = BuildModel();
+        const string authored = "COGS authored description: \"quoted\", café\nsecond line\rthird line";
+        model.ItemTypes.Single(t => t.Name == "Product").Description = authored;
+        model.Identification[0].Description = authored;
+        foreach (var (owner, property) in new[]
+        {
+            ("A.B", "C"), ("A", "B.C"), ("A_x002E_B", "C"), ("A_B", "C"), ("ÅType", "Étiquette"),
+            ("Final.", "Name"), ("CogsRecord", "CogsNote")
+        })
+        {
+            model.ItemTypes.Add(new ItemType { Name = owner, Properties =
+            [
+                model.Identification[0],
+                new Property { Name = property, DataTypeName = "string", DataType = model.Identification[0].DataType,
+                    MinCardinality = "0", MaxCardinality = "1", Description = authored }
+            ] });
+        }
+        using var temporary = new TemporaryDirectory();
+        var publisher = CreateRdfPublisher(model, Path.Combine(temporary.Path, "rdf"));
+        Assert.True(publisher.PublishResult(model).Success);
+        var graph = new Graph();
+        new TurtleParser(TurtleSyntax.W3C, validateIris: true).Load(graph, Path.Combine(publisher.TargetDirectory, "semantic.shacl.ttl"));
+        const string b = "https://example.test/cogs#", sh = "http://www.w3.org/ns/shacl#";
+        foreach (string name in new[] { "A_x002E_B.C", "A.B_x002E_C", "A_x005F_x002E_x005F_B.C", "A_x005F_B.C",
+            "ÅType.Étiquette", "Final_x002E_.Name", "CogsRecord.CogsNote" })
+        {
+            Assert.NotEmpty(graph.GetTriplesWithSubject(Uri(graph, b + "shapes/property/" + name)));
+            Assert.NotEmpty(graph.GetTriplesWithSubject(Uri(graph, b + "shapes/value/" + name)));
+        }
+        string Name(string path) => ((ILiteralNode)Assert.Single(graph.GetTriplesWithSubjectPredicate(
+            Uri(graph, b + "shapes/" + path), Uri(graph, sh + "name"))).Object).Value;
+        Assert.Equal("Model graph", Name("graph"));
+        Assert.Equal("Model resource", Name("scope"));
+        Assert.Equal("Date or duration value", Name("primitive/cogsDate"));
+        Assert.Equal("CogsRecord", Name("type/CogsRecord"));
+        Assert.Equal("CogsNote", Name("property/CogsRecord.CogsNote"));
+        Assert.Contains("<" + b + "shapes/type/Final.>", File.ReadAllText(Path.Combine(publisher.TargetDirectory, "semantic.shacl.ttl")));
+        foreach (string predicate in new[] { "name", "description", "message" })
+            foreach (Triple triple in graph.GetTriplesWithPredicate(Uri(graph, sh + predicate)))
+            {
+                string value = ((ILiteralNode)triple.Object).Value;
+                if (value != authored && value is not ("CogsRecord" or "CogsNote" or "CogsRecord type signature"))
+                    Assert.DoesNotContain("cogs", value, StringComparison.OrdinalIgnoreCase);
+            }
+        Assert.Contains(graph.GetTriplesWithPredicate(Uri(graph, sh + "description")), t => ((ILiteralNode)t.Object).Value == authored);
+        string[] messages = graph.GetTriplesWithPredicate(Uri(graph, sh + "message")).Select(t => ((ILiteralNode)t.Object).Value).ToArray();
+        Assert.Contains("Fractional seconds must be representable in whole milliseconds.", messages);
+        Assert.Contains("Fractional seconds must be representable in whole microseconds.", messages);
+        Assert.Contains("Decimal coefficient or fractional precision exceeds the permitted range.", messages);
+        AssertShaclConstraintGraphEqual(new ShaclGraphBuilder(model, b, model.Settings.NamespacePrefix).Build(), graph);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(37)]
+    public void ShaclQueryFormattingPreservesOriginalTokensAndLiteralData(int column)
+    {
+        string[] queries =
+        [
+            """
+            PREFIX ex: <https://example.test/>
+            PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+            SELECT $this ?path ?value WHERE { BIND(79228162514264337593543950335 AS ?n) FILTER(isLiteral($this)) BIND(CONTAINS(STR($this), "a.b { } # café😀\n\"quoted\"") AS ?v) FILTER(?n < 9223372036854775807) FILTER NOT EXISTS { ?value ex:p "0001-01-01T00:00:00Z"^^xsd:dateTime . } }
+            """,
+            """
+            SELECT $this ?path ?value WHERE { { SELECT $this (COUNT(?cell) AS ?count) WHERE { $this <https://example.test/p> ?head . OPTIONAL { ?head <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest>* ?cell . } } GROUP BY $this } FILTER(?count < 123456789012345678901234567890) BIND('''first line
+            literal { } # second line''' AS ?text) FILTER(REGEX(?text, "[\\s\\S]|[0-9]{2}")) }
+            """,
+            "SELECT $this WHERE { FILTER($this IN (" + string.Join(", ", Enumerable.Range(0, 15).Select(i =>
+                "<https://example.test/long-iri-" + i + ">")) + ")) }"
+        ];
+        foreach (string query in queries)
+        {
+            string formatted = ShaclQueryFormatter.Format(query);
+            Assert.Equal(ShaclQueryFormatter.Tokenize(query).Select(t => t.Text), ShaclQueryFormatter.Tokenize(formatted).Select(t => t.Text));
+            Assert.DoesNotContain('\r', formatted);
+            Assert.Contains("\nWHERE {\n", formatted);
+            string literal = ShaclQueryFormatter.FormatLiteral(query, column);
+            var graph = new Graph();
+            new TurtleParser(TurtleSyntax.W3C, validateIris: true).Load(graph, new StringReader("<urn:s> <urn:p> " + literal + " ."));
+            string parsed = ((ILiteralNode)Assert.Single(graph.Triples).Object).Value;
+            Assert.Equal(ShaclQueryFormatter.Tokenize(query).Select(t => t.Text), ShaclQueryFormatter.Tokenize(parsed).Select(t => t.Text));
+            Assert.StartsWith("\n" + new string(' ', column + 4), parsed);
+        }
+        Assert.Contains("<https://example.test/>", ShaclQueryFormatter.Tokenize(queries[0]).Select(t => t.Text));
+        Assert.Contains("79228162514264337593543950335", ShaclQueryFormatter.Tokenize(queries[0]).Select(t => t.Text));
+        Assert.Contains("CONTAINS", ShaclQueryFormatter.Tokenize(queries[0]).Select(t => t.Text));
+        Assert.Contains("isLiteral", ShaclQueryFormatter.Tokenize(queries[0]).Select(t => t.Text));
+        Assert.Contains("\n        <https://example.test/long-iri-", ShaclQueryFormatter.Format(queries[2]));
+        Assert.Equal(ShaclQueryFormatter.Format(queries[0]), ShaclQueryFormatter.Format(queries[0].Replace("\n", "\r\n")));
+    }
+
+    private static void AssertShaclConstraintGraphEqual(IGraph expected, IGraph actual)
+    {
+        static Graph Normalize(IGraph source)
+        {
+            var result = new Graph();
+            foreach (Triple triple in source.Triples)
+            {
+                INode value = triple.Object;
+                if (triple.Predicate is IUriNode predicate && predicate.Uri.AbsoluteUri == "http://www.w3.org/ns/shacl#select")
+                    value = result.CreateLiteralNode(string.Join(" ", ShaclQueryFormatter.Tokenize(((ILiteralNode)value).Value).Select(t => t.Text)));
+                result.Assert(new Triple(triple.Subject, triple.Predicate, value));
+            }
+            return result;
+        }
+        Assert.True(Cogs.Conformance.RdfGraphComparer.Program.CompareGraphs(Normalize(expected), Normalize(actual)).AreEqual,
+            "SHACL serialization must preserve every constraint triple and SPARQL token.");
+    }
+
+    [Fact]
+    public void RdfCliAliasProducesSameFiveArtifactBundleAndIsHidden()
+    {
+        using var temporary = new TemporaryDirectory();
+        string root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
+        string model = Path.Combine(root, "conformance", "rdf", "model");
+        var main = typeof(Cogs.Console.Program).GetMethod("Main", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+        int Run(params string[] args) => (int)main.Invoke(null, [args])!;
+        string first = Path.Combine(temporary.Path, "rdf"), second = Path.Combine(temporary.Path, "owl-alias");
+        Assert.Equal(0, Run("publish-rdf", model, first));
+        Assert.Equal(0, Run("publish-owl", model, second));
+        AssertRdfBundlePrefix(first, "rdf_conformance", "https://example.org/rdf#", "m");
+        string overridden = Path.Combine(temporary.Path, "override");
+        Assert.Equal(0, Run("publish-rdf", model, overridden, "--namespacePrefix", "ddi"));
+        AssertRdfBundlePrefix(overridden, "rdf_conformance", "https://example.org/rdf#", "ddi");
+        Assert.Equal(5, Directory.GetFiles(first).Length);
+        foreach (string name in Directory.GetFiles(first, "*.ttl").Select(Path.GetFileName))
+        {
+            var left = new Graph(); var right = new Graph();
+            new TurtleParser(TurtleSyntax.W3C, validateIris: true).Load(left, Path.Combine(first, name));
+            new TurtleParser(TurtleSyntax.W3C, validateIris: true).Load(right, Path.Combine(second, name));
+            Assert.True(Cogs.Conformance.RdfGraphComparer.Program.CompareGraphs(left, right).AreEqual);
+        }
+        Assert.Equal(File.ReadAllText(Path.Combine(first, "rdf_conformance.context.jsonld")), File.ReadAllText(Path.Combine(second, "rdf_conformance.context.jsonld")));
+        string reference = Path.Combine(temporary.Path, "commands.rst");
+        Assert.Equal(0, Run("generate-command-reference", reference));
+        string commands = File.ReadAllText(reference);
+        Assert.Contains("publish-rdf", commands);
+        Assert.DoesNotContain("publish-owl", commands);
+    }
+
     [Fact]
     public void OwlOrderedCompanionsPreserveLocalSemanticsAndGenerateJsonLdContext()
     {
@@ -54,7 +658,7 @@ public sealed class SemanticPublisherTests
             }]
         });
         using var temporary = new TemporaryDirectory();
-        var publisher = CreateOwlPublisher(model, Path.Combine(temporary.Path, "owl"));
+        var publisher = CreateRdfPublisher(model, Path.Combine(temporary.Path, "owl"));
         publisher.TargetNamespace = "https://example.test/rdf/";
         PublicationResult result = publisher.PublishResult(model);
         Assert.True(result.Success);
@@ -175,7 +779,7 @@ public sealed class SemanticPublisherTests
         Directory.CreateDirectory(target);
         string sentinel = Path.Combine(target, "sentinel.txt");
         File.WriteAllText(sentinel, "unchanged");
-        var publisher = CreateOwlPublisher(model, target);
+        var publisher = CreateRdfPublisher(model, target);
         publisher.Overwrite = true;
         PublicationResult result = publisher.PublishResult(model);
         Assert.False(result.Success);
@@ -210,7 +814,7 @@ public sealed class SemanticPublisherTests
         Assert.NotEmpty(Directory.EnumerateFiles(csharpTarget, "*.cs"));
 
         string owlTarget = Path.Combine(temporary.Path, "owl-huge");
-        var owl = new OwlPublisher
+        var owl = new RdfPublisher
         {
             TargetDirectory = owlTarget,
             TargetNamespace = model.Settings.NamespaceUrl,
@@ -255,14 +859,14 @@ public sealed class SemanticPublisherTests
         LinkMLModel projection = new DeserializerBuilder()
             .WithTypeConverter(new BigIntegerYamlTypeConverter())
             .Build()
-            .Deserialize<LinkMLModel>(File.ReadAllText(Path.Combine(linkMlTarget, "linkml.yml")));
+            .Deserialize<LinkMLModel>(File.ReadAllText(Path.Combine(linkMlTarget, "semantic.linkml.yml")));
         LinkMLSlot parts = projection.classes["Recipe"].slot_usage["parts"];
         Assert.Equal(BigInteger.Parse(minimum, CultureInfo.InvariantCulture), parts.minimum_cardinality);
         Assert.Equal(BigInteger.Parse(maximum, CultureInfo.InvariantCulture), parts.maximum_cardinality);
 
         string graphQlTarget = Path.Combine(temporary.Path, "graphql-huge");
         new GraphQLPublisher { TargetDirectory = graphQlTarget }.Publish(model);
-        string schema = File.ReadAllText(Path.Combine(graphQlTarget, "GraphQL.graphqls"));
+        string schema = File.ReadAllText(Path.Combine(graphQlTarget, "semantic.graphqls"));
         Assert.Contains($"@cogsCardinality(min: \"{minimum}\", max: \"{maximum}\", ordered: true)", schema);
     }
 
@@ -313,7 +917,7 @@ public sealed class SemanticPublisherTests
         });
         using var temporary = new TemporaryDirectory();
         string target = Path.Combine(temporary.Path, "owl");
-        var publisher = new OwlPublisher
+        var publisher = new RdfPublisher
         {
             TargetDirectory = target,
             Overwrite = false,
@@ -327,7 +931,7 @@ public sealed class SemanticPublisherTests
         PublicationResult result = publisher.PublishResult(model);
 
         Assert.True(result.Success);
-        Assert.Equal(["semantic.context.jsonld", "semantic.ontology.jsonld", "semantic.ttl"], result.Artifacts);
+        Assert.Equal(["semantic.context.jsonld", "semantic.ontology.jsonld", "semantic.shacl.ttl", "semantic.shacl12.ttl", "semantic.ttl"], result.Artifacts);
         string turtlePath = Path.Combine(target, "semantic.ttl");
         Assert.True(File.Exists(turtlePath));
         Assert.False(File.Exists(Path.Combine(target, "semantic.owl")));
@@ -515,7 +1119,7 @@ public sealed class SemanticPublisherTests
             && !string.IsNullOrEmpty(diagnostic.ModelPath));
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "OWL2007"
             && diagnostic.Level == ErrorLevel.Message);
-        Assert.All(result.Diagnostics.Where(diagnostic => diagnostic.Code is not ("OWL2001" or "OWL2002" or "OWL2003" or "OWL2007")),
+        Assert.All(result.Diagnostics.Where(diagnostic => diagnostic.Code is not ("OWL2001" or "OWL2002" or "OWL2003" or "OWL2007" or "SHC2001" or "SHC2002")),
             diagnostic => Assert.Equal(ErrorLevel.Warning, diagnostic.Level));
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "OWL2006"
             && diagnostic.ModelPath == "/CompositeTypes/Recipe/Properties/BoundedDate");
@@ -547,7 +1151,7 @@ public sealed class SemanticPublisherTests
             MinCardinality = "0", MaxCardinality = "1", Enumeration = [first, second]
         });
         using var temporary = new TemporaryDirectory();
-        var publisher = CreateOwlPublisher(model, Path.Combine(temporary.Path, "owl"));
+        var publisher = CreateRdfPublisher(model, Path.Combine(temporary.Path, "owl"));
         Assert.True(publisher.PublishResult(model).Success);
         IGraph graph = AssertOntologyMatchesTurtle(publisher.TargetDirectory);
         foreach (string lexical in new[] { first, second })
@@ -564,7 +1168,7 @@ public sealed class SemanticPublisherTests
     {
         CogsModel model = BuildModel();
         using var temporary = new TemporaryDirectory();
-        var publisher = CreateOwlPublisher(model, Path.Combine(temporary.Path, "owl"));
+        var publisher = CreateRdfPublisher(model, Path.Combine(temporary.Path, "owl"));
         publisher.TargetNamespace = ns;
         publisher.TargetNamespacePrefix = prefix;
         publisher.Description = "Quoted \"Unicode — café\"\nsecond line\rretained\r\nlast line";
@@ -578,7 +1182,7 @@ public sealed class SemanticPublisherTests
         Assert.Equal(termBase, context["model"]["@id"].GetValue<string>());
         Assert.Equal(NamespaceMapper.OWL, context["owl"]["@id"].GetValue<string>());
 
-        // A failed replacement must preserve all three existing artifacts.
+        // A failed replacement must preserve all four existing artifacts.
         Dictionary<string, byte[]> before = Directory.GetFiles(publisher.TargetDirectory)
             .ToDictionary(Path.GetFileName, File.ReadAllBytes);
         publisher.Overwrite = true;
@@ -643,7 +1247,7 @@ public sealed class SemanticPublisherTests
         });
         using var temporary = new TemporaryDirectory();
         string target = Path.Combine(temporary.Path, "owl");
-        var publisher = CreateOwlPublisher(model, target);
+        var publisher = CreateRdfPublisher(model, target);
 
         PublicationResult result = publisher.PublishResult(model);
 
@@ -692,7 +1296,7 @@ public sealed class SemanticPublisherTests
         Directory.CreateDirectory(target);
         string sentinelPath = Path.Combine(target, "sentinel.txt");
         File.WriteAllText(sentinelPath, "unchanged");
-        var publisher = CreateOwlPublisher(model, target);
+        var publisher = CreateRdfPublisher(model, target);
         publisher.Overwrite = true;
 
         PublicationResult result = publisher.PublishResult(model);
@@ -726,7 +1330,7 @@ public sealed class SemanticPublisherTests
             ]
         });
         using var temporary = new TemporaryDirectory();
-        var publisher = CreateOwlPublisher(model, Path.Combine(temporary.Path, "owl"));
+        var publisher = CreateRdfPublisher(model, Path.Combine(temporary.Path, "owl"));
 
         PublicationResult result = publisher.PublishResult(model);
 
@@ -747,7 +1351,7 @@ public sealed class SemanticPublisherTests
             MinCardinality = "1", MaxCardinality = "1"
         };
         using var temporary = new TemporaryDirectory();
-        var publisher = CreateOwlPublisher(model, Path.Combine(temporary.Path, "owl"));
+        var publisher = CreateRdfPublisher(model, Path.Combine(temporary.Path, "owl"));
 
         PublicationResult result = publisher.PublishResult(model);
 
@@ -774,7 +1378,8 @@ public sealed class SemanticPublisherTests
         PublicationResult result = publisher.PublishResult(model);
 
         Assert.True(result.Success);
-        string yaml = File.ReadAllText(Path.Combine(target, "linkml.yml"));
+        Assert.Equal(new[] { "semantic.linkml.yml" }, result.Artifacts);
+        string yaml = File.ReadAllText(Path.Combine(target, "semantic.linkml.yml"));
         LinkMLModel projection = new DeserializerBuilder()
             .WithTypeConverter(new BigIntegerYamlTypeConverter())
             .Build()
@@ -832,7 +1437,8 @@ public sealed class SemanticPublisherTests
 
         Assert.True(result.Success);
         Assert.False(flavorChild.IsAbstract);
-        using var reader = new StreamReader(Path.Combine(target, "dctap.csv"));
+        Assert.Equal(new[] { "semantic.dctap.csv" }, result.Artifacts);
+        using var reader = new StreamReader(Path.Combine(target, "semantic.dctap.csv"));
         using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
         List<DcTapEntry> entries = csv.GetRecords<DcTapEntry>().ToList();
         DcTapEntry parts = entries.Single(entry => string.IsNullOrEmpty(entry.ShapeId) && entry.PropertyId == "sem:parts");
@@ -878,7 +1484,7 @@ public sealed class SemanticPublisherTests
         using var temporary = new TemporaryDirectory();
 
         string owlTarget = ExistingTarget(temporary.Path, "owl-collision");
-        OwlPublisher owl = CreateOwlPublisher(model, owlTarget);
+        RdfPublisher owl = CreateRdfPublisher(model, owlTarget);
         owl.Overwrite = true;
         PublicationResult owlResult = owl.PublishResult(model);
         AssertCollision(owlResult, "OWL1002", owlTarget);
@@ -1100,7 +1706,7 @@ public sealed class SemanticPublisherTests
         return ontology;
     }
 
-    private static OwlPublisher CreateOwlPublisher(CogsModel model, string target) => new()
+    private static RdfPublisher CreateRdfPublisher(CogsModel model, string target) => new()
     {
         TargetDirectory = target,
         TargetNamespace = model.Settings.NamespaceUrl,

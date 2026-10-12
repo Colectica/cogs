@@ -31,7 +31,7 @@ call :cogs publish-py --overwrite "cogsburger" "generated\python" || goto :fail
 call :cogs publish-py --flavor pydantic --overwrite "cogsburger" "generated\python-pydantic" || goto :fail
 call :cogs publish-ts --overwrite "cogsburger" "generated\typescript" || goto :fail
 call :cogs publish-json --overwrite "cogsburger" "generated\json" || goto :fail
-call :cogs publish-owl --overwrite "cogsburger" "generated\owl" || goto :fail
+call :cogs publish-rdf --overwrite "cogsburger" "generated\owl" || goto :fail
 call :cogs publish-linkml --overwrite "cogsburger" "generated\linkml" || goto :fail
 call :cogs publish-dctap --overwrite "cogsburger" "generated\dctap" || goto :fail
 call :cogs publish-graphql --overwrite "cogsburger" "generated\graphql" || goto :fail

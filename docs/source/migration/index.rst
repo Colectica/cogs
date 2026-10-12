@@ -4,6 +4,22 @@ Migrating to COGS 2
 COGS 2 makes previously implicit or target-dependent conventions explicit.
 Migration is therefore a review, not just a mechanical CSV rewrite.
 
+Published filenames
+-------------------
+
+Standalone output filenames now begin with the exact model ``Slug``. Update
+build scripts and artifact consumers from ``schema.xsd`` to ``<slug>.xsd``,
+``xml.xsd`` to ``<slug>.xml.xsd``, ``jsonSchema.json`` to
+``<slug>.schema.json``, ``cogs-meta-schema.json`` to
+``<slug>.meta-schema.json``, ``dctap.csv`` to ``<slug>.dctap.csv``,
+``linkml.yml`` to ``<slug>.linkml.yml``, and ``GraphQL.graphqls`` to
+``<slug>.graphqls``. No copies under the former names are emitted. Keep the two
+XSD files together so the relative import resolves.
+
+This is a filename migration only: source models, schema identifiers, and
+JSON/XML instance representations are unchanged. RDF and UML already use
+slug-prefixed names; explicit UML filename overrides remain supported.
+
 Before migration
 ----------------
 
@@ -178,13 +194,42 @@ the companion rather than infer sequence from triple or query-result order.
 ``COGS-VAL-PROP-009`` rejects a model predicate occupying a required companion
 IRI; resolve that naming conflict explicitly.
 
-The OWL publisher emits both ``<slug>.ttl`` and ``<slug>.context.jsonld``.
+The RDF publisher emits primary ``<slug>.ttl``, ``<slug>.ontology.jsonld``,
+``<slug>.context.jsonld``, ``<slug>.shacl.ttl``, and the experimental
+``<slug>.shacl12.ttl`` outputs.
 RDF/OWL and JSON-LD are first-class serialization outputs, not projections.
-Only OWL generates the context, and it describes RDF data rather than ordinary
+Only the RDF publisher generates the context, and it describes RDF data rather than ordinary
 COGS JSON. Contexts do not derive membership triples from lists; full RDF
 instances retain both. See :doc:`/technical-guide/generation/owl` for datatype
 tags, list syntax, occurrence metadata, and the existing authority exceptions.
 No CSV rewrite is needed for this addition.
+
+Use ``publish-rdf`` for new scripts; ``publish-owl`` remains a hidden identical
+alias. Replace library ``OwlPublisher`` usages with ``RdfPublisher``; there is
+no class adapter. RDF terms and instance serialization are unchanged. SHACL
+is now a primary closed RDF instance-shape output alongside JSON Schema and
+XML Schema. See :doc:`/technical-guide/generation/rdf` for all five artifacts
+and :doc:`/technical-guide/generation/shacl` for the portable validation profile.
+
+SHACL property and value shape IRIs now use a dot-separated owner/property
+name: ``shapes/property/Agent/Name`` becomes ``shapes/property/Agent.Name``;
+``shapes/value/Agent/Name`` becomes ``shapes/value/Agent.Name``. Ordered-list
+heads use ``shapes/property/Agent.Name.list``. Escape literal underscores and
+dots within each source component as ``_x005F_`` and ``_x002E_`` before joining
+them. Update references to these shape IRIs; no compatibility aliases are
+emitted. Type, target, signature, and primitive shape IRIs are unchanged.
+Category prefixes, indented queries, and neutral generated labels improve
+presentation without changing model predicates, RDF instances, or validation
+rules. No source-model rewrite is required.
+
+All RDF artifacts now use the configured ``NamespacePrefix`` or command override
+consistently instead of an unconditional ``model`` alias. Both JSON-LD contexts
+define the effective prefix explicitly. Update documents that relied on the old
+hardcoded alias to use the configured prefix; existing unprefixed instance terms
+retain their meanings through ``@vocab`` and property mappings. Reserved or
+shadowing aliases use a neutral ``model``/``model2`` replacement with ``OWL2005``.
+This is a context-alias change, not an RDF term or shape-IRI migration. See
+:doc:`/technical-guide/generation/rdf` for configuration and namespace guards.
 
 Verification
 ------------

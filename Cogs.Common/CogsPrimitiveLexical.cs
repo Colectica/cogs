@@ -196,11 +196,11 @@ namespace Cogs.Common
             };
         }
 
-        private static bool IsIntegerType(string dataType) => dataType is
+        public static bool IsIntegerType(string dataType) => dataType is
             "nonPositiveInteger" or "negativeInteger" or "long" or "int" or
             "nonNegativeInteger" or "unsignedLong" or "positiveInteger";
 
-        private static bool IsTemporalType(string dataType) => dataType is
+        public static bool IsTemporalType(string dataType) => dataType is
             "dateTime" or "time" or "date" or "gYearMonth" or "gYear" or
             "gMonthDay" or "gDay" or "gMonth";
 

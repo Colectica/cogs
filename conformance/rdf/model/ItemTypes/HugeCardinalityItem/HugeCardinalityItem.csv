@@ -1,0 +1,2 @@
+Name,DataType,MinCardinality,MaxCardinality,Description,Ordered,AllowSubtypes,MinLength,MaxLength,Pattern,Enumeration,MinInclusive,MinExclusive,MaxInclusive,MaxExclusive,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup
+LargeValues,string,2147483648,2147483650,Cardinality beyond an Int32 processor limit,,,,,,,,,,,,,

@@ -15,6 +15,18 @@ namespace Cogs.Tests
         private const string PropertyHeader = "Name,DataType,MinCardinality,MaxCardinality,Description,Ordered,AllowSubtypes,MinLength,MaxLength,Enumeration,Pattern,MinInclusive,MinExclusive,MaxInclusive,MaxExclusive,DeprecatedNamespace,DeprecatedElementOrAttribute,DeprecatedChoiceGroup";
 
         [Fact]
+        public void SafeShapeLikeNamesRemainValidModelTerms()
+        {
+            var dto = ValidDto();
+            dto.ItemTypes[0].Name = "Shapes";
+            dto.ItemTypes[0].Properties.Add(Property("Shapes", "string"));
+            dto.ReusableDataTypes.Add(new Cogs.Dto.DataType { Name = "Shapes.Graph" });
+            dto.ItemTypes[0].Properties.Add(Property("ShapeValue", "Shapes.Graph"));
+            Assert.DoesNotContain(DtoValidation.Validate(dto), d => d.Level >= ErrorLevel.Error);
+            Assert.True(new CogsModelBuilder().BuildResult(dto).Success);
+        }
+
+        [Fact]
         public void ReaderReportsMissingDirectoryWithoutThrowing()
         {
             var reader = new CogsDirectoryReader();

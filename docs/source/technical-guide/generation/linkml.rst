@@ -4,6 +4,9 @@ LinkML Generation
 The :doc:`/technical-guide/command-line/publish-linkml` command generates a
 LinkML YAML schema from a COGS model.
 
+The output filename is ``<Settings.Slug>.linkml.yml``, independently of the
+``--name`` and namespace options.
+
 .. warning::
 
    LinkML is a projection. The command emits stable warnings for property-local

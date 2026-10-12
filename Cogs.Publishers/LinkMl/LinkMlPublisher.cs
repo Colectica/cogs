@@ -89,6 +89,7 @@ public sealed class LinkMlPublisher
 
     private void PublishCore(CogsModel model, string targetDirectory)
     {
+        string fileName = PublicationFileNames.ForModel(model, ".linkml.yml");
         string modelPrefix = NamespaceUriPrefix;
         if (modelPrefix is "linkml" or "rdf" or "xsd")
         {
@@ -181,7 +182,7 @@ public sealed class LinkMlPublisher
             .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitDefaults)
             .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull)
             .Build();
-        File.WriteAllText(Path.Combine(targetDirectory, "linkml.yml"), "# Native decimal exactness and temporal precision/domain checks require COGS validation; these aliases are projections.\n" + serializer.Serialize(linkml));
+        File.WriteAllText(Path.Combine(targetDirectory, fileName), "# Native decimal exactness and temporal precision/domain checks require COGS validation; these aliases are projections.\n" + serializer.Serialize(linkml));
     }
 
     private LinkMLSlot PropertyToSlot(CogsModel model, DataType owner, Property property)

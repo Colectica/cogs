@@ -227,40 +227,6 @@ Options
 ``--name <value>``
    Name of the model
 
-.. _cli-descriptor-publish-owl:
-
-publish-owl
------------
-
-Publish an authoritative OWL ontology in Turtle and JSON-LD, with an RDF instance context, from a COGS data model
-
-Usage
-~~~~~
-
-``cogs publish-owl [cogsLocation] [targetLocation] [options]``
-
-Arguments
-~~~~~~~~~
-
-``[cogsLocation]``
-   Directory where the COGS datamodel is located.
-``[targetLocation]``
-   Directory where the owl schema is generated.
-
-Options
-~~~~~~~
-
-``-?|-h|--help``
-   Show help information
-``-o|--overwrite``
-   If the target directory exists, delete and overwrite the location
-``-n|--namespace <value>``
-   URI of the target Owl namespace
-``-p|--namespacePrefix <value>``
-   Namespace prefix to use for the target Owl namespace
-``-v|--version <value>``
-   Version number for the target Owl namespace
-
 .. _cli-descriptor-publish-py:
 
 publish-py
@@ -292,6 +258,40 @@ Options
    URI of the target XML namespace
 ``-o|--overwrite``
    If the target directory exists, delete and overwrite the location
+
+.. _cli-descriptor-publish-rdf:
+
+publish-rdf
+-----------
+
+Publish primary RDF outputs: OWL ontology in Turtle and JSON-LD, an instance context, and SHACL shapes
+
+Usage
+~~~~~
+
+``cogs publish-rdf [cogsLocation] [targetLocation] [options]``
+
+Arguments
+~~~~~~~~~
+
+``[cogsLocation]``
+   Directory where the COGS datamodel is located.
+``[targetLocation]``
+   Directory where the RDF output bundle is generated.
+
+Options
+~~~~~~~
+
+``-?|-h|--help``
+   Show help information
+``-o|--overwrite``
+   If the target directory exists, delete and overwrite the location
+``-n|--namespace <value>``
+   URI of the target RDF namespace
+``-p|--namespacePrefix <value>``
+   Namespace prefix to use for the target RDF namespace
+``-v|--version <value>``
+   Version number for the target RDF ontology
 
 .. _cli-descriptor-publish-sphinx:
 

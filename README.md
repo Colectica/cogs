@@ -22,15 +22,21 @@ families. OWL describes the RDF ontology; Turtle and JSON-LD encode RDF graphs.
 The authoritative COGS outputs are:
 
 * XML Schema 1.0 and JSON Schema 2020-12
-* OWL/RDF in W3C Turtle and JSON-LD, with a separate RDF instance context
+* OWL ontology in W3C Turtle and JSON-LD
+* JSON-LD context for RDF instances
+* SHACL Core/SPARQL shapes for closed RDF instance validation
 * UML/XMI in normative and EA flavors
 * C# class library with JSON, XML, and RDF graph serialization
 * Python class package with JSON and XML serialization
 * TypeScript class package with JSON and XML serialization
 
-The OWL publisher writes `<slug>.ttl`, the equivalent complete ontology
-`<slug>.ontology.jsonld`, and the lightweight instance context
-`<slug>.context.jsonld`. The ontology JSON-LD embeds its own context and exposes
+The RDF publisher (`publish-rdf`, with `publish-owl` as an alias) writes
+`<slug>.ttl`, the equivalent complete ontology
+`<slug>.ontology.jsonld`, the lightweight instance context
+`<slug>.context.jsonld`, production SHACL shapes `<slug>.shacl.ttl`, and
+the experimental native SHACL 1.2 companion `<slug>.shacl12.ttl`.
+SHACL complements OWL with closed instance constraints, including subtype,
+identity, and ordered-list checks. The ontology JSON-LD embeds its own context and exposes
 classes, descriptions, inheritance, restrictions, facets, and keys without
 requiring remote documents. Ordered RDF
 properties retain direct membership triples and a companion `<camelCaseName>List`
@@ -40,7 +46,7 @@ importer. OWL's documented exceptions and validation boundaries remain explicit.
 
 COGS also publishes the projections LinkML, DCTAP, GraphQL schema language,
 Graphviz/DOT, and Sphinx documentation.
-ShEx and SHACL can be generated via LinkML.
+ShEx is not a built-in output; it can be generated via LinkML.
 
 ## Platform
 COGS runs on Windows, Linux, and macOS on .NET 10.

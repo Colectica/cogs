@@ -56,6 +56,7 @@ public sealed class DcTapPublisher
 
     private void PublishCore(string targetDirectory)
     {
+        string fileName = PublicationFileNames.ForModel(CogsModel, ".dctap.csv");
         _diagnostics.Add(new CogsError(ErrorLevel.Warning, "DCT2010",
             "DCTAP XSD datatype terms do not enforce the narrower COGS native scalar domains; use COGS instance validation.",
             sourcePath: CogsModel.SourceDirectory));
@@ -107,7 +108,7 @@ public sealed class DcTapPublisher
         }
 
         if (entries.Count > 0) entries.RemoveAt(entries.Count - 1);
-        using var writer = new StreamWriter(Path.Combine(targetDirectory, "dctap.csv"));
+        using var writer = new StreamWriter(Path.Combine(targetDirectory, fileName));
         using var csv = new CsvWriter(writer, CultureInfo.InvariantCulture);
         csv.WriteRecords(entries);
     }

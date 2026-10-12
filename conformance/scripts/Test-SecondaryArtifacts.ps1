@@ -32,9 +32,9 @@ foreach ($rootValue in $Roots) {
         }
         if ($file.Name.EndsWith('.context.jsonld', [StringComparison]::OrdinalIgnoreCase)) {
             $stem = $file.FullName.Substring(0, $file.FullName.Length - '.context.jsonld'.Length)
-            foreach ($suffix in @('.ttl', '.ontology.jsonld')) {
+            foreach ($suffix in @('.ttl', '.ontology.jsonld', '.shacl.ttl', '.shacl12.ttl')) {
                 if (-not [IO.File]::Exists($stem + $suffix)) {
-                    throw "Missing OWL artifact '$($stem + $suffix)' beside the RDF instance context."
+                    throw "Missing primary RDF artifact '$($stem + $suffix)' beside the RDF instance context."
                 }
             }
         }
@@ -58,7 +58,7 @@ foreach ($rootValue in $Roots) {
             }
         }
 
-        if ($file.Name -eq 'dctap.csv') {
+        if ($file.Name.EndsWith('.dctap.csv', [StringComparison]::Ordinal)) {
             $dctapPaths.Add($file.FullName)
         }
 

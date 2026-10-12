@@ -38,6 +38,7 @@ public sealed class GraphQLPublisher
 
     private void PublishCore(CogsModel model, string targetDirectory)
     {
+        string fileName = PublicationFileNames.ForModel(model, ".graphqls");
         ValidateNames(model);
         Errors.Add(new CogsError(
             ErrorLevel.Warning,
@@ -56,7 +57,7 @@ public sealed class GraphQLPublisher
         }
 
         AppendQuery(builder, model);
-        File.WriteAllText(Path.Combine(targetDirectory, "GraphQL.graphqls"), builder.ToString(), new UTF8Encoding(false));
+        File.WriteAllText(Path.Combine(targetDirectory, fileName), builder.ToString(), new UTF8Encoding(false));
     }
 
     private static void AppendHeader(StringBuilder builder, CogsModel model)

@@ -1,6 +1,7 @@
 using Cogs.Model;
 using Cogs.Publishers;
 using Cogs.Publishers.FluentJson;
+using Cogs.Publishers.LinkMl;
 using Json.Schema;
 using System;
 using System.Collections.Generic;
@@ -17,12 +18,105 @@ namespace Cogs.Tests
     {
         private const string Namespace = "https://example.org/schema-test";
 
+        [Theory]
+        [InlineData("lifecycle40")]
+        [InlineData("model_with_underscores")]
+        public void StandaloneArtifactsUseTheExactSlug(string slug)
+        {
+            using var output = new TemporaryDirectory();
+            CogsModel model = BuildModel(slug: slug);
+
+            foreach (var (name, suffixes, publish) in StandalonePublishers(model))
+            {
+                string target = Path.Combine(output.Path, name);
+                publish(target);
+                Assert.Equal(
+                    suffixes.Select(suffix => slug + suffix).OrderBy(x => x, StringComparer.Ordinal),
+                    Directory.GetFiles(target).Select(Path.GetFileName).OrderBy(x => x, StringComparer.Ordinal));
+            }
+
+            var document = new XmlDocument();
+            string schemaPath = Path.Combine(output.Path, "xsd", slug + ".xsd");
+            document.Load(schemaPath);
+            var namespaces = new XmlNamespaceManager(document.NameTable);
+            namespaces.AddNamespace("xs", XmlSchema.Namespace);
+            Assert.Equal(slug + ".xml.xsd", document.SelectSingleNode(
+                "/xs:schema/xs:import/@schemaLocation", namespaces)!.Value);
+            Assert.Empty(ValidateXml(LoadSchemaSet(schemaPath),
+                $"<ItemContainer xmlns='{Namespace}'><DerivedItem><ID>A</ID><BaseValue>x</BaseValue></DerivedItem></ItemContainer>"));
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("Uppercase")]
+        [InlineData("../escape")]
+        [InlineData("a/b")]
+        [InlineData("two-words")]
+        [InlineData("valid\n")]
+        public void InvalidPublicationSlugsPreserveExistingArtifacts(string slug)
+        {
+            using var output = new TemporaryDirectory();
+            CogsModel model = BuildModel(slug: slug);
+            foreach (var (name, _, publish) in StandalonePublishers(model))
+            {
+                string target = Path.Combine(output.Path, name);
+                Directory.CreateDirectory(target);
+                string sentinel = Path.Combine(target, "existing.txt");
+                File.WriteAllText(sentinel, "Existing output must survive.");
+
+                Exception error = Assert.ThrowsAny<Exception>(() => publish(target));
+
+                Assert.Contains("Settings.Slug", error.Message, StringComparison.Ordinal);
+                Assert.Equal("Existing output must survive.", File.ReadAllText(sentinel));
+                Assert.Equal(new[] { sentinel }, Directory.GetFiles(target));
+            }
+        }
+
+        [Fact]
+        public void JsonPublisherCanBeReusedWithDifferentSlugs()
+        {
+            using var output = new TemporaryDirectory();
+            var publisher = new FluentJsonSchemaPublisher
+            {
+                TargetDirectory = output.Path,
+                Overwrite = true
+            };
+            publisher.Publish(BuildModel(slug: "first_model"));
+            publisher.Publish(BuildModel(slug: "second_model"));
+
+            Assert.Equal(new[] { "second_model.meta-schema.json", "second_model.schema.json" },
+                Directory.GetFiles(output.Path).Select(Path.GetFileName).OrderBy(x => x, StringComparer.Ordinal));
+        }
+
+        private static (string Name, string[] Suffixes, Action<string> Publish)[] StandalonePublishers(CogsModel model) =>
+        [
+            ("json", [".schema.json", ".meta-schema.json"], target =>
+                new FluentJsonSchemaPublisher { TargetDirectory = target, Overwrite = true }.Publish(model)),
+            ("xsd", [".xsd", ".xml.xsd"], target =>
+            {
+                var publisher = CreateXsdPublisher(model, target);
+                publisher.Overwrite = true;
+                publisher.Publish();
+            }),
+            ("dctap", [".dctap.csv"], target =>
+                new DcTapPublisher { TargetDirectory = target, Overwrite = true, CogsModel = model }.Publish()),
+            ("linkml", [".linkml.yml"], target =>
+                new LinkMlPublisher
+                {
+                    TargetDirectory = target, Overwrite = true, Name = "Unrelated Schema Name",
+                    NamespaceUri = "https://override.example/model", NamespaceUriPrefix = "override"
+                }.Publish(model)),
+            ("graphql", [".graphqls"], target =>
+                new GraphQLPublisher { TargetDirectory = target, Overwrite = true, TargetNamespace = "override" }.Publish(model))
+        ];
+
         [Fact]
         public void JsonSchemaUsesAllOfInheritanceAndBoundaryClosure()
         {
             using var output = new TemporaryDirectory();
             PublishJson(BuildModel(), output.Path);
-            using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(output.Path, "jsonSchema.json")));
+            using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(output.Path, "schema_test.schema.json")));
             var root = document.RootElement;
             var definitions = root.GetProperty("$defs");
             var baseItem = definitions.GetProperty("BaseItem");
@@ -106,7 +200,7 @@ namespace Cogs.Tests
         {
             using var output = new TemporaryDirectory();
             PublishJson(BuildModel(), output.Path);
-            using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(output.Path, "jsonSchema.json")));
+            using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(output.Path, "schema_test.schema.json")));
             var definitions = document.RootElement.GetProperty("$defs");
 
             Assert.Equal("string", definitions.GetProperty("duration").GetProperty("type").GetString());
@@ -128,7 +222,7 @@ namespace Cogs.Tests
             var extension = temporal.GetProperty("x-cogs-minInclusive");
             Assert.Equal("dateTime", extension.GetProperty("datatype").GetString());
             Assert.Equal("2020-01-01T00:00:00Z", extension.GetProperty("value").GetString());
-            Assert.True(File.Exists(Path.Combine(output.Path, "cogs-meta-schema.json")));
+            Assert.True(File.Exists(Path.Combine(output.Path, "schema_test.meta-schema.json")));
         }
 
         [Fact]
@@ -193,7 +287,7 @@ namespace Cogs.Tests
         {
             using var output = new TemporaryDirectory();
             PublishJson(BuildModel(), output.Path);
-            var schema = JsonSchema.FromFile(Path.Combine(output.Path, "jsonSchema.json"));
+            var schema = JsonSchema.FromFile(Path.Combine(output.Path, "schema_test.schema.json"));
             using var document = JsonDocument.Parse(instance);
 
             var result = schema.Evaluate(document.RootElement, new EvaluationOptions { OutputFormat = OutputFormat.Hierarchical });
@@ -207,7 +301,7 @@ namespace Cogs.Tests
             using var output = new TemporaryDirectory();
             PublishXsd(BuildModel(), output.Path);
             var xml = new XmlDocument();
-            xml.Load(Path.Combine(output.Path, "schema.xsd"));
+            xml.Load(Path.Combine(output.Path, "schema_test.xsd"));
             var manager = new XmlNamespaceManager(xml.NameTable);
             manager.AddNamespace("xs", XmlSchema.Namespace);
 
@@ -233,7 +327,7 @@ namespace Cogs.Tests
             using var output = new TemporaryDirectory();
             PublishXsd(BuildMultipleIdentificationModel(), output.Path);
             var xml = new XmlDocument();
-            xml.Load(Path.Combine(output.Path, "schema.xsd"));
+            xml.Load(Path.Combine(output.Path, "schema_test.xsd"));
             var manager = new XmlNamespaceManager(xml.NameTable);
             manager.AddNamespace("xs", XmlSchema.Namespace);
 
@@ -289,7 +383,7 @@ namespace Cogs.Tests
         {
             using var output = new TemporaryDirectory();
             PublishXsd(BuildModel(), output.Path);
-            var schemas = LoadSchemaSet(Path.Combine(output.Path, "schema.xsd"));
+            var schemas = LoadSchemaSet(Path.Combine(output.Path, "schema_test.xsd"));
 
             Assert.Empty(ValidateXml(schemas, $"<ItemContainer xmlns='{Namespace}'><TopLevelReference><ID>1</ID><TypeOfObject>DerivedItem</TypeOfObject></TopLevelReference><DerivedItem><ID>1</ID><BaseValue>x</BaseValue></DerivedItem></ItemContainer>"));
             Assert.NotEmpty(ValidateXml(schemas, $"<ItemContainer xmlns='{Namespace}'><TopLevelReference><ID>1</ID><TypeOfObject>BaseItem</TypeOfObject></TopLevelReference></ItemContainer>"));
@@ -313,7 +407,7 @@ namespace Cogs.Tests
         {
             using var output = new TemporaryDirectory();
             PublishXsd(BuildModel(), output.Path);
-            var schemas = LoadSchemaSet(Path.Combine(output.Path, "schema.xsd"));
+            var schemas = LoadSchemaSet(Path.Combine(output.Path, "schema_test.xsd"));
             var xml =
                 $"<ItemContainer xmlns='{Namespace}' xmlns:m='{Namespace}'>" +
                 $"<TopLevelReference{attribute}><ID>1</ID><TypeOfObject>DerivedItem</TypeOfObject></TopLevelReference>" +
@@ -327,7 +421,7 @@ namespace Cogs.Tests
         {
             using var output = new TemporaryDirectory();
             PublishXsd(BuildMultipleIdentificationModel(), output.Path);
-            var schemas = LoadSchemaSet(Path.Combine(output.Path, "schema.xsd"));
+            var schemas = LoadSchemaSet(Path.Combine(output.Path, "schema_test.xsd"));
 
             Assert.NotEmpty(ValidateXml(
                 schemas,
@@ -348,19 +442,22 @@ namespace Cogs.Tests
             var publisher = CreateXsdPublisher(BuildModel(), first.Path);
             publisher.Publish();
 
-            var secondModel = BuildModel(includeOtherItem: false);
+            var secondModel = BuildModel(includeOtherItem: false, slug: "second_model");
             publisher.CogsModel = secondModel;
             publisher.TargetDirectory = second.Path;
             publisher.Publish();
 
-            var text = File.ReadAllText(Path.Combine(second.Path, "schema.xsd"));
+            var text = File.ReadAllText(Path.Combine(second.Path, "second_model.xsd"));
             Assert.DoesNotContain("name=\"OtherItem\"", text, StringComparison.Ordinal);
+            Assert.Contains("schemaLocation=\"second_model.xml.xsd\"", text, StringComparison.Ordinal);
+            Assert.Equal(new[] { "second_model.xml.xsd", "second_model.xsd" },
+                Directory.GetFiles(second.Path).Select(Path.GetFileName).OrderBy(x => x, StringComparer.Ordinal));
         }
 
         [Fact]
         public void XsdCanBeBuiltAndCompiledInMemoryForInstanceValidation()
         {
-            var publisher = CreateXsdPublisher(BuildModel(), "unused-schema-output");
+            var publisher = CreateXsdPublisher(BuildModel(slug: null), "unused-schema-output");
 
             var schemas = publisher.BuildSchemaSet();
 
@@ -368,10 +465,11 @@ namespace Cogs.Tests
             Assert.Empty(ValidateXml(schemas, $"<ItemContainer xmlns='{Namespace}'><DerivedItem><ID>1</ID><BaseValue>x</BaseValue></DerivedItem></ItemContainer>"));
         }
 
-        private static CogsModel BuildModel(bool includeOtherItem = true)
+        private static CogsModel BuildModel(bool includeOtherItem = true, string slug = "schema_test")
         {
             var dto = new Cogs.Dto.CogsDtoModel();
             dto.Settings.Add(new Cogs.Dto.Setting { Key = "Title", Value = "Schema Test" });
+            dto.Settings.Add(new Cogs.Dto.Setting { Key = "Slug", Value = slug });
             dto.Settings.Add(new Cogs.Dto.Setting { Key = "NamespaceUrl", Value = Namespace });
             dto.Settings.Add(new Cogs.Dto.Setting { Key = "NamespacePrefix", Value = "m" });
             dto.Identification.Add(DtoProperty("ID", "string", "1", "1"));
@@ -410,6 +508,7 @@ namespace Cogs.Tests
         {
             var dto = new Cogs.Dto.CogsDtoModel();
             dto.Settings.Add(new Cogs.Dto.Setting { Key = "Title", Value = "Identification Group Test" });
+            dto.Settings.Add(new Cogs.Dto.Setting { Key = "Slug", Value = "schema_test" });
             dto.Settings.Add(new Cogs.Dto.Setting { Key = "NamespaceUrl", Value = Namespace });
             dto.Settings.Add(new Cogs.Dto.Setting { Key = "NamespacePrefix", Value = "m" });
             var id = DtoProperty("ID", "string", "1", "1");

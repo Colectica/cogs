@@ -23,10 +23,13 @@ namespace Cogs.Publishers;
 /// <summary>
 /// Publishes the authoritative OWL ontology and class-semantics representation
 /// of a COGS model as W3C Turtle and JSON-LD, with OWL2002 and OWL2003 as documented
-/// authority exceptions, together with the separate RDF instance context.
+/// authority exceptions, together with the separate RDF instance context and
+/// primary closed SHACL instance shapes.
+/// The 2017 profile is production-qualified; the native 1.2 draft is an
+/// automatically generated experimental alternative with advisory engine checks.
 /// RDF collections preserve ordered occurrences; OWL axioms do not validate lists.
 /// </summary>
-public sealed class OwlPublisher
+public sealed class RdfPublisher
 {
     private const string Rdf = NamespaceMapper.RDF;
     private const string Rdfs = NamespaceMapper.RDFS;
@@ -52,6 +55,7 @@ public sealed class OwlPublisher
     private CogsModel _model = null!;
     private Graph _graph = null!;
     private string _termBase = null!;
+    private string _modelPrefix = null!;
     private readonly List<CogsError> _diagnostics = new();
 
     public void Publish(CogsModel model)
@@ -74,6 +78,8 @@ public sealed class OwlPublisher
             "OWL1002",
             "OWL"));
         _diagnostics.AddRange(RdfPublisherValidation.ValidateOrderedCompanionCollisions(model, "OWL1003", "OWL"));
+        _diagnostics.AddRange(RdfPublisherValidation.ValidateShapeNamespace(model, TargetNamespace));
+        _modelPrefix = RdfPublisherValidation.ResolveModelPrefix(model, TargetNamespacePrefix, _diagnostics)!;
         if (_diagnostics.Any(diagnostic => diagnostic.Level >= ErrorLevel.Error))
         {
             LastResult = new PublicationResult(Array.Empty<string>(), _diagnostics);
@@ -103,20 +109,7 @@ public sealed class OwlPublisher
         _graph.NamespaceMap.AddNamespace("xml", UriFactory.Create("http://www.w3.org/XML/1998/namespace"));
         _graph.NamespaceMap.AddNamespace("schema", UriFactory.Create(Schema));
         _graph.NamespaceMap.AddNamespace("cogsmeta", UriFactory.Create(CogsMetadata));
-        string targetPrefix = TargetNamespacePrefix;
-        if (_graph.NamespaceMap.HasNamespace(targetPrefix))
-        {
-            targetPrefix = "cogs";
-            int suffix = 2;
-            while (_graph.NamespaceMap.HasNamespace(targetPrefix)) targetPrefix = "cogs" + suffix++;
-            _diagnostics.Add(new CogsError(
-                ErrorLevel.Warning,
-                "OWL2005",
-                $"OWL prefix '{TargetNamespacePrefix}' conflicts with an RDF vocabulary prefix; '{targetPrefix}' was used for the model namespace.",
-                sourcePath: model.SourceDirectory,
-                modelPath: "/Settings/NamespacePrefix"));
-        }
-        _graph.NamespaceMap.AddNamespace(targetPrefix, UriFactory.Create(_termBase));
+        _graph.NamespaceMap.AddNamespace(_modelPrefix, UriFactory.Create(_termBase));
 
         _diagnostics.Add(new CogsError(ErrorLevel.Message, "OWL2007",
             "OWL datatype ranges do not enforce COGS decimal interchange exactness or native temporal precision; use COGS instance validation.",
@@ -192,15 +185,33 @@ public sealed class OwlPublisher
         {
             NewLine = "\n"
         };
-        Graph serializationGraph = CreateTurtleSerializationGraph(out var literalDatatypes);
+        Graph serializationGraph = CreateTurtleSerializationGraph(_graph, out var literalDatatypes);
         writer.Save(serializationGraph, buffer);
         string turtle = NormalizeTurtleOutput(buffer.ToString(), literalDatatypes);
         File.WriteAllText(output, turtle, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
         WriteJsonLdContext(propertyUses.Select(use => use.Property), targetDirectory);
         WriteJsonLdOntology(targetDirectory);
+        var containment = new ShaclContainmentIndex(model);
+        foreach (ShaclProfile profile in new[] { ShaclProfile.Stable2017, ShaclProfile.Native12 })
+        {
+            using Graph shapes = new ShaclGraphBuilder(model, _termBase, _modelPrefix, profile, containment).Build();
+            var queryLiterals = new Dictionary<string, string>(StringComparer.Ordinal);
+            using var shapesBuffer = new System.IO.StringWriter(CultureInfo.InvariantCulture) { NewLine = "\n" };
+            writer.Save(CreateTurtleSerializationGraph(shapes, out var shapeDatatypes, queryLiterals), shapesBuffer);
+            string suffix = profile == ShaclProfile.Native12 ? ".shacl12.ttl" : ".shacl.ttl";
+            File.WriteAllText(Path.Combine(targetDirectory, model.Settings.Slug + suffix),
+                NormalizeTurtleOutput(shapesBuffer.ToString(), shapeDatatypes, queryLiterals), new UTF8Encoding(false));
+        }
+        _diagnostics.Add(new CogsError(ErrorLevel.Message, "SHC2001",
+            "SHACL enforces the portable RDF profile; native JavaScript decimal interchange exactness and processor-specific floating/temporal arithmetic still require COGS instance validation. Validate the data graph alone, without inference.",
+            sourcePath: model.SourceDirectory));
+        _diagnostics.Add(new CogsError(ErrorLevel.Message, "SHC2002",
+            "The native SHACL 1.2 companion targets the October 11, 2026 Working Drafts; current engine qualification is advisory. Use the stable .shacl.ttl profile for production validation and do not merge the two shape files.",
+            sourcePath: model.SourceDirectory));
     }
 
-    private Graph CreateTurtleSerializationGraph(out Dictionary<string, string> literalDatatypes)
+    private static Graph CreateTurtleSerializationGraph(IGraph source, out Dictionary<string, string> literalDatatypes,
+        Dictionary<string, string>? queryLiterals = null)
     {
         // dotNetRDF's Turtle formatter abbreviates numeric/boolean literals based
         // on their lexical spelling. For example, "180"^^xsd:decimal becomes
@@ -209,11 +220,18 @@ public sealed class OwlPublisher
         // those IRI tokens. The authoritative graph itself is never changed.
         string markerBase = "urn:cogs:turtle-serialization:" + Guid.NewGuid().ToString("N") + ":";
         literalDatatypes = new Dictionary<string, string>(StringComparer.Ordinal);
-        var graph = new Graph { BaseUri = _graph.BaseUri };
-        graph.NamespaceMap.Import(_graph.NamespaceMap);
-        foreach (Triple triple in _graph.Triples)
+        var graph = new Graph { BaseUri = source.BaseUri };
+        graph.NamespaceMap.Import(source.NamespaceMap);
+        foreach (Triple triple in source.Triples)
         {
             INode value = triple.Object;
+            if (queryLiterals is not null && triple.Predicate is IUriNode predicate
+                && predicate.Uri.AbsoluteUri == "http://www.w3.org/ns/shacl#select" && value is ILiteralNode query)
+            {
+                string marker = markerBase + "query:" + queryLiterals.Count;
+                queryLiterals.Add(marker, query.Value);
+                value = graph.CreateLiteralNode(marker);
+            }
             if (value is ILiteralNode literal && literal.DataType?.AbsoluteUri is string datatype
                 && datatype is Xsd + "integer" or Xsd + "decimal" or Xsd + "double" or Xsd + "boolean")
             {
@@ -226,7 +244,8 @@ public sealed class OwlPublisher
         return graph;
     }
 
-    private static string NormalizeTurtleOutput(string text, IReadOnlyDictionary<string, string> literalDatatypes)
+    private static string NormalizeTurtleOutput(string text, IReadOnlyDictionary<string, string> literalDatatypes,
+        IReadOnlyDictionary<string, string>? queryLiterals = null)
     {
         // Compression uses platform newlines inside formatted blank nodes.
         // Normalize those only; CR in a quoted literal is RDF data and must be escaped.
@@ -280,6 +299,21 @@ public sealed class OwlPublisher
             if (current == '#') { comment = true; continue; }
             if (current is '"' or '\'')
             {
+                // Only exact placeholder literal tokens in the serialization
+                // copy are expanded. Model-authored text is never reformatted.
+                if (current == '"' && queryLiterals is not null)
+                {
+                    int end = text.IndexOf('"', index + 1);
+                    if (end >= 0 && queryLiterals.TryGetValue(text[(index + 1)..end], out string? query))
+                    {
+                        result.Length--;
+                        int column = 0;
+                        for (int i = result.Length - 1; i >= 0 && result[i] != '\n'; i--) column++;
+                        result.Append(ShaclQueryFormatter.FormatLiteral(query, column));
+                        index = end;
+                        continue;
+                    }
+                }
                 quote = current;
                 delimiterLength = index + 2 < text.Length && text[index + 1] == quote && text[index + 2] == quote ? 3 : 1;
                 if (delimiterLength == 3) { result.Append(quote, 2); index += 2; }
@@ -303,7 +337,7 @@ public sealed class OwlPublisher
         var context = new JObject { ["@version"] = 1.1, ["@vocab"] = _termBase };
         foreach (var (prefix, iri) in new[]
         {
-            ("model", _termBase), ("rdf", Rdf), ("rdfs", Rdfs), ("owl", Owl),
+            (_modelPrefix, _termBase), ("rdf", Rdf), ("rdfs", Rdfs), ("owl", Owl),
             ("xsd", Xsd), ("schema", Schema), ("cogsmeta", CogsMetadata)
         })
             context.Add(prefix, new JObject { ["@id"] = iri, ["@prefix"] = true });
@@ -331,6 +365,7 @@ public sealed class OwlPublisher
     private void WriteJsonLdContext(IEnumerable<Property> propertyUses, string targetDirectory)
     {
         var context = new JsonObject { ["@version"] = 1.1, ["@vocab"] = _termBase };
+        context.Add(_modelPrefix, new JsonObject { ["@id"] = _termBase, ["@prefix"] = true });
         foreach (var uses in propertyUses.GroupBy(property => property.Name, StringComparer.Ordinal)
                      .OrderBy(group => CogsRdfNaming.ToPropertyLocalName(group.Key), StringComparer.Ordinal))
         {

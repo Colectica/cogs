@@ -3,6 +3,11 @@ publish-owl
 
 Introduction
 ----------------------
+This command is a hidden backward-compatible alias for :doc:`publish-rdf`.
+It emits the identical five primary artifacts, including stable and native 1.2
+SHACL alternatives.
+Use the RDF command and :doc:`/technical-guide/generation/rdf` for new workflows.
+
 Generate the authoritative COGS ontology and class-semantics output as W3C
 Turtle (media type ``text/turtle``) and the equivalent complete JSON-LD ontology
 ``<Settings.Slug>.ontology.jsonld``, together with the separate instance context

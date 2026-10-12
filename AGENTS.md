@@ -31,6 +31,15 @@ Because regeneration replaces `generated\src`, restore again before any
 integration-test invocation that uses `--no-restore`. Generated output is
 ignored and should be regenerated for verification, not edited as source.
 
+Standalone model artifacts use the exact `Settings.Slug` prefix: `<slug>.xsd`
+with `<slug>.xml.xsd`, `<slug>.schema.json` with `<slug>.meta-schema.json`,
+`<slug>.dctap.csv`, `<slug>.linkml.yml`, and `<slug>.graphqls`. RDF and UML keep
+their existing slug-prefixed names. Do not emit legacy generic-name copies.
+Keep the XML schema pair together and use the renamed relative import. Code
+packages, Sphinx projects, and DOT diagrams retain their conventional layouts;
+explicit UML filename overrides remain supported. File publication must reject
+invalid or missing direct-library slugs without changing existing output.
+
 Create the NuGet package with:
 
 ```powershell
@@ -309,10 +318,94 @@ objects into RDF graphs. UML/XMI is the authoritative structural model output, w
 enforce a property-local exclusion of every descendant of its declared base
 type. UML is not an instance-validation schema. OWL/RDF is emitted as UTF-8
 W3C Turtle in ``<Settings.Slug>.ttl`` and is the authoritative ontology and
-class-semantics output. Only OWL output also includes the graph-equivalent
+class-semantics output. The RDF publisher includes the graph-equivalent
 complete ``<Settings.Slug>.ontology.jsonld`` and separate instance context
 ``<Settings.Slug>.context.jsonld``, with ``OWL2002`` and ``OWL2003`` as its authority
 exceptions for property-local subtype exclusion and abstract direct instances.
+
+`RdfPublisher` and canonical `publish-rdf` emit five primary artifacts:
+`<slug>.ttl`, `<slug>.ontology.jsonld`, `<slug>.context.jsonld`,
+`<slug>.shacl.ttl`, and `<slug>.shacl12.ttl`. SHACL is a primary closed RDF instance output alongside
+JSON Schema and XML Schema, not a projection. `publish-owl` is a hidden CLI
+alias; no `OwlPublisher` library adapter remains. Use SHACL Core/SPARQL against
+the data graph alone with no inference or ontology merge. Full concrete shapes
+include effective inherited properties; relationship values use nonrecursive
+type signatures. Permit ancestor assertions and bare external item IRIs with
+no outgoing statements. Enforce concrete types, IDs and tuple uniqueness,
+composite containment, list structure/occurrences, and portable primitives and
+facets. Unordered RDF counts distinct terms; duplicates survive only in lists.
+`SHC2001` is the informational native-interchange portability boundary.
+The conformance manifest pins pySHACL and Apache Jena; both must execute the
+same positive/negative corpus. Include shapes in semantic `.ttl` regeneration
+checks, but exclude both `.shacl.ttl` and `.shacl12.ttl` from OWLAPI inputs.
+
+The `.shacl.ttl` profile uses the 2017 Recommendation and remains the production
+release gate. The native `.shacl12.ttl` targets the October 11, 2026 Core/SPARQL
+Working Drafts pinned in `conformance/tools.json`; `SHC2002` is informational.
+Its shape/constraint definitions are under `<termBase>shapes/1.2/`. Use one
+profile, never merge them. Native lists use member/length constraints and path
+equality; identity uses `uniqueValuesFor` with exact-signature `targetWhere`;
+open local declaration shapes compose parent declarations, and concrete
+boundaries use `closed ByTypes`. Exact signatures still reject unrelated types.
+The embedded shapes-graph hierarchy needs no ontology merge or inference.
+
+Both profiles embed only their used standard `ConstraintComponent` definitions.
+Use `constraintShapes` for definitions and `constraintParameters` for reusable
+parameter predicates (`https://cogsdata.org/ns/shacl#`), avoiding pySHACL's
+fragment-plus-slash local-name bug. Parameters are typed RDF data, not executable
+query fragments. Counts run on dedicated owner/list-head node shapes, including
+zero values; project prebound parameters through subqueries and never rebind
+reserved variables. Do not require `$shapesGraph`. Intern identical remaining
+queries. The stable corpus compares components with test-only inline queries
+and exercises every component positively/negatively in both engines.
+`test_shacl12.py` saves bounded native feature/corpus reports and capability
+summaries; ignored constraints, accepted negatives, rejected syntax, failures,
+and timeouts are advisory and must not be represented as conformance. Native
+generation, parsing, inventory, structural tests, and repeatability still gate.
+Promote native engine validation only through an explicit future change after
+Recommendation status and complete support for every emitted feature.
+
+Resolve one effective RDF model prefix from `TargetNamespacePrefix` before
+publication; the CLI uses `Settings.NamespacePrefix` unless overridden. Preserve
+casing and use the same alias in ontology/SHACL Turtle and both JSON-LD contexts.
+Retain `@vocab` and property coercions. Reserve vocabulary/category aliases and
+avoid class, property, companion, and `CogsDate` term collisions. XML-valid but
+Turtle-invalid prefixes also fall back to the first available `model`, `model2`,
+etc., with one source-located `OWL2005` warning. Blank/non-NCName direct library
+configuration returns `OWL1005` before writes. The generator owns
+`<termBase>shapes/`; repeat a canonical-IRI collision check for direct models as
+`OWL1004`. Existing NCName/RDF naming validation already protects source models,
+so do not ban safe names such as `Shapes` or `Shapes.Graph`, relocate shape IRIs,
+or reserve arbitrary instance IRIs. Prefix aliases do not alter RDF semantics.
+
+SHACL Turtle uses category prefixes (`typeShapes`, `targetShapes`,
+`signatureShapes`, `propertyShapes`, `valueShapes`, `primitiveShapes`,
+`constraintShapes`; native also has `declarationShapes`, `identityShapes`). Nested
+property/value shape names are `<Owner>.<Property>`, with `.list` for list
+heads. Encode source underscores as `_x005F_` and dots as `_x002E_`, in that
+order; percent-escaped dots are normalized by `System.Uri` and are not safe
+separators. Type/target/signature/primitive IRIs remain unchanged. Format
+generated SPARQL with the tokenizer and original source slices, not a query
+expression parser: large integer constants and some expressions exceed the
+existing parser/formatter's capabilities. Preserve quoted data and only
+reflow inter-token whitespace. The Turtle serialization copy shields generated
+`sh:select` literals with placeholders, then emits escaped multiline literals
+aligned to their actual opening column. Never reformat authored descriptions.
+Generated SHACL labels/messages use neutral model language, not tool branding;
+model-authored names and descriptions remain exact, even when they mention
+COGS. Query whitespace and descriptive text change RDF literals, but not
+validation behavior; repeated output still requires strict graph equality.
+
+Precompute SHACL containment topology per publication from concrete types and
+effective properties through `CogsTypeSystem.ConcreteTypesForProperty`.
+Exclude primitives, item references, and zero-maximum edges; ordered values use
+their membership predicate. Cache reverse reachability per strongly connected
+composite component. Reachability queries use only relevant concrete item roots,
+root predicates, and nested predicates; cycle queries use only internal component
+edges and are omitted for acyclic singleton components. Unrooted composites
+reject directly. These reductions rely on the existing closed/type constraints
+and must preserve overall conformance for malformed as well as valid graphs.
+Keep genuinely graph-wide audits global and ordered-list checks independent.
 
 Every RDF-capable publisher uses ``CogsRdfNaming``. Class, shape, range, and
 ``rdf:type`` terms retain exact PascalCase COGS type names. Property predicates
@@ -357,8 +450,8 @@ against its matching Turtle file. Require one default graph, no named graphs,
 and offline parsing. Reuse the component matcher in semantic publisher tests.
 Generate ontology JSON-LD from the same completed graph as Turtle through the
 existing dotNetRDF writer and compactor, with native numeric conversion disabled.
-Use an embedded ontology context (``model``, ``rdf``, ``rdfs``, ``owl``, ``xsd``,
-``schema``, ``cogsmeta``); do not mix ontology descriptions or constraints into
+Use an embedded ontology context (the effective model prefix, ``rdf``, ``rdfs``,
+``owl``, ``xsd``, ``schema``, ``cogsmeta``); do not mix ontology descriptions or constraints into
 the instance context. Preserve literal CR as escaped Turtle data while
 normalizing only formatting newlines to LF. Protect compressible numeric and
 boolean literals during Turtle serialization so their datatype and lexical
@@ -397,7 +490,7 @@ affected-property count on stdout. Write complete informational lines to
 stdout and complete warning/error lines to stderr. `OWL2003` and `OWL2007`
 are also informational, but remain individual messages rather than summaries.
 Do not summarize other codes; `OWL2004`, `OWL2005`, and `OWL2006` remain warnings.
-Only OWL emits the JSON-LD 1.1 context with typed member terms and
+Only the RDF publisher emits the JSON-LD 1.1 context with typed member terms and
 ``@container: "@list"`` companions. It describes RDF data, not flat COGS JSON,
 and does not derive membership triples or add an instance-writer/importer API.
 The complete ontology JSON-LD exposes classes, descriptions, restrictions,
@@ -407,7 +500,7 @@ instance contexts byte-for-byte and both ontology encodings semantically. Unsupp
 facets remain in the JSON Schema/XSD instance contract. LinkML, DCTAP, GraphQL,
 DOT, and Sphinx are projections; they must disclose preserved, approximated,
 unsupported, and documentation-only features and never silently imply wire
-equivalence. ShEx and SHACL are not current targets.
+equivalence. SHACL is a primary RDF instance output; ShEx is not a built-in target.
 
 Authored Markdown must remain Markdown and generated Sphinx projects use MyST
 instead of injecting Markdown into RST. If Graphviz is absent, Sphinx generation

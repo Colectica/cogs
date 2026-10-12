@@ -112,7 +112,7 @@ jobs:
         uses: actions/cache@v5.0.5
         with:
           path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('conformance/java/pom.xml') }}
+          key: ${{ runner.os }}-maven-${{ hashFiles('conformance/java/pom.xml', 'conformance/java-shacl/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
 
@@ -128,7 +128,8 @@ jobs:
             "myst-parser==$($tools.mystParser)" `
             "linkml==$($tools.linkml)" `
             "linkml-runtime==$($tools.linkmlRuntime)" `
-            "pydantic==$($tools.pydantic)"
+            "pydantic==$($tools.pydantic)" `
+            "pyshacl==$($tools.pyshacl)"
           if ($LASTEXITCODE -ne 0) { throw "Python conformance tool installation failed with exit $LASTEXITCODE" }
           & $env:COGS_PYTHON -c 'import pydantic, sys; print("Python:", sys.version.split()[0], sys.executable); print("Pydantic:", pydantic.__version__, pydantic.__file__); assert ".".join(map(str, sys.version_info[:2])) == sys.argv[1], "Expected Python " + sys.argv[1]; assert pydantic.__version__ == sys.argv[2], "Expected Pydantic " + sys.argv[2]' $tools.python $tools.pydantic
           if ($LASTEXITCODE -ne 0) { throw 'Installed Python/Pydantic versions do not match conformance/tools.json.' }
@@ -186,6 +187,12 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore ./Cogs.Console.sln --verbosity minimal
 
+      - name: Build pinned Apache Jena SHACL validator
+        shell: pwsh
+        run: |
+          & $env:COGS_MAVEN -B -ntp -f ./conformance/java-shacl/pom.xml package
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Build solution with commit-count version
         run: >
           dotnet build ./Cogs.Console.sln
@@ -237,7 +244,7 @@ jobs:
             Invoke-Cogs publish-py --flavor pydantic --overwrite $model "$root/python-pydantic"
             Invoke-Cogs publish-ts --overwrite $model "$root/typescript"
             Invoke-Cogs publish-json --overwrite $model "$root/json"
-            Invoke-Cogs publish-owl --overwrite $model "$root/owl"
+            Invoke-Cogs publish-rdf --overwrite $model "$root/owl"
             Invoke-Cogs publish-linkml --overwrite $model "$root/linkml"
             Invoke-Cogs publish-dctap --overwrite $model "$root/dctap"
             Invoke-Cogs publish-graphql --overwrite $model "$root/graphql"
@@ -377,9 +384,11 @@ jobs:
             './generated/new-model-artifacts/linkml'
           )
           foreach ($root in $linkmlRoots) {
-            linkml-lint --validate --ignore-warnings "$root/linkml.yml"
+            $linkmlFiles = @(Get-ChildItem -LiteralPath $root -Filter *.linkml.yml -File)
+            if ($linkmlFiles.Count -ne 1) { throw "Expected one slug-prefixed LinkML artifact in $root" }
+            linkml-lint --validate --ignore-warnings $linkmlFiles[0].FullName
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-            gen-python --validate "$root/linkml.yml" |
+            gen-python --validate $linkmlFiles[0].FullName |
               Set-Content -LiteralPath "$root/linkml_model.py" -Encoding utf8
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
@@ -388,23 +397,66 @@ jobs:
             ./generated/conformance/linkml/linkml_model.py `
             ./generated/new-model-artifacts/linkml/linkml_model.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          node ./conformance/node/validate-graphql.mjs `
-            ./generated/graphql/GraphQL.graphqls `
-            ./generated/conformance/graphql/GraphQL.graphqls `
-            ./generated/new-model-artifacts/graphql/GraphQL.graphqls
+          $graphqlFiles = @(
+            foreach ($root in @('./generated/graphql', './generated/conformance/graphql', './generated/new-model-artifacts/graphql')) {
+              $files = @(Get-ChildItem -LiteralPath $root -Filter *.graphqls -File)
+              if ($files.Count -ne 1) { throw "Expected one slug-prefixed GraphQL artifact in $root" }
+              $files[0].FullName
+            }
+          )
+          node ./conformance/node/validate-graphql.mjs @graphqlFiles
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $owlFiles = @(
             Get-ChildItem `
               ./generated/owl, `
               ./generated/conformance/owl, `
               ./generated/new-model-artifacts/owl `
-              -Filter *.ttl -File | Select-Object -ExpandProperty FullName
+              -Filter *.ttl -File | Where-Object { -not $_.Name.EndsWith('.shacl.ttl') -and -not $_.Name.EndsWith('.shacl12.ttl') } | Select-Object -ExpandProperty FullName
           )
           if ($owlFiles.Count -ne 3) {
             throw "Expected three generated Turtle ontologies, found $($owlFiles.Count)."
           }
           java -jar ./conformance/java/target/owl-profile-validator.jar @owlFiles
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Validate primary SHACL output with pySHACL and Apache Jena
+        shell: pwsh
+        run: |
+          dotnet ./Cogs.Console/bin/Release/net10.0/cogs.dll publish-rdf `
+            ./conformance/rdf/model ./generated/shacl-conformance/rdf --overwrite
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project ./conformance/runtime/csharp/ConformanceRuntimeProbe.csproj `
+            --configuration Release -- rdf ./conformance/instances/full.json ./generated/shacl-conformance/csharp-instance.ttl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:COGS_PYTHON ./conformance/rdf/test_shacl.py `
+            ./generated/shacl-conformance/rdf/rdf_conformance.shacl.ttl `
+            ./generated/shacl-conformance/cases `
+            --jena-jar ./conformance/java-shacl/target/shacl-validator.jar `
+            --instance ./generated/shacl-conformance/csharp-instance.ttl `
+            --instance-shapes ./generated/conformance/owl/cogs_conformance.shacl.ttl
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Probe native SHACL 1.2 engine support (advisory only)
+        continue-on-error: true
+        timeout-minutes: 8
+        shell: pwsh
+        run: |
+          & $env:COGS_PYTHON ./conformance/rdf/test_shacl12.py `
+            ./generated/shacl-conformance/rdf/rdf_conformance.shacl12.ttl `
+            ./generated/shacl-conformance/advisory `
+            --jena-jar ./conformance/java-shacl/target/shacl-validator.jar `
+            --instance ./generated/shacl-conformance/csharp-instance.ttl `
+            --instance-shapes ./generated/conformance/owl/cogs_conformance.shacl12.ttl
+          if ($LASTEXITCODE -ne 0) { Write-Warning 'SHACL 1.2 advisory probe failed; this is not a release gate.' }
+          exit 0
+
+      - name: Upload native SHACL 1.2 advisory reports
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: shacl12-advisory-${{ runner.os }}
+          path: generated/shacl-conformance/advisory
+          if-no-files-found: warn
 
       - name: Build generated and repository Sphinx documentation with warnings as errors
         shell: pwsh

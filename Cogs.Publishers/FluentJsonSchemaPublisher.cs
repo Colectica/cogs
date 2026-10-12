@@ -73,10 +73,12 @@ namespace Cogs.Publishers.FluentJson
         {
             if (string.IsNullOrWhiteSpace(TargetDirectory)) throw new InvalidOperationException("Target directory must be specified.");
 
+            string schemaFileName = PublicationFileNames.ForModel(model, ".schema.json");
+            string metaSchemaFileName = PublicationFileNames.ForModel(model, ".meta-schema.json");
             var schema = BuildSchema(model);
             var options = new JsonSerializerOptions { WriteIndented = true };
-            File.WriteAllText(Path.Combine(TargetDirectory, "jsonSchema.json"), JsonSerializer.Serialize(schema, options), new UTF8Encoding(false));
-            File.WriteAllText(Path.Combine(TargetDirectory, "cogs-meta-schema.json"), BuildMetaSchema().ToJsonString(options), new UTF8Encoding(false));
+            File.WriteAllText(Path.Combine(TargetDirectory, schemaFileName), JsonSerializer.Serialize(schema, options), new UTF8Encoding(false));
+            File.WriteAllText(Path.Combine(TargetDirectory, metaSchemaFileName), BuildMetaSchema().ToJsonString(options), new UTF8Encoding(false));
         }
 
         /// <summary>

@@ -340,8 +340,8 @@ public class PythonIntegrationTests
         var errors = new List<string>();
         var schemas = new XmlSchemaSet();
         schemas.ValidationEventHandler += (_, args) => errors.Add(args.Message);
-        AddSchema(schemas, Path.Combine(generatedRoot, "xsd", "xml.xsd"), errors);
-        AddSchema(schemas, Path.Combine(generatedRoot, "xsd", "schema.xsd"), errors);
+        AddSchema(schemas, Path.Combine(generatedRoot, "xsd", "cogsburger.xml.xsd"), errors);
+        AddSchema(schemas, Path.Combine(generatedRoot, "xsd", "cogsburger.xsd"), errors);
         schemas.Compile();
         document.Validate(schemas, (_, args) => errors.Add(args.Message));
         Assert.Empty(errors);

@@ -12,6 +12,8 @@
 *.userprefs
 
 # Build results
+# Installed Node dependencies; keep package manifests tracked.
+node_modules/
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/
@@ -37,4 +39,6 @@ Cogs.Console/Properties/launchSettings.json
 /docs/source/_build/html
 /docs/.vscode
 /conformance/java/target/
+/conformance/java-shacl/target/
+/conformance/rdf/__pycache__/
 /out

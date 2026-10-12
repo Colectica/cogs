@@ -28,18 +28,22 @@ UML/XMI is the authoritative structural model output, with the explicitly
 diagnosed ``PROJ2601`` exception for property-local subtype exclusion. It is
 not an instance-validation schema.
 
-The OWL publisher emits ``<Settings.Slug>.ttl``, the equivalent complete ontology
-``<Settings.Slug>.ontology.jsonld``, and the separate instance context
-``<Settings.Slug>.context.jsonld``. OWL defines the authoritative ontology,
+The RDF publisher emits ``<Settings.Slug>.ttl``, the equivalent complete ontology
+``<Settings.Slug>.ontology.jsonld``, the separate instance context
+``<Settings.Slug>.context.jsonld``, and primary SHACL shapes
+``<Settings.Slug>.shacl.ttl`` plus the experimental native SHACL 1.2 companion
+``<Settings.Slug>.shacl12.ttl``. SHACL is a primary RDF instance-shape output,
+alongside JSON Schema and XML Schema, not a projection. OWL defines the authoritative ontology,
 with ``OWL2002`` and ``OWL2003`` as its explicit authority exceptions. Turtle
 and JSON-LD encode the same RDF graph; ordered collections preserve sequence
 and duplicate occurrences. OWL axioms do not replace instance validation or
-enforce RDF list structure. See :doc:`technical-guide/generation/owl`.
+enforce RDF list structure; SHACL supplies closed instance and list checks
+within its portable profile. See :doc:`technical-guide/generation/rdf`.
 
 LinkML, DCTAP, GraphQL, Graphviz/DOT, and Sphinx are projections. They may
 preserve, approximate, or explicitly reject individual modeling features and
-must not be treated as alternate wire-format authorities. ShEx and SHACL are
-not current COGS publishers.
+must not be treated as alternate wire-format authorities. ShEx is not a built-in
+COGS output.
 
 Quick Start
 -----------

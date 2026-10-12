@@ -24,7 +24,7 @@ public sealed class GraphQlUmlPublisherTests
 
         publisher.Publish(model);
 
-        string schema = File.ReadAllText(Path.Combine(output.Path, "GraphQL.graphqls"));
+        string schema = File.ReadAllText(Path.Combine(output.Path, "example.graphqls"));
         Assert.Equal("decimal", decimalType.Name);
         Assert.Contains("scalar CogsDecimal", schema);
         Assert.Contains("directive @cogsCardinality", schema);
@@ -58,7 +58,7 @@ public sealed class GraphQlUmlPublisherTests
 
         Assert.Contains("PROJ2503", exception.Message);
         Assert.Equal("preserve", File.ReadAllText(sentinel));
-        Assert.False(File.Exists(Path.Combine(output.Path, "GraphQL.graphqls")));
+        Assert.False(File.Exists(Path.Combine(output.Path, "example.graphqls")));
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public sealed class GraphQlUmlPublisherTests
 
         publisher.Publish(model);
 
-        string schema = File.ReadAllText(Path.Combine(output.Path, "GraphQL.graphqls"));
+        string schema = File.ReadAllText(Path.Combine(output.Path, "example.graphqls"));
         Assert.Matches(@"(?s)interface BaseValue\s*\{\s*_cogsType:", schema);
         Assert.Matches(@"(?s)type NumberValue implements BaseValue\s*\{\s*_cogsType:.*?number: Int!", schema);
         Assert.Single(publisher.Errors, error => error.Code == "PROJ2502" && error.ModelPath == "BaseValue");

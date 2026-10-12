@@ -61,7 +61,7 @@ public sealed class HistoricalMetadataPublisherTests
         diagnostics.AddRange(new PythonPublisher(model, Target("python")).PublishResult().Diagnostics);
         new TypeScriptPublisher(model, Target("typescript")).Publish();
 
-        diagnostics.AddRange(new OwlPublisher
+        diagnostics.AddRange(new RdfPublisher
         {
             TargetDirectory = Target("owl"),
             TargetNamespace = model.Settings.NamespaceUrl,

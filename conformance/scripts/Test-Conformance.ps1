@@ -150,8 +150,11 @@ try {
     if ($LASTEXITCODE -ne 0 -or $legacyGraphQlOutput -notmatch '(?<![A-Z0-9-])CLI2002(?![A-Z0-9-])') {
         throw "The hidden publish-GraphQL alias must warn with CLI2002 and return exit 0:`n$legacyGraphQlOutput"
     }
-    if (-not [IO.File]::Exists((Join-Path $legacyGraphQlTarget 'GraphQL.graphqls'))) {
-        throw 'The hidden publish-GraphQL alias did not publish GraphQL.graphqls.'
+    $modelSlug = (Import-Csv -LiteralPath (Join-Path $Model 'Settings/Settings.csv') |
+        Where-Object { $_.Key -ceq 'Slug' }).Value
+    $graphQlFileName = "$modelSlug.graphqls"
+    if (-not [IO.File]::Exists((Join-Path $legacyGraphQlTarget $graphQlFileName))) {
+        throw "The hidden publish-GraphQL alias did not publish $graphQlFileName."
     }
     Write-Host 'PASS deprecated publish-GraphQL alias: CLI2002 / exit 0'
 
