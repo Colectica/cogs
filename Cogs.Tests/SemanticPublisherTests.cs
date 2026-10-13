@@ -560,7 +560,7 @@ public sealed class SemanticPublisherTests
         {
             string formatted = ShaclQueryFormatter.Format(query);
             Assert.Equal(ShaclQueryFormatter.Tokenize(query).Select(t => t.Text), ShaclQueryFormatter.Tokenize(formatted).Select(t => t.Text));
-            Assert.DoesNotContain('\r', formatted);
+            AssertLfQueryFormatting(formatted);
             Assert.Contains("\nWHERE {\n", formatted);
             string literal = ShaclQueryFormatter.FormatLiteral(query, column);
             var graph = new Graph();
@@ -574,7 +574,53 @@ public sealed class SemanticPublisherTests
         Assert.Contains("CONTAINS", ShaclQueryFormatter.Tokenize(queries[0]).Select(t => t.Text));
         Assert.Contains("isLiteral", ShaclQueryFormatter.Tokenize(queries[0]).Select(t => t.Text));
         Assert.Contains("\n        <https://example.test/long-iri-", ShaclQueryFormatter.Format(queries[2]));
-        Assert.Equal(ShaclQueryFormatter.Format(queries[0]), ShaclQueryFormatter.Format(queries[0].Replace("\n", "\r\n")));
+        const string newlineQuery = "SELECT $this\nWHERE { FILTER(isLiteral($this)) }";
+        Assert.Equal(ShaclQueryFormatter.Format(newlineQuery), ShaclQueryFormatter.Format(newlineQuery.Replace("\n", "\r\n")));
+    }
+
+    [Theory]
+    [InlineData("\n", 0)]
+    [InlineData("\n", 37)]
+    [InlineData("\r\n", 0)]
+    [InlineData("\r\n", 37)]
+    [InlineData("\r", 0)]
+    [InlineData("\r", 37)]
+    public void ShaclQueryFormattingPreservesLiteralNewlinesButUsesLfWhitespace(string newline, int column)
+    {
+        string literalData = "'''first line" + newline + "literal { } # second line'''";
+        string query = "SELECT $this" + newline + "WHERE {" + newline +
+            "BIND(" + literalData + " AS ?text)" + newline + "FILTER(isLiteral($this))" + newline + "}";
+
+        string formatted = ShaclQueryFormatter.Format(query);
+
+        AssertLfQueryFormatting(formatted);
+        Assert.Contains(literalData, formatted, StringComparison.Ordinal);
+        Assert.Equal(ShaclQueryFormatter.Tokenize(query).Select(t => t.Text),
+            ShaclQueryFormatter.Tokenize(formatted).Select(t => t.Text));
+
+        string turtleLiteral = ShaclQueryFormatter.FormatLiteral(query, column);
+        Assert.DoesNotContain('\r', turtleLiteral);
+        var graph = new Graph();
+        new TurtleParser(TurtleSyntax.W3C, validateIris: true).Load(graph,
+            new StringReader("<urn:s> <urn:p> " + turtleLiteral + " ."));
+        string parsed = ((ILiteralNode)Assert.Single(graph.Triples).Object).Value;
+        AssertLfQueryFormatting(parsed);
+        Assert.Contains(literalData, parsed, StringComparison.Ordinal);
+        Assert.Equal(ShaclQueryFormatter.Tokenize(query).Select(t => t.Text),
+            ShaclQueryFormatter.Tokenize(parsed).Select(t => t.Text));
+    }
+
+    private static void AssertLfQueryFormatting(string query)
+    {
+        int offset = 0;
+        foreach (ShaclQueryFormatter.SourceToken token in ShaclQueryFormatter.Tokenize(query))
+        {
+            // Long-string newlines belong to the literal. Only inter-token
+            // whitespace is formatting and must be independent of the platform.
+            Assert.DoesNotContain('\r', query[offset..token.Start]);
+            offset = token.End;
+        }
+        Assert.DoesNotContain('\r', query[offset..]);
     }
 
     private static void AssertShaclConstraintGraphEqual(IGraph expected, IGraph actual)
