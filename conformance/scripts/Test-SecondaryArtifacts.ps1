@@ -66,6 +66,36 @@ foreach ($rootValue in $Roots) {
             $xmiPaths.Add($file.FullName)
         }
 
+        if ($file.Extension -ieq '.svg') {
+            $diagram = [Xml.XmlDocument]::new()
+            $diagram.PreserveWhitespace = $true
+            $diagram.XmlResolver = $null
+            $diagram.Load($file.FullName)
+            $appearance = $diagram.DocumentElement.GetAttribute('data-appearance')
+            # Authored SVG illustrations are not generated diagram pairs.
+            if ($appearance -in @('light', 'dark')) {
+                $companion = if ($appearance -eq 'light') {
+                    $file.FullName.Substring(0, $file.FullName.Length - 4) + '.dark.svg'
+                } else {
+                    $file.FullName.Substring(0, $file.FullName.Length - '.dark.svg'.Length) + '.svg'
+                }
+                if (-not [IO.File]::Exists($companion)) { throw "Missing paired diagram: $companion" }
+                $other = [Xml.XmlDocument]::new()
+                $other.PreserveWhitespace = $true
+                $other.XmlResolver = $null
+                $other.Load($companion)
+                if ($other.DocumentElement.GetAttribute('data-appearance') -eq $appearance) {
+                    throw "Diagram pair has identical appearance markers: $($file.FullName)"
+                }
+                foreach ($document in @($diagram, $other)) {
+                    foreach ($attribute in @($document.SelectNodes('//@fill | //@stroke | //@data-appearance'))) {
+                        $attribute.OwnerElement.RemoveAttributeNode($attribute) | Out-Null
+                    }
+                }
+                if ($diagram.OuterXml -cne $other.OuterXml) { throw "Diagram pair geometry/content differ: $($file.FullName)" }
+            }
+        }
+
         if ($file.Extension -ieq '.png') {
             $bytes = [IO.File]::ReadAllBytes($file.FullName)
             $signature = [byte[]](0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)

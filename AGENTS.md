@@ -528,6 +528,22 @@ cycle guards. Full-model and topic graph modes retain their broader inherited
 and nested relationship coverage. Build incoming indexes per publication and
 never mutate the model to create the diagram view.
 
+The DOT publisher coordinates publication; internal `Dot` components own
+read-only diagram records, publication-local model indexes, the shared DOT
+writer, Graphviz execution, and SVG palette processing. Deduplicate structured
+edges, not formatted strings. Keep local declared-property selection separate
+from the effective-property traversal used by broader graphs. Never temporarily
+change public publisher configuration to hold staging paths.
+
+Presentation uses neutral rounded cards and a top-to-bottom layout. SVG emits
+`<name>.svg` and `<name>.dark.svg` from one Graphviz invocation with identical
+geometry; other formats use the light palette. `PROJ2706` rejects filename
+collisions before output changes. Sphinx switches paired images through scoped
+theme CSS, defaults to light for other themes, and prints only light diagrams.
+Keep natural-size text, horizontal overflow, accessible alt text/focusable
+containers, and full-size downloads. Do not apply image filters or diagram CSS
+to authored illustrations. Diagram file counts are twice logical counts.
+
 ## Python publisher rules
 
 `Cogs.Publishers\Python\PythonPublisher.cs` combines generated declarations

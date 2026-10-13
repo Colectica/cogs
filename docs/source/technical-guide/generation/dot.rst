@@ -44,6 +44,25 @@ per-type graphs, without inheritance arrows or contained composite detail.
 The supported formats are raw ``dot`` plus rendered ``svg``, ``png``,
 ``jpeg``/``jpg``, and ``pdf``. Only SVG is parsed for XML post-processing.
 
+Presentation and SVG appearances
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Diagrams use neutral rounded cards, sans-serif labels, and restrained blue
+item/teal composite accents. Type headers sit above aligned property,
+datatype, and cardinality columns. Neighbors stay compact; abstract and ordered
+markers retain their meaning. The default layout runs from top to bottom,
+without changing which relationships are included.
+
+SVG publication emits ``<name>.svg`` for light mode and ``<name>.dark.svg`` for
+dark mode. Both are self-contained, with explicit backgrounds and the same
+geometry. Graphviz runs once per logical diagram; XML palette conversion
+creates the companion without another layout pass. Other formats use the light
+presentation and retain one output file. No appearance option is required.
+
+``PROJ2706`` rejects colliding output filenames before publication, including
+the companion of ``Foo`` colliding with a diagram named ``Foo.dark``. Existing
+output is preserved. SVG file counts are twice the logical diagram count.
+
 Related pages
 ~~~~~~~~~~~~~
 

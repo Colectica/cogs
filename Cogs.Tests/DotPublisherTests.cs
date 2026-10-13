@@ -1,11 +1,14 @@
 using Cogs.Model;
 using Cogs.Publishers;
+using Cogs.Publishers.Dot;
 using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
+using System.Collections.Generic;
 using Xunit;
 
 namespace Cogs.Tests;
@@ -75,8 +78,8 @@ public sealed class DotPublisherTests
         Assert.DoesNotContain("AncestorLink", graph);
         Assert.DoesNotContain("Next :", graph);
         Assert.DoesNotContain("Nested.Link", graph);
-        Assert.Contains("\"Out\" [shape=ellipse", graph);
-        Assert.Contains("\"Focus\" [shape=record", graph);
+        Assert.False(LocalDiagram(BuildLocalModel(), "Focus").Nodes.Single(n => n.Name == "Out").Detailed);
+        Assert.True(LocalDiagram(BuildLocalModel(), "Focus").Nodes.Single(n => n.Name == "Focus").Detailed);
     }
 
     [Fact]
@@ -101,8 +104,8 @@ public sealed class DotPublisherTests
         string graph = PublishLocal(temporary, BuildLocalModel(), "Focus", composites: true);
 
         Assert.Contains("\"Focus\" -> \"Box\" [arrowhead=none, label=\"Nested [0..n]\"]", graph);
-        Assert.Contains("\"Box\" [shape=record", graph);
-        Assert.Contains("\"Inner\" [shape=record", graph);
+        Assert.True(LocalDiagram(BuildLocalModel(), "Focus", composites: true).Nodes.Single(n => n.Name == "Box").Detailed);
+        Assert.True(LocalDiagram(BuildLocalModel(), "Focus", composites: true).Nodes.Single(n => n.Name == "Inner").Detailed);
         Assert.Contains("\"Box\" -> \"Box\" [arrowhead=none, label=\"Self [0..1]\"]", graph);
         Assert.Contains("\"Inner\" -> \"Box\" [arrowhead=none, label=\"Back [0..1]\"]", graph);
         Assert.Contains("\"Inner\" -> \"Far\" [arrowhead=none, label=\"Link [1..1]\"]", graph);
@@ -127,7 +130,7 @@ public sealed class DotPublisherTests
         Assert.Equal(4, CountEdges(graph));
 
         string isolated = File.ReadAllText(Path.Combine(temporary.Child("local"), "Isolated.dot"));
-        Assert.Contains("\"Isolated\" [shape=record", isolated);
+        Assert.True(LocalDiagram(model, "Isolated").Nodes.Single().Detailed);
         Assert.Equal(0, CountEdges(isolated));
         Assert.DoesNotContain("\"Focus\"", isolated);
         Assert.Equal(model.AllDataTypes.Count(), Directory.GetFiles(temporary.Child("local"), "*.dot").Length);
@@ -186,7 +189,7 @@ public sealed class DotPublisherTests
         byte[] original = prefix.Concat(metadata).ToArray();
         File.WriteAllBytes(path, original);
 
-        DotSchemaPublisher.NormalizePdfMetadata(path);
+        GraphvizRenderer.NormalizePdfMetadata(path);
         byte[] normalized = File.ReadAllBytes(path);
         Assert.Equal(original.Length, normalized.Length);
         Assert.Equal(prefix, normalized[..prefix.Length]);
@@ -194,7 +197,7 @@ public sealed class DotPublisherTests
         Assert.Contains("/CreationDate (D:19700101000000Z)", text, StringComparison.Ordinal);
         Assert.Contains("/ModDate (D:19700101000000-05'00')", text, StringComparison.Ordinal);
 
-        DotSchemaPublisher.NormalizePdfMetadata(path);
+        GraphvizRenderer.NormalizePdfMetadata(path);
         Assert.Equal(normalized, File.ReadAllBytes(path));
     }
 
@@ -204,14 +207,127 @@ public sealed class DotPublisherTests
         var pdfStartInfo = new ProcessStartInfo();
         pdfStartInfo.Environment["SOURCE_DATE_EPOCH"] = "987654321";
 
-        DotSchemaPublisher.ConfigureGraphvizEnvironment(pdfStartInfo, "pdf");
+        GraphvizRenderer.ConfigureGraphvizEnvironment(pdfStartInfo, "pdf");
 
         Assert.Equal("0", pdfStartInfo.Environment["SOURCE_DATE_EPOCH"]);
 
         var svgStartInfo = new ProcessStartInfo();
-        DotSchemaPublisher.ConfigureGraphvizEnvironment(svgStartInfo, "svg");
+        GraphvizRenderer.ConfigureGraphvizEnvironment(svgStartInfo, "svg");
         Assert.False(svgStartInfo.Environment.ContainsKey("SOURCE_DATE_EPOCH"));
     }
+
+    [Fact]
+    public void StructuredProjectionRetainsScopeAndPropertyOrder()
+    {
+        Diagram diagram = LocalDiagram(BuildLocalModel(), "Focus");
+        DiagramNode focus = diagram.Nodes.Single(n => n.Name == "Focus");
+        Assert.Equal(new[] { "OutOne", "OutTwo", "Self", "Nested", "Repeated" }, focus.Properties.Select(p => p.Name));
+        Assert.Empty(diagram.Nodes.Single(n => n.Name == "Out").Properties);
+        Assert.Equal(7, diagram.Edges.Count);
+        Assert.Contains(diagram.Edges, e => e.Source == "Focus" && e.Target == "Out" && e.PropertyPath == "Repeated"
+            && e.Minimum == "2" && e.Maximum == "3" && e.Ordered);
+        Assert.Single(diagram.Edges, e => e.Source == "Focus" && e.Target == "Focus");
+    }
+
+    [Theory]
+    [InlineData("0", "single", "PROJ2701")]
+    [InlineData("svg", "1", "PROJ2702")]
+    public void NumericEnumSpellingsRemainInvalid(string format, string mode, string code)
+    {
+        using var temporary = new TemporaryDirectory();
+        var publisher = new DotSchemaPublisher { TargetDirectory = temporary.Child("out"), Format = format, Output = mode };
+        Assert.Throws<CogsPublicationException>(() => publisher.Publish(BuildModel()));
+        Assert.Contains(publisher.Errors, e => e.Code == code);
+        Assert.False(Directory.Exists(publisher.TargetDirectory));
+    }
+
+    [Fact]
+    public void CompanionFilenameCollisionsPreserveExistingOutputBeforeRendering()
+    {
+        using var temporary = new TemporaryDirectory();
+        var model = new CogsModel();
+        model.ItemTypes.Add(new ItemType { Name = "Foo" });
+        model.ItemTypes.Add(new ItemType { Name = "Foo.dark" });
+        string target = temporary.Child("existing");
+        Directory.CreateDirectory(target);
+        File.WriteAllText(Path.Combine(target, "keep.txt"), "unchanged");
+        var publisher = new DotSchemaPublisher { TargetDirectory = target, Overwrite = true, DotLocation = "not-an-executable" };
+        Assert.Throws<CogsPublicationException>(() => publisher.Publish(model));
+        Assert.Contains(publisher.Errors, e => e.Code == "PROJ2706" && e.Message.Contains("Foo.dark.svg", StringComparison.Ordinal));
+        Assert.Equal(new[] { "keep.txt" }, Directory.GetFiles(target).Select(Path.GetFileName));
+        Assert.Equal(target, publisher.TargetDirectory);
+    }
+
+    [Fact]
+    public void ModernWriterUsesCardsAndEscapesBothDotAndHtmlContent()
+    {
+        var node = new DiagramNode("Quoted\"<&> {record} α", true, true, true,
+            new[] { new DiagramProperty("Value<&>", "string", "0", "n", true) });
+        string text = DotWriter.Write(new Diagram("test", "Test", new[] { node }, Array.Empty<DiagramEdge>(), null));
+        Assert.Contains("rankdir=TB", text);
+        Assert.Contains("rounded,filled", text);
+        Assert.Contains("fontname=\"Arial\"", text);
+        Assert.Contains("Quoted\\\"<&> {record} α", text);
+        Assert.Contains("Quoted&quot;&lt;&amp;&gt; {record}", text);
+        Assert.Contains("Value&lt;&amp;&gt;", text);
+        Assert.Contains("«abstract»", text);
+        Assert.Contains("{ordered}", text);
+        Assert.DoesNotContain("shape=record", text);
+        Assert.DoesNotContain("#f7b733", text);
+        Assert.DoesNotContain("#fc4a1a", text);
+    }
+
+    [Fact]
+    public void SvgVariantsPreserveGeometryLiteralDataAndHaveNoShadows()
+    {
+        using var temporary = new TemporaryDirectory();
+        string path = temporary.Child("test.svg");
+        File.WriteAllText(path, "<svg xmlns='http://www.w3.org/2000/svg' width='120pt' height='80pt' viewBox='0 0 120 80'>" +
+            "<g id='graph0'><polygon fill='white' stroke='none' points='0,0 120,0 120,80 0,80'/>" +
+            "<g id='node1'><path fill='#f8fafc' stroke='#94a3b8' d='M0 0L10 10'/><text fill='#1e293b' x='4' y='8'>α &amp; value</text></g></g></svg>");
+        SvgAppearance.WriteVariants(path, "A quoted \"title\" α\rwith newline");
+        XDocument light = XDocument.Load(path);
+        XDocument dark = XDocument.Load(temporary.Child("test.dark.svg"));
+        XNamespace svg = "http://www.w3.org/2000/svg";
+        Assert.Equal("img", light.Root!.Attribute("role")!.Value);
+        Assert.Equal("A quoted \"title\" α\rwith newline", light.Root.Element(svg + "title")!.Value);
+        Assert.Equal(DiagramPalette.Dark.Canvas, dark.Descendants(svg + "polygon").Single().Attribute("fill")!.Value);
+        Assert.Equal("α & value", dark.Descendants(svg + "text").Single().Value);
+        foreach (XDocument document in new[] { light, dark })
+            foreach (XAttribute attribute in document.Descendants().Attributes().Where(a => a.Name.LocalName is "fill" or "stroke" or "data-appearance").ToArray()) attribute.Remove();
+        Assert.True(XNode.DeepEquals(light, dark));
+        Assert.Empty(light.Descendants(svg + "filter"));
+        byte[] first = File.ReadAllBytes(path);
+        Assert.False(first.Take(3).SequenceEqual(new byte[] { 0xef, 0xbb, 0xbf }));
+        Assert.DoesNotContain('\r', File.ReadAllText(path));
+    }
+
+    [Fact]
+    public void PaletteTextAndEdgesMeetContrastTargets()
+    {
+        foreach (DiagramPalette p in new[] { DiagramPalette.Light, DiagramPalette.Dark })
+        {
+            Assert.True(Contrast(p.Text, p.Surface) >= 4.5);
+            Assert.True(Contrast(p.Muted, p.Surface) >= 4.5);
+            Assert.True(Contrast(p.Item, p.Header) >= 4.5);
+            Assert.True(Contrast(p.Composite, p.Header) >= 4.5);
+            Assert.True(Contrast(p.Edge, p.Canvas) >= 3);
+        }
+        static double Contrast(string a, string b)
+        {
+            static double Luminance(string color)
+            {
+                double[] rgb = Enumerable.Range(0, 3).Select(i => Convert.ToInt32(color.Substring(1 + i * 2, 2), 16) / 255.0)
+                    .Select(v => v <= 0.04045 ? v / 12.92 : Math.Pow((v + 0.055) / 1.055, 2.4)).ToArray();
+                return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+            }
+            double x = Luminance(a), y = Luminance(b);
+            return (Math.Max(x, y) + 0.05) / (Math.Min(x, y) + 0.05);
+        }
+    }
+
+    private static Diagram LocalDiagram(CogsModel model, string name, bool inheritance = false, bool composites = false) =>
+        new DiagramProjection(model, inheritance, composites).Build(DiagramMode.Single).Single(d => d.BaseName == name);
 
     private static int CountEdges(string graph) => Regex.Matches(graph, "(?m)^  \"[^\"]+\" -> \"[^\"]+\"").Count;
 

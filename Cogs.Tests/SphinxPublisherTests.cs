@@ -282,6 +282,34 @@ public sealed class SphinxPublisherTests
         Assert.Equal("unchanged", File.ReadAllText(Path.Combine(output, "keep.txt")));
     }
 
+    [Fact]
+    public void DiagramMarkupAndCssSupportThemeSwitchingAndReadableScrolling()
+    {
+        using var temporary = new TemporaryDirectory();
+        string articles = temporary.Child("articles");
+        Directory.CreateDirectory(articles);
+        File.WriteAllText(Path.Combine(articles, "guide.md"), "# Guide\n");
+        string output = temporary.Child("documentation");
+        new BuildSphinxDocumentation().Build(BuildModel(articles), output, includeDiagrams: true);
+        string page = File.ReadAllText(Path.Combine(output, "source", "item-types", "Thing", "index.rst"));
+        Assert.Contains("../../images/Thing.svg", page);
+        Assert.Contains("../../images/Thing.dark.svg", page);
+        Assert.Contains("only-light", page);
+        Assert.Contains("only-dark", page);
+        Assert.Contains("tabindex=\"0\" role=\"region\"", page);
+        Assert.Contains(":alt: Relationships for Thing", page);
+        Assert.Contains(".. only:: not html", page);
+        Assert.Equal(2, page.Split(":download:", StringSplitOptions.None).Length - 1);
+        string css = File.ReadAllText(Path.Combine(output, "source", "_static", "css", "custom.css"));
+        Assert.Contains("html[data-theme='dark'] .cogs-diagram-dark", css);
+        Assert.Contains(".cogs-diagram-dark { display: none; }", css);
+        Assert.Contains("overflow-x: auto", css);
+        Assert.Contains("max-width: none", css);
+        Assert.Contains("@media print", css);
+        Assert.DoesNotContain("max-height", css);
+        Assert.DoesNotContain("MutationObserver", page);
+    }
+
     private static int RunCli(params string[] arguments) =>
         (int)typeof(Cogs.Console.Program).GetMethod("Main", BindingFlags.NonPublic | BindingFlags.Static)!
             .Invoke(null, new object[] { arguments })!;

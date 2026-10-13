@@ -444,13 +444,7 @@ namespace Cogs.Publishers
 
                 if (includeDiagrams)
                 {
-                    builder.AppendLine(".. container:: image");
-                    builder.AppendLine();
-                    builder.AppendLine("   |stub|");
-                    builder.AppendLine();
-                    builder.Append(".. |stub| image:: ");
-                    builder.AppendLine("../../images/" + itemType.Name + ".svg");
-                    builder.AppendLine();
+                    AppendDiagram(builder, itemType.Name);
                 }
                 // Preserve authored Markdown and let MyST parse the copied files.
                 if (itemType.AdditionalText.Any())
@@ -1011,10 +1005,69 @@ help:
             return string.IsNullOrWhiteSpace(result) ? "document" : result.ToLowerInvariant();
         }
 
+        private static void AppendDiagram(StringBuilder builder, string name)
+        {
+            string label = "Relationships for " + name;
+            builder.AppendLine(".. only:: html");
+            builder.AppendLine();
+            foreach (string mode in new[] { "light", "dark" })
+            {
+                string image = "../../images/" + name + (mode == "dark" ? ".dark" : "") + ".svg";
+                builder.AppendLine("   .. raw:: html");
+                builder.AppendLine();
+                builder.AppendLine("      <div class=\"cogs-diagram cogs-diagram-" + mode + " only-" + mode +
+                    "\" tabindex=\"0\" role=\"region\" aria-label=\"" + System.Net.WebUtility.HtmlEncode(label) + "\">");
+                builder.AppendLine();
+                builder.AppendLine("   .. image:: " + image);
+                builder.AppendLine("      :alt: " + label);
+                builder.AppendLine("      :class: cogs-diagram-image dark-light");
+                builder.AppendLine();
+                builder.AppendLine("   :download:`Download full-size SVG <" + image + ">`");
+                builder.AppendLine();
+                builder.AppendLine("   .. raw:: html");
+                builder.AppendLine();
+                builder.AppendLine("      </div>");
+                builder.AppendLine();
+            }
+            builder.AppendLine(".. only:: not html");
+            builder.AppendLine();
+            builder.AppendLine("   .. image:: ../../images/" + name + ".svg");
+            builder.AppendLine("      :alt: " + label);
+            builder.AppendLine();
+        }
+
         private string GetCustomCss()
         {
             return @".wy-nav-content {
     max-width: unset;
+}
+.cogs-diagram {
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 1rem 0;
+    padding: 0.5rem;
+    border: 1px solid var(--pst-color-border, #94a3b8);
+    border-radius: 0.5rem;
+}
+.cogs-diagram:focus-visible {
+    outline: 2px solid var(--pst-color-primary, #346790);
+    outline-offset: 2px;
+}
+.cogs-diagram img.cogs-diagram-image {
+    display: block;
+    max-width: none;
+    width: auto;
+    height: auto;
+    filter: none !important;
+    background: none !important;
+}
+.cogs-diagram-dark { display: none; }
+html[data-theme='dark'] .cogs-diagram-dark { display: block; }
+html[data-theme='dark'] .cogs-diagram-light { display: none; }
+@media print {
+    html .cogs-diagram-light.only-light { display: block !important; }
+    html .cogs-diagram-dark.only-dark { display: none !important; }
+    .cogs-diagram { overflow: visible; border: 0; }
 }";
         }
 

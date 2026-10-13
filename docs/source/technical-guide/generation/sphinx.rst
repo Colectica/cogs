@@ -63,6 +63,20 @@ not configured or discoverable, generation warns and emits a consistent
 text-only project with no diagram directives. If a discovered or explicitly
 configured Graphviz executable runs and fails, generation fails. Missing or
 failed diagrams must never leave broken image links.
+
+Theme-aware diagrams
+~~~~~~~~~~~~~~~~~~~~
+
+Generated diagrams include light and dark SVGs. PyData's active theme selects
+the matching image through scoped CSS; no custom JavaScript is added. Themes
+without the ``html[data-theme]`` convention default to light diagrams. Print
+and non-HTML output use only the light version.
+
+Diagrams retain their natural text size in keyboard-focusable areas with
+horizontal scrolling when needed. Tall diagrams extend down the page rather
+than creating a fixed-height scroll pane. Each appearance has meaningful alt
+text and a full-size SVG download link. Theme filters and background overrides
+are disabled only for these already-themed images, not authored illustrations.
 The canonical preserved/unsupported list and diagnostic ranges are in
 :doc:`/specification/publishers`.
 

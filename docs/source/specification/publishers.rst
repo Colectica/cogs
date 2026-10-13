@@ -277,7 +277,7 @@ Schema and XSD remain authoritative for instance validation.
        Local diagrams do not expand item neighbors, inherited properties, or
        hidden composite paths. Raw DOT needs no renderer; SVG/PNG/JPEG/PDF
        require Graphviz.
-     - ``PROJ2701``--``PROJ2705``
+     - ``PROJ2701``--``PROJ2706``
    * - Sphinx
      - Type/topic/article inventories, authored MyST Markdown and
        reStructuredText, descriptions, properties, facets, and
