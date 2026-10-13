@@ -484,19 +484,30 @@ jobs:
           Write-Host "Java JAXP/Xerces XSD: $($tools.javaJaxpXsd)"
           Write-Host 'Turtle RDF semantics are exercised by dotNetRDF publisher tests, regeneration graph equality, and OWLAPI; generated XMI receives deterministic local semantic validation.'
 
-      - name: Pack NuGet package
-        run: >
-          dotnet pack ./Cogs.Console/Cogs.Console.csproj
-          --configuration ${{ env.BUILD_CONFIGURATION }}
-          --no-build
-          -o ./nupkg
-          -p:Version=${{ env.COGS_PACKAGE_VERSION }}
-          -p:IncludeSymbols=true
-          -p:SymbolPackageFormat=snupkg
+      - name: Build isolated NuGet package and test installed general help
+        id: package
+        shell: pwsh
+        run: |
+          $package = ./conformance/scripts/Test-ToolPackaging.ps1 `
+            -PackageVersion $env:COGS_PACKAGE_VERSION `
+            -Configuration $env:BUILD_CONFIGURATION `
+            -WorkDirectory (Join-Path $env:RUNNER_TEMP 'cogs-packaging') `
+            -PackageOutputDirectory (Join-Path $env:RUNNER_TEMP 'cogs-qualified-packages')
+          "package-path=$($package.PackagePath)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Retain package diagnostic logs on failure
+        if: failure() && steps.package.outcome == 'failure'
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: CogsNuGetPackage-diagnostics-${{ runner.os }}
+          path: |
+            ${{ runner.temp }}/cogs-packaging/**/*.log
+            ${{ runner.temp }}/cogs-packaging/**/metadata.json
+          if-no-files-found: warn
 
       - name: Upload NuGet package
         uses: actions/upload-artifact@v7.0.1
         with:
           name: CogsNuGetPackage-${{ runner.os }}
-          path: ./nupkg/*.nupkg
+          path: ${{ steps.package.outputs.package-path }}
           if-no-files-found: error

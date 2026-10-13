@@ -41,11 +41,30 @@ packages, Sphinx projects, and DOT diagrams retain their conventional layouts;
 explicit UML filename overrides remain supported. File publication must reject
 invalid or missing direct-library slugs without changing existing output.
 
-Create the NuGet package with:
+Create and qualify the NuGet tool package using isolated, consistently versioned
+restore/build/pack outputs (never pack the shared solution output with
+`--no-build` alone):
 
 ```powershell
-dotnet pack Cogs.Console\Cogs.Console.csproj --configuration Release --no-build
+pwsh conformance\scripts\New-ToolPackage.ps1 -PackageVersion 2.0.0 `
+  -Configuration Release -WorkDirectory "$env:TEMP\cogs-packaging" `
+  -PackageOutputDirectory "$env:TEMP\cogs-qualified-packages"
 ```
+
+CI supplies the existing commit-count version and uses fresh per-run workspaces
+under `RUNNER_TEMP`. The helper passes the same `Version`, configuration and
+artifacts path to restore, build and pack, disables `GeneratePackageOnBuild`
+only for those invocations, and retains `.snupkg` symbol packaging. It inspects
+the package's six COGS assemblies and their internal references using PE
+metadata without loading them, checks the nuspec, tool entry point and dependency
+graph, then installs the exact package through a local-only feed and isolated
+cache. Only general `--help` is executed through the installed tool. No global
+tools or user NuGet configuration are changed. `Verify-ToolPackage.ps1` exposes
+the same gate for an existing package; `Test-ToolPackaging.ps1` reproduces
+shared-output version contamination, tests rejection of malformed packages,
+and repeats isolated packaging with space-containing paths. Logs survive
+failure; CI uploads only the newly qualified package. Existing NuGet releases
+are not modified automatically; `2.0.790` is unsuitable for installation.
 
 Build the Sphinx documentation after installing `docs\requirements.txt` with:
 

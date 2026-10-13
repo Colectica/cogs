@@ -76,6 +76,46 @@ strict graph equality. Contexts remain byte-repeatable, while both ontology
 encodings are compared as the semantic RDF graph. OWLAPI
 checks ontology parsing/profile membership, not RDF list instance validation.
 
+## NuGet tool packaging gate
+
+After the normal build, runtime and conformance gates, CI runs
+`scripts/Test-ToolPackaging.ps1` on Windows and Ubuntu. It reproduces the old
+failure mode (a versioned CLI followed by an unversioned `Cogs.Common` rebuild),
+then proves isolated packaging remains independent of those shared outputs.
+Both repeated builds and installed-tool checks use space-containing paths.
+Malformed-package cases cover missing assemblies, assembly-version mismatches,
+dependency versions/runtime paths, tool entry points and package versions.
+
+For a local qualified package:
+
+```powershell
+pwsh conformance/scripts/New-ToolPackage.ps1 -PackageVersion 2.0.0 `
+  -Configuration Release -WorkDirectory ([IO.Path]::GetTempPath()) `
+  -PackageOutputDirectory (Join-Path ([IO.Path]::GetTempPath()) 'cogs-packages')
+```
+
+The script explicitly restores, builds and packs `Cogs.Console.csproj` and its
+dependencies with one version and isolated artifacts path. It keeps tool identity
+and symbol settings unchanged. `GeneratePackageOnBuild=false` applies only to
+these commands, not the project default. Do not replace this with a late
+`dotnet pack --no-build` over ordinary `bin`/`obj`: conformance probes may have
+rebuilt dependencies with their default version.
+
+`scripts/Verify-ToolPackage.ps1 -PackagePath <file.nupkg> -ExpectedVersion <version>`
+inspects PE metadata without loading assemblies. All six COGS assembly versions
+and internal references must match the expected release version; third-party
+versions are independent. Package identity, tool entry point and `cogs.deps.json`
+must agree. The exact package is then installed in a fresh tool directory from a
+local-only feed with an isolated cache, and **only general `--help`** is invoked.
+This is a packaging/startup gate, not another model or publisher conformance run.
+It changes neither global tools nor user NuGet configuration. Failure logs remain
+in the work directory and block package upload. CI uploads the explicit newly
+qualified path, not a wildcard that could select stale packages.
+
+The existing commit-count release process supplies new versions. No script
+publishes, overwrites or unlists NuGet releases; `2.0.790` remains unsuitable for
+installation.
+
 ## Primary SHACL output
 
 `publish-rdf` emits `<slug>.shacl.ttl` as a primary closed RDF instance-shape
