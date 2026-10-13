@@ -48,8 +48,9 @@ public sealed class DotSchemaPublisher
         DirectoryPublication.Publish(target, Overwrite, staging =>
         {
             var renderer = new GraphvizRenderer(staging, DotLocation, Errors);
+            if (!renderer.Prepare(format)) throw GenerationFailure();
             foreach (Diagram diagram in diagrams)
-                if (!renderer.Render(diagram, format)) throw new CogsPublicationException("DOT generation failed.");
+                if (!renderer.Render(diagram, format)) throw GenerationFailure();
         }, model.SourceDirectory);
         return 0;
     }
@@ -59,6 +60,9 @@ public sealed class DotSchemaPublisher
         Errors.Add(new CogsError(ErrorLevel.Error, code, message));
         throw new CogsPublicationException("DOT generation failed.");
     }
+
+    private CogsPublicationException GenerationFailure() => new("DOT generation failed: " +
+        string.Join(Environment.NewLine, Errors.Select(error => error.Code + ": " + error.Message)));
 
     private static bool TryParseName<T>(string value, out T result) where T : struct, Enum
     {

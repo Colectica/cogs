@@ -141,26 +141,13 @@ jobs:
       - name: Install Graphviz
         shell: pwsh
         run: |
-          if ($IsWindows) {
-            choco install graphviz --yes --no-progress
-            $candidate = Get-Command dot -ErrorAction SilentlyContinue
-            if (-not $candidate) {
-              $path = Join-Path $env:ProgramFiles 'Graphviz/bin/dot.exe'
-              if (Test-Path -LiteralPath $path) { $candidate = Get-Item -LiteralPath $path }
-            }
-          } else {
-            sudo apt-get update
-            sudo apt-get install --yes graphviz
-            $candidate = Get-Command dot -ErrorAction Stop
-          }
-          if (-not $candidate) { throw 'Graphviz dot was installed but could not be discovered.' }
-          $dot = $candidate.Source ?? $candidate.FullName
+          ./conformance/scripts/Test-GraphvizInstallation.ps1
+          $dot = ./conformance/scripts/Install-Graphviz.ps1 -ToolDirectory (Join-Path $env:RUNNER_TEMP 'cogs-graphviz')
           "COGS_DOT=$dot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           if ($IsWindows) {
             ([IO.Path]::GetDirectoryName($dot)) | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           }
           # On Linux, prepending /usr/bin would shadow setup-python with system Python.
-          & $dot -V
 
       - name: Display pinned runtimes
         shell: pwsh

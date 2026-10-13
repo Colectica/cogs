@@ -6,7 +6,8 @@ Graphviz-oriented graph output from a COGS model.
 
 DOT is a documentation projection and does not preserve the complete instance
 contract. Raw DOT can be emitted without Graphviz. Rendered formats require a
-working Graphviz executable; a missing executable or nonzero exit is an error.
+working Graphviz 16.1+ executable; a missing executable, older version, failed
+version probe, or nonzero rendering exit is an error.
 Binary outputs are not subject to text post-processing.
 The canonical preserved/unsupported list and diagnostic ranges are in
 :doc:`/specification/publishers`.
@@ -58,6 +59,13 @@ dark mode. Both are self-contained, with explicit backgrounds and the same
 geometry. Graphviz runs once per logical diagram; XML palette conversion
 creates the companion without another layout pass. Other formats use the light
 presentation and retain one output file. No appearance option is required.
+
+Root SVG IDs are stable identifiers derived from the diagram basename, and both
+appearances retain the same ID. XML processing preserves Graphviz's text
+whitespace metadata. Hierarchical ``dot`` layout and labeled spline routing
+remain the defaults; orthogonal routing is not used because Graphviz documents
+limitations with edge labels. Regeneration compares output within the same
+Graphviz version and environment, not geometry across different releases.
 
 ``PROJ2706`` rejects colliding output filenames before publication, including
 the companion of ``Foo`` colliding with a diagram named ``Foo.dark``. Existing

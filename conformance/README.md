@@ -176,6 +176,13 @@ rejects standards-valid, arbitrary-size `maxOccurs` values. The COGS instance
 validator combines generated-XSD validation with exact COGS lexical and
 cardinality checks. The processor limitation is recorded in `tools.json`.
 
+Graphviz 16.1 or later is required for rendering, with no exact-version pin.
+CI tries apt/Chocolatey first and uses checksum-verified official fallbacks
+only for older installs. Ubuntu fallback packages must match the runner release.
+`Test-GraphvizInstallation.ps1` checks minimum/newer versions, fallback selection,
+checksum rejection, and unsupported platforms/releases without installing tools.
+Regeneration comparisons apply within the same renderer version/environment.
+
 Graphviz emits a standard SVG 1.1 document that may include its standard
 DOCTYPE. The secondary-artifact validator permits that declaration only for
 SVG parsing and disables external entity resolution. This is not an exception

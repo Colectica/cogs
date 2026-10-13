@@ -61,7 +61,9 @@ unavailable theme when the generated project is built.
 Sphinx is a documentation projection, not an instance schema. If Graphviz is
 not configured or discoverable, generation warns and emits a consistent
 text-only project with no diagram directives. If a discovered or explicitly
-configured Graphviz executable runs and fails, generation fails. Missing or
+configured Graphviz executable is older than 16.1, cannot report its version,
+or runs and fails, generation fails. Any version 16.1 or later is supported;
+there is no exact-version requirement. Missing or
 failed diagrams must never leave broken image links.
 
 Theme-aware diagrams

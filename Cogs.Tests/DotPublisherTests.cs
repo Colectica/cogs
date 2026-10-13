@@ -15,6 +15,126 @@ namespace Cogs.Tests;
 
 public sealed class DotPublisherTests
 {
+    [Theory]
+    [InlineData("dot - graphviz version 16.1.0 (20260903)", "", "16.1.0")]
+    [InlineData("", "dot - graphviz version 16.1 (build)\r\n", "16.1.0")]
+    [InlineData("output", "dot - graphviz version 17.2.3 (build)", "17.2.3")]
+    [InlineData("dot - graphviz version 2.38.0 (build)", "", "2.38.0")]
+    public void GraphvizVersionParsingReadsEitherStream(string stdout, string stderr, string expected)
+    {
+        Assert.True(GraphvizTool.TryParseVersion(stdout, stderr, out Version version));
+        Assert.Equal(new Version(expected), version);
+    }
+
+    [Theory]
+    [InlineData(0, "16.1.0", null)]
+    [InlineData(0, "16.2.0", null)]
+    [InlineData(0, "18.0.0", null)]
+    [InlineData(0, "16.0.9", "PROJ2707")]
+    [InlineData(0, "2.42.2", "PROJ2707")]
+    [InlineData(1, "16.1.0", "PROJ2708")]
+    [InlineData(0, "not-a-version", "PROJ2708")]
+    [InlineData(0, "99999999999999999999.1.0", "PROJ2708")]
+    public void GraphvizVersionPolicyIsAMinimumNotAnExactPin(int exit, string version, string code)
+    {
+        var error = GraphvizTool.CheckVersion(new(exit, "", "dot - graphviz version " + version), "/tools/dot");
+        Assert.Equal(code, error?.Code);
+        if (error is not null)
+        {
+            Assert.Equal(Cogs.Common.ErrorLevel.Error, error.Level);
+            Assert.Equal("/tools/dot", error.SourcePath);
+        }
+    }
+
+    [Fact]
+    public void RenderingProbesOnceAndNewPublicationsRecheckTheExecutable()
+    {
+        using var temporary = new TemporaryDirectory();
+        var errors = new List<Cogs.Common.CogsError>();
+        int probes = 0, renders = 0;
+        string version = "16.1.0";
+        GraphvizProcessResult Run(ProcessStartInfo start)
+        {
+            if (start.ArgumentList.Count == 1 && start.ArgumentList[0] == "-V")
+            {
+                probes++;
+                return new(0, "", "dot - graphviz version " + version);
+            }
+            renders++;
+            Assert.Equal("-Tsvg", start.ArgumentList[0]);
+            string input = File.ReadAllText(start.ArgumentList[3]);
+            Match id = Regex.Match(input, "svgid=\"([^\"]+)\"");
+            File.WriteAllText(start.ArgumentList[2], "<svg xmlns='http://www.w3.org/2000/svg' id='" + id.Groups[1].Value +
+                "'><text xml:space='preserve'> padded  value </text></svg>");
+            return new(0, "", "");
+        }
+        var renderer = new GraphvizRenderer(temporary.Path, "test-dot", errors, Run);
+        foreach (string name in new[] { "first", "second" })
+        {
+            Assert.True(renderer.Render(new(name, name, Array.Empty<DiagramNode>(), Array.Empty<DiagramEdge>(), null), DiagramFormat.Svg));
+            XDocument light = XDocument.Load(temporary.Child(name + ".svg"));
+            XDocument dark = XDocument.Load(temporary.Child(name + ".dark.svg"));
+            Assert.Equal(DotWriter.SvgId(name), light.Root!.Attribute("id")!.Value);
+            Assert.Equal(light.Root.Attribute("id")!.Value, dark.Root!.Attribute("id")!.Value);
+            Assert.Equal("preserve", light.Root.Element(XName.Get("text", "http://www.w3.org/2000/svg"))!.Attribute(XNamespace.Xml + "space")!.Value);
+            Assert.Equal(" padded  value ", dark.Root.Element(XName.Get("text", "http://www.w3.org/2000/svg"))!.Value);
+        }
+        Assert.Equal(1, probes);
+        Assert.Equal(2, renders);
+        Assert.Empty(errors);
+        version = "15.0.0";
+        var next = new GraphvizRenderer(temporary.Path, "test-dot", errors, Run);
+        Assert.False(next.Render(new("third", "third", Array.Empty<DiagramNode>(), Array.Empty<DiagramEdge>(), null), DiagramFormat.Svg));
+        Assert.Equal(2, probes);
+        Assert.Equal(2, renders);
+        Assert.Contains(errors, e => e.Code == "PROJ2707");
+        Assert.False(File.Exists(temporary.Child("third.svg")));
+        Assert.Empty(Directory.GetFiles(temporary.Path, "*.dot-input"));
+    }
+
+    [Fact]
+    public void RawDotDoesNotExecuteOrProbeAnOutdatedTool()
+    {
+        using var temporary = new TemporaryDirectory();
+        var renderer = new GraphvizRenderer(temporary.Path, "old-dot", new(), _ => throw new Exception("Must not execute."));
+        Assert.True(renderer.Render(new("raw", "raw", Array.Empty<DiagramNode>(), Array.Empty<DiagramEdge>(), null), DiagramFormat.Dot));
+        Assert.True(File.Exists(temporary.Child("raw.dot")));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SharedDiscoveryHonorsOptionEnvironmentThenPath(bool windows)
+    {
+        using var temporary = new TemporaryDirectory();
+        string directory = temporary.Child("path with spaces");
+        Directory.CreateDirectory(directory);
+        string executable = Path.Combine(directory, windows ? "dot.exe" : "dot");
+        File.WriteAllText(executable, "fixture");
+        Assert.Equal("explicit", GraphvizTool.Discover("explicit", "configured", directory, windows));
+        Assert.Equal("configured", GraphvizTool.Discover(null, "configured", directory, windows));
+        Assert.Equal(executable, GraphvizTool.Discover(" ", "", temporary.Child("missing") + Path.PathSeparator + directory, windows));
+        Assert.Null(GraphvizTool.Discover(null, null, temporary.Child("missing"), windows));
+    }
+
+    [Fact]
+    public void VersionFailureRollsBackAnExistingPublication()
+    {
+        using var temporary = new TemporaryDirectory();
+        string target = temporary.Child("existing");
+        Directory.CreateDirectory(target);
+        File.WriteAllText(Path.Combine(target, "keep.txt"), "unchanged");
+        var errors = new List<Cogs.Common.CogsError>();
+        Assert.Throws<CogsPublicationException>(() => DirectoryPublication.Publish(target, true, staging =>
+        {
+            var renderer = new GraphvizRenderer(staging, "old-dot", errors, _ => new(0, "", "dot - graphviz version 2.38.0"));
+            if (!renderer.Render(LocalDiagram(BuildLocalModel(), "Focus"), DiagramFormat.Svg)) throw new CogsPublicationException("Failed.");
+        }));
+        Assert.Contains(errors, e => e.Code == "PROJ2707");
+        Assert.Equal(new[] { "keep.txt" }, Directory.GetFiles(target).Select(Path.GetFileName));
+        Assert.Equal("unchanged", File.ReadAllText(Path.Combine(target, "keep.txt")));
+    }
+
     [Fact]
     public void RawDotNeedsNoGraphvizAndIncludesIsolatedInheritedAndNestedRelationships()
     {
@@ -173,7 +293,8 @@ public sealed class DotPublisherTests
             Output = "all"
         };
 
-        Assert.Throws<CogsPublicationException>(() => publisher.Publish(BuildModel()));
+        var failure = Assert.Throws<CogsPublicationException>(() => publisher.Publish(BuildModel()));
+        Assert.Contains("PROJ2705", failure.Message);
         Assert.Contains(publisher.Errors, error => error.Code == "PROJ2705");
         Assert.False(Directory.Exists(target));
     }

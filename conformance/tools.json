@@ -22,7 +22,28 @@
   "linkml": "1.9.6",
   "linkmlRuntime": "1.9.5",
   "xmldom": "0.9.12",
-  "graphviz": "system package",
+  "graphviz": ">=16.1.0",
+  "graphvizMinimum": "16.1.0",
+  "graphvizFallbacks": {
+    "windows": {
+      "url": "https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/16.1.0/windows_10_cmake_Release_Graphviz-16.1.0-win64.zip",
+      "sha256": "733e49626c492242eb8dca30ea627b6ead20710e207998c7933b4909d92d6abc"
+    },
+    "ubuntu": {
+      "22.04": {
+        "url": "https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/16.1.0/ubuntu_22.04_graphviz-16.1.0-cmake.deb",
+        "sha256": "0e785a871e51c5e705ce7cdf13bb7fc7145d30d309690c719af4c0cece85d859"
+      },
+      "24.04": {
+        "url": "https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/16.1.0/ubuntu_24.04_graphviz-16.1.0-cmake.deb",
+        "sha256": "fe344258d6171d4679bd6ed02fb8f41b3cb9a59ec35fef5f77684dd09512a7c8"
+      },
+      "26.04": {
+        "url": "https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/16.1.0/ubuntu_26.04_graphviz-16.1.0-cmake.deb",
+        "sha256": "b6b2b8eb9a872bd00c9386062ee5ca6aa5059d6871a5837a29dc05b6e07c6ecc"
+      }
+    }
+  },
   "dotNetRdf": "3.5.2 (repository package reference)",
   "javaJaxpXsd": "not a conformance gate: Xerces rejects standards-valid maxOccurs values beyond its machine occurrence range",
   "dctapChecker": "checked-in semantic profile validator (shape linkage, node/datatype compatibility, cardinality booleans, constraints, and valueShape resolution)",

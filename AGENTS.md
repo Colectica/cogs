@@ -509,6 +509,19 @@ warns and omits every diagram and diagram reference. If a discovered or
 explicit Graphviz executable runs and fails, publication fails. Rendered DOT
 formats require Graphviz; raw DOT does not.
 
+Rendering requires Graphviz 16.1 or later, not one exact version. Share
+discovery between DOT and Sphinx (`--dot`, `COGS_DOT`, then `PATH`) and probe
+`dot -V` once per publication, reading both output streams. `PROJ2707` reports
+an older version; `PROJ2708` reports a failed/unrecognizable version response.
+Publisher reuse must recheck the tool. An outdated discovered tool is an error,
+not the text-only Sphinx fallback. Publishers never install dependencies.
+CI retains `ubuntu-latest`/`windows-latest`, tries apt/Chocolatey first, and
+uses checksum-verified official fallback assets from `conformance/tools.json`
+only for older installations. Match Ubuntu packages to `/etc/os-release`;
+never install another release's package. Accept newer versions, keep the
+selected absolute `COGS_DOT`, preserve `COGS_PYTHON`, and smoke-test required
+formats. Do not add source compilation, binary caches, or exact-version gates.
+
 Generated Sphinx HTML defaults to `pydata_sphinx_theme`. The CLI's `--theme NAME`
 and `Theme` properties on `SphinxPublisher` and `BuildSphinxDocumentation` accept
 any nonblank Sphinx theme name without case normalization. Generate Python
@@ -543,6 +556,9 @@ theme CSS, defaults to light for other themes, and prints only light diagrams.
 Keep natural-size text, horizontal overflow, accessible alt text/focusable
 containers, and full-size downloads. Do not apply image filters or diagram CSS
 to authored illustrations. Diagram file counts are twice logical counts.
+Use Graphviz `svgid` for stable root IDs and preserve SVG whitespace metadata.
+Keep labeled spline routing. Repeatability applies within the same installed
+version/environment; different Graphviz releases need not produce equal geometry.
 
 ## Python publisher rules
 

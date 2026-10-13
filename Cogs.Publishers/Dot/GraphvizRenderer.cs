@@ -8,9 +8,38 @@ using System.Text.RegularExpressions;
 
 namespace Cogs.Publishers.Dot;
 
-internal sealed class GraphvizRenderer(string targetDirectory, string? dotLocation, List<CogsError> errors)
+internal sealed class GraphvizRenderer(string targetDirectory, string? dotLocation, List<CogsError> errors,
+    Func<ProcessStartInfo, GraphvizProcessResult>? execute = null)
 {
     private string? dotExecutable;
+    private bool versionChecked;
+    internal bool Prepare(DiagramFormat outputFormat)
+    {
+        if (outputFormat == DiagramFormat.Dot || versionChecked) return true;
+        string? executable = dotExecutable ??= GraphvizTool.Discover(dotLocation);
+        if (executable is null)
+        {
+            errors.Add(new CogsError(ErrorLevel.Error, "PROJ2703",
+                "Graphviz dot was not found. Set --dot, COGS_DOT, or add dot to PATH."));
+            return false;
+        }
+        try
+        {
+            var versionInfo = GraphvizTool.StartInfo(executable);
+            versionInfo.ArgumentList.Add("-V");
+            CogsError? error = GraphvizTool.CheckVersion((execute ?? GraphvizTool.Run)(versionInfo), executable);
+            if (error is not null) { errors.Add(error); return false; }
+            versionChecked = true;
+            return true;
+        }
+        catch (Exception exception) when (exception is System.ComponentModel.Win32Exception or IOException or InvalidOperationException)
+        {
+            errors.Add(new CogsError(ErrorLevel.Error, "PROJ2705",
+                $"Graphviz dot could not be executed: {exception.Message}", exception: exception));
+            return false;
+        }
+    }
+
     internal bool Render(Diagram diagram, DiagramFormat outputFormat)
     {
         string baseName = diagram.BaseName;
@@ -24,40 +53,24 @@ internal sealed class GraphvizRenderer(string targetDirectory, string? dotLocati
             return true;
         }
 
-        string? executable = dotExecutable ??= DiscoverDot(dotLocation);
-        if (executable is null)
-        {
-            errors.Add(new CogsError(ErrorLevel.Error, "PROJ2703",
-                "Graphviz dot was not found. Set --dot, COGS_DOT, or add dot to PATH."));
-            return false;
-        }
+        if (!Prepare(outputFormat)) return false;
+        string executable = dotExecutable!;
 
         string inputPath = Path.Combine(target, "." + baseName + ".dot-input");
-        File.WriteAllText(inputPath, graph, new UTF8Encoding(false));
         try
         {
-            var startInfo = new ProcessStartInfo(executable)
-            {
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true,
-                WindowStyle = ProcessWindowStyle.Hidden
-            };
+            File.WriteAllText(inputPath, graph, new UTF8Encoding(false));
+            var startInfo = GraphvizTool.StartInfo(executable);
             ConfigureGraphvizEnvironment(startInfo, format);
             startInfo.ArgumentList.Add("-T" + format);
             startInfo.ArgumentList.Add("-o");
             startInfo.ArgumentList.Add(outputPath);
             startInfo.ArgumentList.Add(inputPath);
-            using Process process = Process.Start(startInfo)
-                ?? throw new InvalidOperationException("Graphviz dot did not start.");
-            string stdout = process.StandardOutput.ReadToEnd();
-            string stderr = process.StandardError.ReadToEnd();
-            process.WaitForExit();
-            if (process.ExitCode != 0 || !File.Exists(outputPath))
+            GraphvizProcessResult result = (execute ?? GraphvizTool.Run)(startInfo);
+            if (result.ExitCode != 0 || !File.Exists(outputPath))
             {
                 errors.Add(new CogsError(ErrorLevel.Error, "PROJ2704",
-                    $"Graphviz dot failed with exit code {process.ExitCode}: {stderr.Trim()} {stdout.Trim()}".Trim()));
+                    $"Graphviz dot failed with exit code {result.ExitCode}: {result.StandardError.Trim()} {result.StandardOutput.Trim()}".Trim()));
                 return false;
             }
             if (format == "svg") SvgAppearance.WriteVariants(outputPath, diagram.Title);
@@ -105,23 +118,6 @@ internal sealed class GraphvizRenderer(string targetDirectory, string? dotLocati
             // date, including when the metadata dictionary is compressed.
             startInfo.Environment["SOURCE_DATE_EPOCH"] = "0";
         }
-    }
-
-    internal static string? DiscoverDot(string? location)
-    {
-        string? configured = string.IsNullOrWhiteSpace(location)
-            ? Environment.GetEnvironmentVariable("COGS_DOT")
-            : location;
-        if (!string.IsNullOrWhiteSpace(configured)) return configured;
-
-        string executableName = OperatingSystem.IsWindows() ? "dot.exe" : "dot";
-        foreach (string directory in (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
-            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        {
-            string candidate = Path.Combine(directory, executableName);
-            if (File.Exists(candidate)) return candidate;
-        }
-        return null;
     }
 
 }

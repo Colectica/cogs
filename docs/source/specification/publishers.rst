@@ -340,10 +340,13 @@ Graphviz is an optional enhancement for Sphinx documentation. If no configured
 or discoverable Graphviz executable is available, ``publish-sphinx`` warns,
 omits every diagram and every corresponding image/link directive, and still
 emits a self-consistent text-only project. If an explicit or discovered
-Graphviz executable is invoked and returns a failure, generation fails. It must
+Graphviz executable is older than 16.1, cannot report its version, or is invoked
+and returns a failure, generation fails. Any version 16.1 or later is accepted. It must
 not publish broken image references.
 
 ``publish-dot`` requires Graphviz for rendered formats and reports its absence
-as an error. Raw DOT output does not require rendering. Graphviz exit status and
+as an error. ``PROJ2707`` identifies an outdated renderer and ``PROJ2708`` a
+failed or unrecognizable version probe. Raw DOT output does not require
+rendering or a version probe. Graphviz exit status and
 stderr are part of command success, binary output is never processed as text,
 and SVG-only post-processing must parse SVG as XML.

@@ -1,5 +1,6 @@
 using System;
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace Cogs.Publishers.Dot;
@@ -11,7 +12,8 @@ internal static class DotWriter
     {
         var p = DiagramPalette.Light;
         var output = new StringBuilder("digraph COGS {\n");
-        output.Append("  graph [rankdir=TB, compound=true, nodesep=0.35, ranksep=0.6, pad=0.25, bgcolor=").Append(Quote(p.Canvas)).Append(", fontname=\"Arial\"];\n");
+        output.Append("  graph [rankdir=TB, splines=spline, compound=true, nodesep=0.35, ranksep=0.6, pad=0.25, svgid=")
+            .Append(Quote(SvgId(diagram.BaseName))).Append(", bgcolor=").Append(Quote(p.Canvas)).Append(", fontname=\"Arial\"];\n");
         output.Append("  node [shape=box, style=\"rounded,filled\", margin=0.12, penwidth=1, fontname=\"Arial\", fontsize=11, color=")
             .Append(Quote(p.Border)).Append(", fillcolor=").Append(Quote(p.Surface)).Append(", fontcolor=").Append(Quote(p.Text)).Append("];\n");
         output.Append("  edge [fontname=\"Arial\", fontsize=10, color=").Append(Quote(p.Edge)).Append(", fontcolor=").Append(Quote(p.Muted)).Append("];\n");
@@ -46,6 +48,8 @@ internal static class DotWriter
 
     internal static string Quote(string value) => "\"" + value.Replace("\\", "\\\\", StringComparison.Ordinal)
         .Replace("\"", "\\\"", StringComparison.Ordinal).Replace("\r", "\\r", StringComparison.Ordinal).Replace("\n", "\\n", StringComparison.Ordinal) + "\"";
+    internal static string SvgId(string basename) => "cogs-diagram-" +
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(basename))).ToLowerInvariant();
     private static string Html(string value) => WebUtility.HtmlEncode(value).Replace("\r", "&#13;", StringComparison.Ordinal)
         .Replace("\n", "<BR ALIGN=\"LEFT\"/>", StringComparison.Ordinal);
 }

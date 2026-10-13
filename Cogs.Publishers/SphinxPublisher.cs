@@ -2,6 +2,7 @@
 // See the LICENSE file in the project root for more information.
 using Cogs.Common;
 using Cogs.Model;
+using Cogs.Publishers.Dot;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -30,7 +31,7 @@ public sealed class SphinxPublisher
 
     private void PublishCore(CogsModel model, string stagingDirectory)
     {
-        string? dot = DiscoverDot();
+        string? dot = GraphvizTool.Discover(DotLocation);
         bool diagramsAvailable = dot is not null;
         if (diagramsAvailable)
         {
@@ -65,20 +66,4 @@ public sealed class SphinxPublisher
         documentation.Build(model, stagingDirectory, diagramsAvailable);
     }
 
-    private string? DiscoverDot()
-    {
-        string? configured = string.IsNullOrWhiteSpace(DotLocation)
-            ? Environment.GetEnvironmentVariable("COGS_DOT")
-            : DotLocation;
-        if (!string.IsNullOrWhiteSpace(configured)) return configured;
-
-        string executable = OperatingSystem.IsWindows() ? "dot.exe" : "dot";
-        foreach (string directory in (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
-            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        {
-            string candidate = Path.Combine(directory, executable);
-            if (File.Exists(candidate)) return candidate;
-        }
-        return null;
-    }
 }
