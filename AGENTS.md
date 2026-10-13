@@ -32,10 +32,11 @@ integration-test invocation that uses `--no-restore`. Generated output is
 ignored and should be regenerated for verification, not edited as source.
 
 Standalone model artifacts use the exact `Settings.Slug` prefix: `<slug>.xsd`
-with `<slug>.xml.xsd`, `<slug>.schema.json` with `<slug>.meta-schema.json`,
+with the standard `xml.xsd`, `<slug>.schema.json` with `<slug>.meta-schema.json`,
 `<slug>.dctap.csv`, `<slug>.linkml.yml`, and `<slug>.graphqls`. RDF and UML keep
 their existing slug-prefixed names. Do not emit legacy generic-name copies.
-Keep the XML schema pair together and use the renamed relative import. Code
+The embedded XML namespace support schema is exempt from slug-prefixing.
+Keep the XML schema pair together so the relative `xml.xsd` import resolves. Code
 packages, Sphinx projects, and DOT diagrams retain their conventional layouts;
 explicit UML filename overrides remain supported. File publication must reject
 invalid or missing direct-library slugs without changing existing output.

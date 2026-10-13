@@ -12,7 +12,7 @@ Standalone artifact filenames
 
 Standalone publishers use the exact ``Settings.Slug`` as the filename prefix:
 
-* XML Schema: ``<slug>.xsd`` and its imported ``<slug>.xml.xsd`` support file
+* XML Schema: ``<slug>.xsd`` and its imported standard ``xml.xsd`` support file
 * JSON Schema: ``<slug>.schema.json`` and ``<slug>.meta-schema.json``
 * DCTAP: ``<slug>.dctap.csv``
 * LinkML: ``<slug>.linkml.yml``
@@ -20,7 +20,8 @@ Standalone publishers use the exact ``Settings.Slug`` as the filename prefix:
 * UML: ``<slug>.xmi`` unless an explicit filename override is supplied
 * RDF: the five ``<slug>``-prefixed artifacts documented in :doc:`/technical-guide/generation/rdf`
 
-Role suffixes distinguish artifacts sharing a file extension. Code-package,
+The embedded standard XML namespace schema retains ``xml.xsd`` without a slug.
+Role suffixes distinguish model artifacts sharing a file extension. Code-package,
 Sphinx-project, and DOT diagram layouts retain their own naming conventions.
 These filenames do not alter schemas, namespace identifiers, or serialized
 instance data.

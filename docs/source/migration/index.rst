@@ -9,12 +9,12 @@ Published filenames
 
 Standalone output filenames now begin with the exact model ``Slug``. Update
 build scripts and artifact consumers from ``schema.xsd`` to ``<slug>.xsd``,
-``xml.xsd`` to ``<slug>.xml.xsd``, ``jsonSchema.json`` to
-``<slug>.schema.json``, ``cogs-meta-schema.json`` to
+``jsonSchema.json`` to ``<slug>.schema.json``, ``cogs-meta-schema.json`` to
 ``<slug>.meta-schema.json``, ``dctap.csv`` to ``<slug>.dctap.csv``,
 ``linkml.yml`` to ``<slug>.linkml.yml``, and ``GraphQL.graphqls`` to
-``<slug>.graphqls``. No copies under the former names are emitted. Keep the two
-XSD files together so the relative import resolves.
+``<slug>.graphqls``. No copies under the former model-artifact names are emitted.
+The standard XML namespace support schema remains ``xml.xsd``. Keep it beside
+``<slug>.xsd`` so the relative import resolves.
 
 This is a filename migration only: source models, schema identifiers, and
 JSON/XML instance representations are unchanged. RDF and UML already use

@@ -68,10 +68,10 @@ Here is the output of the directory listing.
        08/09/2017  10:24 AM    <DIR>          .
        08/09/2017  10:24 AM    <DIR>          ..
        mymodel.xsd
-       mymodel.xml.xsd
+       xml.xsd
 
 The :file:`mymodel.xsd` file contains our XML schema. Its filename uses the
-model's ``Slug``; :file:`mymodel.xml.xsd` is its XML namespace support schema.
+model's ``Slug``; :file:`xml.xsd` is its standard XML namespace support schema.
 
 .. note:: 
 

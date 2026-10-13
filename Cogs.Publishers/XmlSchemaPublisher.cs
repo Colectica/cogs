@@ -17,6 +17,7 @@ namespace Cogs.Publishers
     public class XmlSchemaPublisher
     {
         private const string XmlNamespace = "http://www.w3.org/XML/1998/namespace";
+        private const string XmlSchemaLocation = "xml.xsd";
         private const string XmlSchemaResourceName = "Cogs.Publishers.xml.xsd";
 
         public List<CogsError> Errors { get; } = new List<CogsError>();
@@ -55,10 +56,9 @@ namespace Cogs.Publishers
             if (string.IsNullOrWhiteSpace(TargetNamespace)) throw new InvalidOperationException("Target namespace must be specified.");
 
             string schemaFileName = PublicationFileNames.ForModel(CogsModel, ".xsd");
-            string xmlSchemaFileName = PublicationFileNames.ForModel(CogsModel, ".xml.xsd");
             BuildSchemaSet();
 
-            WriteXmlNamespaceSchema(Path.Combine(TargetDirectory, xmlSchemaFileName));
+            WriteXmlNamespaceSchema(Path.Combine(TargetDirectory, XmlSchemaLocation));
             var settings = new XmlWriterSettings
             {
                 Encoding = new UTF8Encoding(false),
@@ -88,12 +88,7 @@ namespace Cogs.Publishers
             };
             CogsSchema.Namespaces.Add(TargetNamespacePrefix, TargetNamespace);
             CogsSchema.Namespaces.Add("xml", XmlNamespace);
-            // In-memory schema construction does not require package settings.
-            // File publication validates the slug before building or writing.
-            string xmlSchemaLocation = string.IsNullOrEmpty(CogsModel.Settings?.Slug)
-                ? "xml.xsd"
-                : CogsModel.Settings.Slug + ".xml.xsd";
-            CogsSchema.Includes.Add(new XmlSchemaImport { Namespace = XmlNamespace, SchemaLocation = xmlSchemaLocation });
+            CogsSchema.Includes.Add(new XmlSchemaImport { Namespace = XmlNamespace, SchemaLocation = XmlSchemaLocation });
             AddModelDocumentation();
 
             CreateNativePrimitiveTypes();

@@ -31,7 +31,7 @@ namespace Cogs.Tests
                 string target = Path.Combine(output.Path, name);
                 publish(target);
                 Assert.Equal(
-                    suffixes.Select(suffix => slug + suffix).OrderBy(x => x, StringComparer.Ordinal),
+                    suffixes.Select(suffix => suffix.StartsWith('.') ? slug + suffix : suffix).OrderBy(x => x, StringComparer.Ordinal),
                     Directory.GetFiles(target).Select(Path.GetFileName).OrderBy(x => x, StringComparer.Ordinal));
             }
 
@@ -40,7 +40,7 @@ namespace Cogs.Tests
             document.Load(schemaPath);
             var namespaces = new XmlNamespaceManager(document.NameTable);
             namespaces.AddNamespace("xs", XmlSchema.Namespace);
-            Assert.Equal(slug + ".xml.xsd", document.SelectSingleNode(
+            Assert.Equal("xml.xsd", document.SelectSingleNode(
                 "/xs:schema/xs:import/@schemaLocation", namespaces)!.Value);
             Assert.Empty(ValidateXml(LoadSchemaSet(schemaPath),
                 $"<ItemContainer xmlns='{Namespace}'><DerivedItem><ID>A</ID><BaseValue>x</BaseValue></DerivedItem></ItemContainer>"));
@@ -93,7 +93,7 @@ namespace Cogs.Tests
         [
             ("json", [".schema.json", ".meta-schema.json"], target =>
                 new FluentJsonSchemaPublisher { TargetDirectory = target, Overwrite = true }.Publish(model)),
-            ("xsd", [".xsd", ".xml.xsd"], target =>
+            ("xsd", [".xsd", "xml.xsd"], target =>
             {
                 var publisher = CreateXsdPublisher(model, target);
                 publisher.Overwrite = true;
@@ -449,8 +449,8 @@ namespace Cogs.Tests
 
             var text = File.ReadAllText(Path.Combine(second.Path, "second_model.xsd"));
             Assert.DoesNotContain("name=\"OtherItem\"", text, StringComparison.Ordinal);
-            Assert.Contains("schemaLocation=\"second_model.xml.xsd\"", text, StringComparison.Ordinal);
-            Assert.Equal(new[] { "second_model.xml.xsd", "second_model.xsd" },
+            Assert.Contains("schemaLocation=\"xml.xsd\"", text, StringComparison.Ordinal);
+            Assert.Equal(new[] { "second_model.xsd", "xml.xsd" },
                 Directory.GetFiles(second.Path).Select(Path.GetFileName).OrderBy(x => x, StringComparer.Ordinal));
         }
 

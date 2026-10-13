@@ -5,8 +5,9 @@ The :doc:`/technical-guide/command-line/publish-xsd` command generates XML
 Schema (XSD) from a COGS model.
 
 The model schema is ``<Settings.Slug>.xsd``. Its relative import points to the
-co-located ``<Settings.Slug>.xml.xsd`` support schema for the XML namespace,
-including ``xml:lang``. Keep both files together when distributing the schema.
+co-located standard ``xml.xsd`` support schema for the XML namespace, including
+``xml:lang``. This embedded standard schema does not use a slug prefix. Keep
+both files together when distributing the schema.
 
 Mapping
 ~~~~~~~
