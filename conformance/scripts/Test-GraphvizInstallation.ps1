@@ -55,6 +55,43 @@ try {
     Assert-GraphvizChecksum $file (Get-FileHash $file -Algorithm SHA256).Hash
     Assert-Failure { Assert-GraphvizChecksum $file ('0' * 64) } 'SHA-256 verification failed'
     Assert-Failure { Assert-GraphvizChecksum $file 'invalid' } 'SHA-256 verification failed'
+
+    # Exercise Ubuntu installation without downloading packages or invoking sudo.
+    # The system plugin cache requires elevation, unlike the later smoke renders.
+    & {
+        param([string] $TestDirectory, [string] $ArchiveFixture)
+        . (Join-Path $PSScriptRoot 'Install-Graphviz.ps1')
+        $systemDot = (Join-Path $TestDirectory 'system Graphviz/bin/dot').Replace('\', '/')
+        [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($systemDot)) | Out-Null
+        [IO.File]::WriteAllText($systemDot, 'This fixture must never be executed.')
+        $sudoCalls = [Collections.Generic.List[object]]::new()
+        $configExit = 0
+        function Invoke-WebRequest {
+            param([string] $Uri, [string] $OutFile)
+            [IO.File]::Copy($ArchiveFixture, $OutFile)
+        }
+        function dpkg-deb { $global:LASTEXITCODE = 0; 'graphviz-fixture' }
+        function dpkg { $global:LASTEXITCODE = 0; $systemDot }
+        function sudo {
+            $sudoCalls.Add(@($args))
+            if ($args[0] -eq 'apt') { $global:LASTEXITCODE = 0; return }
+            Assert-True ($args.Count -eq 3 -and $args[0] -eq '--' -and $args[1] -ceq $systemDot -and $args[2] -eq '-c') `
+                'Plugin configuration must invoke the selected absolute dot path through sudo.'
+            $global:LASTEXITCODE = $configExit
+        }
+        $asset = [pscustomobject]@{
+            url = 'https://example.invalid/graphviz.deb'
+            sha256 = (Get-FileHash -LiteralPath $ArchiveFixture -Algorithm SHA256).Hash
+        }
+        $selected = Install-GraphvizFallback $asset 'ubuntu' (Join-Path $TestDirectory 'successful install')
+        Assert-True ($selected -ceq $systemDot) 'Installation must return the selected dot path.'
+        Assert-True ($sudoCalls.Count -eq 2) 'Expected elevated package installation and plugin configuration.'
+        Assert-True ($sudoCalls[1][0] -eq '--' -and $sudoCalls[1][1] -ceq $systemDot -and $sudoCalls[1][2] -eq '-c') `
+            'Plugin configuration must be elevated, including paths with spaces.'
+        $configExit = 7
+        Assert-Failure { Install-GraphvizFallback $asset 'ubuntu' (Join-Path $TestDirectory 'failed configuration') } `
+            'Graphviz plugin configuration failed'
+    } $temporary $file
 } finally {
     if (-not $temporary.StartsWith([IO.Path]::GetFullPath([IO.Path]::GetTempPath()), [StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe test cleanup path.' }
     Remove-Item -LiteralPath $temporary -Recurse -Force

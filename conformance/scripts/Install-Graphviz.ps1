@@ -70,7 +70,8 @@ function Install-GraphvizFallback($Asset, [string] $Platform, [string] $Director
     if ($LASTEXITCODE -ne 0) { throw 'Cannot locate dot in the installed Graphviz package.' }
     $executables = @($paths | Where-Object { $_ -match '/bin/dot$' -and (Test-Path -LiteralPath $_ -PathType Leaf) })
     if ($executables.Count -ne 1) { throw 'The Graphviz package must contain exactly one dot executable.' }
-    & $executables[0] -c | Out-Host
+    # The package owns the system plugin cache, so configuration needs root.
+    & sudo '--' $executables[0] -c | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'Graphviz plugin configuration failed.' }
     return $executables[0]
 }
