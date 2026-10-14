@@ -595,6 +595,17 @@ The generated root `requirements.txt` includes Sphinx and MyST, plus
 consumer's responsibility. Publication must not require Python, probe themes,
 or install dependencies; Sphinx resolves the theme during the later build.
 
+For PyData only, generate header branding from exact `Settings.ShortTitle`,
+falling back to `Title` for direct models without a usable short title. Preserve
+the full project/homepage title. Use left-aligned navigation, three links before
+More, and the compact search button. Long brand labels ellipsize visually while
+retaining accessible text. Keep the header bounded to 18rem/45vw. Remove both
+page/article width caps, bound desktop sidebars to 18rem/15rem without disabling
+their drawers/collapse behavior, and constrain only ordinary prose to 80ch.
+Tables and natural-size diagrams use available width and retain local horizontal
+scrolling. Generate these styles from the current theme on every publication;
+do not apply PyData layout overrides to other themes or change print styling.
+
 DOT per-type (`Output="single"`) and Sphinx diagrams use local declared direct
 incoming/outgoing links, not transitive reference closure. Keep neighbors
 compact and unexpanded; do not add inherited property links or flatten hidden

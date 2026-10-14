@@ -185,6 +185,59 @@ public sealed class SphinxPublisherTests
         Assert.Equal(theme, JsonSerializer.Deserialize<string>(themeLiteral));
         Assert.Contains("project = " + JsonSerializer.Serialize(title), configuration, StringComparison.Ordinal);
         Assert.Equal(new[] { "sphinx", "myst-parser" }, File.ReadAllLines(Path.Combine(output, "requirements.txt")));
+        Assert.DoesNotContain("'navbar_align'", configuration);
+        Assert.DoesNotContain(".bd-page-width", File.ReadAllText(Path.Combine(output, "source", "_static", "css", "custom.css")));
+    }
+
+    [Theory]
+    [InlineData("Docs")]
+    [InlineData("  DDI \"Lifecycle\" — 日本語\n@ThemeOptions @TitleLiteral \\")]
+    [InlineData("A very long model short title that must remain complete for assistive technology even when the visible header label is truncated")]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t\r\n")]
+    public void PyDataUsesSafeShortTitleWithoutChangingFullTitle(string shortTitle)
+    {
+        using var temporary = new TemporaryDirectory();
+        const string title = "Full documentation title";
+        string articles = temporary.Child("articles");
+        Directory.CreateDirectory(articles);
+        File.WriteAllText(Path.Combine(articles, "guide.md"), "# Guide\n");
+        CogsModel model = BuildModel(articles, title: title, shortTitle: shortTitle);
+        string output = temporary.Child("documentation");
+
+        new BuildSphinxDocumentation().Build(model, output, includeDiagrams: false);
+
+        string configuration = File.ReadAllText(Path.Combine(output, "source", "conf.py"));
+        string expected = string.IsNullOrWhiteSpace(shortTitle) ? title : shortTitle;
+        Assert.Contains("'logo': {'text': " + JsonSerializer.Serialize(expected) + "}", configuration);
+        Assert.Contains("project = " + JsonSerializer.Serialize(title), configuration);
+        Assert.Contains(title, File.ReadAllText(Path.Combine(output, "source", "index.rst")));
+        Assert.Contains("'navbar_align': 'left'", configuration);
+        Assert.Contains("'header_links_before_dropdown': 3", configuration);
+        Assert.Contains("'navbar_persistent': ['search-button']", configuration);
+        Assert.DoesNotContain("\n@ThemeOptions", configuration);
+        Assert.DoesNotContain("@ThemeLiteral", configuration);
+
+        string css = File.ReadAllText(Path.Combine(output, "source", "_static", "css", "custom.css"));
+        Assert.Contains("max-width: min(18rem, 45vw)", css);
+        Assert.Contains("text-overflow: ellipsis", css);
+        Assert.Contains("white-space: nowrap", css);
+        Assert.Contains("flex-shrink: 1", css);
+        Assert.Contains(".bd-page-width {", css);
+        Assert.Contains(".bd-main .bd-content .bd-article-container {", css);
+        Assert.Contains(".bd-sidebar-primary:not(.pst-squeeze)", css);
+        Assert.Contains("--pst-sidebar-primary-width: 18rem", css);
+        Assert.Contains("--pst-sidebar-secondary: 15rem", css);
+        Assert.Contains("p:not(table p, .cogs-diagram p)", css);
+        Assert.Contains("max-width: 80ch", css);
+
+        string second = temporary.Child("repeat");
+        new BuildSphinxDocumentation().Build(model, second, includeDiagrams: false);
+        foreach (string file in Directory.EnumerateFiles(output, "*", SearchOption.AllDirectories))
+        {
+            Assert.Equal(File.ReadAllBytes(file), File.ReadAllBytes(Path.Combine(second, Path.GetRelativePath(output, file))));
+        }
     }
 
     [Fact]
@@ -204,12 +257,21 @@ public sealed class SphinxPublisherTests
         Assert.Contains("html_theme = \"pydata_sphinx_theme\"",
             File.ReadAllText(Path.Combine(output, "source", "conf.py")), StringComparison.Ordinal);
         Assert.Contains("pydata-sphinx-theme", File.ReadAllLines(Path.Combine(output, "requirements.txt")));
+        Assert.Contains("'logo': {'text': \"Docs\"}", File.ReadAllText(Path.Combine(output, "source", "conf.py")));
+        Assert.Contains(".bd-page-width", File.ReadAllText(Path.Combine(output, "source", "_static", "css", "custom.css")));
 
         publisher.Theme = "UninstalledCustomTheme";
         publisher.Publish(model);
         Assert.Contains("html_theme = \"UninstalledCustomTheme\"",
             File.ReadAllText(Path.Combine(output, "source", "conf.py")), StringComparison.Ordinal);
         Assert.Equal(new[] { "sphinx", "myst-parser" }, File.ReadAllLines(Path.Combine(output, "requirements.txt")));
+        Assert.DoesNotContain("'navbar_align'", File.ReadAllText(Path.Combine(output, "source", "conf.py")));
+        Assert.DoesNotContain(".bd-page-width", File.ReadAllText(Path.Combine(output, "source", "_static", "css", "custom.css")));
+
+        publisher.Theme = SphinxPublisher.DefaultTheme;
+        publisher.Publish(BuildModel(articles, shortTitle: "Changed brand", title: "Changed full title"));
+        Assert.Contains("'logo': {'text': \"Changed brand\"}", File.ReadAllText(Path.Combine(output, "source", "conf.py")));
+        Assert.Contains(".bd-page-width", File.ReadAllText(Path.Combine(output, "source", "_static", "css", "custom.css")));
     }
 
     [Theory]
@@ -263,6 +325,10 @@ public sealed class SphinxPublisherTests
                 ? new[] { "sphinx", "myst-parser", "pydata-sphinx-theme" }
                 : new[] { "sphinx", "myst-parser" },
             File.ReadAllLines(Path.Combine(output, "requirements.txt")));
+        string configuration = File.ReadAllText(Path.Combine(output, "source", "conf.py"));
+        string css = File.ReadAllText(Path.Combine(output, "source", "_static", "css", "custom.css"));
+        Assert.Equal(selected == SphinxPublisher.DefaultTheme, configuration.Contains("'navbar_align': 'left'", StringComparison.Ordinal));
+        Assert.Equal(selected == SphinxPublisher.DefaultTheme, css.Contains(".bd-page-width", StringComparison.Ordinal));
     }
 
     [Theory]
@@ -320,7 +386,8 @@ public sealed class SphinxPublisherTests
         string itemDescription = null,
         string topicDescription = null,
         bool addDescriptionAdditionalText = false,
-        string title = null)
+        string title = null,
+        string shortTitle = "Docs")
     {
         var dto = new CogsDtoModel
         {
@@ -329,7 +396,7 @@ public sealed class SphinxPublisherTests
         };
         dto.ArticleTocEntries.Add(articleTocEntry);
         dto.Settings.Add(new Setting { Key = "Title", Value = title ?? "A \"quoted\" title\nwith newline" });
-        dto.Settings.Add(new Setting { Key = "ShortTitle", Value = "Docs" });
+        if (shortTitle is not null) dto.Settings.Add(new Setting { Key = "ShortTitle", Value = shortTitle });
         dto.Settings.Add(new Setting { Key = "Slug", Value = "docs_test" });
         dto.Settings.Add(new Setting { Key = "Version", Value = "2.0.0" });
         dto.Settings.Add(new Setting { Key = "Author", Value = "An 'author'" });

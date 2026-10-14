@@ -58,6 +58,28 @@ package names from Sphinx theme names. Generation requires neither Python nor
 an installed theme, and does not install dependencies. Sphinx reports an
 unavailable theme when the generated project is built.
 
+PyData header and page layout
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The PyData header uses the model's exact ``ShortTitle`` without adding a version
+or a documentation suffix. The homepage, project name, and document metadata
+retain the full ``Title``. Direct library models without a usable short title
+fall back to the full title. Long header labels use a single-line ellipsis;
+the complete label remains available to assistive technology. Choose a concise,
+recognizable ``ShortTitle`` for navigation branding.
+
+Navigation follows the brand, with three links before the ``More`` menu and a
+compact search button. The theme switcher and mobile navigation remain available.
+Reference pages use the available window width instead of a fixed article cap.
+Desktop navigation sidebars stay bounded, leaving extra space for properties,
+hierarchies, relationships, and diagrams. Ordinary prose retains a comfortable
+reading width; table cells and diagrams do not inherit that limit.
+
+Oversized tables and natural-size SVG diagrams scroll horizontally within their
+own containers. Widening the page does not shrink diagram text or introduce a
+fixed-height article pane. These layout overrides apply only when the exact
+``pydata_sphinx_theme`` theme is selected; other themes keep their own layouts.
+
 Sphinx is a documentation projection, not an instance schema. If Graphviz is
 not configured or discoverable, generation warns and emits a consistent
 text-only project with no diagram directives. If a discovered or explicitly

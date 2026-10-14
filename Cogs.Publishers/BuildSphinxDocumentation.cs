@@ -833,7 +833,7 @@ def setup(app):
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+@ThemeOptions
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -979,8 +979,8 @@ help:
 
             // Substitute once so literal model/theme text cannot introduce another template token.
             return Regex.Replace(template,
-                "@(Title|Author|Version|Copyright|HtmlBase|LatexFile|DocumentationTitle|Theme)Literal",
-                match => PythonLiteral(match.Value switch
+                "@(Title|Author|Version|Copyright|HtmlBase|LatexFile|DocumentationTitle|Theme)Literal|@ThemeOptions",
+                match => match.Value == "@ThemeOptions" ? GetThemeOptions() : PythonLiteral(match.Value switch
                 {
                     "@TitleLiteral" => cogsModel.Settings.Title,
                     "@AuthorLiteral" => cogsModel.Settings.Author,
@@ -992,6 +992,23 @@ help:
                     "@ThemeLiteral" => Theme,
                     _ => throw new InvalidOperationException("Unknown Sphinx configuration template token.")
                 }));
+        }
+
+        private string GetThemeOptions()
+        {
+            if (Theme != SphinxPublisher.DefaultTheme)
+            {
+                return "# html_theme_options = {}";
+            }
+
+            string title = string.IsNullOrWhiteSpace(cogsModel.Settings.ShortTitle)
+                ? cogsModel.Settings.Title : cogsModel.Settings.ShortTitle;
+            return "html_theme_options = {\n"
+                + "    'logo': {'text': " + PythonLiteral(title) + "},\n"
+                + "    'navbar_align': 'left',\n"
+                + "    'header_links_before_dropdown': 3,\n"
+                + "    'navbar_persistent': ['search-button'],\n"
+                + "}";
         }
 
         private static string PythonLiteral(string? value) =>
@@ -1068,8 +1085,54 @@ html[data-theme='dark'] .cogs-diagram-light { display: none; }
     html .cogs-diagram-light.only-light { display: block !important; }
     html .cogs-diagram-dark.only-dark { display: none !important; }
     .cogs-diagram { overflow: visible; border: 0; }
-}";
+}" + (Theme == SphinxPublisher.DefaultTheme ? GetPyDataCss() : string.Empty);
         }
+
+        private static string GetPyDataCss() => "\n" + """
+
+/* PyData reference pages: compact branding, fluid content, bounded navigation. */
+@media screen {
+    .bd-header .navbar-header-items__start {
+        min-width: 0;
+        max-width: min(18rem, 45vw);
+        flex-shrink: 1;
+    }
+    .bd-header .navbar-header-items__start .navbar-item,
+    .bd-header .navbar-header-items__start .navbar-brand {
+        min-width: 0;
+        max-width: 100%;
+        flex-shrink: 1;
+    }
+    .bd-header .navbar-brand .logo__title {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .bd-page-width {
+        max-width: 100%;
+    }
+    .bd-main .bd-content .bd-article-container {
+        min-width: 0;
+        max-width: 100%;
+    }
+    .bd-article p:not(table p, .cogs-diagram p) {
+        max-width: 80ch;
+    }
+}
+/* Match PyData's column breakpoints; leave its mobile drawers and collapse intact. */
+@media screen and (min-width: 992px) {
+    .bd-sidebar-primary:not(.pst-squeeze) {
+        --pst-sidebar-primary-width: 18rem;
+        width: 18rem;
+    }
+}
+@media screen and (min-width: 1200px) {
+    .bd-sidebar-secondary {
+        --pst-sidebar-secondary: 15rem;
+        width: 15rem;
+    }
+}
+""";
 
         
     }
