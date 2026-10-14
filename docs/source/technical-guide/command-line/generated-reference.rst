@@ -33,6 +33,44 @@ Options
 ``-o|--overwrite``
    If the target directory exists, delete and overwrite the location
 
+.. _cli-descriptor-compare:
+
+compare
+-------
+
+Compare two model definitions and generate Markdown and PDF changelogs without modifying either input.
+
+Usage
+~~~~~
+
+``cogs compare before after outputDirectory [options]``
+
+Arguments
+~~~~~~~~~
+
+``before``
+   Older model directory, or commit when --git is supplied.
+``after``
+   Newer model directory, or commit when --git is supplied.
+``outputDirectory``
+   Disjoint directory for the changelog bundle.
+
+Options
+~~~~~~~
+
+``-?|-h|--help``
+   Show help information
+``--git <modelDirectory>``
+   Read both commits at this model's repository-relative location; ignore uncommitted changes.
+``--format <format>``
+   Report format: both (default), markdown, or pdf. PDF also retains Typst source.
+``--renames <file>``
+   JSON file of confirmed, one-to-one type/property mappings.
+``--typst <executable>``
+   Typst 0.15.1+ executable; otherwise COGS_TYPST, then PATH.
+``--overwrite``
+   Replace an existing report directory transactionally.
+
 .. _cli-descriptor-publish-cs:
 
 publish-cs

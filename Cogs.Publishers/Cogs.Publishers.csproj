@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Comparison\Report.typ" />
     <EmbeddedResource Include="Csharp\DependantTypes.txt" />
     <EmbeddedResource Include="Csharp\Types.txt" />
     <EmbeddedResource Include="Python\Runtime.py" />
@@ -30,6 +31,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="DiffPlex" />
     <PackageReference Include="JsonSchema.Net" />
     <PackageReference Include="System.ComponentModel.Annotations" />
     <PackageReference Include="YamlDotNet" />

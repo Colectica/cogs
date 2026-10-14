@@ -30,23 +30,13 @@ The authoritative COGS outputs are:
 * Python class package with JSON and XML serialization
 * TypeScript class package with JSON and XML serialization
 
-The RDF publisher (`publish-rdf`, with `publish-owl` as an alias) writes
-`<slug>.ttl`, the equivalent complete ontology
-`<slug>.ontology.jsonld`, the lightweight instance context
-`<slug>.context.jsonld`, production SHACL shapes `<slug>.shacl.ttl`, and
-the experimental native SHACL 1.2 companion `<slug>.shacl12.ttl`.
-SHACL complements OWL with closed instance constraints, including subtype,
-identity, and ordered-list checks. The ontology JSON-LD embeds its own context and exposes
-classes, descriptions, inheritance, restrictions, facets, and keys without
-requiring remote documents. Ordered RDF
-properties retain direct membership triples and a companion `<camelCaseName>List`
-collection preserving order and duplicates. The context is not a mapping of the
-ordinary COGS JSON container and does not add a JSON-LD instance writer or RDF
-importer. OWL's documented exceptions and validation boundaries remain explicit.
-
 COGS also publishes the projections LinkML, DCTAP, GraphQL schema language,
 Graphviz/DOT, and Sphinx documentation.
-ShEx is not a built-in output; it can be generated via LinkML.
+
+## Model comparison
+
+COGS can also create model changelogs in Markdown and PDF, with an editable Typst source.
+Comparison can be done via directory paths or git commits.
 
 ## Platform
 COGS runs on Windows, Linux, and macOS on .NET 10.

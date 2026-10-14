@@ -39,6 +39,8 @@ namespace Cogs.Console
             };
             app.HelpOption("-?|-h|--help");
 
+            ComparisonCommand.Register(app, HandleErrors);
+
 
             app.Command("validate", (command) =>
             {

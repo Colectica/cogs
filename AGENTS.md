@@ -115,6 +115,50 @@ documentation. Equivalent baseline coverage has passed on Windows with Python
 not evidence that a hosted GitHub runner or Ubuntu Noble executed the workflow;
 the first hosted Windows/Ubuntu result remains a release qualification.
 
+## Model comparison reports
+
+`compare <before> <after> <outputDirectory>` compares definitions using private
+snapshots. With `--git <modelDirectory>`, the two inputs are commit references
+at the same repository-relative model path. Read trees/blobs without checkout,
+fetch, index mutation, hooks, or archive export-attribute transformations.
+Discover Git with `COGS_GIT`, then `PATH`. Mechanically upgrade only legacy
+snapshots lacking `CogsVersion`; stop on semantic migration or validation
+errors. Protect both original model directories from target overlap.
+
+The pure comparer and immutable results live in `Cogs.Model/Comparison`, input
+preparation in the CLI, and shared content/Markdown/Typst rendering in
+`Cogs.Publishers/Comparison`. Compare declarations and normalized model values,
+not generated schemas or CSV text. Report identification/inherited changes
+once, with affected types. Exclude topics, articles, additional documentation,
+headers, and historical property columns. Retain type/property descriptions.
+Explicit one-to-one rename mappings precede exact-name matching; unique
+structural hints never automatically convert additions/removals into renames.
+Do not claim a compatibility verdict or infer SemVer bumps.
+
+Report organization is shared by Markdown and Typst: summary, linked contents
+through type names, Item types then Composite types (Added/Removed/Modified,
+ordinal types with nested properties), optional rename review, then Settings
+and identification last. Count an existing owner once for its own or locally
+declared property changes, not inherited changes. Added/removed owners are
+exclusive; properties count once including IDs and added/removed owner fields.
+Renames, moves and relative reordering count as Modified. Moves appear in full
+at the destination with a source cross-reference and affect both existing
+owners. Keep complete definitions and detail; never publish preparation/setup
+notes. Retain that metadata internally. Git source labels use the relative
+model directory (repository basename at root) and one resolved full SHA, never
+the absolute checkout path; preserve absolute paths internally for safety.
+
+Use the newer slug for `.changelog.md`, `.changelog.typ`, and `.changelog.pdf`.
+`--format both|markdown|pdf` defaults to both; PDF keeps its editable Typst
+source. DiffPlex highlights prose only, not model identity. Typst is external:
+`--typst`, `COGS_TYPST`, then `PATH`, minimum 0.15.1. No compiler installation,
+network imports, or native binaries belong in the product package. Compile
+with safe arguments, escaped model text, a staging root and five-minute bound.
+Publish transactionally. Keep Markdown/Typst repeatable; compare PDF content
+and inspect pages, never require PDF byte equality. The CI manifest pins the
+compiler/checksums and pypdf; `test_model_comparison.py` exercises real tagged
+PDF, extraction, pagination, repeatability, and unchanged sources.
+
 ## Architecture and change flow
 
 The CLI entry point is `Cogs.Console\Program.cs`. Publisher commands must

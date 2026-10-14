@@ -129,6 +129,7 @@ jobs:
             "linkml==$($tools.linkml)" `
             "linkml-runtime==$($tools.linkmlRuntime)" `
             "pydantic==$($tools.pydantic)" `
+            "pypdf==$($tools.pypdf)" `
             "pyshacl==$($tools.pyshacl)"
           if ($LASTEXITCODE -ne 0) { throw "Python conformance tool installation failed with exit $LASTEXITCODE" }
           & $env:COGS_PYTHON -c 'import pydantic, sys; print("Python:", sys.version.split()[0], sys.executable); print("Pydantic:", pydantic.__version__, pydantic.__file__); assert ".".join(map(str, sys.version_info[:2])) == sys.argv[1], "Expected Python " + sys.argv[1]; assert pydantic.__version__ == sys.argv[2], "Expected Pydantic " + sys.argv[2]' $tools.python $tools.pydantic
@@ -148,6 +149,12 @@ jobs:
             ([IO.Path]::GetDirectoryName($dot)) | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           }
           # On Linux, prepending /usr/bin would shadow setup-python with system Python.
+
+      - name: Install checksum-pinned Typst
+        shell: pwsh
+        run: |
+          $typst = ./conformance/scripts/Install-Typst.ps1 -ToolDirectory (Join-Path $env:RUNNER_TEMP 'cogs-typst')
+          "COGS_TYPST=$typst" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Display pinned runtimes
         shell: pwsh
@@ -207,6 +214,22 @@ jobs:
         run: |
           ./conformance/scripts/Test-Conformance.ps1 `
             -CogsDll ./Cogs.Console/bin/Release/net10.0/cogs.dll
+
+      - name: Verify model comparison Markdown and publication PDF
+        shell: pwsh
+        run: |
+          & $env:COGS_PYTHON ./conformance/scripts/test_model_comparison.py `
+            --cogs ./Cogs.Console/bin/Release/net10.0/cogs.dll `
+            --typst $env:COGS_TYPST --output (Join-Path $env:RUNNER_TEMP 'cogs-comparison-report')
+          if ($LASTEXITCODE -ne 0) { throw 'Model comparison report conformance failed.' }
+
+      - name: Retain comparison report for inspection
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: comparison-report-${{ matrix.os }}
+          path: ${{ runner.temp }}/cogs-comparison-report
+          if-no-files-found: ignore
 
       - name: Generate cogsburger and conformance artifacts
         shell: pwsh

@@ -1,5 +1,21 @@
 # COGS 2.0 conformance corpus
 
+The Windows/Ubuntu CI matrix includes model-comparison qualification with externally
+installed Typst and pypdf pinned in `tools.json`. `scripts/Install-Typst.ps1` verifies the
+official compiler archive checksum before extraction. Set `COGS_TYPST` to its
+absolute executable for the real-compiler unit test, then run:
+
+```powershell
+python scripts/test_model_comparison.py --cogs ../Cogs.Console/bin/Release/net10.0/cogs.dll `
+  --typst $env:COGS_TYPST --output ../generated/comparison-report
+```
+
+The corpus retains a multi-page PDF, Markdown, editable Typst source and a
+verification summary. It checks final-entry coverage, safe text, accessibility
+tags, source hashes, and repeatable extracted content/page count. Markdown and
+Typst compare byte-for-byte; PDF bytes do not. CI retains the report for visual
+inspection. Comparison needs no external model checkout or proprietary code.
+
 This directory is the checked-in, publisher-neutral COGS 2.0 conformance
 corpus. `model` is a valid model that deliberately combines inheritance,
 abstract types, multiple identification fields, recursive composites,

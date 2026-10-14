@@ -37,6 +37,7 @@ Exit codes
 .. toctree::
 
     generated-reference
+    compare
     cogs-new
     rewrite
     publish-cs

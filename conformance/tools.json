@@ -1,5 +1,17 @@
 {
   "dotnetSdk": "10.0.x",
+  "typst": "0.15.1",
+  "pypdf": "6.10.0",
+  "typstAssets": {
+    "windows": {
+      "url": "https://github.com/typst/typst/releases/download/v0.15.1/typst-x86_64-pc-windows-msvc.zip",
+      "sha256": "19ce3551153c2fe7ee9fa2f95208310c8f4d3209fedb699e0333faf8913f6736"
+    },
+    "linux": {
+      "url": "https://github.com/typst/typst/releases/download/v0.15.1/typst-x86_64-unknown-linux-musl.tar.xz",
+      "sha256": "a6d077d0a95eed5a2eba715b2dae06be954f624ccbf85758a03f389ded33118c"
+    }
+  },
   "python": "3.11",
   "pydantic": "2.13.5",
   "node": "22",
